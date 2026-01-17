@@ -20,6 +20,16 @@ export default function ArticleListScreen() {
         fetchArticles(true);
     }, []);
 
+    const handleArticlePress = (id: number) => {
+        router.push(`/(app)/article/${id}`);
+    };
+
+    const handleRefresh = useCallback(() => {
+        fetchFeeds();
+        fetchFolders();
+        fetchArticles(true);
+    }, []);
+
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             // Ignore if typing in an input
@@ -40,7 +50,7 @@ export default function ArticleListScreen() {
                 case 'm': // Toggle Read
                     if (selectedIndex >= 0 && selectedIndex < articles.length) {
                         const article = articles[selectedIndex];
-                        useArticleStore.getState().markRead([article.id], !article.is_read);
+                        useArticleStore.getState().markRead(article.id);
                     }
                     break;
                 case 'o': // Open in browser
@@ -67,16 +77,6 @@ export default function ArticleListScreen() {
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [articles, selectedIndex, handleRefresh, handleArticlePress]);
-
-    const handleArticlePress = (id: number) => {
-        router.push(`/(app)/article/${id}`);
-    };
-
-    const handleRefresh = useCallback(() => {
-        fetchFeeds();
-        fetchFolders();
-        fetchArticles(true);
-    }, []);
 
     const handleLoadMore = useCallback(() => {
         if (hasMore && !isLoading) {
