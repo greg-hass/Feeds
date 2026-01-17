@@ -7,15 +7,18 @@ import {
     ArrowLeft, Rss, Youtube, Headphones, MessageSquare,
     Folder as FolderIcon, RefreshCw, Trash2, ChevronRight, Check
 } from 'lucide-react-native';
-import { colors, borderRadius, spacing } from '@/theme';
+import { useColors, borderRadius, spacing } from '@/theme';
 
 export default function SubscriptionsScreen() {
     const router = useRouter();
+    const colors = useColors();
     const { feeds, folders, fetchFeeds, fetchFolders, isLoading } = useFeedStore();
     const { setFilter } = useArticleStore();
     const { show } = useToastStore();
 
     const [isRefreshing, setIsRefreshing] = useState(false);
+
+    const s = styles(colors);
 
     const handleRefresh = async () => {
         setIsRefreshing(true);
@@ -81,37 +84,37 @@ export default function SubscriptionsScreen() {
     };
 
     const renderFeedItem = (feed: Feed) => (
-        <View key={feed.id} style={styles.feedRow}>
+        <View key={feed.id} style={s.feedRow}>
             <TouchableOpacity
-                style={styles.feedContent}
+                style={s.feedContent}
                 onPress={() => handleFeedPress(feed.id)}
             >
                 {getTypeIcon(feed.type)}
-                <View style={styles.feedInfo}>
-                    <Text style={styles.feedTitle} numberOfLines={1}>{feed.title}</Text>
+                <View style={s.feedInfo}>
+                    <Text style={s.feedTitle} numberOfLines={1}>{feed.title}</Text>
                     {feed.last_fetched_at && (
-                        <Text style={styles.lastFetched}>
+                        <Text style={s.lastFetched}>
                             Last updated: {new Date(feed.last_fetched_at).toLocaleDateString()}
                         </Text>
                     )}
                 </View>
                 {feed.unread_count > 0 && (
-                    <View style={styles.unreadBadge}>
-                        <Text style={styles.unreadCount}>{feed.unread_count}</Text>
+                    <View style={s.unreadBadge}>
+                        <Text style={s.unreadCount}>{feed.unread_count}</Text>
                     </View>
                 )}
             </TouchableOpacity>
 
-            <View style={styles.feedActions}>
+            <View style={s.feedActions}>
                 <TouchableOpacity
                     onPress={() => handleRefreshFeed(feed.id, feed.title)}
-                    style={styles.actionButton}
+                    style={s.actionButton}
                 >
                     <RefreshCw size={16} color={colors.text.tertiary} />
                 </TouchableOpacity>
                 <TouchableOpacity
                     onPress={() => handleDeleteFeed(feed.id, feed.title)}
-                    style={styles.actionButton}
+                    style={s.actionButton}
                 >
                     <Trash2 size={16} color={colors.text.tertiary} />
                 </TouchableOpacity>
@@ -120,16 +123,16 @@ export default function SubscriptionsScreen() {
     );
 
     return (
-        <View style={styles.container}>
+        <View style={s.container}>
             {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <View style={s.header}>
+                <TouchableOpacity onPress={() => router.back()} style={s.backButton}>
                     <ArrowLeft size={24} color={colors.text.primary} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>All Subscriptions</Text>
+                <Text style={s.headerTitle}>All Subscriptions</Text>
                 <TouchableOpacity
                     onPress={handleRefresh}
-                    style={styles.headerRefresh}
+                    style={s.headerRefresh}
                     disabled={isRefreshing}
                 >
                     {isRefreshing ? (
@@ -141,28 +144,28 @@ export default function SubscriptionsScreen() {
             </View>
 
             <ScrollView
-                style={styles.scrollView}
+                style={s.scrollView}
                 refreshControl={
                     <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={colors.primary.DEFAULT} />
                 }
             >
-                <View style={styles.content}>
+                <View style={s.content}>
                     {/* Folders & their feeds */}
-                    {folders.map(folder => {
-                        const folderFeeds = feeds.filter(f => f.folder_id === folder.id);
+                    {folders.map((folder: Folder) => {
+                        const folderFeeds = feeds.filter((f: Feed) => f.folder_id === folder.id);
                         if (folderFeeds.length === 0) return null;
 
                         return (
-                            <View key={folder.id} style={styles.section}>
+                            <View key={folder.id} style={s.section}>
                                 <TouchableOpacity
-                                    style={styles.sectionHeader}
+                                    style={s.sectionHeader}
                                     onPress={() => handleFolderPress(folder.id)}
                                 >
                                     <FolderIcon size={18} color={colors.secondary.DEFAULT} />
-                                    <Text style={styles.sectionTitle}>{folder.name}</Text>
+                                    <Text style={s.sectionTitle}>{folder.name}</Text>
                                     <ChevronRight size={16} color={colors.text.tertiary} />
                                 </TouchableOpacity>
-                                <View style={styles.sectionContent}>
+                                <View style={s.sectionContent}>
                                     {folderFeeds.map(renderFeedItem)}
                                 </View>
                             </View>
@@ -170,26 +173,26 @@ export default function SubscriptionsScreen() {
                     })}
 
                     {/* Uncategorized feeds */}
-                    {feeds.filter(f => !f.folder_id).length > 0 && (
-                        <View style={styles.section}>
-                            <View style={styles.sectionHeader}>
-                                <Text style={styles.sectionTitle}>Uncategorized</Text>
+                    {feeds.filter((f: Feed) => !f.folder_id).length > 0 && (
+                        <View style={s.section}>
+                            <View style={s.sectionHeader}>
+                                <Text style={s.sectionTitle}>Uncategorized</Text>
                             </View>
-                            <View style={styles.sectionContent}>
-                                {feeds.filter(f => !f.folder_id).map(renderFeedItem)}
+                            <View style={s.sectionContent}>
+                                {feeds.filter((f: Feed) => !f.folder_id).map(renderFeedItem)}
                             </View>
                         </View>
                     )}
 
                     {feeds.length === 0 && !isLoading && (
-                        <View style={styles.emptyState}>
+                        <View style={s.emptyState}>
                             <Rss size={48} color={colors.text.tertiary} />
-                            <Text style={styles.emptyText}>No subscriptions yet</Text>
+                            <Text style={s.emptyText}>No subscriptions yet</Text>
                             <TouchableOpacity
-                                style={styles.addButton}
+                                style={s.addButton}
                                 onPress={() => router.push('/(app)/manage')}
                             >
-                                <Text style={styles.addButtonText}>Add your first feed</Text>
+                                <Text style={s.addButtonText}>Add your first feed</Text>
                             </TouchableOpacity>
                         </View>
                     )}
@@ -199,7 +202,7 @@ export default function SubscriptionsScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const styles = (colors: any) => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.background.primary,
@@ -319,3 +322,4 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
 });
+

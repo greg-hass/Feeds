@@ -1,15 +1,19 @@
 import { useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSettingsStore, useAuthStore, useToastStore } from '@/stores';
-import { ArrowLeft, Sun, Moon, Monitor } from 'lucide-react-native';
-import { colors, borderRadius, spacing } from '@/theme';
+import { Settings } from '@/services/api';
+import { ArrowLeft, Sun, Moon, Monitor, ChevronRight } from 'lucide-react-native';
+import { useColors, spacing, borderRadius } from '@/theme';
 
 export default function SettingsScreen() {
     const router = useRouter();
+    const colors = useColors();
     const { settings, fetchSettings, updateSettings } = useSettingsStore();
     const { user, logout } = useAuthStore();
     const { show } = useToastStore();
+
+    const s = styles(colors);
 
     useEffect(() => {
         fetchSettings();
@@ -24,7 +28,7 @@ export default function SettingsScreen() {
         }
     };
 
-    const handleToggle = async (key: keyof typeof settings, value: boolean) => {
+    const handleToggle = async (key: keyof Settings, value: string | number | boolean) => {
         if (settings) {
             try {
                 await updateSettings({ [key]: value });
@@ -37,78 +41,79 @@ export default function SettingsScreen() {
 
     if (!settings) {
         return (
-            <View style={styles.container}>
-                <View style={styles.header}>
-                    <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <View style={s.container}>
+                <View style={s.header}>
+                    <TouchableOpacity onPress={() => router.back()} style={s.backButton}>
                         <ArrowLeft size={24} color={colors.text.primary} />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Settings</Text>
+                    <Text style={s.headerTitle}>Settings</Text>
                 </View>
-                <View style={styles.loading}>
-                    <Text style={styles.loadingText}>Loading...</Text>
+                <View style={s.loading}>
+                    <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
+                    <Text style={s.loadingText}>Loading settings...</Text>
                 </View>
             </View>
         );
     }
 
     return (
-        <View style={styles.container}>
+        <View style={s.container}>
             {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <View style={s.header}>
+                <TouchableOpacity onPress={() => router.back()} style={s.backButton}>
                     <ArrowLeft size={24} color={colors.text.primary} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Settings</Text>
+                <Text style={s.headerTitle}>Settings</Text>
             </View>
 
-            <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+            <ScrollView style={s.scrollView} contentContainerStyle={s.content}>
                 {/* Account */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Account</Text>
-                    <View style={styles.card}>
-                        <View style={styles.row}>
-                            <Text style={styles.label}>Username</Text>
-                            <Text style={styles.value}>{user?.username}</Text>
+                <View style={s.section}>
+                    <Text style={s.sectionTitle}>Account</Text>
+                    <View style={s.card}>
+                        <View style={s.row}>
+                            <Text style={s.label}>Username</Text>
+                            <Text style={s.value}>{user?.username}</Text>
                         </View>
                     </View>
                 </View>
 
                 {/* Appearance */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Appearance</Text>
-                    <View style={styles.card}>
-                        <Text style={styles.label}>Theme</Text>
-                        <View style={styles.themeRow}>
+                <View style={s.section}>
+                    <Text style={s.sectionTitle}>Appearance</Text>
+                    <View style={s.card}>
+                        <Text style={s.label}>Theme</Text>
+                        <View style={s.themeRow}>
                             <TouchableOpacity
-                                style={[styles.themeOption, settings.theme === 'light' && styles.themeOptionActive]}
+                                style={[s.themeOption, settings.theme === 'light' && s.themeOptionActive]}
                                 onPress={() => handleThemeChange('light')}
                             >
                                 <Sun size={20} color={settings.theme === 'light' ? colors.text.inverse : colors.text.secondary} />
-                                <Text style={[styles.themeText, settings.theme === 'light' && styles.themeTextActive]}>Light</Text>
+                                <Text style={[s.themeText, settings.theme === 'light' && s.themeTextActive, settings.theme === 'light' && { color: colors.text.inverse }]}>Light</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
-                                style={[styles.themeOption, settings.theme === 'dark' && styles.themeOptionActive]}
+                                style={[s.themeOption, settings.theme === 'dark' && s.themeOptionActive]}
                                 onPress={() => handleThemeChange('dark')}
                             >
                                 <Moon size={20} color={settings.theme === 'dark' ? colors.text.inverse : colors.text.secondary} />
-                                <Text style={[styles.themeText, settings.theme === 'dark' && styles.themeTextActive]}>Dark</Text>
+                                <Text style={[s.themeText, settings.theme === 'dark' && s.themeTextActive, settings.theme === 'dark' && { color: colors.text.inverse }]}>Dark</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
-                                style={[styles.themeOption, settings.theme === 'auto' && styles.themeOptionActive]}
+                                style={[s.themeOption, settings.theme === 'auto' && s.themeOptionActive]}
                                 onPress={() => handleThemeChange('auto')}
                             >
                                 <Monitor size={20} color={settings.theme === 'auto' ? colors.text.inverse : colors.text.secondary} />
-                                <Text style={[styles.themeText, settings.theme === 'auto' && styles.themeTextActive]}>Auto</Text>
+                                <Text style={[s.themeText, settings.theme === 'auto' && s.themeTextActive, settings.theme === 'auto' && { color: colors.text.inverse }]}>Auto</Text>
                             </TouchableOpacity>
                         </View>
 
-                        <View style={styles.divider} />
+                        <View style={s.divider} />
 
-                        <View style={styles.row}>
-                            <Text style={styles.label}>Show Images</Text>
+                        <View style={s.row}>
+                            <Text style={s.label}>Show Images</Text>
                             <Switch
                                 value={settings.show_images}
-                                onValueChange={(v) => handleToggle('show_images', v)}
+                                onValueChange={(v: boolean) => handleToggle('show_images', v)}
                                 trackColor={{ false: colors.border.DEFAULT, true: colors.primary.DEFAULT }}
                                 thumbColor={colors.text.primary}
                             />
@@ -117,32 +122,32 @@ export default function SettingsScreen() {
                 </View>
 
                 {/* Reading */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Reading</Text>
-                    <View style={styles.card}>
-                        <View style={styles.row}>
+                <View style={s.section}>
+                    <Text style={s.sectionTitle}>Reading</Text>
+                    <View style={s.card}>
+                        <View style={s.row}>
                             <View>
-                                <Text style={styles.label}>Reader Mode</Text>
-                                <Text style={styles.hint}>Use cleaned article view</Text>
+                                <Text style={s.label}>Reader Mode</Text>
+                                <Text style={s.hint}>Use cleaned article view</Text>
                             </View>
                             <Switch
                                 value={settings.readability_enabled}
-                                onValueChange={(v) => handleToggle('readability_enabled', v)}
+                                onValueChange={(v: boolean) => handleToggle('readability_enabled', v)}
                                 trackColor={{ false: colors.border.DEFAULT, true: colors.primary.DEFAULT }}
                                 thumbColor={colors.text.primary}
                             />
                         </View>
 
-                        <View style={styles.divider} />
+                        <View style={s.divider} />
 
-                        <View style={styles.row}>
+                        <View style={s.row}>
                             <View>
-                                <Text style={styles.label}>Fetch Full Content</Text>
-                                <Text style={styles.hint}>Download full articles</Text>
+                                <Text style={s.label}>Fetch Full Content</Text>
+                                <Text style={s.hint}>Download full articles</Text>
                             </View>
                             <Switch
                                 value={settings.fetch_full_content}
-                                onValueChange={(v) => handleToggle('fetch_full_content', v)}
+                                onValueChange={(v: boolean) => handleToggle('fetch_full_content', v)}
                                 trackColor={{ false: colors.border.DEFAULT, true: colors.primary.DEFAULT }}
                                 thumbColor={colors.text.primary}
                             />
@@ -150,37 +155,79 @@ export default function SettingsScreen() {
                     </View>
                 </View>
 
-                {/* Sync */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Sync</Text>
-                    <View style={styles.card}>
-                        <View style={styles.row}>
-                            <Text style={styles.label}>Refresh Interval</Text>
-                            <Text style={styles.value}>{settings.refresh_interval_minutes} min</Text>
+                {/* Sync & Cleanup */}
+                <View style={s.section}>
+                    <Text style={s.sectionTitle}>Sync & Cleanup</Text>
+                    <View style={s.card}>
+                        <View style={s.row}>
+                            <View>
+                                <Text style={s.label}>Refresh Interval</Text>
+                                <Text style={s.hint}>Default for new feeds</Text>
+                            </View>
+                            <View style={s.picker}>
+                                {[15, 30, 60, 240, 720, 1440].map((mins: number) => (
+                                    <TouchableOpacity
+                                        key={mins}
+                                        onPress={() => handleToggle('refresh_interval_minutes', mins)}
+                                        style={[
+                                            s.pickerOption,
+                                            settings.refresh_interval_minutes === mins && { backgroundColor: colors.primary.DEFAULT }
+                                        ]}
+                                    >
+                                        <Text style={[
+                                            s.pickerText,
+                                            settings.refresh_interval_minutes === mins && { color: colors.text.inverse, fontWeight: '600' }
+                                        ]}>
+                                            {mins >= 60 ? `${mins / 60}h` : `${mins}m`}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
                         </View>
 
-                        <View style={styles.divider} />
+                        <View style={s.divider} />
 
-                        <View style={styles.row}>
-                            <Text style={styles.label}>Keep Articles For</Text>
-                            <Text style={styles.value}>{settings.retention_days} days</Text>
+                        <View style={s.row}>
+                            <View>
+                                <Text style={s.label}>Keep Articles For</Text>
+                                <Text style={s.hint}>Auto-delete read articles</Text>
+                            </View>
+                            <View style={s.picker}>
+                                {[7, 30, 90, 180, 365].map((days: number) => (
+                                    <TouchableOpacity
+                                        key={days}
+                                        onPress={() => handleToggle('retention_days', days)}
+                                        style={[
+                                            s.pickerOption,
+                                            settings.retention_days === days && { backgroundColor: colors.primary.DEFAULT }
+                                        ]}
+                                    >
+                                        <Text style={[
+                                            s.pickerText,
+                                            settings.retention_days === days && { color: colors.text.inverse, fontWeight: '600' }
+                                        ]}>
+                                            {days}d
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
                         </View>
                     </View>
                 </View>
 
                 {/* Logout */}
-                <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-                    <Text style={styles.logoutText}>Log Out</Text>
+                <TouchableOpacity style={s.logoutButton} onPress={logout}>
+                    <Text style={s.logoutText}>Log Out</Text>
                 </TouchableOpacity>
 
                 {/* Version */}
-                <Text style={styles.version}>Feeds v1.0.0</Text>
+                <Text style={s.version}>Feeds v1.0.0</Text>
             </ScrollView>
         </View>
     );
 }
 
-const styles = StyleSheet.create({
+const styles = (colors: any) => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.background.primary,
@@ -206,6 +253,7 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+        gap: spacing.md,
     },
     loadingText: {
         color: colors.text.tertiary,
@@ -279,8 +327,24 @@ const styles = StyleSheet.create({
         color: colors.text.secondary,
     },
     themeTextActive: {
-        color: colors.text.inverse,
         fontWeight: '600',
+    },
+    picker: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 4,
+        justifyContent: 'flex-end',
+        maxWidth: '60%',
+    },
+    pickerOption: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+        backgroundColor: colors.background.tertiary,
+    },
+    pickerText: {
+        fontSize: 12,
+        color: colors.text.secondary,
     },
     logoutButton: {
         backgroundColor: colors.background.secondary,
@@ -300,3 +364,4 @@ const styles = StyleSheet.create({
         marginTop: spacing.xl,
     },
 });
+

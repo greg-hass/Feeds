@@ -1,18 +1,21 @@
 import { useEffect, useCallback, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, ActivityIndicator, Alert, Linking } from 'react-native';
 import { useRouter } from 'expo-router';
 import { formatDistanceToNow } from 'date-fns';
 import { useArticleStore, useFeedStore } from '@/stores';
 import { Article } from '@/services/api';
 import { Circle, CircleCheck, Headphones, Filter, CheckCheck, MoreVertical } from 'lucide-react-native';
-import { colors, borderRadius, spacing } from '@/theme';
+import { useColors, borderRadius, spacing } from '@/theme';
 
 export default function ArticleListScreen() {
     const router = useRouter();
+    const colors = useColors();
     const { articles, isLoading, hasMore, filter, fetchArticles, setFilter, markAllRead } = useArticleStore();
     const { fetchFeeds, fetchFolders } = useFeedStore();
     const [showMenu, setShowMenu] = useState(false);
     const [selectedIndex, setSelectedIndex] = useState(-1);
+
+    const s = styles(colors);
 
     useEffect(() => {
         fetchFeeds();
@@ -42,10 +45,10 @@ export default function ArticleListScreen() {
 
             switch (e.key.toLowerCase()) {
                 case 'j': // Next
-                    setSelectedIndex(prev => Math.min(prev + 1, articles.length - 1));
+                    setSelectedIndex((prev: number) => Math.min(prev + 1, articles.length - 1));
                     break;
                 case 'k': // Previous
-                    setSelectedIndex(prev => Math.max(prev - 1, 0));
+                    setSelectedIndex((prev: number) => Math.max(prev - 1, 0));
                     break;
                 case 'm': // Toggle Read
                     if (selectedIndex >= 0 && selectedIndex < articles.length) {
@@ -58,7 +61,7 @@ export default function ArticleListScreen() {
                     if (selectedIndex >= 0 && selectedIndex < articles.length) {
                         const article = articles[selectedIndex];
                         if (e.key.toLowerCase() === 'o' && article.url) {
-                            window.open(article.url, '_blank');
+                            Linking.openURL(article.url);
                         } else {
                             handleArticlePress(article.id);
                         }
@@ -132,33 +135,33 @@ export default function ArticleListScreen() {
         return 'Articles';
     };
 
-    const unreadCount = articles.filter(a => !a.is_read).length;
+    const unreadCount = articles.filter((a: Article) => !a.is_read).length;
 
     const renderArticle = ({ item, index }: { item: Article; index: number }) => (
         <TouchableOpacity
             style={[
-                styles.articleCard,
-                item.is_read && styles.articleRead,
-                index === selectedIndex && styles.articleFocused
+                s.articleCard,
+                item.is_read && s.articleRead,
+                index === selectedIndex && s.articleFocused
             ]}
             onPress={() => handleArticlePress(item.id)}
         >
-            <View style={styles.articleHeader}>
-                <Text style={styles.feedName}>{item.feed_title}</Text>
+            <View style={s.articleHeader}>
+                <Text style={s.feedName}>{item.feed_title}</Text>
                 {item.has_audio && <Headphones size={14} color={colors.secondary.DEFAULT} />}
             </View>
-            <Text style={[styles.articleTitle, item.is_read && styles.articleTitleRead]} numberOfLines={2}>
+            <Text style={[s.articleTitle, item.is_read && s.articleTitleRead]} numberOfLines={2}>
                 {!item.is_read && (
                     <Circle size={8} color={colors.primary.DEFAULT} fill={colors.primary.DEFAULT} style={{ marginRight: 6 }} />
                 )}
                 {item.title}
             </Text>
             {item.summary && (
-                <Text style={styles.articleSummary} numberOfLines={2}>
+                <Text style={s.articleSummary} numberOfLines={2}>
                     {item.summary}
                 </Text>
             )}
-            <Text style={styles.articleMeta}>
+            <Text style={s.articleMeta}>
                 {item.author && `${item.author} • `}
                 {item.published_at && formatDistanceToNow(new Date(item.published_at), { addSuffix: true })}
             </Text>
@@ -166,21 +169,21 @@ export default function ArticleListScreen() {
     );
 
     return (
-        <View style={styles.container}>
+        <View style={s.container}>
             {/* Header */}
-            <View style={styles.header}>
-                <View style={styles.headerLeft}>
-                    <Text style={styles.headerTitle}>{getHeaderTitle()}</Text>
+            <View style={s.header}>
+                <View style={s.headerLeft}>
+                    <Text style={s.headerTitle}>{getHeaderTitle()}</Text>
                     {unreadCount > 0 && (
-                        <View style={styles.unreadBadge}>
-                            <Text style={styles.unreadBadgeText}>{unreadCount}</Text>
+                        <View style={s.unreadBadge}>
+                            <Text style={s.unreadBadgeText}>{unreadCount}</Text>
                         </View>
                     )}
                 </View>
-                <View style={styles.headerActions}>
+                <View style={s.headerActions}>
                     {/* Mark All Read */}
                     <TouchableOpacity
-                        style={styles.iconButton}
+                        style={s.iconButton}
                         onPress={handleMarkAllRead}
                     >
                         <CheckCheck size={20} color={colors.primary.DEFAULT} />
@@ -188,11 +191,11 @@ export default function ArticleListScreen() {
 
                     {/* Unread Filter */}
                     <TouchableOpacity
-                        style={[styles.filterButton, filter.unread_only && styles.filterButtonActive]}
+                        style={[s.filterButton, filter.unread_only && s.filterButtonActive]}
                         onPress={toggleUnreadFilter}
                     >
                         <Filter size={16} color={filter.unread_only ? colors.text.inverse : colors.text.secondary} />
-                        <Text style={[styles.filterText, filter.unread_only && styles.filterTextActive]}>
+                        <Text style={[s.filterText, filter.unread_only && s.filterTextActive]}>
                             {filter.unread_only ? 'Unread' : 'All'}
                         </Text>
                     </TouchableOpacity>
@@ -202,10 +205,10 @@ export default function ArticleListScreen() {
             {/* List */}
             <FlatList
                 data={articles}
-                keyExtractor={(item) => String(item.id)}
-                renderItem={({ item, index }) => renderArticle({ item, index })}
-                contentContainerStyle={styles.list}
-                ItemSeparatorComponent={() => <View style={styles.separator} />}
+                keyExtractor={(item: Article) => String(item.id)}
+                renderItem={({ item, index }: { item: Article; index: number }) => renderArticle({ item, index })}
+                contentContainerStyle={s.list}
+                ItemSeparatorComponent={() => <View style={s.separator} />}
                 refreshControl={
                     <RefreshControl
                         refreshing={isLoading && articles.length === 0}
@@ -218,15 +221,15 @@ export default function ArticleListScreen() {
                 onEndReachedThreshold={0.5}
                 ListFooterComponent={
                     isLoading && articles.length > 0 ? (
-                        <ActivityIndicator style={styles.loader} color={colors.primary.DEFAULT} />
+                        <ActivityIndicator style={s.loader} color={colors.primary.DEFAULT} />
                     ) : null
                 }
                 ListEmptyComponent={
                     !isLoading ? (
-                        <View style={styles.empty}>
+                        <View style={s.empty}>
                             <CircleCheck size={48} color={colors.primary.DEFAULT} />
-                            <Text style={styles.emptyTitle}>All caught up!</Text>
-                            <Text style={styles.emptyText}>No unread articles</Text>
+                            <Text style={s.emptyTitle}>All caught up!</Text>
+                            <Text style={s.emptyText}>No unread articles</Text>
                         </View>
                     ) : null
                 }
@@ -235,7 +238,7 @@ export default function ArticleListScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const styles = (colors: any) => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.background.primary,
@@ -373,3 +376,4 @@ const styles = StyleSheet.create({
         marginTop: spacing.sm,
     },
 });
+

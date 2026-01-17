@@ -3,8 +3,8 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useAuthStore } from '@/stores';
-import { colors } from '@/theme';
+import { useAuthStore, useSettingsStore } from '@/stores';
+import { ThemeProvider } from '@/theme';
 import ToastContainer from '@/components/Toast';
 
 const queryClient = new QueryClient({
@@ -23,9 +23,14 @@ function AuthGate() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        checkAuthStatus().catch((err: Error) => {
-            console.error('Auth status check failed:', err);
-            setError(err?.message || 'Failed to connect to server');
+        Promise.all([
+            checkAuthStatus(),
+            useSettingsStore.getState().fetchSettings().catch(() => {
+                // Ignore if not logged in yet
+            })
+        ]).catch((err) => {
+            console.error('Initial data fetch failed:', err);
+            setError('Failed to connect to server');
         });
     }, []);
 
@@ -69,9 +74,11 @@ function AuthGate() {
 export default function RootLayout() {
     return (
         <QueryClientProvider client={queryClient}>
-            <StatusBar style="light" />
-            <AuthGate />
-            <ToastContainer />
+            <ThemeProvider>
+                <StatusBar style="auto" />
+                <AuthGate />
+                <ToastContainer />
+            </ThemeProvider>
         </QueryClientProvider>
     );
 }

@@ -2,16 +2,21 @@ import { useEffect, useState, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Linking } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { formatDistanceToNow } from 'date-fns';
-import { useArticleStore } from '@/stores';
+import { useArticleStore, useSettingsStore } from '@/stores';
+import { Article } from '@/services/api';
 import { ArrowLeft, ExternalLink, Circle, CircleCheck, Headphones, BookOpen } from 'lucide-react-native';
-import { colors, borderRadius, spacing } from '@/theme';
+import { useColors, borderRadius, spacing } from '@/theme';
 
 export default function ArticleScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
+    const colors = useColors();
     const { currentArticle, fetchArticle, markRead, markUnread } = useArticleStore();
+    const { settings } = useSettingsStore();
     const [isLoading, setIsLoading] = useState(true);
-    const [showReadability, setShowReadability] = useState(false);
+    const [showReadability, setShowReadability] = useState(settings?.readability_enabled ?? false);
+
+    const s = styles(colors);
 
     useEffect(() => {
         if (id) {
@@ -21,6 +26,12 @@ export default function ArticleScreen() {
                 .finally(() => setIsLoading(false));
         }
     }, [id]);
+
+    useEffect(() => {
+        if (settings) {
+            setShowReadability(settings.readability_enabled);
+        }
+    }, [settings?.readability_enabled]);
 
     const handleOpenExternal = useCallback(() => {
         if (currentArticle?.url) {
@@ -43,7 +54,7 @@ export default function ArticleScreen() {
             if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
 
             const { articles } = useArticleStore.getState();
-            const currentIndex = articles.findIndex(a => a.id === Number(id));
+            const currentIndex = articles.findIndex((a: Article) => a.id === Number(id));
 
             switch (e.key.toLowerCase()) {
                 case 'j': // Next
@@ -77,7 +88,7 @@ export default function ArticleScreen() {
 
     if (isLoading || !currentArticle) {
         return (
-            <View style={styles.loadingContainer}>
+            <View style={s.loadingContainer}>
                 <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
             </View>
         );
@@ -88,15 +99,15 @@ export default function ArticleScreen() {
         : currentArticle.content;
 
     return (
-        <View style={styles.container}>
+        <View style={s.container}>
             {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <View style={s.header}>
+                <TouchableOpacity onPress={() => router.back()} style={s.backButton}>
                     <ArrowLeft size={24} color={colors.text.primary} />
                 </TouchableOpacity>
 
-                <View style={styles.headerActions}>
-                    <TouchableOpacity onPress={handleToggleRead} style={styles.actionButton}>
+                <View style={s.headerActions}>
+                    <TouchableOpacity onPress={handleToggleRead} style={s.actionButton}>
                         {currentArticle.is_read ? (
                             <CircleCheck size={22} color={colors.primary.DEFAULT} />
                         ) : (
@@ -107,31 +118,31 @@ export default function ArticleScreen() {
                     {currentArticle.readability_content && (
                         <TouchableOpacity
                             onPress={() => setShowReadability(!showReadability)}
-                            style={[styles.actionButton, showReadability && styles.actionButtonActive]}
+                            style={[s.actionButton, showReadability && s.actionButtonActive]}
                         >
                             <BookOpen size={22} color={showReadability ? colors.primary.DEFAULT : colors.text.secondary} />
                         </TouchableOpacity>
                     )}
 
                     {currentArticle.url && (
-                        <TouchableOpacity onPress={handleOpenExternal} style={styles.actionButton}>
+                        <TouchableOpacity onPress={handleOpenExternal} style={s.actionButton}>
                             <ExternalLink size={22} color={colors.text.secondary} />
                         </TouchableOpacity>
                     )}
                 </View>
             </View>
 
-            <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+            <ScrollView style={s.scrollView} contentContainerStyle={s.content}>
                 {/* Article Meta */}
-                <Text style={styles.feedName}>{currentArticle.feed_title}</Text>
-                <Text style={styles.title}>{currentArticle.title}</Text>
+                <Text style={s.feedName}>{currentArticle.feed_title}</Text>
+                <Text style={s.title}>{currentArticle.title}</Text>
 
-                <View style={styles.meta}>
+                <View style={s.meta}>
                     {currentArticle.author && (
-                        <Text style={styles.author}>{currentArticle.author}</Text>
+                        <Text style={s.author}>{currentArticle.author}</Text>
                     )}
                     {currentArticle.published_at && (
-                        <Text style={styles.date}>
+                        <Text style={s.date}>
                             {formatDistanceToNow(new Date(currentArticle.published_at), { addSuffix: true })}
                         </Text>
                     )}
@@ -140,17 +151,17 @@ export default function ArticleScreen() {
                 {/* Audio Player for Podcasts */}
                 {currentArticle.has_audio && currentArticle.enclosure_url && (
                     <TouchableOpacity
-                        style={styles.audioPlayer}
+                        style={s.audioPlayer}
                         onPress={() => Linking.openURL(currentArticle.enclosure_url!)}
                     >
                         <Headphones size={20} color={colors.secondary.DEFAULT} />
-                        <Text style={styles.audioText}>Play Episode</Text>
+                        <Text style={s.audioText}>Play Episode</Text>
                     </TouchableOpacity>
                 )}
 
                 {/* Content */}
-                <View style={styles.articleContent}>
-                    <Text style={styles.contentText}>
+                <View style={s.articleContent}>
+                    <Text style={s.contentText}>
                         {content || currentArticle.summary || 'No content available'}
                     </Text>
                 </View>
@@ -159,7 +170,7 @@ export default function ArticleScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const styles = (colors: any) => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.background.primary,
@@ -251,3 +262,4 @@ const styles = StyleSheet.create({
         lineHeight: 28,
     },
 });
+

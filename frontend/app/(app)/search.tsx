@@ -4,14 +4,17 @@ import { useRouter } from 'expo-router';
 import { formatDistanceToNow } from 'date-fns';
 import { api, SearchResult } from '@/services/api';
 import { Search as SearchIcon, ArrowLeft, X } from 'lucide-react-native';
-import { colors, borderRadius, spacing } from '@/theme';
+import { useColors, borderRadius, spacing } from '@/theme';
 
 export default function SearchScreen() {
     const router = useRouter();
+    const colors = useColors();
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<SearchResult[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
+
+    const s = styles(colors);
 
     const handleSearch = useCallback(async () => {
         if (!query.trim()) return;
@@ -36,19 +39,19 @@ export default function SearchScreen() {
 
     const renderResult = ({ item }: { item: SearchResult }) => (
         <TouchableOpacity
-            style={styles.result}
+            style={s.result}
             onPress={() => handleResultPress(item.id)}
         >
-            <Text style={styles.feedTitle}>{item.feed_title}</Text>
-            <Text style={styles.resultTitle} numberOfLines={2}>{item.title}</Text>
+            <Text style={s.feedTitle}>{item.feed_title}</Text>
+            <Text style={s.resultTitle} numberOfLines={2}>{item.title}</Text>
             <Text
-                style={styles.snippet}
+                style={s.snippet}
                 numberOfLines={2}
             >
                 {item.snippet.replace(/<\/?mark>/g, '')}
             </Text>
             {item.published_at && (
-                <Text style={styles.timestamp}>
+                <Text style={s.timestamp}>
                     {formatDistanceToNow(new Date(item.published_at), { addSuffix: true })}
                 </Text>
             )}
@@ -56,17 +59,17 @@ export default function SearchScreen() {
     );
 
     return (
-        <View style={styles.container}>
+        <View style={s.container}>
             {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <View style={s.header}>
+                <TouchableOpacity onPress={() => router.back()} style={s.backButton}>
                     <ArrowLeft size={24} color={colors.text.primary} />
                 </TouchableOpacity>
 
-                <View style={styles.searchInputContainer}>
+                <View style={s.searchInputContainer}>
                     <SearchIcon size={18} color={colors.text.tertiary} />
                     <TextInput
-                        style={styles.searchInput}
+                        style={s.searchInput}
                         placeholder="Search articles..."
                         placeholderTextColor={colors.text.tertiary}
                         value={query}
@@ -85,24 +88,24 @@ export default function SearchScreen() {
 
             {/* Results */}
             {isLoading ? (
-                <View style={styles.loading}>
+                <View style={s.loading}>
                     <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
                 </View>
             ) : (
                 <FlatList
                     data={results}
-                    keyExtractor={(item) => String(item.id)}
+                    keyExtractor={(item: SearchResult) => String(item.id)}
                     renderItem={renderResult}
-                    contentContainerStyle={styles.list}
-                    ItemSeparatorComponent={() => <View style={styles.separator} />}
+                    contentContainerStyle={s.list}
+                    ItemSeparatorComponent={() => <View style={s.separator} />}
                     ListEmptyComponent={
                         hasSearched ? (
-                            <View style={styles.empty}>
-                                <Text style={styles.emptyText}>No results found for "{query}"</Text>
+                            <View style={s.empty}>
+                                <Text style={s.emptyText}>No results found for "{query}"</Text>
                             </View>
                         ) : (
-                            <View style={styles.empty}>
-                                <Text style={styles.emptyText}>Enter a search term</Text>
+                            <View style={s.empty}>
+                                <Text style={s.emptyText}>Enter a search term</Text>
                             </View>
                         )
                     }
@@ -112,7 +115,7 @@ export default function SearchScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const styles = (colors: any) => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.background.primary,

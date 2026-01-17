@@ -8,12 +8,13 @@ import {
     Folder as FolderIcon, Trash2, Edit2, FolderInput, Download, Upload,
     ChevronDown, X, Check
 } from 'lucide-react-native';
-import { colors, borderRadius, spacing } from '@/theme';
+import { useColors, borderRadius, spacing } from '@/theme';
 
 type ModalType = 'edit_feed' | 'rename_folder' | 'move_feed' | 'import_opml' | null;
 
 export default function ManageScreen() {
     const router = useRouter();
+    const colors = useColors();
     const { feeds, folders, addFeed, deleteFeed, fetchFeeds, fetchFolders } = useFeedStore();
     const { show } = useToastStore();
 
@@ -36,6 +37,8 @@ export default function ManageScreen() {
     // Bulk actions
     const [isBulkMode, setIsBulkMode] = useState(false);
     const [selectedFeedIds, setSelectedFeedIds] = useState<Set<number>>(new Set());
+
+    const s = styles(colors);
 
     const handleDiscover = async () => {
         if (!urlInput.trim()) return;
@@ -123,7 +126,7 @@ export default function ManageScreen() {
                     refresh_interval_minutes: refreshInterval
                 });
             } else if (modalType === 'rename_folder' && selectedFolder) {
-                await api.updateFolder(selectedFolder.id, { name: renameValue });
+                await api.updateFolder(selectedFolder.id, renameValue);
             }
             fetchFeeds();
             fetchFolders();
@@ -231,7 +234,7 @@ export default function ManageScreen() {
         if (selectedFeedIds.size === feeds.length) {
             setSelectedFeedIds(new Set());
         } else {
-            setSelectedFeedIds(new Set(feeds.map(f => f.id)));
+            setSelectedFeedIds(new Set(feeds.map((f: Feed) => f.id)));
         }
     };
 
@@ -296,7 +299,7 @@ export default function ManageScreen() {
         }
     };
 
-    const getTypeIcon = (type: string) => {
+    const getTypeIcon = (type: Feed['type']) => {
         switch (type) {
             case 'youtube': return <Youtube size={18} color="#ef4444" />;
             case 'podcast': return <Headphones size={18} color={colors.secondary.DEFAULT} />;
@@ -306,28 +309,28 @@ export default function ManageScreen() {
     };
 
     return (
-        <View style={styles.container}>
+        <View style={s.container}>
             {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <View style={s.header}>
+                <TouchableOpacity onPress={() => router.back()} style={s.backButton}>
                     <ArrowLeft size={24} color={colors.text.primary} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Manage Feeds</Text>
-                <View style={styles.headerActions}>
+                <Text style={s.headerTitle}>Manage Feeds</Text>
+                <View style={s.headerActions}>
                     <TouchableOpacity
-                        style={[styles.headerButton, isBulkMode && { backgroundColor: colors.primary.DEFAULT + '22' }]}
+                        style={[s.headerButton, isBulkMode && { backgroundColor: colors.primary.DEFAULT + '22' }]}
                         onPress={toggleBulkMode}
                     >
                         <Check size={18} color={isBulkMode ? colors.primary.DEFAULT : colors.text.secondary} />
                     </TouchableOpacity>
                     <TouchableOpacity
-                        style={styles.headerButton}
+                        style={s.headerButton}
                         onPress={() => setModalType('import_opml')}
                     >
                         <Upload size={18} color={colors.text.secondary} />
                     </TouchableOpacity>
                     <TouchableOpacity
-                        style={styles.headerButton}
+                        style={s.headerButton}
                         onPress={handleExportOpml}
                         disabled={isExporting}
                     >
@@ -336,13 +339,13 @@ export default function ManageScreen() {
                 </View>
             </View>
 
-            <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+            <ScrollView style={s.scrollView} contentContainerStyle={s.content}>
                 {/* Add Feed */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Add Feed</Text>
-                    <View style={styles.inputRow}>
+                <View style={s.section}>
+                    <Text style={s.sectionTitle}>Add Feed</Text>
+                    <View style={s.inputRow}>
                         <TextInput
-                            style={styles.input}
+                            style={s.input}
                             placeholder="Enter feed URL or website..."
                             placeholderTextColor={colors.text.tertiary}
                             value={urlInput}
@@ -352,7 +355,7 @@ export default function ManageScreen() {
                             keyboardType="url"
                         />
                         <TouchableOpacity
-                            style={styles.primaryButton}
+                            style={s.primaryButton}
                             onPress={handleDiscover}
                             disabled={isDiscovering}
                         >
@@ -365,19 +368,19 @@ export default function ManageScreen() {
                     </View>
 
                     {discoveries.length > 0 && (
-                        <View style={styles.discoveries}>
-                            <Text style={styles.discoveriesTitle}>Discovered Feeds:</Text>
-                            {discoveries.map((d, i) => (
+                        <View style={s.discoveries}>
+                            <Text style={s.discoveriesTitle}>Discovered Feeds:</Text>
+                            {discoveries.map((d: DiscoveredFeed, i: number) => (
                                 <TouchableOpacity
                                     key={i}
-                                    style={styles.discoveryItem}
+                                    style={s.discoveryItem}
                                     onPress={() => handleAddFeed(d)}
                                     disabled={isAdding}
                                 >
                                     {getTypeIcon(d.type)}
-                                    <View style={styles.discoveryInfo}>
-                                        <Text style={styles.discoveryTitle}>{d.title}</Text>
-                                        <Text style={styles.discoveryUrl} numberOfLines={1}>{d.feed_url}</Text>
+                                    <View style={s.discoveryInfo}>
+                                        <Text style={s.discoveryTitle}>{d.title}</Text>
+                                        <Text style={s.discoveryUrl} numberOfLines={1}>{d.feed_url}</Text>
                                     </View>
                                     <Plus size={20} color={colors.primary.DEFAULT} />
                                 </TouchableOpacity>
@@ -387,18 +390,18 @@ export default function ManageScreen() {
                 </View>
 
                 {/* Create Folder */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Create Folder</Text>
-                    <View style={styles.inputRow}>
+                <View style={s.section}>
+                    <Text style={s.sectionTitle}>Create Folder</Text>
+                    <View style={s.inputRow}>
                         <TextInput
-                            style={styles.input}
+                            style={s.input}
                             placeholder="Folder name..."
                             placeholderTextColor={colors.text.tertiary}
                             value={newFolderName}
                             onChangeText={setNewFolderName}
                         />
                         <TouchableOpacity
-                            style={[styles.primaryButton, { backgroundColor: colors.secondary.DEFAULT }]}
+                            style={[s.primaryButton, { backgroundColor: colors.secondary.DEFAULT }]}
                             onPress={handleCreateFolder}
                         >
                             <FolderIcon size={20} color={colors.text.inverse} />
@@ -408,26 +411,26 @@ export default function ManageScreen() {
 
                 {/* Folders */}
                 {folders.length > 0 && (
-                    <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>Folders ({folders.length})</Text>
-                        {folders.map((folder) => (
-                            <View key={folder.id} style={styles.feedItem}>
+                    <View style={s.section}>
+                        <Text style={s.sectionTitle}>Folders ({folders.length})</Text>
+                        {folders.map((folder: Folder) => (
+                            <View key={folder.id} style={s.feedItem}>
                                 <FolderIcon size={18} color={colors.secondary.DEFAULT} />
-                                <View style={styles.feedInfo}>
-                                    <Text style={styles.feedTitle}>{folder.name}</Text>
-                                    <Text style={styles.feedUrl}>
-                                        {feeds.filter(f => f.folder_id === folder.id).length} feeds
+                                <View style={s.feedInfo}>
+                                    <Text style={s.feedTitle}>{folder.name}</Text>
+                                    <Text style={s.feedUrl}>
+                                        {feeds.filter((f: Feed) => f.folder_id === folder.id).length} feeds
                                     </Text>
                                 </View>
                                 <TouchableOpacity
                                     onPress={() => handleRenameFolder(folder)}
-                                    style={styles.actionButton}
+                                    style={s.actionButton}
                                 >
                                     <Edit2 size={16} color={colors.text.tertiary} />
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     onPress={() => handleDeleteFolder(folder.id, folder.name)}
-                                    style={styles.actionButton}
+                                    style={s.actionButton}
                                 >
                                     <Trash2 size={16} color={colors.text.tertiary} />
                                 </TouchableOpacity>
@@ -437,13 +440,13 @@ export default function ManageScreen() {
                 )}
 
                 {/* Feeds */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Feeds ({feeds.length})</Text>
-                    {feeds.map((feed) => (
+                <View style={s.section}>
+                    <Text style={s.sectionTitle}>Feeds ({feeds.length})</Text>
+                    {feeds.map((feed: Feed) => (
                         <TouchableOpacity
                             key={feed.id}
                             style={[
-                                styles.feedItem,
+                                s.feedItem,
                                 isBulkMode && selectedFeedIds.has(feed.id) && { backgroundColor: colors.primary.DEFAULT + '11', borderColor: colors.primary.DEFAULT + '44' }
                             ]}
                             onPress={() => isBulkMode ? toggleSelectFeed(feed.id) : null}
@@ -451,17 +454,17 @@ export default function ManageScreen() {
                         >
                             {isBulkMode ? (
                                 <View style={[
-                                    styles.checkbox,
-                                    selectedFeedIds.has(feed.id) && styles.checkboxSelected
+                                    s.checkbox,
+                                    selectedFeedIds.has(feed.id) && s.checkboxSelected
                                 ]}>
                                     {selectedFeedIds.has(feed.id) && <Check size={12} color={colors.text.inverse} />}
                                 </View>
                             ) : getTypeIcon(feed.type)}
 
-                            <View style={styles.feedInfo}>
-                                <Text style={styles.feedTitle} numberOfLines={1}>{feed.title}</Text>
-                                <Text style={styles.feedUrl} numberOfLines={1}>
-                                    {folders.find(f => f.id === feed.folder_id)?.name || 'No folder'}
+                            <View style={s.feedInfo}>
+                                <Text style={s.feedTitle} numberOfLines={1}>{feed.title}</Text>
+                                <Text style={s.feedUrl} numberOfLines={1}>
+                                    {folders.find((f: Folder) => f.id === feed.folder_id)?.name || 'No folder'}
                                 </Text>
                             </View>
 
@@ -469,19 +472,19 @@ export default function ManageScreen() {
                                 <>
                                     <TouchableOpacity
                                         onPress={() => handleMoveFeed(feed)}
-                                        style={styles.actionButton}
+                                        style={s.actionButton}
                                     >
                                         <FolderInput size={16} color={colors.text.tertiary} />
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         onPress={() => handleEditFeed(feed)}
-                                        style={styles.actionButton}
+                                        style={s.actionButton}
                                     >
                                         <Edit2 size={16} color={colors.text.tertiary} />
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         onPress={() => handleDeleteFeed(feed.id, feed.title)}
-                                        style={styles.actionButton}
+                                        style={s.actionButton}
                                     >
                                         <Trash2 size={16} color={colors.text.tertiary} />
                                     </TouchableOpacity>
@@ -494,31 +497,31 @@ export default function ManageScreen() {
 
             {/* Bulk Toolbar */}
             {isBulkMode && selectedFeedIds.size > 0 && (
-                <View style={styles.bulkToolbar}>
+                <View style={s.bulkToolbar}>
                     <TouchableOpacity
-                        style={[styles.bulkButton, { backgroundColor: colors.background.tertiary }]}
+                        style={[s.bulkButton, { backgroundColor: colors.background.tertiary }]}
                         onPress={handleSelectAll}
                     >
                         <Check size={18} color={colors.text.secondary} />
-                        <Text style={[styles.bulkButtonText, { color: colors.text.secondary }]}>
+                        <Text style={[s.bulkButtonText, { color: colors.text.secondary }]}>
                             {selectedFeedIds.size === feeds.length ? 'Deselect All' : 'Select All'}
                         </Text>
                     </TouchableOpacity>
-                    <Text style={styles.bulkText}>{selectedFeedIds.size} selected</Text>
-                    <View style={styles.bulkActions}>
+                    <Text style={s.bulkText}>{selectedFeedIds.size} selected</Text>
+                    <View style={s.bulkActions}>
                         <TouchableOpacity
-                            style={[styles.bulkButton, { backgroundColor: colors.secondary.DEFAULT + '22' }]}
+                            style={[s.bulkButton, { backgroundColor: colors.secondary.DEFAULT + '22' }]}
                             onPress={handleBulkMove}
                         >
                             <FolderInput size={18} color={colors.secondary.DEFAULT} />
-                            <Text style={[styles.bulkButtonText, { color: colors.secondary.DEFAULT }]}>Move</Text>
+                            <Text style={[s.bulkButtonText, { color: colors.secondary.DEFAULT }]}>Move</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                            style={[styles.bulkButton, { backgroundColor: '#ef444422' }]}
+                            style={[s.bulkButton, { backgroundColor: '#ef444422' }]}
                             onPress={handleBulkDelete}
                         >
                             <Trash2 size={18} color="#ef4444" />
-                            <Text style={[styles.bulkButtonText, { color: '#ef4444' }]}>Delete</Text>
+                            <Text style={[s.bulkButtonText, { color: '#ef4444' }]}>Delete</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -530,15 +533,15 @@ export default function ManageScreen() {
                 transparent
                 animationType="fade"
             >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modal}>
-                        <Text style={styles.modalTitle}>
+                <View style={s.modalOverlay}>
+                    <View style={s.modal}>
+                        <Text style={s.modalTitle}>
                             {modalType === 'edit_feed' ? 'Edit Feed' : 'Rename Folder'}
                         </Text>
 
-                        <Text style={styles.modalLabel}>Name</Text>
+                        <Text style={s.modalLabel}>Name</Text>
                         <TextInput
-                            style={styles.modalInput}
+                            style={s.modalInput}
                             value={renameValue}
                             onChangeText={setRenameValue}
                             placeholder="Enter name..."
@@ -548,8 +551,8 @@ export default function ManageScreen() {
 
                         {modalType === 'edit_feed' && (
                             <>
-                                <Text style={styles.modalLabel}>Refresh Interval</Text>
-                                <View style={styles.intervalOptions}>
+                                <Text style={s.modalLabel}>Refresh Interval</Text>
+                                <View style={s.intervalOptions}>
                                     {[
                                         { label: '15m', value: 15 },
                                         { label: '30m', value: 30 },
@@ -561,14 +564,14 @@ export default function ManageScreen() {
                                         <TouchableOpacity
                                             key={opt.value}
                                             style={[
-                                                styles.intervalOption,
-                                                refreshInterval === opt.value && styles.intervalOptionSelected
+                                                s.intervalOption,
+                                                refreshInterval === opt.value && s.intervalOptionSelected
                                             ]}
                                             onPress={() => setRefreshInterval(opt.value)}
                                         >
                                             <Text style={[
-                                                styles.intervalOptionText,
-                                                refreshInterval === opt.value && styles.intervalOptionTextSelected
+                                                s.intervalOptionText,
+                                                refreshInterval === opt.value && s.intervalOptionTextSelected
                                             ]}>
                                                 {opt.label}
                                             </Text>
@@ -578,18 +581,18 @@ export default function ManageScreen() {
                             </>
                         )}
 
-                        <View style={styles.modalActions}>
+                        <View style={s.modalActions}>
                             <TouchableOpacity
-                                style={styles.modalCancel}
+                                style={s.modalCancel}
                                 onPress={() => setModalType(null)}
                             >
-                                <Text style={styles.modalCancelText}>Cancel</Text>
+                                <Text style={s.modalCancelText}>Cancel</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
-                                style={styles.modalConfirm}
+                                style={s.modalConfirm}
                                 onPress={submitRename}
                             >
-                                <Text style={styles.modalConfirmText}>Save</Text>
+                                <Text style={s.modalConfirmText}>Save</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -602,45 +605,45 @@ export default function ManageScreen() {
                 transparent
                 animationType="fade"
             >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modal}>
-                        <Text style={styles.modalTitle}>Move to Folder</Text>
+                <View style={s.modalOverlay}>
+                    <View style={s.modal}>
+                        <Text style={s.modalTitle}>Move to Folder</Text>
                         <TouchableOpacity
                             style={[
-                                styles.folderOption,
-                                selectedFolderId === null && styles.folderOptionSelected
+                                s.folderOption,
+                                selectedFolderId === null && s.folderOptionSelected
                             ]}
                             onPress={() => setSelectedFolderId(null)}
                         >
-                            <Text style={styles.folderOptionText}>No Folder</Text>
+                            <Text style={s.folderOptionText}>No Folder</Text>
                             {selectedFolderId === null && <Check size={18} color={colors.primary.DEFAULT} />}
                         </TouchableOpacity>
-                        {folders.map(folder => (
+                        {folders.map((folder: Folder) => (
                             <TouchableOpacity
                                 key={folder.id}
                                 style={[
-                                    styles.folderOption,
-                                    selectedFolderId === folder.id && styles.folderOptionSelected
+                                    s.folderOption,
+                                    selectedFolderId === folder.id && s.folderOptionSelected
                                 ]}
                                 onPress={() => setSelectedFolderId(folder.id)}
                             >
                                 <FolderIcon size={18} color={colors.secondary.DEFAULT} />
-                                <Text style={styles.folderOptionText}>{folder.name}</Text>
+                                <Text style={s.folderOptionText}>{folder.name}</Text>
                                 {selectedFolderId === folder.id && <Check size={18} color={colors.primary.DEFAULT} />}
                             </TouchableOpacity>
                         ))}
-                        <View style={styles.modalActions}>
+                        <View style={s.modalActions}>
                             <TouchableOpacity
-                                style={styles.modalCancel}
+                                style={s.modalCancel}
                                 onPress={() => setModalType(null)}
                             >
-                                <Text style={styles.modalCancelText}>Cancel</Text>
+                                <Text style={s.modalCancelText}>Cancel</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
-                                style={styles.modalConfirm}
+                                style={s.modalConfirm}
                                 onPress={submitMove}
                             >
-                                <Text style={styles.modalConfirmText}>Move</Text>
+                                <Text style={s.modalConfirmText}>Move</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -653,30 +656,30 @@ export default function ManageScreen() {
                 transparent
                 animationType="fade"
             >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modal}>
-                        <Text style={styles.modalTitle}>Import OPML</Text>
-                        <Text style={styles.modalHint}>Paste your OPML content below:</Text>
+                <View style={s.modalOverlay}>
+                    <View style={s.modal}>
+                        <Text style={s.modalTitle}>Import OPML</Text>
+                        <Text style={s.modalHint}>Paste your OPML content below:</Text>
                         <TextInput
-                            style={[styles.modalInput, { height: 150, textAlignVertical: 'top' }]}
+                            style={[s.modalInput, { height: 150, textAlignVertical: 'top' }]}
                             value={opmlContent}
                             onChangeText={setOpmlContent}
                             placeholder="<?xml version='1.0'?>..."
                             placeholderTextColor={colors.text.tertiary}
                             multiline
                         />
-                        <View style={styles.modalActions}>
+                        <View style={s.modalActions}>
                             <TouchableOpacity
-                                style={styles.modalCancel}
+                                style={s.modalCancel}
                                 onPress={() => setModalType(null)}
                             >
-                                <Text style={styles.modalCancelText}>Cancel</Text>
+                                <Text style={s.modalCancelText}>Cancel</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
-                                style={styles.modalConfirm}
+                                style={s.modalConfirm}
                                 onPress={handleImportOpml}
                             >
-                                <Text style={styles.modalConfirmText}>Import</Text>
+                                <Text style={s.modalConfirmText}>Import</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -686,7 +689,7 @@ export default function ManageScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const styles = (colors: any) => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.background.primary,
