@@ -12,6 +12,15 @@ export default function AppLayout() {
     useEffect(() => {
         fetchFeeds();
         fetchFolders();
+
+        // Register Service Worker for web
+        if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(err => {
+                    console.log('SW registration failed: ', err);
+                });
+            });
+        }
     }, []);
 
     return (

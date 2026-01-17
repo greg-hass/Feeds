@@ -5,6 +5,7 @@ import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores';
 import { colors } from '@/theme';
+import ToastContainer from '@/components/Toast';
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -70,6 +71,7 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
             <StatusBar style="light" />
             <AuthGate />
+            <ToastContainer />
         </QueryClientProvider>
     );
 }

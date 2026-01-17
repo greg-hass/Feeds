@@ -1,22 +1,72 @@
-import { useEffect, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, ActivityIndicator } from 'react-native';
+import { useEffect, useCallback, useState } from 'react';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, ActivityIndicator, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { formatDistanceToNow } from 'date-fns';
 import { useArticleStore, useFeedStore } from '@/stores';
 import { Article } from '@/services/api';
-import { Circle, CircleCheck, Headphones, Filter } from 'lucide-react-native';
+import { Circle, CircleCheck, Headphones, Filter, CheckCheck, MoreVertical } from 'lucide-react-native';
 import { colors, borderRadius, spacing } from '@/theme';
 
 export default function ArticleListScreen() {
     const router = useRouter();
-    const { articles, isLoading, hasMore, filter, fetchArticles, setFilter } = useArticleStore();
+    const { articles, isLoading, hasMore, filter, fetchArticles, setFilter, markAllRead } = useArticleStore();
     const { fetchFeeds, fetchFolders } = useFeedStore();
+    const [showMenu, setShowMenu] = useState(false);
+    const [selectedIndex, setSelectedIndex] = useState(-1);
 
     useEffect(() => {
         fetchFeeds();
         fetchFolders();
         fetchArticles(true);
     }, []);
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Ignore if typing in an input
+            if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') {
+                if (e.key === 'Escape') {
+                    (document.activeElement as HTMLElement).blur();
+                }
+                return;
+            }
+
+            switch (e.key.toLowerCase()) {
+                case 'j': // Next
+                    setSelectedIndex(prev => Math.min(prev + 1, articles.length - 1));
+                    break;
+                case 'k': // Previous
+                    setSelectedIndex(prev => Math.max(prev - 1, 0));
+                    break;
+                case 'm': // Toggle Read
+                    if (selectedIndex >= 0 && selectedIndex < articles.length) {
+                        const article = articles[selectedIndex];
+                        useArticleStore.getState().markRead([article.id], !article.is_read);
+                    }
+                    break;
+                case 'o': // Open in browser
+                case 'enter':
+                    if (selectedIndex >= 0 && selectedIndex < articles.length) {
+                        const article = articles[selectedIndex];
+                        if (e.key.toLowerCase() === 'o' && article.url) {
+                            window.open(article.url, '_blank');
+                        } else {
+                            handleArticlePress(article.id);
+                        }
+                    }
+                    break;
+                case 'r': // Refresh
+                    handleRefresh();
+                    break;
+                case '/': // Focus search (if search was on this screen, but it's separate)
+                    e.preventDefault();
+                    router.push('/(app)/search');
+                    break;
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [articles, selectedIndex, handleRefresh, handleArticlePress]);
 
     const handleArticlePress = (id: number) => {
         router.push(`/(app)/article/${id}`);
@@ -38,9 +88,59 @@ export default function ArticleListScreen() {
         setFilter({ unread_only: !filter.unread_only });
     };
 
-    const renderArticle = ({ item }: { item: Article }) => (
+    const handleMarkAllRead = () => {
+        const getScope = (): { scope: 'feed' | 'folder' | 'type' | 'all'; scopeId?: number; type?: string } => {
+            if (filter.feed_id) return { scope: 'feed', scopeId: filter.feed_id };
+            if (filter.folder_id) return { scope: 'folder', scopeId: filter.folder_id };
+            if (filter.type) return { scope: 'type', type: filter.type };
+            return { scope: 'all' };
+        };
+
+        const { scope, scopeId, type } = getScope();
+        const scopeName = scope === 'all' ? 'all articles' : `these ${scope} articles`;
+
+        Alert.alert(
+            'Mark All as Read',
+            `Mark ${scopeName} as read?`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Mark Read',
+                    onPress: async () => {
+                        try {
+                            await markAllRead(scope, scopeId, type);
+                        } catch (err) {
+                            Alert.alert('Error', 'Failed to mark articles as read');
+                        }
+                    }
+                }
+            ]
+        );
+        setShowMenu(false);
+    };
+
+    const getHeaderTitle = () => {
+        if (filter.type) {
+            const typeNames: Record<string, string> = {
+                rss: 'RSS',
+                youtube: 'YouTube',
+                podcast: 'Podcasts',
+                reddit: 'Reddit',
+            };
+            return typeNames[filter.type] || 'Articles';
+        }
+        return 'Articles';
+    };
+
+    const unreadCount = articles.filter(a => !a.is_read).length;
+
+    const renderArticle = ({ item, index }: { item: Article; index: number }) => (
         <TouchableOpacity
-            style={[styles.articleCard, item.is_read && styles.articleRead]}
+            style={[
+                styles.articleCard,
+                item.is_read && styles.articleRead,
+                index === selectedIndex && styles.articleFocused
+            ]}
             onPress={() => handleArticlePress(item.id)}
         >
             <View style={styles.articleHeader}>
@@ -69,23 +169,41 @@ export default function ArticleListScreen() {
         <View style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>Articles</Text>
-                <TouchableOpacity
-                    style={[styles.filterButton, filter.unread_only && styles.filterButtonActive]}
-                    onPress={toggleUnreadFilter}
-                >
-                    <Filter size={16} color={filter.unread_only ? colors.text.inverse : colors.text.secondary} />
-                    <Text style={[styles.filterText, filter.unread_only && styles.filterTextActive]}>
-                        {filter.unread_only ? 'Unread' : 'All'}
-                    </Text>
-                </TouchableOpacity>
+                <View style={styles.headerLeft}>
+                    <Text style={styles.headerTitle}>{getHeaderTitle()}</Text>
+                    {unreadCount > 0 && (
+                        <View style={styles.unreadBadge}>
+                            <Text style={styles.unreadBadgeText}>{unreadCount}</Text>
+                        </View>
+                    )}
+                </View>
+                <View style={styles.headerActions}>
+                    {/* Mark All Read */}
+                    <TouchableOpacity
+                        style={styles.iconButton}
+                        onPress={handleMarkAllRead}
+                    >
+                        <CheckCheck size={20} color={colors.primary.DEFAULT} />
+                    </TouchableOpacity>
+
+                    {/* Unread Filter */}
+                    <TouchableOpacity
+                        style={[styles.filterButton, filter.unread_only && styles.filterButtonActive]}
+                        onPress={toggleUnreadFilter}
+                    >
+                        <Filter size={16} color={filter.unread_only ? colors.text.inverse : colors.text.secondary} />
+                        <Text style={[styles.filterText, filter.unread_only && styles.filterTextActive]}>
+                            {filter.unread_only ? 'Unread' : 'All'}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
             </View>
 
             {/* List */}
             <FlatList
                 data={articles}
                 keyExtractor={(item) => String(item.id)}
-                renderItem={renderArticle}
+                renderItem={({ item, index }) => renderArticle({ item, index })}
                 contentContainerStyle={styles.list}
                 ItemSeparatorComponent={() => <View style={styles.separator} />}
                 refreshControl={
@@ -130,10 +248,38 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: colors.border.DEFAULT,
     },
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+    },
     headerTitle: {
         fontSize: 24,
         fontWeight: '700',
         color: colors.text.primary,
+    },
+    unreadBadge: {
+        backgroundColor: colors.primary.DEFAULT,
+        paddingHorizontal: spacing.sm,
+        paddingVertical: 2,
+        borderRadius: borderRadius.full,
+        minWidth: 24,
+        alignItems: 'center',
+    },
+    unreadBadgeText: {
+        fontSize: 12,
+        color: colors.text.inverse,
+        fontWeight: '600',
+    },
+    headerActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+    },
+    iconButton: {
+        padding: spacing.sm,
+        borderRadius: borderRadius.md,
+        backgroundColor: colors.background.secondary,
     },
     filterButton: {
         flexDirection: 'row',
@@ -167,7 +313,12 @@ const styles = StyleSheet.create({
         padding: spacing.lg,
     },
     articleRead: {
-        opacity: 0.7,
+        opacity: 0.6,
+    },
+    articleFocused: {
+        borderColor: colors.primary.DEFAULT,
+        borderWidth: 2,
+        padding: spacing.lg - 2, // Account for border to avoid jump
     },
     articleHeader: {
         flexDirection: 'row',

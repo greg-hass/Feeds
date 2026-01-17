@@ -16,10 +16,12 @@ class ApiClient {
     async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
         const { method = 'GET', body, headers = {} } = options;
 
-        const requestHeaders: Record<string, string> = {
-            'Content-Type': 'application/json',
-            ...headers,
-        };
+        const requestHeaders: Record<string, string> = { ...headers };
+
+        // Don't set Content-Type for FormData, browser will set it with boundary
+        if (!(body instanceof FormData)) {
+            requestHeaders['Content-Type'] = 'application/json';
+        }
 
         if (this.token) {
             requestHeaders['Authorization'] = `Bearer ${this.token}`;
@@ -28,12 +30,17 @@ class ApiClient {
         const response = await fetch(`${API_URL}${endpoint}`, {
             method,
             headers: requestHeaders,
-            body: body ? JSON.stringify(body) : undefined,
+            body: body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined),
         });
 
         if (!response.ok) {
             const error = await response.json().catch(() => ({ error: 'Unknown error' }));
             throw new ApiError(error.error || 'Request failed', response.status);
+        }
+
+        const contentType = response.headers.get('Content-Type');
+        if (contentType && (contentType.includes('text/xml') || contentType.includes('application/xml') || contentType.includes('text/plain'))) {
+            return response.text() as unknown as T;
         }
 
         return response.json();
@@ -67,10 +74,10 @@ class ApiClient {
         return this.request<{ feeds: Feed[] }>('/feeds');
     }
 
-    async addFeed(url: string, folderId?: number, discover = true) {
+    async addFeed(url: string, folderId?: number, discover = true, refreshInterval?: number) {
         return this.request<{ feed: Feed; discovered?: DiscoveredFeed; articles_added: number }>('/feeds', {
             method: 'POST',
-            body: { url, folder_id: folderId, discover },
+            body: { url, folder_id: folderId, discover, refresh_interval_minutes: refreshInterval },
         });
     }
 
@@ -169,6 +176,28 @@ class ApiClient {
     }
 
     // Discovery
+    async discover(q: string) {
+        return this.request<{ discoveries: DiscoveredFeed[] }>(`/discover?q=${encodeURIComponent(q)}`);
+    }
+
+    // OPML
+    async importOpml(opml: string) {
+        const formData = new FormData();
+        const blob = new Blob([opml], { type: 'text/xml' });
+        formData.append('file', blob, 'import.opml');
+
+        return this.request<{ imported: { feeds: number; folders: number } }>('/opml/import', {
+            method: 'POST',
+            body: formData,
+        });
+    }
+
+    async exportOpml() {
+        return this.request<string>('/opml/export', {
+            headers: { 'Accept': 'text/xml' },
+        });
+    }
+
     async discoverFromUrl(url: string) {
         return this.request<{ discoveries: DiscoveredFeed[]; error?: string }>('/discover/url', {
             method: 'POST',
@@ -219,6 +248,7 @@ export interface Feed {
     site_url: string | null;
     icon_url: string | null;
     unread_count: number;
+    refresh_interval_minutes: number;
     last_fetched_at: string | null;
     error_count: number;
     last_error: string | null;

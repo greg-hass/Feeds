@@ -74,11 +74,13 @@ export async function searchRoutes(app: FastifyInstance) {
             summary: string | null;
             published_at: string | null;
             is_read: number | null;
+            snippet: string;
             rank: number;
         }>(
             `SELECT 
         a.id, a.feed_id, f.title as feed_title, a.title, a.author, a.summary, 
         a.published_at, rs.is_read,
+        snippet(articles_fts, 2, '<mark>', '</mark>', '...', 40) as snippet,
         bm25(articles_fts) as rank
        FROM articles_fts fts
        JOIN articles a ON a.id = fts.rowid
@@ -102,27 +104,16 @@ export async function searchRoutes(app: FastifyInstance) {
             nextCursor = Buffer.from(String(currentOffset + query.limit)).toString('base64');
         }
 
-        // Build snippets with highlighting
-        const formattedResults = results.map(r => {
-            let snippet = r.summary || '';
-            const searchTerms = query.q.toLowerCase().split(/\s+/);
-
-            for (const term of searchTerms) {
-                const regex = new RegExp(`(${term})`, 'gi');
-                snippet = snippet.replace(regex, '<mark>$1</mark>');
-            }
-
-            return {
-                id: r.id,
-                feed_id: r.feed_id,
-                feed_title: r.feed_title,
-                title: r.title,
-                snippet: snippet.substring(0, 300),
-                published_at: r.published_at,
-                is_read: Boolean(r.is_read),
-                score: Math.abs(r.rank), // bm25 returns negative scores
-            };
-        });
+        const formattedResults = results.map(r => ({
+            id: r.id,
+            feed_id: r.feed_id,
+            feed_title: r.feed_title,
+            title: r.title,
+            snippet: r.snippet,
+            published_at: r.published_at,
+            is_read: Boolean(r.is_read),
+            score: Math.abs(r.rank),
+        }));
 
         // Get total count
         const countResult = queryAll<{ count: number }>(

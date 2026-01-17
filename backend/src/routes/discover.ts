@@ -14,7 +14,30 @@ const keywordSchema = z.object({
 export async function discoverRoutes(app: FastifyInstance) {
     app.addHook('preHandler', app.authenticate);
 
-    // Discover feeds from URL
+    // Discover feeds (automatic URL or keyword)
+    app.get('/', async (request: FastifyRequest) => {
+        const query = keywordSchema.parse(request.query);
+        const q = query.q;
+
+        const isUrl = q.startsWith('http://') || q.startsWith('https://') || q.includes('.');
+
+        if (isUrl) {
+            try {
+                const urlToTest = q.startsWith('http') ? q : `https://${q}`;
+                const discoveries = await discoverFeedsFromUrl(urlToTest);
+                if (discoveries.length > 0) {
+                    return { discoveries };
+                }
+            } catch {
+                // Not a valid URL or fetch failed, fallback to keyword
+            }
+        }
+
+        const discoveries = await discoverByKeyword(q, query.limit);
+        return { discoveries };
+    });
+
+    // Explicit URL discovery
     app.post('/url', async (request: FastifyRequest) => {
         const body = urlDiscoverSchema.parse(request.body);
 
@@ -25,21 +48,6 @@ export async function discoverRoutes(app: FastifyInstance) {
             return {
                 discoveries: [],
                 error: err instanceof Error ? err.message : 'Discovery failed',
-            };
-        }
-    });
-
-    // Keyword discovery
-    app.get('/keyword', async (request: FastifyRequest) => {
-        const query = keywordSchema.parse(request.query);
-
-        try {
-            const suggestions = await discoverByKeyword(query.q, query.limit);
-            return { suggestions };
-        } catch (err) {
-            return {
-                suggestions: [],
-                error: err instanceof Error ? err.message : 'Search failed',
             };
         }
     });

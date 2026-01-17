@@ -124,22 +124,53 @@ export async function parseFeed(url: string): Promise<ParsedFeed> {
     });
 }
 
-export function normalizeArticle(raw: RawArticle, _feedType: FeedType): NormalizedArticle {
+export function normalizeArticle(raw: RawArticle, feedType: FeedType): NormalizedArticle {
     const enclosure = raw.enclosures?.[0];
-    const thumbnail = raw.thumbnail || raw.image?.url || null;
+    let thumbnail = raw.thumbnail || raw.image?.url || null;
+    let author = raw.author;
+    let content = raw.description || raw.summary || null;
+    let summary = raw.summary || (content ? truncate(stripHtml(content), 200) : null);
+
+    // Reddit specific normalization
+    if (feedType === 'reddit') {
+        // Reddit author is usually u/username
+        if (author && !author.startsWith('u/')) {
+            author = `u/${author}`;
+        }
+
+        // Reddit thumbnails are often in description or media:thumbnail (handled)
+        // If no thumbnail, try to find one in the description HTML
+        if (!thumbnail && content) {
+            const imgMatch = content.match(/<img[^>]+src="([^">]+)"/);
+            if (imgMatch) {
+                thumbnail = imgMatch[1];
+            }
+        }
+
+        // Clean up Reddit content (often contains [link] [comments] footers)
+        if (content) {
+            content = cleanRedditContent(content);
+        }
+    }
 
     return {
         guid: raw.guid,
         title: decodeHtmlEntities(raw.title),
         url: raw.link || null,
-        author: raw.author,
-        summary: raw.summary,
-        content: raw.description,
+        author: author,
+        summary: summary,
+        content: content,
         enclosure_url: enclosure?.url || null,
         enclosure_type: enclosure?.type || null,
         thumbnail_url: thumbnail,
         published_at: raw.pubdate ? raw.pubdate.toISOString() : null,
     };
+}
+
+function cleanRedditContent(html: string): string {
+    // Remove the "submitted by /u/... to /r/..." footer that Reddit RSS adds
+    // which consists of a table with common links
+    return html.replace(/<table[^>]*>[\s\S]*?<\/table>/gi, '').trim();
 }
 
 export function detectFeedType(url: string, feed: ParsedFeed): FeedType {

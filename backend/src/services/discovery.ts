@@ -232,13 +232,95 @@ function discoverRedditFeed(url: string): DiscoveredFeed | null {
     };
 }
 
-export async function discoverByKeyword(keyword: string, limit: number = 10): Promise<DiscoveredFeed[]> {
-    // For now, return empty - this would require external APIs like Feedly, Google, etc.
-    // In v2, we could integrate:
-    // - Feedly's discovery API
-    // - DuckDuckGo/Google search with site:*.rss patterns
-    // - Podcast directory APIs
+async function discoverYouTubeByKeyword(keyword: string, limit: number): Promise<DiscoveredFeed[]> {
+    const encodedKeyword = encodeURIComponent(keyword);
+    const url = `https://www.youtube.com/results?search_query=${encodedKeyword}&sp=EgIQAg%3D%3D`;
+    const discoveries: DiscoveredFeed[] = [];
 
-    console.log(`Keyword discovery for "${keyword}" - not implemented in MVP`);
-    return [];
+    try {
+        const response = await fetch(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept-Language': 'en-US,en;q=0.9',
+            },
+            signal: AbortSignal.timeout(10000),
+        });
+
+        if (!response.ok) return [];
+
+        const html = await response.text();
+        const jsonMatch = html.match(/var ytInitialData = (\{.*?\});/);
+        if (!jsonMatch) return [];
+
+        const data = JSON.parse(jsonMatch[1]);
+        const contents = data.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents?.[0]?.itemSectionRenderer?.contents;
+
+        if (!Array.isArray(contents)) return [];
+
+        for (const item of contents) {
+            if (item.channelRenderer) {
+                const info = item.channelRenderer;
+                const channelId = info.channelId;
+                const title = info.title?.simpleText || info.title?.runs?.[0]?.text || 'YouTube Channel';
+
+                discoveries.push({
+                    type: 'youtube',
+                    title,
+                    feed_url: `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`,
+                    site_url: `https://www.youtube.com/channel/${channelId}`,
+                    confidence: 0.9,
+                    method: 'youtube',
+                });
+
+                if (discoveries.length >= limit) break;
+            }
+        }
+    } catch (err) {
+        console.error('YouTube keyword discovery failed:', err);
+    }
+
+    return discoveries;
+}
+
+export async function discoverByKeyword(keyword: string, limit: number = 10): Promise<DiscoveredFeed[]> {
+    const [redditDiscoveries, youtubeDiscoveries] = await Promise.all([
+        discoverRedditByKeyword(keyword, limit),
+        discoverYouTubeByKeyword(keyword, limit),
+    ]);
+
+    const combined = [...redditDiscoveries, ...youtubeDiscoveries];
+    return combined.sort((a, b) => b.confidence - a.confidence).slice(0, limit);
+}
+
+async function discoverRedditByKeyword(keyword: string, limit: number): Promise<DiscoveredFeed[]> {
+    const discoveries: DiscoveredFeed[] = [];
+    const encodedKeyword = encodeURIComponent(keyword);
+
+    try {
+        const response = await fetch(`https://www.reddit.com/subreddits/search.json?q=${encodedKeyword}&limit=${limit}`, {
+            headers: { 'User-Agent': USER_AGENT },
+            signal: AbortSignal.timeout(10000),
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            const subreddits = data.data?.children || [];
+
+            for (const sub of subreddits) {
+                const info = sub.data;
+                discoveries.push({
+                    type: 'reddit',
+                    title: info.display_name_prefixed,
+                    feed_url: `https://www.reddit.com${info.url}.rss`,
+                    site_url: `https://www.reddit.com${info.url}`,
+                    confidence: 0.9,
+                    method: 'reddit',
+                });
+            }
+        }
+    } catch (err) {
+        console.error('Reddit keyword discovery failed:', err);
+    }
+
+    return discoveries;
 }

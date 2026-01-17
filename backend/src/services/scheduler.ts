@@ -136,11 +136,26 @@ async function refreshFeed(feed: FeedToRefresh): Promise<void> {
 }
 
 async function cleanupOldArticles(): Promise<void> {
-    // Get default retention from settings (or use 90 days)
-    const retentionDays = 90;
+    // 1. Get retention settings from the first user (admin)
+    const user = queryOne<{ settings_json: string }>('SELECT settings_json FROM users LIMIT 1');
+    let retentionDays = 90; // Default
+    const hardLimitDays = 365; // Delete anything older than a year regardless of read state
 
-    // Delete old articles that have been read
-    const result = run(
+    if (user?.settings_json) {
+        try {
+            const settings = JSON.parse(user.settings_json);
+            if (typeof settings.retention_days === 'number') {
+                retentionDays = settings.retention_days;
+            }
+        } catch (e) {
+            console.error('Failed to parse user settings for cleanup:', e);
+        }
+    }
+
+    console.log(`Starting cleanup: read retention = ${retentionDays} days, hard limit = ${hardLimitDays} days`);
+
+    // 2. Delete old articles that have been read
+    const readResult = run(
         `DELETE FROM articles
      WHERE id IN (
        SELECT a.id FROM articles a
@@ -150,10 +165,28 @@ async function cleanupOldArticles(): Promise<void> {
         [retentionDays]
     );
 
-    console.log(`Cleaned up ${result.changes} old articles`);
+    // 3. Delete very old articles regardless of read state
+    const hardResult = run(
+        `DELETE FROM articles
+     WHERE published_at < datetime('now', '-' || ? || ' days')`,
+        [hardLimitDays]
+    );
 
-    // Also clean up orphaned read states
+    const totalChanges = readResult.changes + hardResult.changes;
+    console.log(`Cleaned up ${totalChanges} old articles (${readResult.changes} read, ${hardResult.changes} hard limit)`);
+
+    // 4. Clean up orphaned read states
     run(`DELETE FROM read_state WHERE article_id NOT IN (SELECT id FROM articles)`);
+
+    // 5. Run VACUUM to reclaim space if significant deletions occurred
+    if (totalChanges > 100) {
+        console.log('Running VACUUM to reclaim space...');
+        try {
+            run('VACUUM');
+        } catch (e) {
+            console.error('VACUUM failed (likely lock issue):', e);
+        }
+    }
 }
 
 function sleep(ms: number): Promise<void> {

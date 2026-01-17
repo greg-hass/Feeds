@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { queryOne, queryAll, run } from '../db/index.js';
-import { discoverFeedsFromUrl } from '../services/discovery.js';
+import { discoverFeedsFromUrl, discoverByKeyword } from '../services/discovery.js';
 import { parseFeed, normalizeArticle, FeedType } from '../services/feed-parser.js';
 
 // Schemas
@@ -10,6 +10,7 @@ const addFeedSchema = z.object({
     folder_id: z.number().optional(),
     discover: z.boolean().default(true),
     title: z.string().optional(),
+    refresh_interval_minutes: z.number().min(5).max(1440).optional(),
 });
 
 const updateFeedSchema = z.object({
@@ -133,8 +134,8 @@ export async function feedsRoutes(app: FastifyInstance) {
 
         // Insert feed
         const result = run(
-            `INSERT INTO feeds (user_id, folder_id, type, title, url, site_url, icon_url, description)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO feeds (user_id, folder_id, type, title, url, site_url, icon_url, description, refresh_interval_minutes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 userId,
                 body.folder_id || null,
@@ -144,6 +145,7 @@ export async function feedsRoutes(app: FastifyInstance) {
                 feedData.link || null,
                 feedData.favicon || null,
                 feedData.description || null,
+                body.refresh_interval_minutes || 30,
             ]
         );
 
@@ -178,9 +180,9 @@ export async function feedsRoutes(app: FastifyInstance) {
             }
         }
 
-        // Update last fetched
+        // Update last fetched and next fetch using the feed's interval
         run(
-            'UPDATE feeds SET last_fetched_at = datetime("now"), next_fetch_at = datetime("now", "+30 minutes") WHERE id = ?',
+            'UPDATE feeds SET last_fetched_at = datetime("now"), next_fetch_at = datetime("now", "+" || refresh_interval_minutes || " minutes") WHERE id = ?',
             [feed!.id]
         );
 

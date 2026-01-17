@@ -1,12 +1,13 @@
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useFeedStore, useArticleStore, useAuthStore } from '@/stores';
+import { useFeedStore, useArticleStore, useAuthStore, useToastStore } from '@/stores';
 import {
     Rss, Youtube, MessageSquare, Headphones,
     Folder, Search, Settings,
-    Plus, LogOut, RefreshCw
+    Plus, LogOut, RefreshCw, List
 } from 'lucide-react-native';
 import { colors, borderRadius, spacing } from '@/theme';
+import { ActivityIndicator } from 'react-native';
 
 const FEED_TYPE_ICONS: Record<string, React.ComponentType<any>> = {
     rss: Rss,
@@ -17,9 +18,10 @@ const FEED_TYPE_ICONS: Record<string, React.ComponentType<any>> = {
 
 export default function Sidebar() {
     const router = useRouter();
-    const { feeds, folders, smartFolders, totalUnread, fetchFeeds, fetchFolders } = useFeedStore();
+    const { feeds, folders, smartFolders, totalUnread, fetchFeeds, fetchFolders, isLoading } = useFeedStore();
     const { setFilter } = useArticleStore();
     const { logout } = useAuthStore();
+    const { show } = useToastStore();
 
     const handleSmartFolderPress = (type: string) => {
         setFilter({ type, feed_id: undefined, folder_id: undefined });
@@ -41,9 +43,13 @@ export default function Sidebar() {
         router.push('/(app)');
     };
 
-    const handleRefresh = () => {
-        fetchFeeds();
-        fetchFolders();
+    const handleRefresh = async () => {
+        try {
+            await Promise.all([fetchFeeds(), fetchFolders()]);
+            show('Feeds updated', 'success');
+        } catch (error) {
+            show('Failed to refresh feeds', 'error');
+        }
     };
 
     return (
@@ -54,8 +60,12 @@ export default function Sidebar() {
                     <Rss size={24} color={colors.primary.DEFAULT} />
                     <Text style={styles.logoText}>Feeds</Text>
                 </View>
-                <TouchableOpacity onPress={handleRefresh} style={styles.iconButton}>
-                    <RefreshCw size={18} color={colors.text.secondary} />
+                <TouchableOpacity onPress={handleRefresh} style={styles.iconButton} disabled={isLoading}>
+                    {isLoading ? (
+                        <ActivityIndicator size={18} color={colors.primary.DEFAULT} />
+                    ) : (
+                        <RefreshCw size={18} color={colors.text.secondary} />
+                    )}
                 </TouchableOpacity>
             </View>
 
@@ -75,6 +85,12 @@ export default function Sidebar() {
                             <Text style={styles.badgeText}>{totalUnread}</Text>
                         </View>
                     )}
+                </TouchableOpacity>
+
+                {/* Subscriptions */}
+                <TouchableOpacity style={styles.navItem} onPress={() => router.push('/(app)/subscriptions')}>
+                    <List size={18} color={colors.text.secondary} />
+                    <Text style={styles.navItemText}>Subscriptions</Text>
                 </TouchableOpacity>
 
                 {/* Smart Folders */}

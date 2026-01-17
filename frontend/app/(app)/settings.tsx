@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useSettingsStore, useAuthStore } from '@/stores';
+import { useSettingsStore, useAuthStore, useToastStore } from '@/stores';
 import { ArrowLeft, Sun, Moon, Monitor } from 'lucide-react-native';
 import { colors, borderRadius, spacing } from '@/theme';
 
@@ -9,18 +9,29 @@ export default function SettingsScreen() {
     const router = useRouter();
     const { settings, fetchSettings, updateSettings } = useSettingsStore();
     const { user, logout } = useAuthStore();
+    const { show } = useToastStore();
 
     useEffect(() => {
         fetchSettings();
     }, []);
 
-    const handleThemeChange = (theme: 'light' | 'dark' | 'auto') => {
-        updateSettings({ theme });
+    const handleThemeChange = async (theme: 'light' | 'dark' | 'auto') => {
+        try {
+            await updateSettings({ theme });
+            show(`Theme changed to ${theme}`, 'success');
+        } catch (error) {
+            show('Failed to update theme', 'error');
+        }
     };
 
-    const handleToggle = (key: keyof typeof settings, value: boolean) => {
+    const handleToggle = async (key: keyof typeof settings, value: boolean) => {
         if (settings) {
-            updateSettings({ [key]: value });
+            try {
+                await updateSettings({ [key]: value });
+                show('Setting updated', 'success');
+            } catch (error) {
+                show('Failed to update setting', 'error');
+            }
         }
     };
 

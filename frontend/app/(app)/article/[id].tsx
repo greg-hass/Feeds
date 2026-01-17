@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Linking } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { formatDistanceToNow } from 'date-fns';
@@ -22,6 +22,59 @@ export default function ArticleScreen() {
         }
     }, [id]);
 
+    const handleOpenExternal = useCallback(() => {
+        if (currentArticle?.url) {
+            Linking.openURL(currentArticle.url);
+        }
+    }, [currentArticle?.url]);
+
+    const handleToggleRead = useCallback(() => {
+        if (!currentArticle) return;
+        if (currentArticle.is_read) {
+            markUnread(currentArticle.id);
+        } else {
+            markRead(currentArticle.id);
+        }
+    }, [currentArticle, markRead, markUnread]);
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Ignore if typing in an input
+            if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
+
+            const { articles } = useArticleStore.getState();
+            const currentIndex = articles.findIndex(a => a.id === Number(id));
+
+            switch (e.key.toLowerCase()) {
+                case 'j': // Next
+                    if (currentIndex < articles.length - 1) {
+                        router.replace(`/(app)/article/${articles[currentIndex + 1].id}`);
+                    }
+                    break;
+                case 'k': // Previous
+                    if (currentIndex > 0) {
+                        router.replace(`/(app)/article/${articles[currentIndex - 1].id}`);
+                    }
+                    break;
+                case 'm': // Toggle Read
+                    handleToggleRead();
+                    break;
+                case 'o': // Open in browser
+                    handleOpenExternal();
+                    break;
+                case 'escape': // Back to list
+                    router.back();
+                    break;
+                case 'r': // Refresh/Reload this article
+                    if (id) fetchArticle(Number(id));
+                    break;
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [id, handleToggleRead, handleOpenExternal]);
+
     if (isLoading || !currentArticle) {
         return (
             <View style={styles.loadingContainer}>
@@ -33,20 +86,6 @@ export default function ArticleScreen() {
     const content = showReadability && currentArticle.readability_content
         ? currentArticle.readability_content
         : currentArticle.content;
-
-    const handleOpenExternal = () => {
-        if (currentArticle.url) {
-            Linking.openURL(currentArticle.url);
-        }
-    };
-
-    const handleToggleRead = () => {
-        if (currentArticle.is_read) {
-            markUnread(currentArticle.id);
-        } else {
-            markRead(currentArticle.id);
-        }
-    };
 
     return (
         <View style={styles.container}>
