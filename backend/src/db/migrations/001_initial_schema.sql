@@ -1,8 +1,5 @@
--- Feeds Database Schema
--- SQLite with WAL mode for better concurrency
-
-PRAGMA journal_mode = WAL;
-PRAGMA foreign_keys = ON;
+-- 001_initial_schema.sql
+-- Baseline schema for Feeds v1.0
 
 ------------------------------------------------------------
 -- USERS
@@ -158,11 +155,3 @@ CREATE TRIGGER IF NOT EXISTS articles_au AFTER UPDATE ON articles BEGIN
     INSERT INTO articles_fts(rowid, title, author, summary, content)
     VALUES (NEW.id, NEW.title, NEW.author, NEW.summary, NEW.content);
 END;
-
-------------------------------------------------------------
--- SCHEMA MIGRATIONS TABLE
-------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS schema_migrations (
-    version         INTEGER PRIMARY KEY,
-    applied_at      TEXT NOT NULL DEFAULT (datetime('now'))
-);

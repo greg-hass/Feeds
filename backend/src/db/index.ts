@@ -30,48 +30,17 @@ export function getDatabase(config?: DatabaseConfig): Database.Database {
     return db;
 }
 
+import { runMigrations } from './migrate.js';
+
 export function initializeDatabase(): void {
     const database = getDatabase();
-
-    // Read schema
-    const schemaPath = join(__dirname, 'schema.sql');
-    const schema = readFileSync(schemaPath, 'utf-8');
-
-    // better-sqlite3's exec() can handle multiple statements including triggers
-    // We just need to remove PRAGMA statements (handled above) and comments
-    const cleanedSchema = schema
-        .split('\n')
-        .map(line => {
-            // Keep trigger lines that start with whitespace
-            if (line.match(/^\s+/) && !line.trim().startsWith('--')) {
-                return line;
-            }
-            // Remove comment-only lines
-            if (line.trim().startsWith('--')) {
-                return '';
-            }
-            // Remove PRAGMA lines (we handle these in code)
-            if (line.trim().startsWith('PRAGMA')) {
-                return '';
-            }
-            return line;
-        })
-        .join('\n');
-
-    console.log('Initializing database schema...');
+    console.log('Initializing database and running migrations...');
 
     try {
-        // Execute the entire schema at once
-        database.exec(cleanedSchema);
-        console.log('Database initialized successfully');
+        runMigrations(database);
     } catch (err) {
-        // If it fails with "already exists", that's fine - tables exist
-        if (err instanceof Error && err.message.includes('already exists')) {
-            console.log('Database tables already exist');
-        } else {
-            console.error('Database initialization error:', err);
-            throw err;
-        }
+        console.error('Database migration error:', err);
+        throw err;
     }
 }
 

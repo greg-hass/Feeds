@@ -1,5 +1,6 @@
 import * as cheerio from 'cheerio';
 import { FeedType } from './feed-parser.js';
+import { getAiSuggestedFeeds } from './ai.js';
 
 export interface DiscoveredFeed {
     type: FeedType;
@@ -78,7 +79,7 @@ export async function discoverFeedsFromUrl(url: string): Promise<DiscoveredFeed[
     const $ = cheerio.load(html);
 
     // 1. Look for <link> tags
-    $('link[type="application/rss+xml"], link[type="application/atom+xml"]').each((_, el) => {
+    $('link[type="application/rss+xml"], link[type="application/atom+xml"]').each((_: number, el: any) => {
         const href = $(el).attr('href');
         const title = $(el).attr('title') || 'RSS Feed';
 
@@ -283,13 +284,42 @@ async function discoverYouTubeByKeyword(keyword: string, limit: number): Promise
 }
 
 export async function discoverByKeyword(keyword: string, limit: number = 10): Promise<DiscoveredFeed[]> {
-    const [redditDiscoveries, youtubeDiscoveries] = await Promise.all([
+    const [redditDiscoveries, youtubeDiscoveries, aiSuggestions] = await Promise.all([
         discoverRedditByKeyword(keyword, limit),
         discoverYouTubeByKeyword(keyword, limit),
+        getAiSuggestedFeeds(keyword),
     ]);
 
     const combined = [...redditDiscoveries, ...youtubeDiscoveries];
-    return combined.sort((a, b) => b.confidence - a.confidence).slice(0, limit);
+
+    // Expand AI suggestions by trying to find actual feeds at those URLs
+    if (aiSuggestions.length > 0) {
+        const aiFeedsPromises = aiSuggestions.map(async (s) => {
+            try {
+                const feeds = await discoverFeedsFromUrl(s.url);
+                return feeds.map(f => ({
+                    ...f,
+                    title: f.title === 'RSS Feed' || f.title === 'Discovered Feed' ? s.title : f.title,
+                }));
+            } catch (err) {
+                console.error(`AI expansion failed for ${s.url}:`, err);
+                return [];
+            }
+        });
+
+        const aiFeeds = (await Promise.all(aiFeedsPromises)).flat();
+        combined.push(...aiFeeds);
+    }
+
+    // Deduplicate by feed_url
+    const seen = new Set<string>();
+    const unique = combined.filter(f => {
+        if (seen.has(f.feed_url)) return false;
+        seen.add(f.feed_url);
+        return true;
+    });
+
+    return unique.sort((a, b) => b.confidence - a.confidence).slice(0, limit);
 }
 
 async function discoverRedditByKeyword(keyword: string, limit: number): Promise<DiscoveredFeed[]> {
