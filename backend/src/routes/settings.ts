@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { queryOne, run } from '../db/index.js';
+import { queryOne, run, db } from '../db/index.js';
 
 const updateSettingsSchema = z.object({
     refresh_interval_minutes: z.number().min(5).max(1440).optional(),
@@ -14,7 +14,7 @@ const updateSettingsSchema = z.object({
 
 interface User {
     id: number;
-    settings_json: string;
+    settings_json?: string;
 }
 
 const defaultSettings = {
@@ -27,6 +27,31 @@ const defaultSettings = {
     show_images: true,
 };
 
+// Helper to check if settings_json column exists
+function hasSettingsColumn(): boolean {
+    try {
+        const result = db().prepare("PRAGMA table_info(users)").all() as { name: string }[];
+        return result.some(col => col.name === 'settings_json');
+    } catch {
+        return false;
+    }
+}
+
+// Helper to add settings_json column if missing
+function ensureSettingsColumn(): void {
+    if (!hasSettingsColumn()) {
+        try {
+            db().exec("ALTER TABLE users ADD COLUMN settings_json TEXT DEFAULT '{}'");
+            console.log('Added settings_json column to users table');
+        } catch (err: any) {
+            // Column might already exist (race condition)
+            if (!err?.message?.includes('duplicate column')) {
+                console.error('Failed to add settings_json column:', err);
+            }
+        }
+    }
+}
+
 export async function settingsRoutes(app: FastifyInstance) {
     app.addHook('preHandler', app.authenticate);
 
@@ -34,18 +59,29 @@ export async function settingsRoutes(app: FastifyInstance) {
     app.get('/', async (request: FastifyRequest) => {
         const { id: userId } = (request as any).user;
 
-        const user = queryOne<User>('SELECT settings_json FROM users WHERE id = ?', [userId]);
+        ensureSettingsColumn();
 
-        let settings = { ...defaultSettings };
-        if (user?.settings_json) {
-            try {
-                settings = { ...settings, ...JSON.parse(user.settings_json) };
-            } catch {
-                // Use defaults
+        try {
+            const user = queryOne<User>('SELECT settings_json FROM users WHERE id = ?', [userId]);
+
+            let settings = { ...defaultSettings };
+            if (user?.settings_json) {
+                try {
+                    settings = { ...settings, ...JSON.parse(user.settings_json) };
+                } catch {
+                    // Use defaults
+                }
             }
-        }
 
-        return { settings };
+            return { settings };
+        } catch (err: any) {
+            console.error('Error fetching settings:', err);
+            // If column doesn't exist, return defaults
+            if (err?.message?.includes('no such column')) {
+                return { settings: defaultSettings };
+            }
+            throw err;
+        }
     });
 
     // Update settings
@@ -53,24 +89,31 @@ export async function settingsRoutes(app: FastifyInstance) {
         const { id: userId } = (request as any).user;
         const body = updateSettingsSchema.parse(request.body);
 
-        const user = queryOne<User>('SELECT settings_json FROM users WHERE id = ?', [userId]);
+        ensureSettingsColumn();
 
-        let currentSettings = { ...defaultSettings };
-        if (user?.settings_json) {
-            try {
-                currentSettings = { ...currentSettings, ...JSON.parse(user.settings_json) };
-            } catch {
-                // Use defaults
+        try {
+            const user = queryOne<User>('SELECT settings_json FROM users WHERE id = ?', [userId]);
+
+            let currentSettings = { ...defaultSettings };
+            if (user?.settings_json) {
+                try {
+                    currentSettings = { ...currentSettings, ...JSON.parse(user.settings_json) };
+                } catch {
+                    // Use defaults
+                }
             }
+
+            const newSettings = { ...currentSettings, ...body };
+
+            run(
+                'UPDATE users SET settings_json = ?, updated_at = datetime("now") WHERE id = ?',
+                [JSON.stringify(newSettings), userId]
+            );
+
+            return { settings: newSettings };
+        } catch (err: any) {
+            console.error('Error updating settings:', err);
+            throw err;
         }
-
-        const newSettings = { ...currentSettings, ...body };
-
-        run(
-            'UPDATE users SET settings_json = ?, updated_at = datetime("now") WHERE id = ?',
-            [JSON.stringify(newSettings), userId]
-        );
-
-        return { settings: newSettings };
     });
 }

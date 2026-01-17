@@ -80,4 +80,5 @@ export function runMany(sql: string, paramsList: unknown[][]): void {
     runAll(paramsList);
 }
 
-export { db };
+// Export db getter as 'db' for convenience
+export { getDatabase as db };
