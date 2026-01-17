@@ -44,7 +44,10 @@ export const useAuthStore = create<AuthState>()(
                         }
                     }
                 } catch (error) {
-                    set({ isLoading: false });
+                    // If we can't reach the API, assume setup hasn't completed
+                    // (this handles the case where backend hasn't started yet)
+                    console.error('Auth status check failed:', error);
+                    set({ isLoading: false, setupRequired: true });
                 }
             },
 

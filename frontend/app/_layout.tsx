@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores';
 
@@ -18,9 +18,13 @@ function AuthGate() {
     const router = useRouter();
     const segments = useSegments();
     const { isAuthenticated, isLoading, setupRequired, checkAuthStatus } = useAuthStore();
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        checkAuthStatus();
+        checkAuthStatus().catch((err) => {
+            console.error('Auth status check failed:', err);
+            setError(err?.message || 'Failed to connect to server');
+        });
     }, []);
 
     useEffect(() => {
@@ -28,10 +32,16 @@ function AuthGate() {
 
         const inAuthGroup = segments[0] === '(auth)';
 
+        // If setup is required OR if we failed to check status (likely first run), go to setup
         if (setupRequired && !inAuthGroup) {
             router.replace('/(auth)/setup');
-        } else if (!isAuthenticated && !setupRequired && !inAuthGroup) {
-            router.replace('/(auth)/login');
+        } else if (!isAuthenticated && !inAuthGroup) {
+            // Not authenticated - go to either setup (if needed) or login
+            if (setupRequired) {
+                router.replace('/(auth)/setup');
+            } else {
+                router.replace('/(auth)/login');
+            }
         } else if (isAuthenticated && inAuthGroup) {
             router.replace('/(app)');
         }
@@ -41,6 +51,7 @@ function AuthGate() {
         return (
             <View style={styles.loading}>
                 <ActivityIndicator size="large" color="#a3e635" />
+                {error && <Text style={styles.errorText}>{error}</Text>}
             </View>
         );
     }
@@ -68,5 +79,10 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: '#18181b',
+    },
+    errorText: {
+        color: '#ef4444',
+        marginTop: 16,
+        fontSize: 14,
     },
 });
