@@ -1,21 +1,24 @@
 import { useEffect, useCallback, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, ActivityIndicator, Alert, Linking } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, ActivityIndicator, Alert, Linking, Image, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { formatDistanceToNow } from 'date-fns';
 import { useArticleStore, useFeedStore } from '@/stores';
 import { Article } from '@/services/api';
-import { Circle, CircleCheck, Headphones, Filter, CheckCheck, MoreVertical } from 'lucide-react-native';
+import { Circle, CircleCheck, Headphones, Filter, CheckCheck, MoreVertical, Play } from 'lucide-react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
+import { extractVideoId, getThumbnailUrl } from '@/utils/youtube';
 
 export default function ArticleListScreen() {
     const router = useRouter();
     const colors = useColors();
+    const { width } = useWindowDimensions();
+    const isMobile = width < 768;
     const { articles, isLoading, hasMore, filter, fetchArticles, setFilter, markAllRead } = useArticleStore();
     const { fetchFeeds, fetchFolders } = useFeedStore();
     const [showMenu, setShowMenu] = useState(false);
     const [selectedIndex, setSelectedIndex] = useState(-1);
 
-    const s = styles(colors);
+    const s = styles(colors, isMobile);
 
     useEffect(() => {
         fetchFeeds();
@@ -137,36 +140,89 @@ export default function ArticleListScreen() {
 
     const unreadCount = articles.filter((a: Article) => !a.is_read).length;
 
-    const renderArticle = ({ item, index }: { item: Article; index: number }) => (
-        <TouchableOpacity
-            style={[
-                s.articleCard,
-                item.is_read && s.articleRead,
-                index === selectedIndex && s.articleFocused
-            ]}
-            onPress={() => handleArticlePress(item.id)}
-        >
-            <View style={s.articleHeader}>
-                <Text style={s.feedName}>{item.feed_title}</Text>
-                {item.has_audio && <Headphones size={14} color={colors.secondary.DEFAULT} />}
-            </View>
-            <Text style={[s.articleTitle, item.is_read && s.articleTitleRead]} numberOfLines={2}>
-                {!item.is_read && (
-                    <Circle size={8} color={colors.primary.DEFAULT} fill={colors.primary.DEFAULT} style={{ marginRight: 6 }} />
-                )}
-                {item.title}
-            </Text>
-            {item.summary && (
-                <Text style={s.articleSummary} numberOfLines={2}>
-                    {item.summary}
-                </Text>
-            )}
-            <Text style={s.articleMeta}>
-                {item.author && `${item.author} • `}
-                {item.published_at && formatDistanceToNow(new Date(item.published_at), { addSuffix: true })}
-            </Text>
-        </TouchableOpacity>
-    );
+    // Get thumbnail URL - prefer YouTube thumbnail, then article thumbnail
+    const getArticleThumbnail = (item: Article): string | null => {
+        if (item.feed_type === 'youtube' && item.url) {
+            const videoId = extractVideoId(item.url);
+            if (videoId) return getThumbnailUrl(videoId, 'hq');
+        }
+        return item.thumbnail_url || null;
+    };
+
+    const renderArticle = ({ item, index }: { item: Article; index: number }) => {
+        const thumbnail = getArticleThumbnail(item);
+        const isYouTube = item.feed_type === 'youtube';
+
+        return (
+            <TouchableOpacity
+                style={[
+                    s.articleCard,
+                    item.is_read && s.articleRead,
+                    index === selectedIndex && s.articleFocused
+                ]}
+                onPress={() => handleArticlePress(item.id)}
+            >
+                {/* Desktop: Row layout with thumbnail on right */}
+                {/* Mobile: Column layout with thumbnail below title */}
+                <View style={isMobile ? s.articleColumnLayout : s.articleRowLayout}>
+                    <View style={s.articleContent}>
+                        <View style={s.articleHeader}>
+                            <Text style={s.feedName}>{item.feed_title}</Text>
+                            {item.has_audio && <Headphones size={14} color={colors.secondary.DEFAULT} />}
+                        </View>
+                        <Text style={[s.articleTitle, item.is_read && s.articleTitleRead]} numberOfLines={2}>
+                            {!item.is_read && (
+                                <Circle size={8} color={colors.primary.DEFAULT} fill={colors.primary.DEFAULT} style={{ marginRight: 6 }} />
+                            )}
+                            {item.title}
+                        </Text>
+
+                        {/* Mobile: Thumbnail after title */}
+                        {isMobile && thumbnail && (
+                            <View style={s.thumbnailContainerMobile}>
+                                <Image
+                                    source={{ uri: thumbnail }}
+                                    style={s.thumbnailMobile}
+                                    resizeMode="cover"
+                                />
+                                {isYouTube && (
+                                    <View style={s.playOverlay}>
+                                        <Play size={32} color="#fff" fill="#fff" />
+                                    </View>
+                                )}
+                            </View>
+                        )}
+
+                        {item.summary && (
+                            <Text style={s.articleSummary} numberOfLines={2}>
+                                {item.summary}
+                            </Text>
+                        )}
+                        <Text style={s.articleMeta}>
+                            {item.author && `${item.author} • `}
+                            {item.published_at && formatDistanceToNow(new Date(item.published_at), { addSuffix: true })}
+                        </Text>
+                    </View>
+
+                    {/* Desktop: Thumbnail on right side */}
+                    {!isMobile && thumbnail && (
+                        <View style={s.thumbnailContainerDesktop}>
+                            <Image
+                                source={{ uri: thumbnail }}
+                                style={s.thumbnailDesktop}
+                                resizeMode="cover"
+                            />
+                            {isYouTube && (
+                                <View style={s.playOverlaySmall}>
+                                    <Play size={20} color="#fff" fill="#fff" />
+                                </View>
+                            )}
+                        </View>
+                    )}
+                </View>
+            </TouchableOpacity>
+        );
+    };
 
     return (
         <View style={s.container}>
@@ -238,7 +294,7 @@ export default function ArticleListScreen() {
     );
 }
 
-const styles = (colors: any) => StyleSheet.create({
+const styles = (colors: any, isMobile: boolean = false) => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.background.primary,
@@ -321,7 +377,18 @@ const styles = (colors: any) => StyleSheet.create({
     articleFocused: {
         borderColor: colors.primary.DEFAULT,
         borderWidth: 2,
-        padding: spacing.lg - 2, // Account for border to avoid jump
+        padding: spacing.lg - 2,
+    },
+    // Layout styles
+    articleRowLayout: {
+        flexDirection: 'row',
+        gap: spacing.lg,
+    },
+    articleColumnLayout: {
+        flexDirection: 'column',
+    },
+    articleContent: {
+        flex: 1,
     },
     articleHeader: {
         flexDirection: 'row',
@@ -353,6 +420,52 @@ const styles = (colors: any) => StyleSheet.create({
     articleMeta: {
         fontSize: 12,
         color: colors.text.tertiary,
+    },
+    // Thumbnail styles - Desktop
+    thumbnailContainerDesktop: {
+        position: 'relative',
+        width: 120,
+        height: 80,
+        borderRadius: borderRadius.md,
+        overflow: 'hidden',
+        flexShrink: 0,
+    },
+    thumbnailDesktop: {
+        width: '100%',
+        height: '100%',
+    },
+    playOverlaySmall: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    },
+    // Thumbnail styles - Mobile
+    thumbnailContainerMobile: {
+        position: 'relative',
+        width: '100%',
+        aspectRatio: 16 / 9,
+        borderRadius: borderRadius.md,
+        overflow: 'hidden',
+        marginBottom: spacing.sm,
+    },
+    thumbnailMobile: {
+        width: '100%',
+        height: '100%',
+    },
+    playOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.4)',
     },
     separator: {
         height: spacing.md,

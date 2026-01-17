@@ -1,20 +1,27 @@
 import { useEffect, useState, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Linking, Image, useWindowDimensions, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { formatDistanceToNow } from 'date-fns';
 import { useArticleStore, useSettingsStore } from '@/stores';
 import { Article } from '@/services/api';
-import { ArrowLeft, ExternalLink, Circle, CircleCheck, Headphones, BookOpen } from 'lucide-react-native';
+import { ArrowLeft, ExternalLink, Circle, CircleCheck, Headphones, BookOpen, Play } from 'lucide-react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
+import { extractVideoId, getEmbedUrl } from '@/utils/youtube';
+import ArticleContent from '@/components/ArticleContent';
 
 export default function ArticleScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
     const colors = useColors();
+    const { width } = useWindowDimensions();
+    const isMobile = width < 768;
     const { currentArticle, fetchArticle, markRead, markUnread } = useArticleStore();
     const { settings } = useSettingsStore();
     const [isLoading, setIsLoading] = useState(true);
     const [showReadability, setShowReadability] = useState(settings?.readability_enabled ?? false);
+
+    const isYouTube = currentArticle?.feed_type === 'youtube';
+    const videoId = currentArticle?.url ? extractVideoId(currentArticle.url) : null;
 
     const s = styles(colors);
 
@@ -148,6 +155,32 @@ export default function ArticleScreen() {
                     )}
                 </View>
 
+                {/* YouTube Player */}
+                {isYouTube && videoId && Platform.OS === 'web' && (
+                    <View style={s.videoContainer}>
+                        <iframe
+                            src={getEmbedUrl(videoId)}
+                            style={{
+                                width: '100%',
+                                height: '100%',
+                                border: 'none',
+                                borderRadius: borderRadius.lg,
+                            }}
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                        />
+                    </View>
+                )}
+
+                {/* Hero Image for non-YouTube articles */}
+                {!isYouTube && currentArticle.thumbnail_url && (
+                    <Image
+                        source={{ uri: currentArticle.thumbnail_url }}
+                        style={s.heroImage}
+                        resizeMode="cover"
+                    />
+                )}
+
                 {/* Audio Player for Podcasts */}
                 {currentArticle.has_audio && currentArticle.enclosure_url && (
                     <TouchableOpacity
@@ -159,11 +192,18 @@ export default function ArticleScreen() {
                     </TouchableOpacity>
                 )}
 
-                {/* Content */}
-                <View style={s.articleContent}>
-                    <Text style={s.contentText}>
-                        {content || currentArticle.summary || 'No content available'}
-                    </Text>
+                {/* Content - HTML or Plain Text */}
+                <View style={s.articleContentWrapper}>
+                    {Platform.OS === 'web' && content ? (
+                        <ArticleContent
+                            html={content}
+                            fontSize={settings?.font_size || 'medium'}
+                        />
+                    ) : (
+                        <Text style={s.contentText}>
+                            {content || currentArticle.summary || 'No content available'}
+                        </Text>
+                    )}
                 </View>
             </ScrollView>
         </View>
@@ -253,7 +293,23 @@ const styles = (colors: any) => StyleSheet.create({
         fontWeight: '500',
         color: colors.secondary.DEFAULT,
     },
-    articleContent: {
+    // Video container for YouTube
+    videoContainer: {
+        width: '100%',
+        aspectRatio: 16 / 9,
+        borderRadius: borderRadius.lg,
+        overflow: 'hidden',
+        marginBottom: spacing.xl,
+        backgroundColor: colors.background.tertiary,
+    },
+    // Hero image for non-YouTube articles
+    heroImage: {
+        width: '100%',
+        aspectRatio: 16 / 9,
+        borderRadius: borderRadius.lg,
+        marginBottom: spacing.xl,
+    },
+    articleContentWrapper: {
         paddingTop: spacing.md,
     },
     contentText: {
