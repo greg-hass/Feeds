@@ -27,27 +27,26 @@ const defaultSettings = {
     show_images: true,
 };
 
-// Helper to check if settings_json column exists
-function hasSettingsColumn(): boolean {
-    try {
-        const result = db().prepare("PRAGMA table_info(users)").all() as { name: string }[];
-        return result.some(col => col.name === 'settings_json');
-    } catch {
-        return false;
-    }
-}
+// Track if we've already ensured the column exists this session
+let columnEnsured = false;
 
-// Helper to add settings_json column if missing
+// Helper to add settings_json column if missing (idempotent)
 function ensureSettingsColumn(): void {
-    if (!hasSettingsColumn()) {
-        try {
-            db().exec("ALTER TABLE users ADD COLUMN settings_json TEXT DEFAULT '{}'");
-            console.log('Added settings_json column to users table');
-        } catch (err: any) {
-            // Column might already exist (race condition)
-            if (!err?.message?.includes('duplicate column')) {
-                console.error('Failed to add settings_json column:', err);
-            }
+    if (columnEnsured) return;
+
+    try {
+        console.log('[Settings] Ensuring settings_json column exists...');
+        db().exec("ALTER TABLE users ADD COLUMN settings_json TEXT DEFAULT '{}'");
+        console.log('[Settings] Added settings_json column successfully');
+        columnEnsured = true;
+    } catch (err: any) {
+        // Column already exists - this is fine
+        if (err?.message?.includes('duplicate column')) {
+            console.log('[Settings] settings_json column already exists');
+            columnEnsured = true;
+        } else {
+            console.error('[Settings] Error ensuring column:', err);
+            // Don't throw - let the query fail naturally if there's a real issue
         }
     }
 }
@@ -58,61 +57,89 @@ export async function settingsRoutes(app: FastifyInstance) {
     // Get settings
     app.get('/', async (request: FastifyRequest) => {
         const { id: userId } = (request as any).user;
+        console.log('[Settings] GET settings for user:', userId);
 
         ensureSettingsColumn();
 
         try {
-            const user = queryOne<User>('SELECT settings_json FROM users WHERE id = ?', [userId]);
+            // Try to get settings, falling back to just user id if column doesn't exist
+            let user: User | undefined;
+            try {
+                user = queryOne<User>('SELECT id, settings_json FROM users WHERE id = ?', [userId]);
+            } catch (err: any) {
+                console.log('[Settings] Query error, trying without settings_json:', err?.message);
+                // Column might not exist, try without it
+                user = queryOne<User>('SELECT id FROM users WHERE id = ?', [userId]);
+            }
+
+            if (!user) {
+                console.log('[Settings] User not found:', userId);
+                return { settings: defaultSettings };
+            }
 
             let settings = { ...defaultSettings };
-            if (user?.settings_json) {
+            if (user.settings_json) {
                 try {
                     settings = { ...settings, ...JSON.parse(user.settings_json) };
                 } catch {
-                    // Use defaults
+                    console.log('[Settings] Failed to parse settings_json, using defaults');
                 }
             }
 
+            console.log('[Settings] Returning settings:', settings);
             return { settings };
         } catch (err: any) {
-            console.error('Error fetching settings:', err);
-            // If column doesn't exist, return defaults
-            if (err?.message?.includes('no such column')) {
-                return { settings: defaultSettings };
-            }
-            throw err;
+            console.error('[Settings] Error in GET:', err);
+            return { settings: defaultSettings };
         }
     });
 
     // Update settings
     app.patch('/', async (request: FastifyRequest) => {
         const { id: userId } = (request as any).user;
-        const body = updateSettingsSchema.parse(request.body);
+        console.log('[Settings] PATCH settings for user:', userId, 'body:', request.body);
+
+        let body;
+        try {
+            body = updateSettingsSchema.parse(request.body);
+        } catch (err: any) {
+            console.error('[Settings] Validation error:', err);
+            throw err;
+        }
 
         ensureSettingsColumn();
 
         try {
-            const user = queryOne<User>('SELECT settings_json FROM users WHERE id = ?', [userId]);
+            // Get current settings
+            let currentSettingsJson = '{}';
+            try {
+                const user = queryOne<{ settings_json?: string }>('SELECT settings_json FROM users WHERE id = ?', [userId]);
+                if (user?.settings_json) {
+                    currentSettingsJson = user.settings_json;
+                }
+            } catch (err: any) {
+                console.log('[Settings] Could not read current settings:', err?.message);
+            }
 
             let currentSettings = { ...defaultSettings };
-            if (user?.settings_json) {
-                try {
-                    currentSettings = { ...currentSettings, ...JSON.parse(user.settings_json) };
-                } catch {
-                    // Use defaults
-                }
+            try {
+                currentSettings = { ...currentSettings, ...JSON.parse(currentSettingsJson) };
+            } catch {
+                // Use defaults
             }
 
             const newSettings = { ...currentSettings, ...body };
+            console.log('[Settings] New settings:', newSettings);
 
             run(
-                'UPDATE users SET settings_json = ?, updated_at = datetime("now") WHERE id = ?',
+                'UPDATE users SET settings_json = ? WHERE id = ?',
                 [JSON.stringify(newSettings), userId]
             );
 
+            console.log('[Settings] Settings updated successfully');
             return { settings: newSettings };
         } catch (err: any) {
-            console.error('Error updating settings:', err);
+            console.error('[Settings] Error in PATCH:', err);
             throw err;
         }
     });
