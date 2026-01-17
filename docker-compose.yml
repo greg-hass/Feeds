@@ -1,0 +1,9 @@
+version: "3.8"
+
+services:
+  feeds:
+    image: ghcr.io/greg-hass/feeds:latest
+    container_name: feeds
+    restart: unless-stopped
+    ports:
+      - "3000:80"
