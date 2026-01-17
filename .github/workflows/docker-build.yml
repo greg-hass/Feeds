@@ -1,19 +1,16 @@
 name: Build and Push Docker Image
 
 on:
-  # Trigger on push to main branch
   push:
     branches:
       - main
     tags:
       - 'v*'
   
-  # Trigger on pull requests to main (build only, no push)
   pull_request:
     branches:
       - main
   
-  # Manual trigger
   workflow_dispatch:
 
 env:
@@ -49,17 +46,11 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            # Tag with 'latest' on main branch push
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-            # Tag with branch name
             type=ref,event=branch
-            # Tag with PR number
             type=ref,event=pr
-            # Tag with semver (v1.0.0 -> 1.0.0)
             type=semver,pattern={{version}}
-            # Tag with major.minor (v1.0.0 -> 1.0)
             type=semver,pattern={{major}}.{{minor}}
-            # Tag with commit SHA (short)
             type=sha,prefix=
 
       - name: Build and push Docker image
@@ -69,10 +60,9 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            GEMINI_API_KEY=${{ secrets.API_KEY }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
 
       - name: Output image info
         if: github.event_name != 'pull_request'

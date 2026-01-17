@@ -1,7 +1,0 @@
-{
-  "name": "Feeds - Private Reader",
-  "description": "A high-performance, private feed reader for RSS, YouTube, Reddit, and Podcasts with smart organization and full-sync capabilities.",
-  "requestFramePermissions": [
-    "geolocation"
-  ]
-}

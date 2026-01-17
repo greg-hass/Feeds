@@ -1,20 +1,88 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Feeds
 
-# Run and deploy your AI Studio app
+A fast, reliable, private self-hosted feed reader supporting RSS/Atom, YouTube, Reddit*, and Podcasts.
 
-This contains everything you need to run your app locally.
+![Feeds](https://img.shields.io/badge/Self--Hosted-Private-green) ![Docker](https://img.shields.io/badge/Docker-Ready-blue)
 
-View your app in AI Studio: https://ai.studio/apps/drive/1B4R7yGvwUm3BgrUIKAJx0y89DdF2IzIU
+## Features
 
-## Run Locally
+- 📰 **RSS/Atom feeds** - Standard web feed support
+- 📺 **YouTube channels & playlists** - Subscribe to YouTube content via RSS
+- 🎙️ **Podcasts** - Full podcast support with audio player
+- 🔍 **Full-text search** - Search across all articles
+- 📁 **Folders & Smart Folders** - Organize feeds by folder or type
+- 📱 **PWA** - Install as an app on mobile
+- 🔄 **Background sync** - Automatic feed updates
+- 📖 **Reader mode** - Clean article view using Mozilla Readability
+- 🌙 **Dark theme** - Easy on the eyes
+- 📤 **OPML import/export** - Migrate from other readers
 
-**Prerequisites:**  Node.js
+## Quick Start
 
+### Using Docker Compose (Recommended)
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+```bash
+# Clone the repository
+git clone https://github.com/greg-hass/Feeds.git
+cd Feeds
+
+# Create environment file
+cp .env.example .env
+# Edit .env and set a strong JWT_SECRET
+
+# Start with Docker Compose
+docker-compose up -d
+```
+
+Access at `http://localhost:3000`
+
+### Using Pre-built Image
+
+```bash
+docker run -d \
+  --name feeds \
+  -p 3000:80 \
+  -v feeds_data:/data \
+  -e JWT_SECRET=your-secret-key \
+  ghcr.io/greg-hass/feeds:latest
+```
+
+## First Run
+
+1. Open the app in your browser
+2. Create your admin account
+3. Start adding feeds!
+
+## Development
+
+### Backend
+```bash
+cd backend
+npm install
+npm run dev
+```
+
+### Frontend
+```bash
+cd frontend
+npm install
+npm run web
+```
+
+## API Documentation
+
+See [API.md](API.md) for full API documentation.
+
+## Tech Stack
+
+- **Backend**: Node.js, Fastify, SQLite, feedparser
+- **Frontend**: React Native Web, Expo, Zustand
+- **Deployment**: Docker, nginx
+
+## License
+
+MIT
+
+---
+
+*Reddit support coming in v2

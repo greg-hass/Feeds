@@ -1,56 +1,65 @@
-# Stage 1: Build the Vite React application
-FROM node:20-alpine AS builder
+# Stage 1: Build backend
+FROM node:20-alpine AS backend-builder
+
+WORKDIR /app/backend
+
+COPY backend/package*.json ./
+RUN npm ci
+
+COPY backend/ ./
+RUN npm run build
+
+# Stage 2: Build frontend
+FROM node:20-alpine AS frontend-builder
+
+WORKDIR /app/frontend
+
+COPY frontend/package*.json ./
+RUN npm ci
+
+COPY frontend/ ./
+
+ARG EXPO_PUBLIC_API_URL=/api/v1
+ENV EXPO_PUBLIC_API_URL=${EXPO_PUBLIC_API_URL}
+
+RUN npx expo export --platform web
+
+# Stage 3: Production image
+FROM node:20-alpine AS production
 
 WORKDIR /app
 
-# Copy package files first for better layer caching
-COPY package.json package-lock.json* ./
+# Install nginx
+RUN apk add --no-cache nginx
 
-# Install dependencies
-RUN npm ci --legacy-peer-deps || npm install
+# Copy backend build
+COPY --from=backend-builder /app/backend/dist ./backend/dist
+COPY --from=backend-builder /app/backend/package*.json ./backend/
+COPY --from=backend-builder /app/backend/node_modules ./backend/node_modules
 
-# Copy source files
-COPY . .
+# Copy frontend build
+COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
-# Build argument for API key (passed at build time)
-ARG GEMINI_API_KEY
-ENV GEMINI_API_KEY=${GEMINI_API_KEY}
+# Nginx config
+COPY docker/nginx.conf /etc/nginx/nginx.conf
 
-# Build the production bundle
-RUN npm run build
+# Entrypoint
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
-# Stage 2: Serve with nginx
-FROM nginx:alpine
+# Create data directory
+RUN mkdir -p /data /data/backups
 
-# Copy custom nginx config for SPA routing
-COPY <<EOF /etc/nginx/conf.d/default.conf
-server {
-    listen 80;
-    server_name localhost;
-    root /usr/share/nginx/html;
-    index index.html;
-
-    # Gzip compression
-    gzip on;
-    gzip_types text/plain text/css application/json application/javascript text/xml application/xml text/javascript;
-
-    # SPA fallback - serve index.html for all routes
-    location / {
-        try_files \$uri \$uri/ /index.html;
-    }
-
-    # Cache static assets
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-}
-EOF
-
-# Copy built assets from builder stage
-COPY --from=builder /app/dist /usr/share/nginx/html
-
-# Expose port 80
+# Expose port
 EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost/health || exit 1
+
+# Environment
+ENV NODE_ENV=production
+ENV DATABASE_PATH=/data/feeds.db
+ENV PORT=3001
+
+ENTRYPOINT ["/entrypoint.sh"]

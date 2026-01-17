@@ -23,3 +23,21 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+backend/dist
+frontend/dist
+frontend/.expo
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# Test
+coverage/
