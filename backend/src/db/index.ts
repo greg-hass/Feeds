@@ -33,39 +33,46 @@ export function getDatabase(config?: DatabaseConfig): Database.Database {
 export function initializeDatabase(): void {
     const database = getDatabase();
 
-    // Read and execute schema
+    // Read schema
     const schemaPath = join(__dirname, 'schema.sql');
     const schema = readFileSync(schemaPath, 'utf-8');
 
-    // Remove comments and empty lines, then split by semicolons
+    // better-sqlite3's exec() can handle multiple statements including triggers
+    // We just need to remove PRAGMA statements (handled above) and comments
     const cleanedSchema = schema
         .split('\n')
-        .filter(line => !line.trim().startsWith('--'))
+        .map(line => {
+            // Keep trigger lines that start with whitespace
+            if (line.match(/^\s+/) && !line.trim().startsWith('--')) {
+                return line;
+            }
+            // Remove comment-only lines
+            if (line.trim().startsWith('--')) {
+                return '';
+            }
+            // Remove PRAGMA lines (we handle these in code)
+            if (line.trim().startsWith('PRAGMA')) {
+                return '';
+            }
+            return line;
+        })
         .join('\n');
 
-    // Split by semicolon but handle multi-line statements
-    const statements = cleanedSchema
-        .split(/;[\s]*\n/)
-        .map(s => s.trim())
-        .filter(s => s.length > 0 && !s.startsWith('PRAGMA')); // Skip PRAGMA, we handle those above
+    console.log('Initializing database schema...');
 
-    console.log(`Executing ${statements.length} schema statements...`);
-
-    // Execute each statement individually (not in transaction to handle CREATE TABLE + INDEX order)
-    for (const statement of statements) {
-        try {
-            database.exec(statement);
-        } catch (err) {
-            // Ignore "already exists" errors for IF NOT EXISTS statements
-            if (err instanceof Error && err.message.includes('already exists')) {
-                continue;
-            }
-            console.error('Failed to execute:', statement.substring(0, 80) + '...');
+    try {
+        // Execute the entire schema at once
+        database.exec(cleanedSchema);
+        console.log('Database initialized successfully');
+    } catch (err) {
+        // If it fails with "already exists", that's fine - tables exist
+        if (err instanceof Error && err.message.includes('already exists')) {
+            console.log('Database tables already exist');
+        } else {
+            console.error('Database initialization error:', err);
             throw err;
         }
     }
-
-    console.log('Database initialized successfully');
 }
 
 export function closeDatabase(): void {
