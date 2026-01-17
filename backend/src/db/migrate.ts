@@ -52,9 +52,16 @@ export function runMigrations(db: Database): void {
         try {
             migrate(sql);
             console.log(`Successfully applied migration ${version}`);
-        } catch (err) {
-            console.error(`Failed to apply migration ${file}:`, err);
-            throw err;
+        } catch (err: any) {
+            // Handle idempotent migrations (e.g., column already exists)
+            const msg = err?.message || '';
+            if (msg.includes('duplicate column name') || msg.includes('already exists')) {
+                console.log(`Migration ${version} already applied (idempotent), marking as complete`);
+                db.prepare('INSERT OR IGNORE INTO schema_migrations (version) VALUES (?)').run(version);
+            } else {
+                console.error(`Failed to apply migration ${file}:`, err);
+                throw err;
+            }
         }
     }
 
