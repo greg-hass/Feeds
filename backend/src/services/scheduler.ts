@@ -103,14 +103,14 @@ async function refreshFeed(feed: FeedToRefresh): Promise<void> {
             if (result.changes > 0) newArticles++;
         }
 
-        // Update feed metadata
+        // Update feed metadata - use single quotes for 'now' in SQLite
         run(
             `UPDATE feeds SET 
-        last_fetched_at = datetime("now"), 
-        next_fetch_at = datetime("now", "+" || refresh_interval_minutes || " minutes"),
+        last_fetched_at = datetime('now'), 
+        next_fetch_at = datetime('now', '+' || refresh_interval_minutes || ' minutes'),
         error_count = 0,
         last_error = NULL,
-        updated_at = datetime("now")
+        updated_at = datetime('now')
        WHERE id = ?`,
             [feed.id]
         );
@@ -126,9 +126,9 @@ async function refreshFeed(feed: FeedToRefresh): Promise<void> {
             `UPDATE feeds SET 
         error_count = error_count + 1,
         last_error = ?,
-        last_error_at = datetime("now"),
-        next_fetch_at = datetime("now", "+" || (refresh_interval_minutes * 2) || " minutes"),
-        updated_at = datetime("now")
+        last_error_at = datetime('now'),
+        next_fetch_at = datetime('now', '+' || (refresh_interval_minutes * 2) || ' minutes'),
+        updated_at = datetime('now')
        WHERE id = ?`,
             [errorMessage, feed.id]
         );
