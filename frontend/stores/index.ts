@@ -315,15 +315,8 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     },
 
     updateSettings: async (updates: Partial<Settings>) => {
-        try {
-            console.log('Updating settings with:', updates);
-            const { settings } = await api.updateSettings(updates);
-            console.log('Settings updated successfully:', settings);
-            set({ settings });
-        } catch (error) {
-            console.error('Failed to update settings:', error);
-            throw error;
-        }
+        const { settings } = await api.updateSettings(updates);
+        set({ settings });
     },
 }));
 
