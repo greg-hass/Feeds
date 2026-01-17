@@ -10,9 +10,12 @@ import {
   Circle,
   ArrowLeft,
   Youtube,
-  Play
+  Play,
+  AlignLeft,
+  Maximize2
 } from 'lucide-react';
 import { GeminiService } from '../services/geminiService';
+import { Readability } from '@mozilla/readability';
 
 interface ReaderViewProps {
   article?: Article;
@@ -27,13 +30,51 @@ const ReaderView: React.FC<ReaderViewProps> = ({ article, onToggleBookmark, onTo
   const [showTypography, setShowTypography] = useState(false);
   const [fontSize, setFontSize] = useState<'sm' | 'base' | 'lg' | 'xl'>('base');
   const [fontFamily, setFontFamily] = useState<'sans' | 'serif'>('sans');
+  const [lineHeight, setLineHeight] = useState<'normal' | 'relaxed' | 'loose'>('relaxed');
   const [isPlaying, setIsPlaying] = useState(false);
+  const [cleanContent, setCleanContent] = useState<string | null>(null);
 
   useEffect(() => {
     setSummary(null);
     setShowTypography(false);
     setIsPlaying(false);
-  }, [article?.id]);
+    setCleanContent(null);
+
+    if (article) {
+      try {
+        // Construct a full DOM document to allow Readability to parse correctly
+        const parser = new DOMParser();
+        // Wrap content in a robust structure
+        const doc = parser.parseFromString(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>${article.title}</title>
+              <meta charset="utf-8">
+            </head>
+            <body>
+              <article>
+                <h1>${article.title}</h1>
+                ${article.content}
+              </article>
+            </body>
+          </html>
+        `, "text/html");
+
+        const reader = new Readability(doc, {
+          charThreshold: 0,
+          keepClasses: false
+        });
+        const parsed = reader.parse();
+        
+        // If Readability returns null (sometimes happens with very short or fragmented content), fallback to raw content
+        setCleanContent(parsed ? parsed.content : article.content);
+      } catch (err) {
+        console.error("Readability parsing error:", err);
+        setCleanContent(article.content);
+      }
+    }
+  }, [article]);
 
   const handleSummarize = async () => {
     if (!article) return;
@@ -49,6 +90,14 @@ const ReaderView: React.FC<ReaderViewProps> = ({ article, onToggleBookmark, onTo
       case 'lg': return 'prose-lg';
       case 'xl': return 'prose-xl';
       default: return 'prose-base';
+    }
+  };
+
+  const getLineHeightClass = () => {
+    switch(lineHeight) {
+      case 'normal': return 'leading-normal';
+      case 'loose': return 'leading-loose';
+      default: return 'leading-relaxed';
     }
   };
 
@@ -109,7 +158,11 @@ const ReaderView: React.FC<ReaderViewProps> = ({ article, onToggleBookmark, onTo
               <TypeIcon className="w-5 h-5" />
             </button>
             {showTypography && (
-              <div className="absolute right-0 mt-3 w-64 bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl border border-slate-100 dark:border-zinc-800 p-6 animate-in fade-in zoom-in-95 duration-200 z-50">
+              <div className="absolute right-0 mt-3 w-72 bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl border border-slate-100 dark:border-zinc-800 p-6 animate-in fade-in zoom-in-95 duration-200 z-50">
+                <div className="flex items-center gap-2 mb-4 text-slate-900 dark:text-zinc-100">
+                  <Maximize2 className="w-4 h-4" />
+                  <span className="text-sm font-bold">Immersive Controls</span>
+                </div>
                 <div className="space-y-6">
                   <div className="space-y-3">
                     <p className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest">Font Size</p>
@@ -120,7 +173,8 @@ const ReaderView: React.FC<ReaderViewProps> = ({ article, onToggleBookmark, onTo
                           onClick={() => setFontSize(size as any)}
                           className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${fontSize === size ? 'bg-indigo-600 dark:bg-emerald-600 text-white border-indigo-600 dark:border-emerald-600 shadow-lg shadow-indigo-100 dark:shadow-none' : 'bg-slate-50 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 border-transparent hover:border-slate-200 dark:hover:border-zinc-700'}`}
                         >
-                          {size.toUpperCase()}
+                          {size === 'sm' ? 'A' : size === 'base' ? 'AA' : size === 'lg' ? 'AA' : 'AA'}
+                          <span className="sr-only">{size}</span>
                         </button>
                       ))}
                     </div>
@@ -142,6 +196,20 @@ const ReaderView: React.FC<ReaderViewProps> = ({ article, onToggleBookmark, onTo
                       </button>
                     </div>
                   </div>
+                  <div className="space-y-3">
+                    <p className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest">Line Height</p>
+                    <div className="flex gap-2">
+                       {['normal', 'relaxed', 'loose'].map(lh => (
+                        <button
+                          key={lh}
+                          onClick={() => setLineHeight(lh as any)}
+                          className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${lineHeight === lh ? 'bg-indigo-600 dark:bg-emerald-600 text-white border-indigo-600 dark:border-emerald-600' : 'bg-slate-50 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 border-transparent'}`}
+                        >
+                          <AlignLeft className={`w-4 h-4 mx-auto ${lh === 'loose' ? 'scale-y-125' : lh === 'normal' ? 'scale-y-75' : ''}`} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -153,7 +221,7 @@ const ReaderView: React.FC<ReaderViewProps> = ({ article, onToggleBookmark, onTo
       </div>
 
       <div className="flex-1 overflow-y-auto bg-slate-50/20 dark:bg-zinc-950/20">
-        <article className={`max-w-2xl mx-auto ${fontFamily === 'serif' ? 'font-serif' : 'font-sans'} transition-all duration-300`}>
+        <article className={`max-w-3xl mx-auto ${fontFamily === 'serif' ? 'font-serif' : 'font-sans'} transition-all duration-300`}>
           {/* Hero Media Section */}
           <div className="w-full relative bg-slate-100 dark:bg-zinc-900 aspect-video md:rounded-b-[2.5rem] overflow-hidden shadow-sm transition-colors duration-300">
             {article.videoId ? (
@@ -199,7 +267,7 @@ const ReaderView: React.FC<ReaderViewProps> = ({ article, onToggleBookmark, onTo
             )}
           </div>
 
-          <div className="py-12 md:py-16 px-6 md:px-8">
+          <div className="py-12 md:py-16 px-6 md:px-12">
             <header className="mb-12 md:mb-16">
               <div className="flex items-center gap-3 mb-6">
                 <span className="text-[10px] md:text-xs font-black text-indigo-600 dark:text-emerald-400 uppercase tracking-[0.2em]">{article.author || 'Contributor'}</span>
@@ -224,13 +292,14 @@ const ReaderView: React.FC<ReaderViewProps> = ({ article, onToggleBookmark, onTo
             </header>
 
             <div 
-              className={`prose prose-slate dark:prose-invert ${getFontSizeClass()} max-w-none text-slate-800 dark:text-zinc-200 leading-[1.7] overflow-x-hidden transition-colors duration-300
+              className={`prose prose-slate dark:prose-invert ${getFontSizeClass()} ${getLineHeightClass()} max-w-none text-slate-800 dark:text-zinc-200 overflow-x-hidden transition-colors duration-300
                 prose-headings:font-black prose-headings:text-slate-900 dark:prose-headings:text-zinc-100 prose-headings:tracking-tight
                 prose-a:text-indigo-600 dark:prose-a:text-emerald-400 prose-a:font-bold prose-a:no-underline hover:prose-a:underline
-                prose-img:rounded-[2rem] prose-img:shadow-xl
+                prose-img:rounded-2xl prose-img:shadow-lg prose-img:mx-auto prose-img:block prose-img:max-h-[600px] prose-img:object-contain
                 prose-strong:text-slate-900 dark:prose-strong:text-zinc-100 prose-strong:font-black
+                prose-blockquote:border-l-4 prose-blockquote:border-indigo-500 dark:prose-blockquote:border-emerald-500 prose-blockquote:bg-slate-50 dark:prose-blockquote:bg-zinc-800/50 prose-blockquote:px-6 prose-blockquote:py-4 prose-blockquote:rounded-r-2xl prose-blockquote:not-italic
               `}
-              dangerouslySetInnerHTML={{ __html: article.content }}
+              dangerouslySetInnerHTML={{ __html: cleanContent || article.content }}
             />
           </div>
         </article>
