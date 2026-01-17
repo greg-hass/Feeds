@@ -2,7 +2,7 @@ import { createContext, useContext, ReactNode } from 'react';
 import { useColorScheme } from 'react-native';
 import { useSettingsStore } from './stores';
 
-const darkColors = {
+export const darkColors = {
     background: {
         primary: '#1a1a1a',
         secondary: '#252525',

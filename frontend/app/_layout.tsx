@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore, useSettingsStore } from '@/stores';
-import { ThemeProvider } from '@/theme';
+import { ThemeProvider, colors } from '@/theme';
 import ToastContainer from '@/components/Toast';
 
 const queryClient = new QueryClient({
@@ -83,6 +83,7 @@ export default function RootLayout() {
     );
 }
 
+// Use static colors for loading screen (renders before ThemeProvider context is available)
 const styles = StyleSheet.create({
     loading: {
         flex: 1,
