@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useFeedStore } from '@/stores';
 import { api, DiscoveredFeed } from '@/services/api';
 import { ArrowLeft, Plus, Search, Rss, Youtube, Headphones, MessageSquare, Folder, Trash2 } from 'lucide-react-native';
+import { colors, borderRadius, spacing } from '@/theme';
 
 export default function ManageScreen() {
     const router = useRouter();
@@ -49,8 +50,9 @@ export default function ManageScreen() {
             setDiscoveries([]);
             setUrlInput('');
             Alert.alert('Success', `Added "${discovery.title}"`);
-        } catch (err: any) {
-            Alert.alert('Error', err.message || 'Failed to add feed');
+        } catch (err: unknown) {
+            const errorMessage = err instanceof Error ? err.message : 'Failed to add feed';
+            Alert.alert('Error', errorMessage);
         } finally {
             setIsAdding(false);
         }
@@ -92,9 +94,9 @@ export default function ManageScreen() {
     const getTypeIcon = (type: string) => {
         switch (type) {
             case 'youtube': return <Youtube size={18} color="#ef4444" />;
-            case 'podcast': return <Headphones size={18} color="#a855f7" />;
+            case 'podcast': return <Headphones size={18} color={colors.secondary.DEFAULT} />;
             case 'reddit': return <MessageSquare size={18} color="#f97316" />;
-            default: return <Rss size={18} color="#a3e635" />;
+            default: return <Rss size={18} color={colors.primary.DEFAULT} />;
         }
     };
 
@@ -103,7 +105,7 @@ export default function ManageScreen() {
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <ArrowLeft size={24} color="#fafafa" />
+                    <ArrowLeft size={24} color={colors.text.primary} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Manage Feeds</Text>
             </View>
@@ -116,7 +118,7 @@ export default function ManageScreen() {
                         <TextInput
                             style={styles.input}
                             placeholder="Enter feed URL or website..."
-                            placeholderTextColor="#71717a"
+                            placeholderTextColor={colors.text.tertiary}
                             value={urlInput}
                             onChangeText={setUrlInput}
                             autoCapitalize="none"
@@ -129,9 +131,9 @@ export default function ManageScreen() {
                             disabled={isDiscovering}
                         >
                             {isDiscovering ? (
-                                <ActivityIndicator size="small" color="#18181b" />
+                                <ActivityIndicator size="small" color={colors.text.inverse} />
                             ) : (
-                                <Search size={20} color="#18181b" />
+                                <Search size={20} color={colors.text.inverse} />
                             )}
                         </TouchableOpacity>
                     </View>
@@ -152,7 +154,7 @@ export default function ManageScreen() {
                                         <Text style={styles.discoveryTitle}>{d.title}</Text>
                                         <Text style={styles.discoveryUrl} numberOfLines={1}>{d.feed_url}</Text>
                                     </View>
-                                    <Plus size={20} color="#a3e635" />
+                                    <Plus size={20} color={colors.primary.DEFAULT} />
                                 </TouchableOpacity>
                             ))}
                         </View>
@@ -166,15 +168,15 @@ export default function ManageScreen() {
                         <TextInput
                             style={styles.input}
                             placeholder="Folder name..."
-                            placeholderTextColor="#71717a"
+                            placeholderTextColor={colors.text.tertiary}
                             value={newFolderName}
                             onChangeText={setNewFolderName}
                         />
                         <TouchableOpacity
-                            style={styles.discoverButton}
+                            style={[styles.discoverButton, { backgroundColor: colors.secondary.DEFAULT }]}
                             onPress={handleCreateFolder}
                         >
-                            <Folder size={20} color="#18181b" />
+                            <Folder size={20} color={colors.text.inverse} />
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -193,7 +195,7 @@ export default function ManageScreen() {
                                 onPress={() => handleDeleteFeed(feed.id, feed.title)}
                                 style={styles.deleteButton}
                             >
-                                <Trash2 size={18} color="#71717a" />
+                                <Trash2 size={18} color={colors.text.tertiary} />
                             </TouchableOpacity>
                         </View>
                     ))}
@@ -206,79 +208,79 @@ export default function ManageScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#18181b',
+        backgroundColor: colors.background.primary,
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 16,
-        gap: 12,
+        padding: spacing.lg,
+        gap: spacing.md,
         borderBottomWidth: 1,
-        borderBottomColor: '#27272a',
+        borderBottomColor: colors.border.DEFAULT,
     },
     backButton: {
-        padding: 8,
-        marginLeft: -8,
+        padding: spacing.sm,
+        marginLeft: -spacing.sm,
     },
     headerTitle: {
         fontSize: 20,
         fontWeight: '600',
-        color: '#fafafa',
+        color: colors.text.primary,
     },
     scrollView: {
         flex: 1,
     },
     content: {
-        padding: 16,
+        padding: spacing.lg,
     },
     section: {
-        marginBottom: 32,
+        marginBottom: spacing.xxl,
     },
     sectionTitle: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#a1a1aa',
-        marginBottom: 12,
+        color: colors.text.secondary,
+        marginBottom: spacing.md,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
     inputRow: {
         flexDirection: 'row',
-        gap: 8,
+        gap: spacing.sm,
     },
     input: {
         flex: 1,
-        backgroundColor: '#27272a',
-        borderRadius: 10,
-        padding: 14,
+        backgroundColor: colors.background.secondary,
+        borderRadius: borderRadius.md,
+        padding: spacing.lg,
         fontSize: 16,
-        color: '#fafafa',
+        color: colors.text.primary,
         borderWidth: 1,
-        borderColor: '#3f3f46',
+        borderColor: colors.border.DEFAULT,
     },
     discoverButton: {
-        backgroundColor: '#a3e635',
-        borderRadius: 10,
-        padding: 14,
+        backgroundColor: colors.primary.DEFAULT,
+        borderRadius: borderRadius.md,
+        padding: spacing.lg,
         alignItems: 'center',
         justifyContent: 'center',
     },
     discoveries: {
-        marginTop: 16,
+        marginTop: spacing.lg,
     },
     discoveriesTitle: {
         fontSize: 13,
-        color: '#71717a',
-        marginBottom: 8,
+        color: colors.text.tertiary,
+        marginBottom: spacing.sm,
     },
     discoveryItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#27272a',
-        borderRadius: 10,
-        padding: 12,
-        gap: 12,
-        marginBottom: 8,
+        backgroundColor: colors.background.secondary,
+        borderRadius: borderRadius.md,
+        padding: spacing.md,
+        gap: spacing.md,
+        marginBottom: spacing.sm,
     },
     discoveryInfo: {
         flex: 1,
@@ -286,21 +288,21 @@ const styles = StyleSheet.create({
     discoveryTitle: {
         fontSize: 15,
         fontWeight: '500',
-        color: '#fafafa',
+        color: colors.text.primary,
     },
     discoveryUrl: {
         fontSize: 12,
-        color: '#71717a',
+        color: colors.text.tertiary,
         marginTop: 2,
     },
     feedItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#27272a',
-        borderRadius: 10,
-        padding: 12,
-        gap: 12,
-        marginBottom: 8,
+        backgroundColor: colors.background.secondary,
+        borderRadius: borderRadius.md,
+        padding: spacing.md,
+        gap: spacing.md,
+        marginBottom: spacing.sm,
     },
     feedInfo: {
         flex: 1,
@@ -308,14 +310,14 @@ const styles = StyleSheet.create({
     feedTitle: {
         fontSize: 15,
         fontWeight: '500',
-        color: '#fafafa',
+        color: colors.text.primary,
     },
     feedUrl: {
         fontSize: 12,
-        color: '#71717a',
+        color: colors.text.tertiary,
         marginTop: 2,
     },
     deleteButton: {
-        padding: 8,
+        padding: spacing.sm,
     },
 });

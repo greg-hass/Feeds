@@ -3,9 +3,10 @@ import { useRouter } from 'expo-router';
 import { useFeedStore, useArticleStore, useAuthStore } from '@/stores';
 import {
     Rss, Youtube, MessageSquare, Headphones,
-    Folder, ChevronRight, Search, Settings,
+    Folder, Search, Settings,
     Plus, LogOut, RefreshCw
 } from 'lucide-react-native';
+import { colors, borderRadius, spacing } from '@/theme';
 
 const FEED_TYPE_ICONS: Record<string, React.ComponentType<any>> = {
     rss: Rss,
@@ -50,24 +51,24 @@ export default function Sidebar() {
             {/* Header */}
             <View style={styles.header}>
                 <View style={styles.logoRow}>
-                    <Rss size={24} color="#a3e635" />
+                    <Rss size={24} color={colors.primary.DEFAULT} />
                     <Text style={styles.logoText}>Feeds</Text>
                 </View>
                 <TouchableOpacity onPress={handleRefresh} style={styles.iconButton}>
-                    <RefreshCw size={18} color="#a1a1aa" />
+                    <RefreshCw size={18} color={colors.text.secondary} />
                 </TouchableOpacity>
             </View>
 
             {/* Search */}
             <TouchableOpacity style={styles.searchBar} onPress={() => router.push('/(app)/search')}>
-                <Search size={18} color="#71717a" />
+                <Search size={18} color={colors.text.tertiary} />
                 <Text style={styles.searchText}>Search...</Text>
             </TouchableOpacity>
 
             <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
                 {/* All */}
                 <TouchableOpacity style={styles.navItem} onPress={handleAllPress}>
-                    <Rss size={18} color="#a3e635" />
+                    <Rss size={18} color={colors.primary.DEFAULT} />
                     <Text style={styles.navItemText}>All Articles</Text>
                     {totalUnread > 0 && (
                         <View style={styles.badge}>
@@ -80,13 +81,14 @@ export default function Sidebar() {
                 <Text style={styles.sectionTitle}>By Type</Text>
                 {smartFolders.map((sf) => {
                     const Icon = FEED_TYPE_ICONS[sf.type] || Rss;
+                    const iconColor = sf.type === 'podcast' ? colors.secondary.DEFAULT : colors.text.secondary;
                     return (
                         <TouchableOpacity
                             key={sf.type}
                             style={styles.navItem}
                             onPress={() => handleSmartFolderPress(sf.type)}
                         >
-                            <Icon size={18} color="#a1a1aa" />
+                            <Icon size={18} color={iconColor} />
                             <Text style={styles.navItemText}>{sf.name}</Text>
                             {sf.unread_count > 0 && (
                                 <View style={styles.badge}>
@@ -107,7 +109,7 @@ export default function Sidebar() {
                                 style={styles.navItem}
                                 onPress={() => handleFolderPress(folder.id)}
                             >
-                                <Folder size={18} color="#a1a1aa" />
+                                <Folder size={18} color={colors.secondary.DEFAULT} />
                                 <Text style={styles.navItemText}>{folder.name}</Text>
                                 {folder.unread_count > 0 && (
                                     <View style={styles.badge}>
@@ -134,7 +136,7 @@ export default function Sidebar() {
                                 {feed.icon_url ? (
                                     <Image source={{ uri: feed.icon_url }} style={styles.feedIcon} />
                                 ) : (
-                                    <Icon size={18} color="#71717a" />
+                                    <Icon size={18} color={colors.text.tertiary} />
                                 )}
                                 <Text style={styles.navItemText} numberOfLines={1}>{feed.title}</Text>
                                 {feed.unread_count > 0 && (
@@ -150,17 +152,17 @@ export default function Sidebar() {
             {/* Footer */}
             <View style={styles.footer}>
                 <TouchableOpacity style={styles.footerButton} onPress={() => router.push('/(app)/manage')}>
-                    <Plus size={18} color="#a1a1aa" />
+                    <Plus size={18} color={colors.primary.DEFAULT} />
                     <Text style={styles.footerButtonText}>Add Feed</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.footerButton} onPress={() => router.push('/(app)/settings')}>
-                    <Settings size={18} color="#a1a1aa" />
+                    <Settings size={18} color={colors.text.secondary} />
                     <Text style={styles.footerButtonText}>Settings</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.footerButton} onPress={logout}>
-                    <LogOut size={18} color="#71717a" />
+                    <LogOut size={18} color={colors.text.tertiary} />
                 </TouchableOpacity>
             </View>
         </View>
@@ -170,15 +172,15 @@ export default function Sidebar() {
 const styles = StyleSheet.create({
     container: {
         width: 280,
-        backgroundColor: '#09090b',
+        backgroundColor: colors.background.elevated,
         borderRightWidth: 1,
-        borderRightColor: '#27272a',
+        borderRightColor: colors.border.DEFAULT,
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 16,
+        padding: spacing.lg,
         paddingTop: 20,
     },
     logoRow: {
@@ -189,63 +191,63 @@ const styles = StyleSheet.create({
     logoText: {
         fontSize: 20,
         fontWeight: '700',
-        color: '#fafafa',
+        color: colors.text.primary,
     },
     iconButton: {
-        padding: 8,
+        padding: spacing.sm,
     },
     searchBar: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#18181b',
-        marginHorizontal: 12,
-        marginBottom: 16,
-        padding: 10,
-        borderRadius: 8,
-        gap: 8,
+        backgroundColor: colors.background.secondary,
+        marginHorizontal: spacing.md,
+        marginBottom: spacing.lg,
+        padding: spacing.md,
+        borderRadius: borderRadius.md,
+        gap: spacing.sm,
     },
     searchText: {
-        color: '#71717a',
+        color: colors.text.tertiary,
         fontSize: 14,
     },
     scrollView: {
         flex: 1,
-        paddingHorizontal: 8,
+        paddingHorizontal: spacing.sm,
     },
     sectionTitle: {
         fontSize: 11,
         fontWeight: '600',
-        color: '#52525b',
+        color: colors.text.tertiary,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
-        paddingHorizontal: 8,
-        paddingTop: 16,
-        paddingBottom: 8,
+        paddingHorizontal: spacing.sm,
+        paddingTop: spacing.lg,
+        paddingBottom: spacing.sm,
     },
     navItem: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 10,
-        padding: 10,
-        borderRadius: 8,
+        padding: spacing.md,
+        borderRadius: borderRadius.md,
         marginBottom: 2,
     },
     navItemText: {
         flex: 1,
         fontSize: 14,
-        color: '#e4e4e7',
+        color: colors.text.primary,
     },
     badge: {
-        backgroundColor: '#27272a',
-        paddingHorizontal: 8,
+        backgroundColor: colors.background.tertiary,
+        paddingHorizontal: spacing.sm,
         paddingVertical: 2,
-        borderRadius: 10,
+        borderRadius: borderRadius.full,
         minWidth: 24,
         alignItems: 'center',
     },
     badgeText: {
         fontSize: 12,
-        color: '#a1a1aa',
+        color: colors.text.secondary,
         fontWeight: '500',
     },
     feedIcon: {
@@ -256,21 +258,21 @@ const styles = StyleSheet.create({
     footer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        padding: 12,
+        padding: spacing.md,
         borderTopWidth: 1,
-        borderTopColor: '#27272a',
-        gap: 8,
+        borderTopColor: colors.border.DEFAULT,
+        gap: spacing.sm,
     },
     footerButton: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
-        padding: 10,
-        borderRadius: 8,
-        backgroundColor: '#18181b',
+        padding: spacing.md,
+        borderRadius: borderRadius.md,
+        backgroundColor: colors.background.secondary,
     },
     footerButtonText: {
         fontSize: 13,
-        color: '#a1a1aa',
+        color: colors.text.secondary,
     },
 });

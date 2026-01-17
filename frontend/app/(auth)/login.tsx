@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingVi
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores';
 import { Rss } from 'lucide-react-native';
+import { colors, borderRadius, spacing } from '@/theme';
 
 export default function LoginScreen() {
     const router = useRouter();
@@ -38,7 +39,7 @@ export default function LoginScreen() {
         >
             <View style={styles.content}>
                 <View style={styles.header}>
-                    <Rss size={48} color="#a3e635" />
+                    <Rss size={48} color={colors.primary.DEFAULT} />
                     <Text style={styles.title}>Feeds</Text>
                     <Text style={styles.subtitle}>Sign in to your account</Text>
                 </View>
@@ -47,7 +48,7 @@ export default function LoginScreen() {
                     <TextInput
                         style={styles.input}
                         placeholder="Username"
-                        placeholderTextColor="#71717a"
+                        placeholderTextColor={colors.text.tertiary}
                         value={username}
                         onChangeText={setUsername}
                         autoCapitalize="none"
@@ -57,7 +58,7 @@ export default function LoginScreen() {
                     <TextInput
                         style={styles.input}
                         placeholder="Password"
-                        placeholderTextColor="#71717a"
+                        placeholderTextColor={colors.text.tertiary}
                         value={password}
                         onChangeText={setPassword}
                         secureTextEntry
@@ -83,12 +84,12 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#18181b',
+        backgroundColor: colors.background.primary,
     },
     content: {
         flex: 1,
         justifyContent: 'center',
-        padding: 24,
+        padding: spacing.xl,
         maxWidth: 400,
         width: '100%',
         alignSelf: 'center',
@@ -100,32 +101,32 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 32,
         fontWeight: '700',
-        color: '#fafafa',
-        marginTop: 16,
+        color: colors.text.primary,
+        marginTop: spacing.lg,
     },
     subtitle: {
         fontSize: 16,
-        color: '#a1a1aa',
-        marginTop: 8,
+        color: colors.text.secondary,
+        marginTop: spacing.sm,
     },
     form: {
-        gap: 16,
+        gap: spacing.lg,
     },
     input: {
-        backgroundColor: '#27272a',
-        borderRadius: 12,
-        padding: 16,
+        backgroundColor: colors.background.secondary,
+        borderRadius: borderRadius.md,
+        padding: spacing.lg,
         fontSize: 16,
-        color: '#fafafa',
+        color: colors.text.primary,
         borderWidth: 1,
-        borderColor: '#3f3f46',
+        borderColor: colors.border.DEFAULT,
     },
     button: {
-        backgroundColor: '#a3e635',
-        borderRadius: 12,
-        padding: 16,
+        backgroundColor: colors.primary.DEFAULT,
+        borderRadius: borderRadius.md,
+        padding: spacing.lg,
         alignItems: 'center',
-        marginTop: 8,
+        marginTop: spacing.sm,
     },
     buttonDisabled: {
         opacity: 0.6,
@@ -133,10 +134,10 @@ const styles = StyleSheet.create({
     buttonText: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#18181b',
+        color: colors.text.inverse,
     },
     error: {
-        color: '#ef4444',
+        color: colors.error,
         fontSize: 14,
         textAlign: 'center',
     },

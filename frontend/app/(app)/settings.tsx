@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSettingsStore, useAuthStore } from '@/stores';
 import { ArrowLeft, Sun, Moon, Monitor } from 'lucide-react-native';
+import { colors, borderRadius, spacing } from '@/theme';
 
 export default function SettingsScreen() {
     const router = useRouter();
@@ -28,7 +29,7 @@ export default function SettingsScreen() {
             <View style={styles.container}>
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                        <ArrowLeft size={24} color="#fafafa" />
+                        <ArrowLeft size={24} color={colors.text.primary} />
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>Settings</Text>
                 </View>
@@ -44,7 +45,7 @@ export default function SettingsScreen() {
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <ArrowLeft size={24} color="#fafafa" />
+                    <ArrowLeft size={24} color={colors.text.primary} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Settings</Text>
             </View>
@@ -71,21 +72,21 @@ export default function SettingsScreen() {
                                 style={[styles.themeOption, settings.theme === 'light' && styles.themeOptionActive]}
                                 onPress={() => handleThemeChange('light')}
                             >
-                                <Sun size={20} color={settings.theme === 'light' ? '#18181b' : '#a1a1aa'} />
+                                <Sun size={20} color={settings.theme === 'light' ? colors.text.inverse : colors.text.secondary} />
                                 <Text style={[styles.themeText, settings.theme === 'light' && styles.themeTextActive]}>Light</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.themeOption, settings.theme === 'dark' && styles.themeOptionActive]}
                                 onPress={() => handleThemeChange('dark')}
                             >
-                                <Moon size={20} color={settings.theme === 'dark' ? '#18181b' : '#a1a1aa'} />
+                                <Moon size={20} color={settings.theme === 'dark' ? colors.text.inverse : colors.text.secondary} />
                                 <Text style={[styles.themeText, settings.theme === 'dark' && styles.themeTextActive]}>Dark</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.themeOption, settings.theme === 'auto' && styles.themeOptionActive]}
                                 onPress={() => handleThemeChange('auto')}
                             >
-                                <Monitor size={20} color={settings.theme === 'auto' ? '#18181b' : '#a1a1aa'} />
+                                <Monitor size={20} color={settings.theme === 'auto' ? colors.text.inverse : colors.text.secondary} />
                                 <Text style={[styles.themeText, settings.theme === 'auto' && styles.themeTextActive]}>Auto</Text>
                             </TouchableOpacity>
                         </View>
@@ -97,8 +98,8 @@ export default function SettingsScreen() {
                             <Switch
                                 value={settings.show_images}
                                 onValueChange={(v) => handleToggle('show_images', v)}
-                                trackColor={{ false: '#3f3f46', true: '#a3e635' }}
-                                thumbColor="#fafafa"
+                                trackColor={{ false: colors.border.DEFAULT, true: colors.primary.DEFAULT }}
+                                thumbColor={colors.text.primary}
                             />
                         </View>
                     </View>
@@ -116,8 +117,8 @@ export default function SettingsScreen() {
                             <Switch
                                 value={settings.readability_enabled}
                                 onValueChange={(v) => handleToggle('readability_enabled', v)}
-                                trackColor={{ false: '#3f3f46', true: '#a3e635' }}
-                                thumbColor="#fafafa"
+                                trackColor={{ false: colors.border.DEFAULT, true: colors.primary.DEFAULT }}
+                                thumbColor={colors.text.primary}
                             />
                         </View>
 
@@ -131,8 +132,8 @@ export default function SettingsScreen() {
                             <Switch
                                 value={settings.fetch_full_content}
                                 onValueChange={(v) => handleToggle('fetch_full_content', v)}
-                                trackColor={{ false: '#3f3f46', true: '#a3e635' }}
-                                thumbColor="#fafafa"
+                                trackColor={{ false: colors.border.DEFAULT, true: colors.primary.DEFAULT }}
+                                thumbColor={colors.text.primary}
                             />
                         </View>
                     </View>
@@ -171,24 +172,24 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#18181b',
+        backgroundColor: colors.background.primary,
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 16,
-        gap: 12,
+        padding: spacing.lg,
+        gap: spacing.md,
         borderBottomWidth: 1,
-        borderBottomColor: '#27272a',
+        borderBottomColor: colors.border.DEFAULT,
     },
     backButton: {
-        padding: 8,
-        marginLeft: -8,
+        padding: spacing.sm,
+        marginLeft: -spacing.sm,
     },
     headerTitle: {
         fontSize: 20,
         fontWeight: '600',
-        color: '#fafafa',
+        color: colors.text.primary,
     },
     loading: {
         flex: 1,
@@ -196,30 +197,30 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     loadingText: {
-        color: '#71717a',
+        color: colors.text.tertiary,
     },
     scrollView: {
         flex: 1,
     },
     content: {
-        padding: 16,
+        padding: spacing.lg,
         paddingBottom: 48,
     },
     section: {
-        marginBottom: 24,
+        marginBottom: spacing.xl,
     },
     sectionTitle: {
         fontSize: 13,
         fontWeight: '600',
-        color: '#71717a',
-        marginBottom: 8,
+        color: colors.text.tertiary,
+        marginBottom: spacing.sm,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
     card: {
-        backgroundColor: '#27272a',
-        borderRadius: 12,
-        padding: 16,
+        backgroundColor: colors.background.secondary,
+        borderRadius: borderRadius.lg,
+        padding: spacing.lg,
     },
     row: {
         flexDirection: 'row',
@@ -228,26 +229,26 @@ const styles = StyleSheet.create({
     },
     label: {
         fontSize: 16,
-        color: '#fafafa',
+        color: colors.text.primary,
     },
     hint: {
         fontSize: 13,
-        color: '#71717a',
+        color: colors.text.tertiary,
         marginTop: 2,
     },
     value: {
         fontSize: 16,
-        color: '#a1a1aa',
+        color: colors.text.secondary,
     },
     divider: {
         height: 1,
-        backgroundColor: '#3f3f46',
-        marginVertical: 12,
+        backgroundColor: colors.border.DEFAULT,
+        marginVertical: spacing.md,
     },
     themeRow: {
         flexDirection: 'row',
-        gap: 8,
-        marginTop: 12,
+        gap: spacing.sm,
+        marginTop: spacing.md,
     },
     themeOption: {
         flex: 1,
@@ -255,36 +256,36 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 6,
-        padding: 12,
-        borderRadius: 8,
-        backgroundColor: '#3f3f46',
+        padding: spacing.md,
+        borderRadius: borderRadius.md,
+        backgroundColor: colors.background.tertiary,
     },
     themeOptionActive: {
-        backgroundColor: '#a3e635',
+        backgroundColor: colors.primary.DEFAULT,
     },
     themeText: {
         fontSize: 14,
-        color: '#a1a1aa',
+        color: colors.text.secondary,
     },
     themeTextActive: {
-        color: '#18181b',
+        color: colors.text.inverse,
         fontWeight: '600',
     },
     logoutButton: {
-        backgroundColor: '#27272a',
-        borderRadius: 12,
-        padding: 16,
+        backgroundColor: colors.background.secondary,
+        borderRadius: borderRadius.lg,
+        padding: spacing.lg,
         alignItems: 'center',
-        marginTop: 16,
+        marginTop: spacing.lg,
     },
     logoutText: {
         fontSize: 16,
-        color: '#ef4444',
+        color: colors.error,
         fontWeight: '500',
     },
     version: {
         textAlign: 'center',
-        color: '#52525b',
-        marginTop: 24,
+        color: colors.text.tertiary,
+        marginTop: spacing.xl,
     },
 });

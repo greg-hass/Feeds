@@ -1,126 +1,114 @@
 import { useEffect, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, Image } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { formatDistanceToNow } from 'date-fns';
 import { useArticleStore, useFeedStore } from '@/stores';
 import { Article } from '@/services/api';
-import { Circle, CheckCircle, Headphones, Play, ExternalLink } from 'lucide-react-native';
+import { Circle, CircleCheck, Headphones, Filter } from 'lucide-react-native';
+import { colors, borderRadius, spacing } from '@/theme';
 
 export default function ArticleListScreen() {
     const router = useRouter();
     const { articles, isLoading, hasMore, filter, fetchArticles, setFilter } = useArticleStore();
-    const { totalUnread } = useFeedStore();
+    const { fetchFeeds, fetchFolders } = useFeedStore();
 
     useEffect(() => {
+        fetchFeeds();
+        fetchFolders();
         fetchArticles(true);
     }, []);
 
+    const handleArticlePress = (id: number) => {
+        router.push(`/(app)/article/${id}`);
+    };
+
     const handleRefresh = useCallback(() => {
+        fetchFeeds();
+        fetchFolders();
         fetchArticles(true);
     }, []);
 
     const handleLoadMore = useCallback(() => {
         if (hasMore && !isLoading) {
-            fetchArticles();
+            fetchArticles(false);
         }
     }, [hasMore, isLoading]);
 
-    const handleArticlePress = (article: Article) => {
-        router.push(`/(app)/article/${article.id}`);
+    const toggleUnreadFilter = () => {
+        setFilter({ unread_only: !filter.unread_only });
     };
 
     const renderArticle = ({ item }: { item: Article }) => (
         <TouchableOpacity
-            style={[styles.article, item.is_read && styles.articleRead]}
-            onPress={() => handleArticlePress(item)}
-            activeOpacity={0.7}
+            style={[styles.articleCard, item.is_read && styles.articleRead]}
+            onPress={() => handleArticlePress(item.id)}
         >
             <View style={styles.articleHeader}>
-                <View style={styles.feedInfo}>
-                    {item.feed_icon_url ? (
-                        <Image source={{ uri: item.feed_icon_url }} style={styles.feedIcon} />
-                    ) : (
-                        <View style={[styles.feedIcon, styles.feedIconPlaceholder]} />
-                    )}
-                    <Text style={styles.feedTitle} numberOfLines={1}>{item.feed_title}</Text>
-                    {item.has_audio && <Headphones size={14} color="#a3e635" />}
-                </View>
-                <View style={styles.readIndicator}>
-                    {item.is_read ? (
-                        <CheckCircle size={18} color="#52525b" />
-                    ) : (
-                        <Circle size={18} color="#a3e635" fill="#a3e635" />
-                    )}
-                </View>
+                <Text style={styles.feedName}>{item.feed_title}</Text>
+                {item.has_audio && <Headphones size={14} color={colors.secondary.DEFAULT} />}
             </View>
-
-            <Text style={[styles.articleTitle, item.is_read && styles.textRead]} numberOfLines={2}>
+            <Text style={[styles.articleTitle, item.is_read && styles.articleTitleRead]} numberOfLines={2}>
+                {!item.is_read && (
+                    <Circle size={8} color={colors.primary.DEFAULT} fill={colors.primary.DEFAULT} style={{ marginRight: 6 }} />
+                )}
                 {item.title}
             </Text>
-
             {item.summary && (
-                <Text style={[styles.articleSummary, item.is_read && styles.textRead]} numberOfLines={2}>
+                <Text style={styles.articleSummary} numberOfLines={2}>
                     {item.summary}
                 </Text>
             )}
-
-            <View style={styles.articleFooter}>
-                {item.author && (
-                    <Text style={styles.author} numberOfLines={1}>
-                        {item.author}
-                    </Text>
-                )}
-                {item.published_at && (
-                    <Text style={styles.timestamp}>
-                        {formatDistanceToNow(new Date(item.published_at), { addSuffix: true })}
-                    </Text>
-                )}
-            </View>
-        </TouchableOpacity>
-    );
-
-    const renderHeader = () => (
-        <View style={styles.header}>
-            <Text style={styles.headerTitle}>
-                {filter.feed_id ? 'Feed' : filter.folder_id ? 'Folder' : filter.type ? filter.type.toUpperCase() : 'All Articles'}
+            <Text style={styles.articleMeta}>
+                {item.author && `${item.author} • `}
+                {item.published_at && formatDistanceToNow(new Date(item.published_at), { addSuffix: true })}
             </Text>
-            <View style={styles.filterRow}>
-                <TouchableOpacity
-                    style={[styles.filterChip, filter.unread_only && styles.filterChipActive]}
-                    onPress={() => setFilter({ unread_only: !filter.unread_only })}
-                >
-                    <Text style={[styles.filterChipText, filter.unread_only && styles.filterChipTextActive]}>
-                        Unread ({totalUnread})
-                    </Text>
-                </TouchableOpacity>
-            </View>
-        </View>
+        </TouchableOpacity>
     );
 
     return (
         <View style={styles.container}>
+            {/* Header */}
+            <View style={styles.header}>
+                <Text style={styles.headerTitle}>Articles</Text>
+                <TouchableOpacity
+                    style={[styles.filterButton, filter.unread_only && styles.filterButtonActive]}
+                    onPress={toggleUnreadFilter}
+                >
+                    <Filter size={16} color={filter.unread_only ? colors.text.inverse : colors.text.secondary} />
+                    <Text style={[styles.filterText, filter.unread_only && styles.filterTextActive]}>
+                        {filter.unread_only ? 'Unread' : 'All'}
+                    </Text>
+                </TouchableOpacity>
+            </View>
+
+            {/* List */}
             <FlatList
                 data={articles}
                 keyExtractor={(item) => String(item.id)}
                 renderItem={renderArticle}
-                ListHeaderComponent={renderHeader}
+                contentContainerStyle={styles.list}
+                ItemSeparatorComponent={() => <View style={styles.separator} />}
                 refreshControl={
                     <RefreshControl
-                        refreshing={isLoading}
+                        refreshing={isLoading && articles.length === 0}
                         onRefresh={handleRefresh}
-                        tintColor="#a3e635"
+                        tintColor={colors.primary.DEFAULT}
+                        colors={[colors.primary.DEFAULT]}
                     />
                 }
                 onEndReached={handleLoadMore}
                 onEndReachedThreshold={0.5}
-                contentContainerStyle={styles.list}
-                ItemSeparatorComponent={() => <View style={styles.separator} />}
+                ListFooterComponent={
+                    isLoading && articles.length > 0 ? (
+                        <ActivityIndicator style={styles.loader} color={colors.primary.DEFAULT} />
+                    ) : null
+                }
                 ListEmptyComponent={
                     !isLoading ? (
                         <View style={styles.empty}>
-                            <Text style={styles.emptyText}>
-                                {filter.unread_only ? 'All caught up!' : 'No articles yet'}
-                            </Text>
+                            <CircleCheck size={48} color={colors.primary.DEFAULT} />
+                            <Text style={styles.emptyTitle}>All caught up!</Text>
+                            <Text style={styles.emptyText}>No unread articles</Text>
                         </View>
                     ) : null
                 }
@@ -132,120 +120,105 @@ export default function ArticleListScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#18181b',
-    },
-    list: {
-        padding: 16,
-        paddingBottom: 100,
+        backgroundColor: colors.background.primary,
     },
     header: {
-        marginBottom: 16,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: spacing.lg,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border.DEFAULT,
     },
     headerTitle: {
-        fontSize: 28,
+        fontSize: 24,
         fontWeight: '700',
-        color: '#fafafa',
-        marginBottom: 12,
+        color: colors.text.primary,
     },
-    filterRow: {
+    filterButton: {
         flexDirection: 'row',
-        gap: 8,
-    },
-    filterChip: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 16,
-        backgroundColor: '#27272a',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.sm,
+        borderRadius: borderRadius.md,
+        backgroundColor: colors.background.secondary,
         borderWidth: 1,
-        borderColor: '#3f3f46',
+        borderColor: colors.border.DEFAULT,
     },
-    filterChipActive: {
-        backgroundColor: '#a3e635',
-        borderColor: '#a3e635',
+    filterButtonActive: {
+        backgroundColor: colors.primary.DEFAULT,
+        borderColor: colors.primary.DEFAULT,
     },
-    filterChipText: {
+    filterText: {
         fontSize: 14,
-        color: '#a1a1aa',
+        color: colors.text.secondary,
     },
-    filterChipTextActive: {
-        color: '#18181b',
-        fontWeight: '600',
+    filterTextActive: {
+        color: colors.text.inverse,
+        fontWeight: '500',
     },
-    article: {
-        backgroundColor: '#27272a',
-        borderRadius: 12,
-        padding: 16,
+    list: {
+        padding: spacing.lg,
+    },
+    articleCard: {
+        backgroundColor: colors.background.secondary,
+        borderRadius: borderRadius.lg,
+        padding: spacing.lg,
     },
     articleRead: {
         opacity: 0.7,
     },
     articleHeader: {
         flexDirection: 'row',
+        alignItems: 'center',
         justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 8,
+        marginBottom: spacing.sm,
     },
-    feedInfo: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        flex: 1,
-    },
-    feedIcon: {
-        width: 20,
-        height: 20,
-        borderRadius: 4,
-    },
-    feedIconPlaceholder: {
-        backgroundColor: '#3f3f46',
-    },
-    feedTitle: {
-        fontSize: 13,
-        color: '#a1a1aa',
-        flex: 1,
-    },
-    readIndicator: {
-        marginLeft: 8,
+    feedName: {
+        fontSize: 12,
+        color: colors.secondary.DEFAULT,
+        fontWeight: '500',
     },
     articleTitle: {
         fontSize: 17,
         fontWeight: '600',
-        color: '#fafafa',
+        color: colors.text.primary,
         lineHeight: 24,
-        marginBottom: 6,
+        marginBottom: spacing.sm,
+    },
+    articleTitleRead: {
+        color: colors.text.secondary,
     },
     articleSummary: {
         fontSize: 14,
-        color: '#a1a1aa',
+        color: colors.text.secondary,
         lineHeight: 20,
-        marginBottom: 8,
+        marginBottom: spacing.sm,
     },
-    textRead: {
-        color: '#71717a',
-    },
-    articleFooter: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    author: {
+    articleMeta: {
         fontSize: 12,
-        color: '#71717a',
-        flex: 1,
-    },
-    timestamp: {
-        fontSize: 12,
-        color: '#52525b',
+        color: colors.text.tertiary,
     },
     separator: {
-        height: 12,
+        height: spacing.md,
+    },
+    loader: {
+        paddingVertical: spacing.xl,
     },
     empty: {
         alignItems: 'center',
-        paddingVertical: 48,
+        paddingVertical: 64,
+    },
+    emptyTitle: {
+        fontSize: 20,
+        fontWeight: '600',
+        color: colors.text.primary,
+        marginTop: spacing.lg,
     },
     emptyText: {
-        fontSize: 16,
-        color: '#71717a',
+        fontSize: 14,
+        color: colors.text.secondary,
+        marginTop: spacing.sm,
     },
 });

@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores';
+import { colors } from '@/theme';
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -21,7 +22,7 @@ function AuthGate() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        checkAuthStatus().catch((err) => {
+        checkAuthStatus().catch((err: Error) => {
             console.error('Auth status check failed:', err);
             setError(err?.message || 'Failed to connect to server');
         });
@@ -50,7 +51,7 @@ function AuthGate() {
     if (isLoading) {
         return (
             <View style={styles.loading}>
-                <ActivityIndicator size="large" color="#a3e635" />
+                <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
                 {error && <Text style={styles.errorText}>{error}</Text>}
             </View>
         );
@@ -78,10 +79,10 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#18181b',
+        backgroundColor: colors.background.primary,
     },
     errorText: {
-        color: '#ef4444',
+        color: colors.error,
         marginTop: 16,
         fontSize: 14,
     },

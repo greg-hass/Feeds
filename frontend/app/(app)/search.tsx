@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { formatDistanceToNow } from 'date-fns';
 import { api, SearchResult } from '@/services/api';
 import { Search as SearchIcon, ArrowLeft, X } from 'lucide-react-native';
+import { colors, borderRadius, spacing } from '@/theme';
 
 export default function SearchScreen() {
     const router = useRouter();
@@ -59,15 +60,15 @@ export default function SearchScreen() {
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <ArrowLeft size={24} color="#fafafa" />
+                    <ArrowLeft size={24} color={colors.text.primary} />
                 </TouchableOpacity>
 
                 <View style={styles.searchInputContainer}>
-                    <SearchIcon size={18} color="#71717a" />
+                    <SearchIcon size={18} color={colors.text.tertiary} />
                     <TextInput
                         style={styles.searchInput}
                         placeholder="Search articles..."
-                        placeholderTextColor="#71717a"
+                        placeholderTextColor={colors.text.tertiary}
                         value={query}
                         onChangeText={setQuery}
                         onSubmitEditing={handleSearch}
@@ -76,7 +77,7 @@ export default function SearchScreen() {
                     />
                     {query.length > 0 && (
                         <TouchableOpacity onPress={() => setQuery('')}>
-                            <X size={18} color="#71717a" />
+                            <X size={18} color={colors.text.tertiary} />
                         </TouchableOpacity>
                     )}
                 </View>
@@ -85,7 +86,7 @@ export default function SearchScreen() {
             {/* Results */}
             {isLoading ? (
                 <View style={styles.loading}>
-                    <ActivityIndicator size="large" color="#a3e635" />
+                    <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
                 </View>
             ) : (
                 <FlatList
@@ -114,34 +115,34 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#18181b',
+        backgroundColor: colors.background.primary,
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 16,
-        gap: 12,
+        padding: spacing.lg,
+        gap: spacing.md,
         borderBottomWidth: 1,
-        borderBottomColor: '#27272a',
+        borderBottomColor: colors.border.DEFAULT,
     },
     backButton: {
-        padding: 8,
-        marginLeft: -8,
+        padding: spacing.sm,
+        marginLeft: -spacing.sm,
     },
     searchInputContainer: {
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#27272a',
-        borderRadius: 10,
-        paddingHorizontal: 12,
-        gap: 8,
+        backgroundColor: colors.background.secondary,
+        borderRadius: borderRadius.md,
+        paddingHorizontal: spacing.md,
+        gap: spacing.sm,
     },
     searchInput: {
         flex: 1,
-        padding: 12,
+        padding: spacing.md,
         fontSize: 16,
-        color: '#fafafa',
+        color: colors.text.primary,
     },
     loading: {
         flex: 1,
@@ -149,38 +150,38 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     list: {
-        padding: 16,
+        padding: spacing.lg,
     },
     result: {
-        backgroundColor: '#27272a',
-        borderRadius: 12,
-        padding: 16,
+        backgroundColor: colors.background.secondary,
+        borderRadius: borderRadius.lg,
+        padding: spacing.lg,
     },
     feedTitle: {
         fontSize: 12,
-        color: '#a3e635',
+        color: colors.secondary.DEFAULT,
         fontWeight: '500',
-        marginBottom: 6,
+        marginBottom: spacing.sm,
     },
     resultTitle: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#fafafa',
+        color: colors.text.primary,
         lineHeight: 22,
-        marginBottom: 6,
+        marginBottom: spacing.sm,
     },
     snippet: {
         fontSize: 14,
-        color: '#a1a1aa',
+        color: colors.text.secondary,
         lineHeight: 20,
-        marginBottom: 8,
+        marginBottom: spacing.sm,
     },
     timestamp: {
         fontSize: 12,
-        color: '#52525b',
+        color: colors.text.tertiary,
     },
     separator: {
-        height: 12,
+        height: spacing.md,
     },
     empty: {
         alignItems: 'center',
@@ -188,6 +189,6 @@ const styles = StyleSheet.create({
     },
     emptyText: {
         fontSize: 16,
-        color: '#71717a',
+        color: colors.text.tertiary,
     },
 });
