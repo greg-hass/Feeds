@@ -1,5 +1,5 @@
 import cron from 'node-cron';
-import { queryAll, run } from '../db/index.js';
+import { queryOne, queryAll, run } from '../db/index.js';
 import { parseFeed, normalizeArticle, FeedType } from './feed-parser.js';
 
 interface FeedToRefresh {

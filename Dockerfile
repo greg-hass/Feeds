@@ -7,7 +7,7 @@ COPY backend/package*.json ./
 RUN npm install
 
 COPY backend/ ./
-RUN npm run build && cp -r src/db/*.sql dist/db/
+RUN npm run build && mkdir -p dist/db/migrations && cp src/db/migrations/*.sql dist/db/migrations/
 
 # Stage 2: Build frontend
 FROM node:20-alpine AS frontend-builder
