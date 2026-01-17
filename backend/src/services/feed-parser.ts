@@ -1,6 +1,5 @@
 import FeedParser from 'feedparser';
 import { Readable } from 'stream';
-import * as cheerio from 'cheerio';
 
 export type FeedType = 'rss' | 'youtube' | 'reddit' | 'podcast';
 
@@ -14,11 +13,11 @@ export interface RawArticle {
     pubdate: Date | null;
     enclosures: Array<{
         url: string;
-        type: string;
-        length: string;
+        type?: string;
+        length?: string;
     }>;
     image?: { url: string };
-    'media:thumbnail'?: { url: string };
+    thumbnail?: string;
 }
 
 export interface ParsedFeed {
@@ -63,38 +62,42 @@ export async function parseFeed(url: string): Promise<ParsedFeed> {
     return new Promise((resolve, reject) => {
         const feedparser = new FeedParser({ feedurl: url });
         const articles: RawArticle[] = [];
-        let feedMeta: any = null;
+        let feedMeta: FeedParser.Meta | null = null;
         let isPodcast = false;
 
         feedparser.on('error', reject);
 
         feedparser.on('readable', function (this: FeedParser) {
-            let item;
+            let item: FeedParser.Item | null;
             while ((item = this.read())) {
                 // Check for podcast indicators
-                if (item.enclosures?.some((e: any) => e.type?.startsWith('audio/'))) {
+                if (item.enclosures?.some((e) => e.type?.startsWith('audio/'))) {
                     isPodcast = true;
                 }
+
+                // Access extended properties via any cast for RSS extensions
+                const extendedItem = item as FeedParser.Item & Record<string, unknown>;
 
                 articles.push({
                     guid: item.guid || item.link || generateGuid(item),
                     title: item.title || 'Untitled',
                     link: item.link || item.origlink || '',
-                    author: item.author || item['dc:creator'] || null,
+                    author: item.author || (extendedItem['dc:creator'] as string) || null,
                     summary: truncate(stripHtml(item.summary || item.description || ''), 500),
-                    description: item.description || item['content:encoded'] || item.summary || null,
+                    description: item.description || (extendedItem['content:encoded'] as string) || item.summary || null,
                     pubdate: item.pubdate || item.date || null,
                     enclosures: item.enclosures || [],
                     image: item.image,
-                    'media:thumbnail': item['media:thumbnail'],
+                    thumbnail: (extendedItem['media:thumbnail'] as { url?: string })?.url,
                 });
             }
         });
 
-        feedparser.on('meta', function (this: FeedParser, meta: any) {
+        feedparser.on('meta', function (this: FeedParser, meta: FeedParser.Meta) {
             feedMeta = meta;
             // Check for iTunes namespace (podcast indicator)
-            if (meta['itunes:author'] || meta['itunes:summary']) {
+            const extendedMeta = meta as FeedParser.Meta & Record<string, unknown>;
+            if (extendedMeta['itunes:author'] || extendedMeta['itunes:summary']) {
                 isPodcast = true;
             }
         });
@@ -121,9 +124,9 @@ export async function parseFeed(url: string): Promise<ParsedFeed> {
     });
 }
 
-export function normalizeArticle(raw: RawArticle, feedType: FeedType): NormalizedArticle {
+export function normalizeArticle(raw: RawArticle, _feedType: FeedType): NormalizedArticle {
     const enclosure = raw.enclosures?.[0];
-    const thumbnail = raw['media:thumbnail']?.url || raw.image?.url || null;
+    const thumbnail = raw.thumbnail || raw.image?.url || null;
 
     return {
         guid: raw.guid,
@@ -157,7 +160,7 @@ export function detectFeedType(url: string, feed: ParsedFeed): FeedType {
     return 'rss';
 }
 
-function generateGuid(item: any): string {
+function generateGuid(item: FeedParser.Item): string {
     const content = `${item.title || ''}${item.link || ''}${item.pubdate || ''}`;
     let hash = 0;
     for (let i = 0; i < content.length; i++) {

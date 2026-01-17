@@ -1,4 +1,4 @@
-import Fastify from 'fastify';
+import Fastify, { FastifyRequest, FastifyReply } from 'fastify';
 import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
 import { initializeDatabase, closeDatabase } from './db/index.js';
@@ -12,6 +12,20 @@ import { opmlRoutes } from './routes/opml.js';
 import { syncRoutes } from './routes/sync.js';
 import { settingsRoutes } from './routes/settings.js';
 import { startScheduler, stopScheduler } from './services/scheduler.js';
+
+// Extend Fastify types
+declare module 'fastify' {
+    interface FastifyInstance {
+        authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    }
+}
+
+declare module '@fastify/jwt' {
+    interface FastifyJWT {
+        payload: { id: number; username: string };
+        user: { id: number; username: string };
+    }
+}
 
 export async function buildApp() {
     const app = Fastify({
@@ -34,8 +48,8 @@ export async function buildApp() {
         },
     });
 
-    // Decorators for auth
-    app.decorate('authenticate', async function (request: any, reply: any) {
+    // Authentication decorator
+    app.decorate('authenticate', async function (request: FastifyRequest, reply: FastifyReply) {
         try {
             await request.jwtVerify();
         } catch (err) {

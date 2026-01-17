@@ -1,11 +1,11 @@
 import cron from 'node-cron';
 import { queryAll, run } from '../db/index.js';
-import { parseFeed, normalizeArticle } from './feed-parser.js';
+import { parseFeed, normalizeArticle, FeedType } from './feed-parser.js';
 
 interface FeedToRefresh {
     id: number;
     url: string;
-    type: 'rss' | 'youtube' | 'reddit' | 'podcast';
+    type: FeedType;
     refresh_interval_minutes: number;
     etag: string | null;
     last_modified: string | null;
@@ -16,15 +16,15 @@ let cleanupJob: cron.ScheduledTask | null = null;
 
 export function startScheduler(): void {
     // Refresh feeds every 5 minutes
-    refreshJob = cron.schedule('*/5 * * * *', async () => {
+    refreshJob = cron.schedule('*/5 * * * *', () => {
         console.log('Running feed refresh job...');
-        await refreshDueFeeds();
+        refreshDueFeeds().catch(console.error);
     });
 
     // Cleanup old articles daily at 3 AM
-    cleanupJob = cron.schedule('0 3 * * *', async () => {
+    cleanupJob = cron.schedule('0 3 * * *', () => {
         console.log('Running cleanup job...');
-        await cleanupOldArticles();
+        cleanupOldArticles().catch(console.error);
     });
 
     // Run initial refresh after 10 seconds
@@ -154,9 +154,6 @@ async function cleanupOldArticles(): Promise<void> {
 
     // Also clean up orphaned read states
     run(`DELETE FROM read_state WHERE article_id NOT IN (SELECT id FROM articles)`);
-
-    // Vacuum to reclaim space (only occasionally)
-    // run('VACUUM');
 }
 
 function sleep(ms: number): Promise<void> {
