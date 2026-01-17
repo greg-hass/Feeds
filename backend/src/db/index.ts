@@ -37,25 +37,33 @@ export function initializeDatabase(): void {
     const schemaPath = join(__dirname, 'schema.sql');
     const schema = readFileSync(schemaPath, 'utf-8');
 
-    // Split by semicolons and execute each statement
-    const statements = schema
-        .split(';')
-        .map(s => s.trim())
-        .filter(s => s.length > 0 && !s.startsWith('--'));
+    // Remove comments and empty lines, then split by semicolons
+    const cleanedSchema = schema
+        .split('\n')
+        .filter(line => !line.trim().startsWith('--'))
+        .join('\n');
 
-    database.transaction(() => {
-        for (const statement of statements) {
-            try {
-                database.exec(statement);
-            } catch (err) {
-                // Ignore "already exists" errors for IF NOT EXISTS statements
-                if (!(err instanceof Error && err.message.includes('already exists'))) {
-                    console.error('Failed to execute:', statement.substring(0, 100));
-                    throw err;
-                }
+    // Split by semicolon but handle multi-line statements
+    const statements = cleanedSchema
+        .split(/;[\s]*\n/)
+        .map(s => s.trim())
+        .filter(s => s.length > 0 && !s.startsWith('PRAGMA')); // Skip PRAGMA, we handle those above
+
+    console.log(`Executing ${statements.length} schema statements...`);
+
+    // Execute each statement individually (not in transaction to handle CREATE TABLE + INDEX order)
+    for (const statement of statements) {
+        try {
+            database.exec(statement);
+        } catch (err) {
+            // Ignore "already exists" errors for IF NOT EXISTS statements
+            if (err instanceof Error && err.message.includes('already exists')) {
+                continue;
             }
+            console.error('Failed to execute:', statement.substring(0, 80) + '...');
+            throw err;
         }
-    })();
+    }
 
     console.log('Database initialized successfully');
 }
