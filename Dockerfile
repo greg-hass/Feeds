@@ -29,8 +29,8 @@ FROM node:20-alpine AS production
 
 WORKDIR /app
 
-# Install nginx
-RUN apk add --no-cache nginx
+# Install nginx and wget (for healthcheck)
+RUN apk add --no-cache nginx wget
 
 # Copy backend build
 COPY --from=backend-builder /app/backend/dist ./backend/dist
