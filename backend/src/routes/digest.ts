@@ -33,7 +33,7 @@ export async function digestRoutes(app: FastifyInstance) {
             return { success: true, digest };
         } else {
             // Check if failure was due to disabled settings
-            const settings = queryOne<{ enabled: number }>('SELECT enabled FROM digest_settings WHERE user_id = ?', [userId]);
+            const settings = queryOne<{ enabled: number }>('SELECT * FROM digest_settings WHERE user_id = ?', [userId]);
             if (settings && !settings.enabled) {
                 return reply.status(400).send({ error: 'Daily Digest is disabled. Please enable it in settings.' });
             }

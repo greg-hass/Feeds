@@ -63,7 +63,7 @@ export async function buildApp() {
     await app.register(foldersRoutes, { prefix: '/api/v1/folders' });
     await app.register(articlesRoutes, { prefix: '/api/v1/articles' });
     await app.register(searchRoutes, { prefix: '/api/v1/search' });
-    await app.register(discoveryRoutes, { prefix: '/api/v1/discover' });
+    await app.register(discoveryRoutes, { prefix: '/api/v1/discovery' });
     await app.register(opmlRoutes, { prefix: '/api/v1/opml' });
     await app.register(opmlStreamRoutes, { prefix: '/api/v1/opml-stream' });
     await app.register(feedsStreamRoutes, { prefix: '/api/v1/feeds-stream' });

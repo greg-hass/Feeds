@@ -1,7 +1,8 @@
 -- Create digest_settings table
 CREATE TABLE IF NOT EXISTS digest_settings (
     user_id INTEGER PRIMARY KEY,
-    enabled BOOLEAN DEFAULT 0,
+    enabled BOOLEAN DEFAULT 1,
+    schedule TEXT DEFAULT '06:00',
     included_feeds TEXT, -- JSON array of feed IDs
     style TEXT DEFAULT 'bullets', -- 'bullets' or 'paragraphs'
     created_at TEXT DEFAULT (datetime('now')),
