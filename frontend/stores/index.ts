@@ -295,7 +295,6 @@ export const useArticleStore = create<ArticleState>()(
 
             toggleBookmark: async (id) => {
                 const state = get();
-                // Find article in main list, current article, or bookmarks list
                 const article = state.articles.find(a => a.id === id) ||
                     (state.currentArticle?.id === id ? state.currentArticle : null) ||
                     state.bookmarkedArticles.find(a => a.id === id);
@@ -304,61 +303,30 @@ export const useArticleStore = create<ArticleState>()(
 
                 const newStatus = !article.is_bookmarked;
 
-                // Optimistic update
-                set((state) => {
-                    let newBookmarks = [...state.bookmarkedArticles];
-
-                    if (newStatus) {
-                        // Add to bookmarks list if not present
-                        if (!newBookmarks.some(b => b.id === id)) {
-                            // We need full article object. 'article' has it.
-                            newBookmarks.unshift({ ...article, is_bookmarked: true });
-                        }
-                    } else {
-                        // Remove from bookmarks list
-                        newBookmarks = newBookmarks.filter(b => b.id !== id);
-                    }
-
-                    return {
-                        articles: state.articles.map((a) =>
-                            a.id === id ? { ...a, is_bookmarked: newStatus } : a
-                        ),
-                        currentArticle: state.currentArticle?.id === id
-                            ? { ...state.currentArticle, is_bookmarked: newStatus }
-                            : state.currentArticle,
-                        bookmarkedArticles: newBookmarks
-                    };
-                });
-
-                try {
-                    await api.bookmarkArticle(id, newStatus);
-                } catch (e) {
-                    // Revert on failure
+                const updateBookmarkState = (bookmarked: boolean) => {
                     set((state) => {
-                        // Revert bookmarks list logic is complex, simpler to just re-fetch or invert
-                        // For simplicity, let's just fetch bookmarks again or revert strictly
-                        // Reverting strictly:
-                        let newBookmarks = [...state.bookmarkedArticles];
-                        if (!newStatus) {
-                            // We failed to remove -> add back
-                            if (!newBookmarks.some(b => b.id === id)) {
-                                newBookmarks.unshift({ ...article, is_bookmarked: true });
-                            }
-                        } else {
-                            // We failed to add -> remove
-                            newBookmarks = newBookmarks.filter(b => b.id !== id);
-                        }
+                        const newBookmarks = bookmarked
+                            ? (state.bookmarkedArticles.some(b => b.id === id)
+                                ? state.bookmarkedArticles
+                                : [{ ...article, is_bookmarked: true }, ...state.bookmarkedArticles])
+                            : state.bookmarkedArticles.filter(b => b.id !== id);
 
                         return {
-                            articles: state.articles.map((a) =>
-                                a.id === id ? { ...a, is_bookmarked: !newStatus } : a
-                            ),
+                            articles: state.articles.map(a => a.id === id ? { ...a, is_bookmarked: bookmarked } : a),
                             currentArticle: state.currentArticle?.id === id
-                                ? { ...state.currentArticle, is_bookmarked: !newStatus }
+                                ? { ...state.currentArticle, is_bookmarked: bookmarked }
                                 : state.currentArticle,
                             bookmarkedArticles: newBookmarks
                         };
                     });
+                };
+
+                updateBookmarkState(newStatus);
+
+                try {
+                    await api.bookmarkArticle(id, newStatus);
+                } catch {
+                    updateBookmarkState(!newStatus);
                 }
             },
 

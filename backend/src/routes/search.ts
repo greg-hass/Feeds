@@ -14,7 +14,8 @@ const searchSchema = z.object({
 });
 
 export async function searchRoutes(app: FastifyInstance) {
-    app.addHook('preHandler', app.authenticate);
+    // Single user app - user_id is always 1
+    const userId = 1;
 
     // Apply rate limiting to search endpoint
     app.addHook('onRequest', async (request, reply) => {
@@ -26,7 +27,6 @@ export async function searchRoutes(app: FastifyInstance) {
 
     // Full-text search
     app.get('/', async (request: FastifyRequest) => {
-        const { id: userId } = (request as any).user;
         const query = searchSchema.parse(request.query);
 
         // Build FTS query - escape special characters

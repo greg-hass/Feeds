@@ -231,6 +231,13 @@ class ApiClient {
         const params = cursor ? `?cursor=${cursor}` : '';
         return this.request<SyncResponse>(`/sync${params}`);
     }
+
+    async pushSyncChanges(readState: Array<{ article_id: number; is_read: boolean }>) {
+        return this.request<{ read_state: { accepted: number; rejected: number } }>('/sync/push', {
+            method: 'POST',
+            body: { read_state: readState },
+        });
+    }
 }
 
 // Error class

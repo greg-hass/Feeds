@@ -18,17 +18,17 @@ interface Folder {
 }
 
 export async function opmlRoutes(app: FastifyInstance) {
+    // Single user app - user_id is always 1
+    const userId = 1;
+
     await app.register(multipart, {
         limits: {
             fileSize: 10 * 1024 * 1024, // 10MB
         },
     });
 
-    app.addHook('preHandler', app.authenticate);
-
     // Import OPML
     app.post('/import', async (request: FastifyRequest, reply: FastifyReply) => {
-        const { id: userId } = (request as any).user;
 
         const file = await request.file();
         if (!file) {
@@ -115,7 +115,6 @@ export async function opmlRoutes(app: FastifyInstance) {
 
     // Export OPML
     app.get('/export', async (request: FastifyRequest, reply: FastifyReply) => {
-        const { id: userId } = (request as any).user;
 
         // Get folders
         const folders = queryAll<Folder>(

@@ -28,11 +28,11 @@ interface SmartFolder {
 }
 
 export async function foldersRoutes(app: FastifyInstance) {
-    app.addHook('preHandler', app.authenticate);
+    // Single user app - user_id is always 1
+    const userId = 1;
 
     // List folders with smart folders
     app.get('/', async (request: FastifyRequest) => {
-        const { id: userId } = (request as any).user;
 
         // User folders
         const folders = queryAll<Folder & { feed_count: number; unread_count: number }>(
@@ -91,7 +91,6 @@ export async function foldersRoutes(app: FastifyInstance) {
 
     // Create folder
     app.post('/', async (request: FastifyRequest, reply: FastifyReply) => {
-        const { id: userId } = (request as any).user;
         const body = createFolderSchema.parse(request.body);
 
         // Check for duplicate name
@@ -126,7 +125,6 @@ export async function foldersRoutes(app: FastifyInstance) {
 
     // Update folder
     app.patch('/:id', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-        const { id: userId } = (request as any).user;
         const folderId = parseInt(request.params.id, 10);
         const body = updateFolderSchema.parse(request.body);
 
@@ -177,7 +175,6 @@ export async function foldersRoutes(app: FastifyInstance) {
 
     // Delete folder
     app.delete('/:id', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-        const { id: userId } = (request as any).user;
         const folderId = parseInt(request.params.id, 10);
 
         // Soft delete folder (feeds become uncategorized)

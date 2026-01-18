@@ -49,11 +49,11 @@ function getYouTubeIdFromGuid(guid: string | null): string | null {
 }
 
 export async function articlesRoutes(app: FastifyInstance) {
-    app.addHook('preHandler', app.authenticate);
+    // Single user app - user_id is always 1
+    const userId = 1;
 
     // List articles
     app.get('/', async (request: FastifyRequest) => {
-        const { id: userId } = (request as any).user;
         const query = listArticlesSchema.parse(request.query);
 
         const conditions: string[] = ['f.user_id = ?', 'f.deleted_at IS NULL'];
@@ -169,7 +169,6 @@ export async function articlesRoutes(app: FastifyInstance) {
 
     // Get single article with full content
     app.get('/:id', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-        const { id: userId } = (request as any).user;
         const articleId = parseInt(request.params.id, 10);
 
         const article = queryOne<Article & {
@@ -229,7 +228,6 @@ export async function articlesRoutes(app: FastifyInstance) {
 
     // Mark article as read
     app.post('/:id/read', async (request: FastifyRequest<{ Params: { id: string } }>) => {
-        const { id: userId } = (request as any).user;
         const articleId = parseInt(request.params.id, 10);
 
         run(
@@ -243,7 +241,6 @@ export async function articlesRoutes(app: FastifyInstance) {
 
     // Mark article as unread
     app.post('/:id/unread', async (request: FastifyRequest<{ Params: { id: string } }>) => {
-        const { id: userId } = (request as any).user;
         const articleId = parseInt(request.params.id, 10);
 
         run(
@@ -257,7 +254,6 @@ export async function articlesRoutes(app: FastifyInstance) {
 
     // Bulk mark as read
     app.post('/mark-read', async (request: FastifyRequest) => {
-        const { id: userId } = (request as any).user;
         const body = markReadSchema.parse(request.body);
 
         let marked = 0;
@@ -332,7 +328,6 @@ export async function articlesRoutes(app: FastifyInstance) {
 
     // Toggle bookmark on article
     app.patch('/:id/bookmark', async (request: FastifyRequest<{ Params: { id: string }; Body: { bookmarked: boolean } }>, reply: FastifyReply) => {
-        const { id: userId } = (request as any).user;
         const articleId = parseInt(request.params.id, 10);
         const { bookmarked } = request.body as { bookmarked: boolean };
 
@@ -358,7 +353,6 @@ export async function articlesRoutes(app: FastifyInstance) {
 
     // List bookmarked articles
     app.get('/bookmarks', async (request: FastifyRequest) => {
-        const { id: userId } = (request as any).user;
 
         const articles = queryAll<Article & {
             feed_title: string;
@@ -398,7 +392,6 @@ export async function articlesRoutes(app: FastifyInstance) {
 
     // On-demand readability fetch
     app.post('/:id/readability', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-        const { id: userId } = (request as any).user;
         const articleId = parseInt(request.params.id, 10);
 
         // Verify article exists and user has access

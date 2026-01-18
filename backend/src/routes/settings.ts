@@ -12,8 +12,7 @@ const updateSettingsSchema = z.object({
     show_images: z.boolean().optional(),
 });
 
-interface User {
-    id: number;
+interface UserSettings {
     settings_json?: string;
 }
 
@@ -27,99 +26,64 @@ const defaultSettings = {
     show_images: true,
 };
 
+type Settings = typeof defaultSettings;
+
 // Track if we've already ensured the column exists this session
 let columnEnsured = false;
 
-// Helper to add settings_json column if missing (idempotent)
 function ensureSettingsColumn(): void {
     if (columnEnsured) return;
 
     try {
         db().exec("ALTER TABLE users ADD COLUMN settings_json TEXT DEFAULT '{}'");
-        columnEnsured = true;
-    } catch (err: any) {
-        // Column already exists - this is fine
-        if (err?.message?.includes('duplicate column')) {
-            columnEnsured = true;
-        } else {
+    } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : '';
+        if (!message.includes('duplicate column')) {
             console.error('Failed to ensure settings_json column:', err);
         }
     }
+    columnEnsured = true;
 }
 
-export async function settingsRoutes(app: FastifyInstance) {
-    app.addHook('preHandler', app.authenticate);
+function parseSettingsJson(json: string | undefined): Settings {
+    if (!json) return { ...defaultSettings };
 
-    // Get settings
-    app.get('/', async (request: FastifyRequest) => {
-        const { id: userId } = (request as any).user;
+    try {
+        return { ...defaultSettings, ...JSON.parse(json) };
+    } catch {
+        return { ...defaultSettings };
+    }
+}
 
+function getUserSettings(userId: number): Settings {
+    try {
+        const user = queryOne<UserSettings>('SELECT settings_json FROM users WHERE id = ?', [userId]);
+        return parseSettingsJson(user?.settings_json);
+    } catch {
+        return { ...defaultSettings };
+    }
+}
+
+export async function settingsRoutes(app: FastifyInstance): Promise<void> {
+    const userId = 1;
+
+    app.get('/', async () => {
         ensureSettingsColumn();
-
-        try {
-            let user: User | undefined;
-            try {
-                user = queryOne<User>('SELECT id, settings_json FROM users WHERE id = ?', [userId]);
-            } catch {
-                user = queryOne<User>('SELECT id FROM users WHERE id = ?', [userId]);
-            }
-
-            if (!user) {
-                return { settings: defaultSettings };
-            }
-
-            let settings = { ...defaultSettings };
-            if (user.settings_json) {
-                try {
-                    settings = { ...settings, ...JSON.parse(user.settings_json) };
-                } catch {
-                    // Use defaults
-                }
-            }
-
-            return { settings };
-        } catch (err: any) {
-            console.error('Error fetching settings:', err);
-            return { settings: defaultSettings };
-        }
+        return { settings: getUserSettings(userId) };
     });
 
-    // Update settings
     app.patch('/', async (request: FastifyRequest) => {
-        const { id: userId } = (request as any).user;
         const body = updateSettingsSchema.parse(request.body);
-
         ensureSettingsColumn();
 
-        try {
-            let currentSettingsJson = '{}';
-            try {
-                const user = queryOne<{ settings_json?: string }>('SELECT settings_json FROM users WHERE id = ?', [userId]);
-                if (user?.settings_json) {
-                    currentSettingsJson = user.settings_json;
-                }
-            } catch {
-                // Column might not exist, use defaults
-            }
+        const currentSettings = getUserSettings(userId);
+        const newSettings = { ...currentSettings, ...body };
 
-            let currentSettings = { ...defaultSettings };
-            try {
-                currentSettings = { ...currentSettings, ...JSON.parse(currentSettingsJson) };
-            } catch {
-                // Use defaults
-            }
+        run(
+            'UPDATE users SET settings_json = ? WHERE id = ?',
+            [JSON.stringify(newSettings), userId]
+        );
 
-            const newSettings = { ...currentSettings, ...body };
-
-            run(
-                'UPDATE users SET settings_json = ? WHERE id = ?',
-                [JSON.stringify(newSettings), userId]
-            );
-
-            return { settings: newSettings };
-        } catch (err: any) {
-            console.error('Error updating settings:', err);
-            throw err;
-        }
+        return { settings: newSettings };
     });
 }

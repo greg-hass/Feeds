@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import api, { APIError } from '@/services/api';
+import { api, ApiError } from '@/services/api';
 import { SYNC } from '@/config/constants';
 
 export interface SyncChanges {
@@ -66,12 +66,7 @@ async function saveSyncCursor(cursor: string): Promise<void> {
 export async function fetchChanges(include: string = 'feeds,folders,articles,read_state'): Promise<SyncResult | null> {
     try {
         const cursor = await getSyncCursor();
-        const params = new URLSearchParams({ include });
-        if (cursor) {
-            params.append('cursor', cursor);
-        }
-
-        const response = await api.get<SyncResult>(`/sync?${params.toString()}`);
+        const response = await api.sync(cursor || undefined);
 
         // Save the new cursor for next sync
         if (response.next_cursor) {
@@ -80,7 +75,7 @@ export async function fetchChanges(include: string = 'feeds,folders,articles,rea
 
         return response;
     } catch (error) {
-        if (error instanceof APIError && error.status === 401) {
+        if (error instanceof ApiError && error.status === 401) {
             // Unauthorized - don't log as error
             return null;
         }
@@ -94,9 +89,7 @@ export async function fetchChanges(include: string = 'feeds,folders,articles,rea
  */
 export async function pushReadState(readState: Array<{ article_id: number; is_read: boolean }>): Promise<boolean> {
     try {
-        await api.post<{ read_state: { accepted: number; rejected: number } }>('/sync/push', {
-            read_state: readState,
-        });
+        await api.pushSyncChanges(readState);
         return true;
     } catch (error) {
         console.error('Failed to push read state:', error);

@@ -45,12 +45,11 @@ interface Feed {
 }
 
 export async function feedsRoutes(app: FastifyInstance) {
-    // All routes require auth
-    app.addHook('preHandler', app.authenticate);
+    // Single user app - user_id is always 1
+    const userId = 1;
 
     // List feeds
     app.get('/', async (request: FastifyRequest) => {
-        const { id: userId } = (request as any).user;
 
         const feeds = queryAll<Feed & { unread_count: number }>(
             `SELECT f.*,
@@ -69,7 +68,6 @@ export async function feedsRoutes(app: FastifyInstance) {
 
     // Get single feed
     app.get('/:id', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-        const { id: userId } = (request as any).user;
         const feedId = parseInt(request.params.id, 10);
 
         const feed = queryOne<Feed>(
@@ -86,7 +84,6 @@ export async function feedsRoutes(app: FastifyInstance) {
 
     // Add feed (with discovery)
     app.post('/', async (request: FastifyRequest, reply: FastifyReply) => {
-        const { id: userId } = (request as any).user;
         const body = addFeedSchema.parse(request.body);
 
         // Check for duplicate
@@ -197,7 +194,6 @@ export async function feedsRoutes(app: FastifyInstance) {
 
     // Update feed
     app.patch('/:id', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-        const { id: userId } = (request as any).user;
         const feedId = parseInt(request.params.id, 10);
         const parsed = updateFeedSchema.safeParse(request.body);
         if (!parsed.success) {
@@ -245,7 +241,6 @@ export async function feedsRoutes(app: FastifyInstance) {
 
     // Delete feed
     app.delete('/:id', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-        const { id: userId } = (request as any).user;
         const feedId = parseInt(request.params.id, 10);
 
         const result = run(
@@ -262,7 +257,6 @@ export async function feedsRoutes(app: FastifyInstance) {
 
     // Bulk operations
     app.post('/bulk', async (request: FastifyRequest, reply: FastifyReply) => {
-        const { id: userId } = (request as any).user;
         const parsed = bulkActionSchema.safeParse(request.body);
         if (!parsed.success) {
             return reply.status(400).send({ error: 'Invalid request', details: parsed.error.flatten() });
@@ -317,7 +311,6 @@ export async function feedsRoutes(app: FastifyInstance) {
 
     // Force refresh feed
     app.post('/:id/refresh', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-        const { id: userId } = (request as any).user;
         const feedId = parseInt(request.params.id, 10);
 
         const feed = queryOne<Feed>(

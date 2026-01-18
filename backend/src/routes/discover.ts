@@ -12,7 +12,6 @@ const keywordSchema = z.object({
 });
 
 export async function discoverRoutes(app: FastifyInstance) {
-    app.addHook('preHandler', app.authenticate);
 
     // Discover feeds (automatic URL or keyword)
     app.get('/', async (request: FastifyRequest) => {
