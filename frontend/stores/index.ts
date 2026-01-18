@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { api, User, Feed, Folder, SmartFolder, Article, Settings } from '@/services/api';
+import { api, User, Feed, Folder, SmartFolder, Article, ArticleDetail, Settings } from '@/services/api';
 
 interface AuthState {
     user: User | null;
@@ -177,7 +177,7 @@ export const useFeedStore = create<FeedState>()(
 interface ArticleState {
     articles: Article[];
     bookmarkedArticles: Article[];
-    currentArticle: Article | null;
+    currentArticle: ArticleDetail | null;
     cursor: string | null;
     hasMore: boolean;
     isLoading: boolean;
