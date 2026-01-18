@@ -32,7 +32,12 @@ export async function digestRoutes(app: FastifyInstance) {
             );
             return { success: true, digest };
         } else {
-            return reply.status(500).send({ error: 'Failed to generate digest. Check if you have unread articles and a valid AI key.' });
+            // Check if failure was due to disabled settings
+            const settings = queryOne<{ enabled: number }>('SELECT enabled FROM digest_settings WHERE user_id = ?', [userId]);
+            if (settings && !settings.enabled) {
+                return reply.status(400).send({ error: 'Daily Digest is disabled. Please enable it in settings.' });
+            }
+            return reply.status(500).send({ error: 'Failed to generate digest. Check server logs.' });
         }
     });
 
