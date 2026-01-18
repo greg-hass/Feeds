@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet, Platform } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { Home, Search, Bookmark, Rss, Settings, Sparkles } from 'lucide-react-native';
 import { useColors, spacing, borderRadius } from '@/theme';
@@ -64,7 +64,7 @@ const styles = (colors: any) => StyleSheet.create({
         backgroundColor: colors.background.secondary,
         borderTopWidth: 1,
         borderTopColor: colors.border.DEFAULT,
-        paddingBottom: 20, // Safe area for notch devices
+        paddingBottom: Platform.OS === 'web' ? 'env(safe-area-inset-bottom)' as any : 20,
         paddingTop: spacing.sm,
     },
     navItem: {

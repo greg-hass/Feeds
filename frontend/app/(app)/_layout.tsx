@@ -74,7 +74,6 @@ const styles = (isDesktop: boolean, isReaderRoute: boolean, colors: any) => Styl
             height: '100vh' as any,
             minHeight: '100vh' as any,
             paddingTop: 'env(safe-area-inset-top)' as any,
-            paddingBottom: 'env(safe-area-inset-bottom)' as any,
         }),
     },
     timelinePane: {
