@@ -48,12 +48,9 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     };
 
     const handleRefresh = async () => {
-        try {
-            await Promise.all([fetchFeeds(), fetchFolders()]);
-            show('Feeds updated', 'success');
-        } catch (error) {
-            show('Failed to refresh feeds', 'error');
-        }
+        // fetchFeeds/fetchFolders handle their own errors silently
+        // Don't show toast since we don't know if they actually succeeded
+        await Promise.all([fetchFeeds(), fetchFolders()]);
     };
 
     return (
