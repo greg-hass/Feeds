@@ -10,6 +10,7 @@ import { extractVideoId, getThumbnailUrl, getEmbedUrl } from '@/utils/youtube';
 
 import { VideoModal } from '@/components/VideoModal';
 import Sidebar from '@/components/Sidebar';
+import { useRef } from 'react';
 
 export default function ArticleListScreen() {
     const router = useRouter();
@@ -164,6 +165,7 @@ export default function ArticleListScreen() {
     const renderArticle = ({ item, index }: { item: Article; index: number }) => {
         const thumbnail = getArticleThumbnail(item);
         const isYouTube = item.feed_type === 'youtube';
+        const thumbnailPressedRef = useRef(false);
 
         return (
             <TouchableOpacity
@@ -172,7 +174,12 @@ export default function ArticleListScreen() {
                     item.is_read && s.articleRead,
                     index === selectedIndex && s.articleFocused
                 ]}
-                onPress={() => handleArticlePress(item.id)}
+                onPress={() => {
+                    if (!thumbnailPressedRef.current) {
+                        handleArticlePress(item.id);
+                    }
+                    thumbnailPressedRef.current = false;
+                }}
             >
                 {/* Desktop: Row layout with thumbnail on right */}
                 {/* Mobile: Column layout with thumbnail below title */}
@@ -196,8 +203,8 @@ export default function ArticleListScreen() {
                                 <TouchableOpacity
                                     activeOpacity={0.9}
                                     onPress={(e) => {
+                                        thumbnailPressedRef.current = true;
                                         if (isYouTube && item.url) {
-                                            e.stopPropagation();
                                             // On Native, open in browser/app since we lack a WebView
                                             if (Platform.OS !== 'web') {
                                                 Linking.openURL(item.url);
@@ -287,16 +294,11 @@ export default function ArticleListScreen() {
                         <TouchableOpacity
                             style={s.thumbnailContainerDesktop}
                             onPress={(e) => {
+                                thumbnailPressedRef.current = true;
                                 if (isYouTube && item.url) {
-                                    e.stopPropagation();
                                     const videoId = extractVideoId(item.url);
                                     if (videoId) {
                                         setActiveVideoId(videoId);
-                                        // Desktop uses modal potentially? Or maybe we want inline too?
-                                        // User asked: "on desktop i want a pop-out player"
-                                        // So keep existing behavior for desktop (which set activeVideoId and opened modal).
-                                        // Wait, `VideoModal` uses `activeVideoId`.
-                                        // If I use `activeVideoId` for inline mobile, I need to prevent VideoModal from opening on mobile.
                                     }
                                 } else {
                                     handleArticlePress(item.id);

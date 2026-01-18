@@ -1,6 +1,6 @@
 import * as DocumentPicker from 'expo-document-picker';
 import { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, Modal, Image } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, Modal, Image, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFeedStore, useToastStore, useArticleStore } from '@/stores';
 import { api, DiscoveredFeed, Feed, Folder } from '@/services/api';
@@ -79,25 +79,33 @@ export default function ManageScreen() {
     };
 
     const handleDeleteFeed = (feedId: number, feedTitle: string) => {
-        Alert.alert(
-            'Delete Feed',
-            `Delete "${feedTitle}" and all its articles?`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            await deleteFeed(feedId);
-                            show('Feed deleted', 'success');
-                        } catch (err) {
-                            show('Failed to delete feed', 'error');
+        if (Platform.OS === 'web') {
+            if (window.confirm(`Delete "${feedTitle}" and all its articles?`)) {
+                deleteFeed(feedId)
+                    .then(() => show('Feed deleted', 'success'))
+                    .catch(() => show('Failed to delete feed', 'error'));
+            }
+        } else {
+            Alert.alert(
+                'Delete Feed',
+                `Delete "${feedTitle}" and all its articles?`,
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                        text: 'Delete',
+                        style: 'destructive',
+                        onPress: async () => {
+                            try {
+                                await deleteFeed(feedId);
+                                show('Feed deleted', 'success');
+                            } catch (err) {
+                                show('Failed to delete feed', 'error');
+                            }
                         }
-                    }
-                },
-            ]
-        );
+                    },
+                ]
+            );
+        }
     };
 
     const handleEditFeed = (feed: Feed) => {
@@ -175,25 +183,33 @@ export default function ManageScreen() {
     };
 
     const handleDeleteFolder = (folderId: number, folderName: string) => {
-        Alert.alert(
-            'Delete Folder',
-            `Delete "${folderName}"? Feeds inside will be moved to the root.`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            await deleteFolder(folderId);
-                            show('Folder deleted', 'success');
-                        } catch (err) {
-                            show('Failed to delete folder', 'error');
+        if (Platform.OS === 'web') {
+            if (window.confirm(`Delete "${folderName}"? Feeds inside will be moved to the root.`)) {
+                deleteFolder(folderId)
+                    .then(() => show('Folder deleted', 'success'))
+                    .catch(() => show('Failed to delete folder', 'error'));
+            }
+        } else {
+            Alert.alert(
+                'Delete Folder',
+                `Delete "${folderName}"? Feeds inside will be moved to the root.`,
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                        text: 'Delete',
+                        style: 'destructive',
+                        onPress: async () => {
+                            try {
+                                await deleteFolder(folderId);
+                                show('Folder deleted', 'success');
+                            } catch (err) {
+                                show('Failed to delete folder', 'error');
+                            }
                         }
                     }
-                }
-            ]
-        );
+                ]
+            );
+        }
     };
 
     const handleExportOpml = async () => {
