@@ -4,7 +4,7 @@ import { useFeedStore, useArticleStore, useToastStore } from '@/stores';
 import {
     Rss, Youtube, MessageSquare, Headphones,
     Folder, Search, Settings,
-    Plus, RefreshCw, Bookmark
+    Plus, RefreshCw, Bookmark, Sparkles, BookOpen
 } from 'lucide-react-native';
 import { colors, borderRadius, spacing } from '@/theme';
 
@@ -89,6 +89,18 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 <TouchableOpacity style={styles.navItem} onPress={() => { onNavigate?.(); router.push('/(app)/bookmarks'); }}>
                     <Bookmark size={18} color={colors.primary.DEFAULT} />
                     <Text style={styles.navItemText}>Bookmarks</Text>
+                </TouchableOpacity>
+
+                {/* AI Discovery */}
+                <TouchableOpacity style={styles.navItem} onPress={() => { onNavigate?.(); router.push('/(app)/discovery'); }}>
+                    <Sparkles size={18} color={colors.warning} />
+                    <Text style={styles.navItemText}>Discovery</Text>
+                </TouchableOpacity>
+
+                {/* Daily Digest */}
+                <TouchableOpacity style={styles.navItem} onPress={() => { onNavigate?.(); router.push('/(app)/digest'); }}>
+                    <BookOpen size={18} color={colors.secondary.DEFAULT} />
+                    <Text style={styles.navItemText}>Daily Digest</Text>
                 </TouchableOpacity>
 
                 {/* Subscriptions */}
