@@ -8,6 +8,8 @@ import { Circle, CircleCheck, Headphones, Filter, CheckCheck, MoreVertical, Play
 import { useColors, borderRadius, spacing } from '@/theme';
 import { extractVideoId, getThumbnailUrl } from '@/utils/youtube';
 
+import { VideoModal } from '@/components/VideoModal';
+
 export default function ArticleListScreen() {
     const router = useRouter();
     const colors = useColors();
@@ -17,6 +19,7 @@ export default function ArticleListScreen() {
     const { fetchFeeds, fetchFolders } = useFeedStore();
     const [showMenu, setShowMenu] = useState(false);
     const [selectedIndex, setSelectedIndex] = useState(-1);
+    const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
 
     const s = styles(colors, isMobile);
 
@@ -225,7 +228,22 @@ export default function ArticleListScreen() {
 
                     {/* Desktop: Thumbnail on right side */}
                     {!isMobile && thumbnail && (
-                        <View style={s.thumbnailContainerDesktop}>
+                        <TouchableOpacity
+                            style={s.thumbnailContainerDesktop}
+                            onPress={(e) => {
+                                if (isYouTube && item.url) {
+                                    e.stopPropagation();
+                                    const videoId = extractVideoId(item.url);
+                                    if (videoId) {
+                                        setActiveVideoId(videoId);
+                                    }
+                                } else {
+                                    // Let it propagate to parent onPress (opening article) if not YouTube
+                                    // or handle explicitly if desired, but default behavior acts as press through
+                                    handleArticlePress(item.id);
+                                }
+                            }}
+                        >
                             <Image
                                 source={{ uri: thumbnail }}
                                 style={s.thumbnailDesktop}
@@ -236,7 +254,7 @@ export default function ArticleListScreen() {
                                     <Play size={20} color="#fff" fill="#fff" />
                                 </View>
                             )}
-                        </View>
+                        </TouchableOpacity>
                     )}
                 </View>
             </TouchableOpacity>
@@ -308,6 +326,11 @@ export default function ArticleListScreen() {
                         </View>
                     ) : null
                 }
+            />
+
+            <VideoModal
+                videoId={activeVideoId}
+                onClose={() => setActiveVideoId(null)}
             />
         </View>
     );
@@ -508,4 +531,3 @@ const styles = (colors: any, isMobile: boolean = false) => StyleSheet.create({
         marginTop: spacing.sm,
     },
 });
-
