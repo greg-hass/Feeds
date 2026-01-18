@@ -230,7 +230,7 @@ export default function ArticleListScreen() {
                         </View>
                     )}
 
-                    <TouchableOpacity style={s.articleContent} onPress={() => handleArticlePress(item.id)} activeOpacity={0.7}>
+                    <View style={s.articleContent}>
                         {/* Mobile Header (moved inside content for layout consistency, but logically part of row on desktop) */}
                         {!isMobile && (
                             <View style={s.articleHeader}>
@@ -265,23 +265,27 @@ export default function ArticleListScreen() {
                             <Text style={s.feedName}>{item.feed_title}</Text>
                             {item.has_audio && <Headphones size={14} color={colors.secondary.DEFAULT} />}
                         </View>
-                        <Text style={[s.articleTitle, item.is_read && s.articleTitleRead]} numberOfLines={2}>
+                        <TouchableOpacity onPress={() => handleArticlePress(item.id)} activeOpacity={0.7}>
+                            <Text style={[s.articleTitle, item.is_read && s.articleTitleRead]} numberOfLines={2}>
                             {!item.is_read && (
                                 <Circle size={8} color={colors.primary.DEFAULT} fill={colors.primary.DEFAULT} style={{ marginRight: 6 }} />
                             )}
                             {item.title}
-                        </Text>
+                            </Text>
+                        </TouchableOpacity>
 
                         {item.summary && (
                             <Text style={s.articleSummary} numberOfLines={2}>
                                 {item.summary}
                             </Text>
                         )}
-                        <Text style={s.articleMeta}>
-                            {item.author && `${item.author} • `}
-                            {item.published_at && formatDistanceToNow(new Date(item.published_at), { addSuffix: true })}
-                        </Text>
-                    </TouchableOpacity>
+                        <TouchableOpacity onPress={() => handleArticlePress(item.id)} activeOpacity={0.7}>
+                            <Text style={s.articleMeta}>
+                                {item.author && `${item.author} • `}
+                                {item.published_at && formatDistanceToNow(new Date(item.published_at), { addSuffix: true })}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
 
                     {/* Desktop: Thumbnail on right side */}
                     {!isMobile && thumbnail && (
