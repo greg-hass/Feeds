@@ -265,7 +265,7 @@ class ApiClient {
         }
 
         try {
-            const response = await fetch(`${API_URL}/opml/import/stream`, {
+            const response = await fetch(`${API_URL}/opml-stream/import`, {
                 method: 'POST',
                 body: formData,
             });
@@ -319,7 +319,7 @@ class ApiClient {
         const idsParam = feedIds?.length ? `?ids=${feedIds.join(',')}` : '';
 
         try {
-            const response = await fetch(`${API_URL}/feeds/refresh-multiple/stream${idsParam}`, {
+            const response = await fetch(`${API_URL}/feeds-stream/refresh-multiple${idsParam}`, {
                 method: 'GET',
             });
 

@@ -36,7 +36,7 @@ export async function feedsStreamRoutes(app: FastifyInstance) {
     const userId = 1;
 
     // Bulk refresh feeds with SSE progress
-    app.get('/refresh-multiple/stream', async (request: FastifyRequest<{ Querystring: { ids?: string } }>, reply: FastifyReply) => {
+    app.get('/refresh-multiple', async (request: FastifyRequest<{ Querystring: { ids?: string } }>, reply: FastifyReply) => {
         const idsParam = request.query.ids;
 
         let feedIds: number[] = [];
