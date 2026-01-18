@@ -34,6 +34,7 @@ export const useAuthStore = create<AuthState>()(
 
             checkAuthStatus: async () => {
                 // Bypass auth for single user mode
+                api.setToken('dummy-token');
                 set({
                     isLoading: false,
                     setupRequired: false,
@@ -46,6 +47,7 @@ export const useAuthStore = create<AuthState>()(
             },
 
             login: async (username: string, password: string) => {
+                api.setToken('dummy-token');
                 set({
                     user: { id: 1, username: 'admin', is_admin: true },
                     token: 'dummy-token',
@@ -57,6 +59,7 @@ export const useAuthStore = create<AuthState>()(
             },
 
             setup: async (username: string, password: string, baseUrl?: string) => {
+                api.setToken('dummy-token');
                 set({
                     user: { id: 1, username: 'admin', is_admin: true },
                     token: 'dummy-token',
