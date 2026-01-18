@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, useWindowDimensions, Platform } from 'react-native';
 import { Slot } from 'expo-router';
 import { useFeedStore } from '@/stores';
 import { useColors } from '@/theme';
@@ -70,6 +70,7 @@ const styles = (isDesktop: boolean, isReaderRoute: boolean, colors: any) => Styl
         flex: 1,
         flexDirection: isDesktop ? 'row' : 'column',
         backgroundColor: colors.background.primary,
+        ...(Platform.OS === 'web' && { height: '100vh' as any, minHeight: '100vh' as any }),
     },
     timelinePane: {
         flex: 1, // Equal width with content
