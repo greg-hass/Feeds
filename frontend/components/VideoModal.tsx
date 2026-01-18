@@ -5,10 +5,11 @@ import { useColors, borderRadius, spacing } from '@/theme';
 
 interface VideoModalProps {
     videoId: string | null;
+    visible: boolean;
     onClose: () => void;
 }
 
-export function VideoModal({ videoId, onClose }: VideoModalProps) {
+export function VideoModal({ videoId, visible, onClose }: VideoModalProps) {
     const colors = useColors();
     const { width, height } = useWindowDimensions();
     const isMobile = width < 768;
@@ -32,7 +33,7 @@ export function VideoModal({ videoId, onClose }: VideoModalProps) {
     return (
         <Modal
             transparent
-            visible={!!videoId}
+            visible={visible}
             animationType="fade"
             onRequestClose={onClose}
         >
@@ -49,7 +50,7 @@ export function VideoModal({ videoId, onClose }: VideoModalProps) {
                     <iframe
                         width="100%"
                         height="100%"
-                        src={`https://www.youtube.com/embed/${videoId}?autoplay=1&vq=hd1080`}
+                        src={`https://www.youtube.com/embed/${videoId}?autoplay=1&playsinline=1&vq=hd1080`}
                         frameBorder="0"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen
