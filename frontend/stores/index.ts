@@ -92,13 +92,33 @@ export const useFeedStore = create<FeedState>()(
 
             refreshAllFeeds: async (ids) => {
                 set({ isLoading: true });
+                let hasNewArticles = false;
+                const articleStore = useArticleStore.getState();
+
+                // Debounced article fetch to avoid hammering the server during rapid updates
+                let refreshTimeout: ReturnType<typeof setTimeout> | null = null;
+                const debouncedRefresh = () => {
+                    if (refreshTimeout) clearTimeout(refreshTimeout);
+                    refreshTimeout = setTimeout(() => {
+                        articleStore.fetchArticles(true);
+                    }, 1000); // Wait at least 1s between refreshes
+                };
+
                 try {
                     await api.refreshFeedsWithProgress(
                         ids,
                         (event) => {
-                            // We could track progress here if we wanted a progress bar
-                            if (event.type === 'feed_complete') {
-                                // Optionally update unread count for that feed locally
+                            if (event.type === 'feed_complete' && event.new_articles > 0) {
+                                hasNewArticles = true;
+                                debouncedRefresh();
+                                // Also update specific feed in local state if found
+                                set((state) => ({
+                                    feeds: state.feeds.map(f =>
+                                        f.id === event.id
+                                            ? { ...f, unread_count: (f.unread_count || 0) + event.new_articles, last_fetched_at: new Date().toISOString() }
+                                            : f
+                                    )
+                                }));
                             }
                         },
                         (error) => {
@@ -106,11 +126,12 @@ export const useFeedStore = create<FeedState>()(
                         }
                     );
 
-                    // Once all done, refetch everything to get latest state
+                    // Final fetch to ensure everything is in sync
+                    if (refreshTimeout) clearTimeout(refreshTimeout);
                     await Promise.all([
                         get().fetchFeeds(),
                         get().fetchFolders(),
-                        useArticleStore.getState().fetchArticles(true)
+                        articleStore.fetchArticles(true)
                     ]);
                 } catch (error) {
                     handleError(error, { context: 'refreshAllFeeds' });
@@ -247,8 +268,19 @@ export const useArticleStore = create<ArticleState>()(
                         limit: 50,
                     });
 
+                    const newArticles = reset ? articles : [...state.articles, ...articles];
+
+                    // Deduplicate and sort
+                    const uniqueArticles = Array.from(new Map(newArticles.map(a => [a.id, a])).values());
+                    uniqueArticles.sort((a, b) => {
+                        const dateA = new Date(a.published_at || 0).getTime();
+                        const dateB = new Date(b.published_at || 0).getTime();
+                        if (dateA !== dateB) return dateB - dateA;
+                        return b.id - a.id; // Secondary sort by ID desc
+                    });
+
                     set({
-                        articles: reset ? articles : [...state.articles, ...articles],
+                        articles: uniqueArticles,
                         cursor: next_cursor,
                         hasMore: next_cursor !== null,
                         isLoading: false,
