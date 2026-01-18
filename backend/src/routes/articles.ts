@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { queryOne, queryAll, run } from '../db/index.js';
-import { extractReadability } from '../services/readability.js';
+import { extractReadability, fetchAndExtractReadability } from '../services/readability.js';
 
 const listArticlesSchema = z.object({
     feed_id: z.coerce.number().optional(),
@@ -178,10 +178,10 @@ export async function articlesRoutes(app: FastifyInstance) {
             return reply.status(404).send({ error: 'Article not found' });
         }
 
-        // If no readability content, try to extract it
-        if (!article.readability_content && article.content) {
+        // If no readability content, try to extract it from the URL
+        if (!article.readability_content && article.url) {
             try {
-                const readable = extractReadability(article.content, article.url || undefined);
+                const { content: readable } = await fetchAndExtractReadability(article.url);
                 if (readable) {
                     run('UPDATE articles SET readability_content = ? WHERE id = ?', [readable, articleId]);
                     article.readability_content = readable;
