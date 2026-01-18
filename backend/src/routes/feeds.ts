@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { queryOne, queryAll, run } from '../db/index.js';
 import { discoverFeedsFromUrl, discoverByKeyword } from '../services/discovery.js';
 import { parseFeed, normalizeArticle, FeedType } from '../services/feed-parser.js';
+import { refreshFeed } from '../services/feed-refresh.js';
 
 // Schemas
 const addFeedSchema = z.object({
@@ -52,13 +53,13 @@ export async function feedsRoutes(app: FastifyInstance) {
         const { id: userId } = (request as any).user;
 
         const feeds = queryAll<Feed & { unread_count: number }>(
-            `SELECT f.*, 
-        (SELECT COUNT(*) FROM articles a 
-         LEFT JOIN read_state rs ON rs.article_id = a.id AND rs.user_id = ?
-         WHERE a.feed_id = f.id AND (rs.is_read IS NULL OR rs.is_read = 0)
-        ) as unread_count
+            `SELECT f.*,
+        COALESCE(COUNT(a.id) FILTER (WHERE rs.is_read IS NULL OR rs.is_read = 0), 0) as unread_count
        FROM feeds f
+       LEFT JOIN articles a ON a.feed_id = f.id
+       LEFT JOIN read_state rs ON rs.article_id = a.id AND rs.user_id = ?
        WHERE f.user_id = ? AND f.deleted_at IS NULL
+       GROUP BY f.id
        ORDER BY f.title`,
             [userId, userId]
         );
@@ -328,61 +329,20 @@ export async function feedsRoutes(app: FastifyInstance) {
             return reply.status(404).send({ error: 'Feed not found' });
         }
 
-        try {
-            const feedData = await parseFeed(feed.url);
-            let newArticles = 0;
+        const result = await refreshFeed({
+            id: feed.id,
+            url: feed.url,
+            type: feed.type,
+            refresh_interval_minutes: feed.refresh_interval_minutes,
+        });
 
-            const insertArticle = `
-        INSERT OR IGNORE INTO articles 
-        (feed_id, guid, title, url, author, summary, content, enclosure_url, enclosure_type, thumbnail_url, published_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `;
-
-            for (const article of feedData.articles) {
-                const normalized = normalizeArticle(article, feed.type);
-                const result = run(insertArticle, [
-                    feedId,
-                    normalized.guid,
-                    normalized.title,
-                    normalized.url,
-                    normalized.author,
-                    normalized.summary,
-                    normalized.content,
-                    normalized.enclosure_url,
-                    normalized.enclosure_type,
-                    normalized.thumbnail_url,
-                    normalized.published_at,
-                ]);
-                if (result.changes > 0) newArticles++;
-            }
-
-            run(
-                `UPDATE feeds SET 
-          last_fetched_at = datetime("now"), 
-          next_fetch_at = datetime("now", "+" || refresh_interval_minutes || " minutes"),
-          error_count = 0,
-          last_error = NULL,
-          updated_at = datetime("now")
-         WHERE id = ?`,
-                [feedId]
-            );
-
-            return { success: true, new_articles: newArticles };
-        } catch (err) {
-            run(
-                `UPDATE feeds SET 
-          error_count = error_count + 1,
-          last_error = ?,
-          last_error_at = datetime("now"),
-          updated_at = datetime("now")
-         WHERE id = ?`,
-                [err instanceof Error ? err.message : 'Unknown error', feedId]
-            );
-
+        if (!result.success) {
             return reply.status(500).send({
                 error: 'Failed to refresh feed',
-                details: err instanceof Error ? err.message : 'Unknown error',
+                details: result.error,
             });
         }
+
+        return { success: true, new_articles: result.newArticles };
     });
 }

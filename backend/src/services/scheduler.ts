@@ -1,11 +1,11 @@
 import cron from 'node-cron';
 import { queryOne, queryAll, run } from '../db/index.js';
-import { parseFeed, normalizeArticle, FeedType } from './feed-parser.js';
+import { refreshFeed } from './feed-refresh.js';
 
 interface FeedToRefresh {
     id: number;
     url: string;
-    type: FeedType;
+    type: 'rss' | 'youtube' | 'reddit' | 'podcast';
     refresh_interval_minutes: number;
     etag: string | null;
     last_modified: string | null;
@@ -62,7 +62,7 @@ async function refreshDueFeeds(): Promise<void> {
 
     for (const feed of feeds) {
         try {
-            await refreshFeed(feed);
+            await refreshFeedWrapper(feed);
         } catch (err) {
             console.error(`Failed to refresh feed ${feed.id}:`, err);
         }
@@ -72,113 +72,88 @@ async function refreshDueFeeds(): Promise<void> {
     }
 }
 
-async function refreshFeed(feed: FeedToRefresh): Promise<void> {
+async function refreshFeedWrapper(feed: FeedToRefresh): Promise<void> {
     console.log(`Refreshing feed ${feed.id}: ${feed.url}`);
 
-    try {
-        const feedData = await parseFeed(feed.url);
-        let newArticles = 0;
+    const result = await refreshFeed({
+        id: feed.id,
+        url: feed.url,
+        type: feed.type,
+        refresh_interval_minutes: feed.refresh_interval_minutes,
+    });
 
-        const insertArticle = `
-      INSERT OR IGNORE INTO articles 
-      (feed_id, guid, title, url, author, summary, content, enclosure_url, enclosure_type, thumbnail_url, published_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-
-        for (const article of feedData.articles) {
-            const normalized = normalizeArticle(article, feed.type);
-            const result = run(insertArticle, [
-                feed.id,
-                normalized.guid,
-                normalized.title,
-                normalized.url,
-                normalized.author,
-                normalized.summary,
-                normalized.content,
-                normalized.enclosure_url,
-                normalized.enclosure_type,
-                normalized.thumbnail_url,
-                normalized.published_at,
-            ]);
-            if (result.changes > 0) newArticles++;
+    if (result.success) {
+        if (result.newArticles > 0) {
+            console.log(`  Added ${result.newArticles} new articles`);
         }
-
-        // Update feed metadata - use single quotes for 'now' in SQLite
-        run(
-            `UPDATE feeds SET 
-        last_fetched_at = datetime('now'), 
-        next_fetch_at = datetime('now', '+' || refresh_interval_minutes || ' minutes'),
-        error_count = 0,
-        last_error = NULL,
-        updated_at = datetime('now')
-       WHERE id = ?`,
-            [feed.id]
-        );
-
-        if (newArticles > 0) {
-            console.log(`  Added ${newArticles} new articles`);
-        }
-    } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-        console.error(`  Error: ${errorMessage}`);
-
-        run(
-            `UPDATE feeds SET 
-        error_count = error_count + 1,
-        last_error = ?,
-        last_error_at = datetime('now'),
-        next_fetch_at = datetime('now', '+' || (refresh_interval_minutes * 2) || ' minutes'),
-        updated_at = datetime('now')
-       WHERE id = ?`,
-            [errorMessage, feed.id]
-        );
+    } else {
+        console.error(`  Error: ${result.error}`);
     }
 }
 
 async function cleanupOldArticles(): Promise<void> {
-    // 1. Get retention settings from the first user (admin)
-    const user = queryOne<{ settings_json: string }>('SELECT settings_json FROM users LIMIT 1');
-    let retentionDays = 90; // Default
     const hardLimitDays = 365; // Delete anything older than a year regardless of read state
+    let totalChanges = 0;
 
-    if (user?.settings_json) {
-        try {
-            const settings = JSON.parse(user.settings_json);
-            if (typeof settings.retention_days === 'number') {
-                retentionDays = settings.retention_days;
+    // Get all users with their settings
+    const users = queryAll<{ id: number; settings_json: string }>('SELECT id, settings_json FROM users');
+
+    console.log(`Starting cleanup for ${users.length} user(s), hard limit = ${hardLimitDays} days`);
+
+    // Clean up articles for each user based on their retention settings
+    for (const user of users) {
+        let retentionDays = 90; // Default
+
+        if (user.settings_json) {
+            try {
+                const settings = JSON.parse(user.settings_json);
+                if (typeof settings.retention_days === 'number') {
+                    retentionDays = settings.retention_days;
+                }
+            } catch (e) {
+                console.error(`Failed to parse settings for user ${user.id}:`, e);
             }
-        } catch (e) {
-            console.error('Failed to parse user settings for cleanup:', e);
+        }
+
+        // Delete old articles that have been read, for this user's feeds only
+        const readResult = run(
+            `DELETE FROM articles
+         WHERE id IN (
+           SELECT a.id FROM articles a
+           JOIN feeds f ON f.id = a.feed_id
+           LEFT JOIN read_state rs ON rs.article_id = a.id AND rs.user_id = ?
+           WHERE f.user_id = ?
+             AND (rs.is_read IS NULL OR rs.is_read = 1)
+           AND a.published_at < datetime('now', '-' || ? || ' days')
+         )`,
+            [user.id, user.id, retentionDays]
+        );
+
+        // Delete very old articles for this user's feeds (hard limit)
+        const hardResult = run(
+            `DELETE FROM articles
+         WHERE feed_id IN (SELECT id FROM feeds WHERE user_id = ?)
+           AND published_at < datetime('now', '-' || ? || ' days')`,
+            [user.id, hardLimitDays]
+        );
+
+        const userChanges = readResult.changes + hardResult.changes;
+        totalChanges += userChanges;
+
+        if (userChanges > 0) {
+            console.log(`  User ${user.id}: cleaned ${userChanges} articles (retention: ${retentionDays}d)`);
         }
     }
 
-    console.log(`Starting cleanup: read retention = ${retentionDays} days, hard limit = ${hardLimitDays} days`);
+    console.log(`Total cleaned up: ${totalChanges} old articles`);
 
-    // 2. Delete old articles that have been read
-    const readResult = run(
-        `DELETE FROM articles
-     WHERE id IN (
-       SELECT a.id FROM articles a
-       JOIN read_state rs ON rs.article_id = a.id AND rs.is_read = 1
-       WHERE a.published_at < datetime('now', '-' || ? || ' days')
-     )`,
-        [retentionDays]
-    );
+    // Clean up orphaned read states
+    const orphanCleanup = run(`DELETE FROM read_state WHERE article_id NOT IN (SELECT id FROM articles)`);
+    if (orphanCleanup.changes > 0) {
+        console.log(`Cleaned up ${orphanCleanup.changes} orphaned read states`);
+    }
 
-    // 3. Delete very old articles regardless of read state
-    const hardResult = run(
-        `DELETE FROM articles
-     WHERE published_at < datetime('now', '-' || ? || ' days')`,
-        [hardLimitDays]
-    );
-
-    const totalChanges = readResult.changes + hardResult.changes;
-    console.log(`Cleaned up ${totalChanges} old articles (${readResult.changes} read, ${hardResult.changes} hard limit)`);
-
-    // 4. Clean up orphaned read states
-    run(`DELETE FROM read_state WHERE article_id NOT IN (SELECT id FROM articles)`);
-
-    // 5. Run VACUUM to reclaim space if significant deletions occurred
+    // Run VACUUM to reclaim space if significant deletions occurred
     if (totalChanges > 100) {
         console.log('Running VACUUM to reclaim space...');
         try {

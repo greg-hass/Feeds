@@ -1,7 +1,7 @@
 import Fastify, { FastifyRequest, FastifyReply } from 'fastify';
 import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
-import { initializeDatabase, closeDatabase } from './db/index.js';
+import { initializeDatabase, closeDatabase, run, queryOne } from './db/index.js';
 import { authRoutes } from './routes/auth.js';
 import { feedsRoutes } from './routes/feeds.js';
 import { foldersRoutes } from './routes/folders.js';
@@ -12,6 +12,7 @@ import { opmlRoutes } from './routes/opml.js';
 import { syncRoutes } from './routes/sync.js';
 import { settingsRoutes } from './routes/settings.js';
 import { startScheduler, stopScheduler } from './services/scheduler.js';
+import { rateLimiters } from './middleware/rate-limit.js';
 
 // Extend Fastify types
 declare module 'fastify' {
@@ -34,6 +35,13 @@ export async function buildApp() {
         },
     });
 
+    // Validate JWT_SECRET in production
+    const jwtSecret = process.env.JWT_SECRET;
+    const isDevelopment = process.env.NODE_ENV !== 'production';
+    if (!jwtSecret && !isDevelopment) {
+        throw new Error('JWT_SECRET environment variable must be set in production');
+    }
+
     // CORS
     await app.register(cors, {
         origin: process.env.CORS_ORIGIN || true,
@@ -42,9 +50,35 @@ export async function buildApp() {
         allowedHeaders: ['Content-Type', 'Authorization'],
     });
 
+    // Security headers
+    app.addHook('onSend', async (request, reply, payload) => {
+        // Content Security Policy
+        const csp = [
+            "default-src 'self'",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+            "style-src 'self' 'unsafe-inline'",
+            "img-src 'self' data: https: http:",
+            "media-src 'self' https: http: blob:",
+            "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
+            "connect-src 'self' https: http:",
+            "font-src 'self' data: https:",
+            "object-src 'none'",
+            "base-uri 'self'",
+            "form-action 'self'",
+            "frame-ancestors 'none'",
+        ].join('; ');
+
+        reply.header('Content-Security-Policy', csp);
+        reply.header('X-Content-Type-Options', 'nosniff');
+        reply.header('X-Frame-Options', 'DENY');
+        reply.header('X-XSS-Protection', '1; mode=block');
+        reply.header('Referrer-Policy', 'strict-origin-when-cross-origin');
+        reply.header('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+    });
+
     // JWT Auth
     await app.register(jwt, {
-        secret: process.env.JWT_SECRET || 'change-me-in-production',
+        secret: jwtSecret || 'dev-secret-do-not-use-in-production',
         sign: {
             expiresIn: '7d',
         },
@@ -55,6 +89,7 @@ export async function buildApp() {
         if (request.method === 'OPTIONS') {
             return;
         }
+
         try {
             await request.jwtVerify();
         } catch (err) {
@@ -82,6 +117,13 @@ export async function buildApp() {
 export async function startServer() {
     // Initialize database
     initializeDatabase();
+
+    // Ensure default user exists
+    const user = queryOne('SELECT id FROM users WHERE id = 1');
+    if (!user) {
+        console.log('Creating default admin user...');
+        run('INSERT INTO users (id, username, password_hash, is_admin) VALUES (1, ?, ?, 1)', ['admin', 'disabled']);
+    }
 
     const app = await buildApp();
 

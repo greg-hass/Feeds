@@ -1,7 +1,13 @@
 import FeedParser, { Item } from 'feedparser';
 import { Readable } from 'stream';
+import type { FeedItemExtensions, FeedMetaExtensions, asString } from '../types/rss-extensions.js';
+import { HTTP, CONTENT, STRINGS, MISC } from '../config/constants.js';
 
 export type FeedType = 'rss' | 'youtube' | 'reddit' | 'podcast';
+
+// Type extensions for FeedParser
+type ExtendedItem = FeedParser.Item & FeedItemExtensions;
+type ExtendedMeta = FeedParser.Meta & FeedMetaExtensions;
 
 export interface RawArticle {
     guid: string;
@@ -59,7 +65,7 @@ export async function parseFeed(url: string): Promise<ParsedFeed> {
             'User-Agent': USER_AGENT,
             'Accept': 'application/rss+xml, application/atom+xml, application/xml, text/xml, */*',
         },
-        signal: AbortSignal.timeout(30000),
+        signal: AbortSignal.timeout(HTTP.REQUEST_TIMEOUT),
     });
 
     if (!response.ok) {
@@ -79,33 +85,32 @@ export async function parseFeed(url: string): Promise<ParsedFeed> {
         feedparser.on('readable', function (this: FeedParser) {
             let item: FeedParser.Item | null;
             while ((item = this.read())) {
+                const extendedItem = item as ExtendedItem;
+
                 // Check for podcast indicators
                 if (item.enclosures?.some((e) => e.type?.startsWith('audio/'))) {
                     isPodcast = true;
                 }
 
-                // Access extended properties via any cast for RSS extensions
-                const extendedItem = item as FeedParser.Item & Record<string, unknown>;
-
                 articles.push({
                     guid: item.guid || item.link || generateGuid(item),
-                    title: item.title || 'Untitled',
+                    title: item.title || STRINGS.DEFAULT_ARTICLE_TITLE,
                     link: item.link || item.origlink || '',
-                    author: item.author || (extendedItem['dc:creator'] as string) || null,
-                    summary: truncate(stripHtml(item.summary || item.description || ''), 500),
-                    description: item.description || (extendedItem['content:encoded'] as string) || item.summary || null,
+                    author: item.author || extendedItem['dc:creator'] || null,
+                    summary: truncate(stripHtml(item.summary || item.description || ''), CONTENT.MAX_SUMMARY_LENGTH),
+                    description: item.description || extendedItem['content:encoded'] || item.summary || null,
                     pubdate: item.pubdate || item.date || null,
                     enclosures: item.enclosures || [],
                     image: item.image,
-                    thumbnail: (extendedItem['media:thumbnail'] as { url?: string })?.url,
+                    thumbnail: extendedItem['media:thumbnail']?.url,
                 });
             }
         });
 
         feedparser.on('meta', function (this: FeedParser, meta: FeedParser.Meta) {
+            const extendedMeta = meta as ExtendedMeta;
             feedMeta = meta;
             // Check for iTunes namespace (podcast indicator)
-            const extendedMeta = meta as FeedParser.Meta & Record<string, unknown>;
             if (extendedMeta['itunes:author'] || extendedMeta['itunes:summary']) {
                 isPodcast = true;
             }
@@ -118,7 +123,7 @@ export async function parseFeed(url: string): Promise<ParsedFeed> {
             }
 
             resolve({
-                title: feedMeta.title || 'Untitled Feed',
+                title: feedMeta.title || STRINGS.DEFAULT_FEED_TITLE,
                 description: feedMeta.description || null,
                 link: feedMeta.link || feedMeta.xmlurl || null,
                 favicon: feedMeta.favicon || feedMeta.image?.url || extractFavicon(feedMeta.link) || (feedMeta.link ? `https://www.google.com/s2/favicons?domain=${new URL(feedMeta.link).hostname}&sz=64` : null),
@@ -138,11 +143,11 @@ export function normalizeArticle(raw: RawArticle, feedType: FeedType): Normalize
     let thumbnail = raw.thumbnail || raw.image?.url || null;
     let author = raw.author;
     let content = raw.description || raw.summary || null;
-    let summary = raw.summary || (content ? truncate(stripHtml(content), 200) : null);
+    let summary = raw.summary || (content ? truncate(stripHtml(content), CONTENT.PREVIEW_SUMMARY_LENGTH) : null);
     let url = raw.link || null;
 
     if (feedType === 'youtube') {
-        const guidMatch = raw.guid?.match(/(?:yt:video:|video:)([a-zA-Z0-9_-]{11})/);
+        const guidMatch = raw.guid?.match(STRINGS.YOUTUBE_VIDEO_ID_PATTERN);
         const videoId = guidMatch ? guidMatch[1] : null;
         if (!url && videoId) {
             url = `https://www.youtube.com/watch?v=${videoId}`;
@@ -257,7 +262,7 @@ function generateGuid(item: FeedParser.Item): string {
         hash = ((hash << 5) - hash) + char;
         hash = hash & hash;
     }
-    return `generated-${Math.abs(hash).toString(16)}`;
+    return `${STRINGS.GENERATED_GUID_PREFIX}${Math.abs(hash).toString(MISC.HASH_RADIX)}`;
 }
 
 function stripHtml(html: string): string {
@@ -266,7 +271,7 @@ function stripHtml(html: string): string {
 
 function truncate(text: string, length: number): string {
     if (text.length <= length) return text;
-    return text.substring(0, length).replace(/\s+\S*$/, '') + '...';
+    return text.substring(0, length).replace(/\s+\S*$/, '') + CONTENT.TRUNCATION_SUFFIX;
 }
 
 function decodeHtmlEntities(text: string): string {

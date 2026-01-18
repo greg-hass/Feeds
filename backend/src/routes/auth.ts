@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import bcrypt from 'bcrypt';
 import { z } from 'zod';
 import { queryOne, run, queryAll } from '../db/index.js';
+import { rateLimiters } from '../middleware/rate-limit.js';
 
 // Schemas
 const setupSchema = z.object({
@@ -66,6 +67,12 @@ export async function authRoutes(app: FastifyInstance) {
 
     // Login
     app.post('/login', async (request: FastifyRequest, reply: FastifyReply) => {
+        // Apply rate limiting to login endpoint
+        const allowed = await rateLimiters.auth(request, reply);
+        if (!allowed) {
+            return reply.code(429).send({ error: 'Too many login attempts. Please try again later.' });
+        }
+
         const body = loginSchema.parse(request.body);
 
         const user = queryOne<User>(

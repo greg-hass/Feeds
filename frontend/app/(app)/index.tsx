@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { formatDistanceToNow } from 'date-fns';
 import { useArticleStore, useFeedStore } from '@/stores';
 import { Article, api } from '@/services/api';
-import { Circle, CircleCheck, Headphones, Filter, CheckCheck, MoreVertical, Play, Bookmark, Menu, X } from 'lucide-react-native';
+import { Circle, CircleCheck, Headphones, Filter, CheckCheck, MoreVertical, Play, Bookmark, Menu, X, AlertTriangle, RefreshCw } from 'lucide-react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
 import { extractVideoId, getThumbnailUrl, getEmbedUrl } from '@/utils/youtube';
 
@@ -16,7 +16,7 @@ export default function ArticleListScreen() {
     const colors = useColors();
     const { width } = useWindowDimensions();
     const isMobile = width < 768;
-    const { articles, isLoading, hasMore, filter, fetchArticles, setFilter, markAllRead } = useArticleStore();
+    const { articles, isLoading, hasMore, filter, fetchArticles, setFilter, markAllRead, error, clearError } = useArticleStore();
     const { fetchFeeds, fetchFolders } = useFeedStore();
     const [showMenu, setShowMenu] = useState(false);
     const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -227,33 +227,6 @@ export default function ArticleListScreen() {
                     )}
 
                     <View style={s.articleContent}>
-                        {/* Mobile Header (moved inside content for layout consistency, but logically part of row on desktop) */}
-                        {!isMobile && (
-                            <View style={s.articleHeader}>
-                                <Text style={s.feedName}>{item.feed_title}</Text>
-                                {item.has_audio && <Headphones size={14} color={colors.secondary.DEFAULT} />}
-                            </View>
-                        )}
-
-                        {/* On mobile we showed header differently or inside content above? Check original. 
-                            Original had header inside content. Let's keep it but maybe adjust if needed.
-                            Actually, the previous code had header inside content. 
-                            Let's restore the content block but without the mobile thumbnail inside it (moved out/above for mobile?).
-                            Wait, the original code had:
-                            View (row/col)
-                              View (content)
-                                Header
-                                Title
-                                Mobile Thumbnail
-                                Summary
-                              Desktop Thumbnail
-                            
-                            For mobile inline, I want the video effectively "inside" the card.
-                            If I move it out of content, it might break layout.
-                            State `activeVideoId` is singular at top level? Yes.
-                            So clicking one video closes others? Yes.
-                         */}
-
                         <View style={s.articleHeader}>
                             {item.feed_icon_url && (
                                 <Image source={{ uri: item.feed_icon_url }} style={{ width: 16, height: 16, borderRadius: 3, marginRight: 6 }} />
@@ -387,11 +360,29 @@ export default function ArticleListScreen() {
                 }
                 ListEmptyComponent={
                     !isLoading ? (
-                        <View style={s.empty}>
-                            <CircleCheck size={48} color={colors.primary.DEFAULT} />
-                            <Text style={s.emptyTitle}>All caught up!</Text>
-                            <Text style={s.emptyText}>No unread articles</Text>
-                        </View>
+                        error ? (
+                            <View style={s.empty}>
+                                <AlertTriangle size={48} color={colors.error} />
+                                <Text style={s.emptyTitle}>Something went wrong</Text>
+                                <Text style={s.emptyText}>{error}</Text>
+                                <TouchableOpacity
+                                    style={s.retryButton}
+                                    onPress={() => {
+                                        clearError();
+                                        fetchArticles(true);
+                                    }}
+                                >
+                                    <RefreshCw size={18} color={colors.text.inverse} />
+                                    <Text style={s.retryButtonText}>Retry</Text>
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            <View style={s.empty}>
+                                <CircleCheck size={48} color={colors.primary.DEFAULT} />
+                                <Text style={s.emptyTitle}>All caught up!</Text>
+                                <Text style={s.emptyText}>No unread articles</Text>
+                            </View>
+                        )
                     ) : null
                 }
             />
@@ -631,6 +622,22 @@ const styles = (colors: any, isMobile: boolean) => StyleSheet.create({
         fontSize: 14,
         color: colors.text.secondary,
         marginTop: spacing.sm,
+        marginBottom: spacing.lg,
+    },
+    retryButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+        backgroundColor: colors.primary.DEFAULT,
+        paddingHorizontal: spacing.lg,
+        paddingVertical: spacing.md,
+        borderRadius: borderRadius.md,
+        marginTop: spacing.md,
+    },
+    retryButtonText: {
+        color: colors.text.inverse,
+        fontSize: 15,
+        fontWeight: '600',
     },
     // Inline player
     inlinePlayer: {

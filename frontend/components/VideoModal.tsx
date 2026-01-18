@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, StyleSheet, Modal, TouchableOpacity, useWindowDimensions, Pressable } from 'react-native';
+import { View, StyleSheet, Modal, TouchableOpacity, useWindowDimensions, Pressable, Platform } from 'react-native';
+import { WebView } from 'react-native-webview';
 import { X } from 'lucide-react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
 import { getEmbedUrl } from '@/utils/youtube';
@@ -48,15 +49,27 @@ export function VideoModal({ videoId, visible, onClose }: VideoModalProps) {
                         </TouchableOpacity>
                     </View>
 
-                    <iframe
-                        width="100%"
-                        height="100%"
-                        src={getEmbedUrl(videoId, true, true)}
-                        frameBorder="0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        style={{ borderBottomLeftRadius: borderRadius.lg, borderBottomRightRadius: borderRadius.lg }}
-                    />
+                    {Platform.OS === 'web' ? (
+                        <iframe
+                            width="100%"
+                            height="100%"
+                            src={getEmbedUrl(videoId, true, true)}
+                            frameBorder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                            style={{ borderBottomLeftRadius: borderRadius.lg, borderBottomRightRadius: borderRadius.lg }}
+                        />
+                    ) : (
+                        <WebView
+                            source={{ uri: getEmbedUrl(videoId, true, true) }}
+                            style={{ flex: 1, borderBottomLeftRadius: borderRadius.lg, borderBottomRightRadius: borderRadius.lg }}
+                            allowsFullscreenVideo
+                            mediaPlaybackRequiresUserAction={false}
+                            javaScriptEnabled
+                            domStorageEnabled
+                            allowsInlineMediaPlayback
+                        />
+                    )}
                 </View>
             </View>
         </Modal>

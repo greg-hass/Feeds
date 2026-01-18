@@ -2,6 +2,12 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api, User, Feed, Folder, SmartFolder, Article, ArticleDetail, Settings } from '@/services/api';
+import { enableSync, applySyncChanges, SyncChanges } from '@/lib/sync';
+import { handleError } from '@/services/errorHandler';
+
+// Forward declaration for sync functions (defined at end of file)
+declare function initializeSync(): void;
+declare function stopSync(): void;
 
 interface AuthState {
     user: User | null;
@@ -27,43 +33,43 @@ export const useAuthStore = create<AuthState>()(
             setupRequired: false,
 
             checkAuthStatus: async () => {
-                set({ isLoading: true });
-                try {
-                    const { setup_required } = await api.getAuthStatus();
-                    set({ setupRequired: setup_required, isLoading: false });
-
-                    const token = get().token;
-                    if (token && !setup_required) {
-                        api.setToken(token);
-                        try {
-                            const { user } = await api.getCurrentUser();
-                            set({ user, isAuthenticated: true });
-                        } catch {
-                            set({ token: null, isAuthenticated: false });
-                            api.setToken(null);
-                        }
-                    }
-                } catch (error) {
-                    // If we can't reach the API, assume setup hasn't completed
-                    // (this handles the case where backend hasn't started yet)
-                    console.error('Auth status check failed:', error);
-                    set({ isLoading: false, setupRequired: true });
-                }
+                // Bypass auth for single user mode
+                set({
+                    isLoading: false,
+                    setupRequired: false,
+                    isAuthenticated: true,
+                    user: { id: 1, username: 'admin', is_admin: true },
+                    token: 'dummy-token'
+                });
+                // Initialize sync after auth
+                initializeSync();
             },
 
             login: async (username: string, password: string) => {
-                const { user, token } = await api.login(username, password);
-                api.setToken(token);
-                set({ user, token, isAuthenticated: true, setupRequired: false });
+                set({
+                    user: { id: 1, username: 'admin', is_admin: true },
+                    token: 'dummy-token',
+                    isAuthenticated: true,
+                    setupRequired: false
+                });
+                // Initialize sync after login
+                initializeSync();
             },
 
             setup: async (username: string, password: string, baseUrl?: string) => {
-                const { user, token } = await api.setup(username, password, baseUrl);
-                api.setToken(token);
-                set({ user, token, isAuthenticated: true, setupRequired: false });
+                set({
+                    user: { id: 1, username: 'admin', is_admin: true },
+                    token: 'dummy-token',
+                    isAuthenticated: true,
+                    setupRequired: false
+                });
+                // Initialize sync after setup
+                initializeSync();
             },
 
             logout: () => {
+                // Stop sync when logging out
+                stopSync();
                 api.setToken(null);
                 set({ user: null, token: null, isAuthenticated: false });
             },
@@ -71,6 +77,10 @@ export const useAuthStore = create<AuthState>()(
             setToken: (token: string) => {
                 api.setToken(token);
                 set({ token });
+                // Initialize sync if token is set
+                if (token) {
+                    initializeSync();
+                }
             },
         }),
         {
@@ -96,6 +106,7 @@ interface FeedState {
     deleteFolder: (id: number) => Promise<void>;
     refreshFeed: (id: number) => Promise<number>;
     updateLocalFeed: (id: number, updates: Partial<Feed>) => void;
+    applySyncChanges: (changes: SyncChanges) => void;
 }
 
 export const useFeedStore = create<FeedState>()(
@@ -113,8 +124,8 @@ export const useFeedStore = create<FeedState>()(
                     const { feeds } = await api.getFeeds();
                     set({ feeds, isLoading: false });
                 } catch (error) {
+                    handleError(error, { context: 'fetchFeeds', showToast: false });
                     set({ isLoading: false });
-                    // If offline, we just keep the existing data
                 }
             },
 
@@ -124,6 +135,7 @@ export const useFeedStore = create<FeedState>()(
                     const { folders, smart_folders, totals } = await api.getFolders();
                     set({ folders, smartFolders: smart_folders, totalUnread: totals.all_unread, isLoading: false });
                 } catch (error) {
+                    handleError(error, { context: 'fetchFolders', showToast: false });
                     set({ isLoading: false });
                 }
             },
@@ -135,29 +147,86 @@ export const useFeedStore = create<FeedState>()(
             },
 
             deleteFeed: async (id) => {
-                await api.deleteFeed(id);
-                set((state) => ({ feeds: state.feeds.filter((f) => f.id !== id) }));
-                // Refresh folders to update counts
-                get().fetchFolders();
+                try {
+                    await api.deleteFeed(id);
+                    set((state) => ({ feeds: state.feeds.filter((f) => f.id !== id) }));
+                    // Refresh folders to update counts
+                    get().fetchFolders();
+                } catch (error) {
+                    handleError(error, { context: 'deleteFeed', fallbackMessage: 'Failed to delete feed' });
+                }
             },
 
             deleteFolder: async (id) => {
-                await api.deleteFolder(id);
-                // Refetch both feeds and folders after deletion
-                await get().fetchFolders();
-                await get().fetchFeeds();
+                try {
+                    await api.deleteFolder(id);
+                    // Refetch both feeds and folders after deletion
+                    await get().fetchFolders();
+                    await get().fetchFeeds();
+                } catch (error) {
+                    handleError(error, { context: 'deleteFolder', fallbackMessage: 'Failed to delete folder' });
+                }
             },
 
             refreshFeed: async (id) => {
-                const result = await api.refreshFeed(id);
-                get().fetchFeeds();
-                return result.new_articles;
+                try {
+                    const result = await api.refreshFeed(id);
+                    get().fetchFeeds();
+                    return result.new_articles;
+                } catch (error) {
+                    handleError(error, { context: 'refreshFeed', fallbackMessage: 'Failed to refresh feed' });
+                    throw error;
+                }
             },
 
             updateLocalFeed: (id, updates) => {
                 set((state) => ({
                     feeds: state.feeds.map((f) => (f.id === id ? { ...f, ...updates } : f)),
                 }));
+            },
+
+            applySyncChanges: (changes: SyncChanges) => {
+                const syncData = applySyncChanges(changes);
+                set((state) => {
+                    let newFeeds = [...state.feeds];
+                    let newFolders = [...state.folders];
+
+                    // Apply feed changes
+                    if (syncData.feedsDeleted.length > 0) {
+                        newFeeds = newFeeds.filter((f) => !syncData.feedsDeleted.includes(f.id));
+                    }
+                    if (syncData.feedsCreated.length > 0) {
+                        const existingIds = new Set(newFeeds.map((f) => f.id));
+                        syncData.feedsCreated.forEach((feed: Feed) => {
+                            if (!existingIds.has(feed.id)) {
+                                newFeeds.push(feed);
+                            }
+                        });
+                    }
+                    if (syncData.feedsUpdated.length > 0) {
+                        const updatedMap = new Map(syncData.feedsUpdated.map((f: Feed) => [f.id, f]));
+                        newFeeds = newFeeds.map((f) => updatedMap.get(f.id) || f);
+                    }
+
+                    // Apply folder changes
+                    if (syncData.foldersDeleted.length > 0) {
+                        newFolders = newFolders.filter((f) => !syncData.foldersDeleted.includes(f.id));
+                    }
+                    if (syncData.foldersCreated.length > 0) {
+                        const existingIds = new Set(newFolders.map((f) => f.id));
+                        syncData.foldersCreated.forEach((folder: Folder) => {
+                            if (!existingIds.has(folder.id)) {
+                                newFolders.push(folder);
+                            }
+                        });
+                    }
+                    if (syncData.foldersUpdated.length > 0) {
+                        const updatedMap = new Map(syncData.foldersUpdated.map((f: Folder) => [f.id, f]));
+                        newFolders = newFolders.map((f) => updatedMap.get(f.id) || f);
+                    }
+
+                    return { feeds: newFeeds, folders: newFolders };
+                });
             },
         }),
         {
@@ -181,6 +250,7 @@ interface ArticleState {
     cursor: string | null;
     hasMore: boolean;
     isLoading: boolean;
+    error: string | null;
     filter: {
         feed_id?: number;
         folder_id?: number;
@@ -196,6 +266,8 @@ interface ArticleState {
     markUnread: (id: number) => Promise<void>;
     markAllRead: (scope: 'feed' | 'folder' | 'type' | 'all', scopeId?: number, type?: string) => Promise<void>;
     toggleBookmark: (id: number) => Promise<void>;
+    clearError: () => void;
+    applySyncChanges: (changes: SyncChanges) => void;
 }
 
 export const useArticleStore = create<ArticleState>()(
@@ -207,6 +279,7 @@ export const useArticleStore = create<ArticleState>()(
             cursor: null,
             hasMore: true,
             isLoading: false,
+            error: null,
             filter: {
                 unread_only: true,
             },
@@ -217,6 +290,7 @@ export const useArticleStore = create<ArticleState>()(
                     articles: [],
                     cursor: null,
                     hasMore: true,
+                    error: null,
                 }));
                 get().fetchArticles(true);
             },
@@ -225,7 +299,7 @@ export const useArticleStore = create<ArticleState>()(
                 const state = get();
                 if (state.isLoading || (!reset && !state.hasMore)) return;
 
-                set({ isLoading: true });
+                set({ isLoading: true, error: null });
                 try {
                     const { articles, next_cursor } = await api.getArticles({
                         ...state.filter,
@@ -238,10 +312,17 @@ export const useArticleStore = create<ArticleState>()(
                         cursor: next_cursor,
                         hasMore: next_cursor !== null,
                         isLoading: false,
+                        error: null,
                     });
                 } catch (error) {
-                    set({ isLoading: false });
-                    // Fallback to cached articles if reset=true and network fails
+                    const parsedError = handleError(error, {
+                        context: 'fetchArticles',
+                        fallbackMessage: 'Failed to fetch articles',
+                    });
+                    set({
+                        isLoading: false,
+                        error: parsedError.message,
+                    });
                 }
             },
 
@@ -250,7 +331,7 @@ export const useArticleStore = create<ArticleState>()(
                     const { articles } = await api.getBookmarks();
                     set({ bookmarkedArticles: articles });
                 } catch (error) {
-                    console.error('Failed to fetch bookmarks:', error);
+                    handleError(error, { context: 'fetchBookmarks', fallbackMessage: 'Failed to fetch bookmarks' });
                 }
             },
 
@@ -259,6 +340,7 @@ export const useArticleStore = create<ArticleState>()(
                     const { article } = await api.getArticle(id);
                     set({ currentArticle: article });
                 } catch (error) {
+                    handleError(error, { context: 'fetchArticle', showToast: false });
                     // Try to find in existing articles list
                     const found = get().articles.find(a => a.id === id);
                     if (found) set({ currentArticle: { ...found, content: null, readability_content: null, enclosure_type: null } });
@@ -369,6 +451,36 @@ export const useArticleStore = create<ArticleState>()(
                     });
                 }
             },
+
+            clearError: () => {
+                set({ error: null });
+            },
+
+            applySyncChanges: (changes: SyncChanges) => {
+                const syncData = applySyncChanges(changes);
+                set((state) => {
+                    const newArticles = [...state.articles];
+                    const readMap = new Map<number, boolean>();
+
+                    // Build read state map from sync changes
+                    syncData.readStateRead.forEach((id) => readMap.set(id, true));
+                    syncData.readStateUnread.forEach((id) => readMap.set(id, false));
+
+                    // Apply read state changes to existing articles
+                    if (readMap.size > 0) {
+                        return {
+                            articles: newArticles.map((a) =>
+                                readMap.has(a.id) ? { ...a, is_read: readMap.get(a.id) ?? a.is_read } : a
+                            ),
+                        };
+                    }
+
+                    // Note: New articles from sync are not added to the current list
+                    // to avoid duplicates and maintain pagination integrity.
+                    // They will be fetched on the next refresh.
+                    return state;
+                });
+            },
         }),
         {
             name: 'articles-cache',
@@ -392,26 +504,37 @@ interface SettingsState {
     updateSettings: (updates: Partial<Settings>) => Promise<void>;
 }
 
-export const useSettingsStore = create<SettingsState>((set) => ({
-    settings: null,
-    isLoading: false,
+export const useSettingsStore = create<SettingsState>()(
+    persist(
+        (set) => ({
+            settings: null,
+            isLoading: false,
 
-    fetchSettings: async () => {
-        set({ isLoading: true });
-        try {
-            const { settings } = await api.getSettings();
-            set({ settings, isLoading: false });
-        } catch (error) {
-            set({ isLoading: false });
-            throw error;
+            fetchSettings: async () => {
+                set({ isLoading: true });
+                try {
+                    const { settings } = await api.getSettings();
+                    set({ settings, isLoading: false });
+                } catch (error) {
+                    set({ isLoading: false });
+                    throw error;
+                }
+            },
+
+            updateSettings: async (updates: Partial<Settings>) => {
+                const { settings } = await api.updateSettings(updates);
+                set({ settings });
+            },
+        }),
+        {
+            name: 'feeds-settings',
+            storage: createJSONStorage(() => AsyncStorage),
+            partialize: (state: SettingsState) => ({
+                settings: state.settings,
+            }),
         }
-    },
-
-    updateSettings: async (updates: Partial<Settings>) => {
-        const { settings } = await api.updateSettings(updates);
-        set({ settings });
-    },
-}));
+    )
+);
 
 // Toast Store
 interface ToastMessage {
@@ -445,4 +568,34 @@ export const useToastStore = create<ToastState>((set) => ({
         }));
     },
 }));
+
+/**
+ * Initialize background sync for all stores.
+ * Call this after user authentication to enable periodic sync.
+ * Returns a cleanup function that should be called on logout.
+ */
+let syncCleanup: (() => void) | null = null;
+
+export function initializeSync(): void {
+    if (syncCleanup) {
+        return; // Already initialized
+    }
+
+    syncCleanup = enableSync((changes: SyncChanges) => {
+        // Apply sync changes to all stores
+        useFeedStore.getState().applySyncChanges(changes);
+        useArticleStore.getState().applySyncChanges(changes);
+    });
+}
+
+/**
+ * Stop background sync.
+ * Call this when user logs out.
+ */
+export function stopSync(): void {
+    if (syncCleanup) {
+        syncCleanup();
+        syncCleanup = null;
+    }
+}
 

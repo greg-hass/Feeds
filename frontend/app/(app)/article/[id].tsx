@@ -2,12 +2,13 @@ import { useEffect, useState, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Linking, Image, useWindowDimensions, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { formatDistanceToNow } from 'date-fns';
-import { useArticleStore, useSettingsStore } from '@/stores';
+import { useArticleStore, useSettingsStore, useToastStore } from '@/stores';
 import { Article, ArticleDetail, api } from '@/services/api';
-import { ArrowLeft, ExternalLink, Circle, CircleCheck, Headphones, BookOpen, Play, Bookmark } from 'lucide-react-native';
+import { ArrowLeft, ExternalLink, Circle, CircleCheck, Headphones, BookOpen, Play, Bookmark, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
-import { extractVideoId, getEmbedUrl } from '@/utils/youtube';
+import { extractVideoId, getEmbedUrl, isYouTubeUrl } from '@/utils/youtube';
 import ArticleContent from '@/components/ArticleContent';
+import { VideoModal } from '@/components/VideoModal';
 
 export default function ArticleScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
@@ -15,13 +16,16 @@ export default function ArticleScreen() {
     const colors = useColors();
     const { width } = useWindowDimensions();
     const isMobile = width < 768;
-    const { currentArticle, fetchArticle, markRead, markUnread, toggleBookmark } = useArticleStore();
+    const { currentArticle, fetchArticle, markRead, markUnread, toggleBookmark, articles } = useArticleStore();
     const { settings } = useSettingsStore();
+    const { show } = useToastStore();
     const [isLoading, setIsLoading] = useState(true);
     const [showReadability, setShowReadability] = useState(settings?.readability_enabled ?? false);
     const [isBookmarked, setIsBookmarked] = useState(false);
+    const [modalVideoId, setModalVideoId] = useState<string | null>(null);
+    const [adjacentArticles, setAdjacentArticles] = useState<{ prev: number | null; next: number | null }>({ prev: null, next: null });
 
-    const isYouTube = currentArticle?.feed_type === 'youtube';
+    const isYouTube = currentArticle?.feed_type === 'youtube' || isYouTubeUrl(currentArticle?.url || '');
     const videoId = extractVideoId(currentArticle?.url || currentArticle?.thumbnail_url || '');
     const externalUrl = currentArticle?.url || (videoId ? `https://www.youtube.com/watch?v=${videoId}` : null);
 
@@ -48,6 +52,27 @@ export default function ArticleScreen() {
         }
     }, [settings?.readability_enabled]);
 
+    // Calculate adjacent articles for navigation
+    useEffect(() => {
+        if (!currentArticle || articles.length === 0) return;
+
+        const currentIndex = articles.findIndex((a: Article) => a.id === currentArticle.id);
+        if (currentIndex === -1) return;
+
+        setAdjacentArticles({
+            prev: currentIndex > 0 ? articles[currentIndex - 1].id : null,
+            next: currentIndex < articles.length - 1 ? articles[currentIndex + 1].id : null,
+        });
+    }, [currentArticle, articles]);
+
+    const navigateToArticle = useCallback((articleId: number | null) => {
+        if (!articleId) {
+            show('No more articles in this direction');
+            return;
+        }
+        router.replace(`/(app)/article/${articleId}`);
+    }, [router, show]);
+
     const handleOpenExternal = useCallback(() => {
         if (externalUrl) {
             Linking.openURL(externalUrl);
@@ -70,42 +95,62 @@ export default function ArticleScreen() {
     }, [currentArticle, toggleBookmark]);
 
     useEffect(() => {
+        let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+        let isProcessing = false;
+
         const handleKeyDown = (e: KeyboardEvent) => {
             // Ignore if typing in an input
             if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
 
-            const { articles } = useArticleStore.getState();
-            const currentIndex = articles.findIndex((a: Article) => a.id === Number(id));
+            // Prevent rapid key presses from causing issues
+            if (isProcessing) return;
+
+            // Clear any existing debounce timer
+            if (debounceTimer) {
+                clearTimeout(debounceTimer);
+            }
+
+            // Mark as processing
+            isProcessing = true;
 
             switch (e.key.toLowerCase()) {
                 case 'j': // Next
-                    if (currentIndex < articles.length - 1) {
-                        router.replace(`/(app)/article/${articles[currentIndex + 1].id}`);
-                    }
+                    navigateToArticle(adjacentArticles.next);
                     break;
                 case 'k': // Previous
-                    if (currentIndex > 0) {
-                        router.replace(`/(app)/article/${articles[currentIndex - 1].id}`);
-                    }
+                    navigateToArticle(adjacentArticles.prev);
                     break;
                 case 'm': // Toggle Read
                     handleToggleRead();
-                    break;
+                    isProcessing = false; // Immediate actions don't need debounce
+                    return;
                 case 'o': // Open in browser
                     handleOpenExternal();
-                    break;
+                    isProcessing = false; // Immediate actions don't need debounce
+                    return;
                 case 'escape': // Back to list
                     router.back();
-                    break;
+                    isProcessing = false; // Immediate actions don't need debounce
+                    return;
                 case 'r': // Refresh/Reload this article
                     if (id) fetchArticle(Number(id));
-                    break;
+                    isProcessing = false; // Immediate actions don't need debounce
+                    return;
             }
+
+            // Debounce navigation actions to prevent rapid successive navigations
+            debounceTimer = setTimeout(() => {
+                isProcessing = false;
+                debounceTimer = null;
+            }, 300);
         };
 
         window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [id, handleToggleRead, handleOpenExternal]);
+        return () => {
+            if (debounceTimer) clearTimeout(debounceTimer);
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [id, handleToggleRead, handleOpenExternal, adjacentArticles, navigateToArticle, fetchArticle, router]);
 
     if (isLoading || !currentArticle) {
         return (
@@ -126,6 +171,24 @@ export default function ArticleScreen() {
                 <TouchableOpacity onPress={() => router.back()} style={s.backButton}>
                     <ArrowLeft size={24} color={colors.text.primary} />
                 </TouchableOpacity>
+
+                {/* Article Navigation */}
+                <View style={s.navigation}>
+                    <TouchableOpacity
+                        onPress={() => navigateToArticle(adjacentArticles.prev)}
+                        style={[s.navButton, !adjacentArticles.prev && s.navButtonDisabled]}
+                        disabled={!adjacentArticles.prev}
+                    >
+                        <ChevronLeft size={20} color={adjacentArticles.prev ? colors.primary.DEFAULT : colors.text.tertiary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => navigateToArticle(adjacentArticles.next)}
+                        style={[s.navButton, !adjacentArticles.next && s.navButtonDisabled]}
+                        disabled={!adjacentArticles.next}
+                    >
+                        <ChevronRight size={20} color={adjacentArticles.next ? colors.primary.DEFAULT : colors.text.tertiary} />
+                    </TouchableOpacity>
+                </View>
 
                 <View style={s.headerActions}>
                     <TouchableOpacity onPress={handleToggleRead} style={s.actionButton}>
@@ -205,20 +268,39 @@ export default function ArticleScreen() {
                     )}
                 </View>
 
-                {/* YouTube Player */}
+                {/* YouTube Player - Mobile Inline / Desktop Modal */}
                 {isYouTube && videoId && Platform.OS === 'web' && (
                     <View style={s.videoContainer}>
-                        <iframe
-                            src={getEmbedUrl(videoId, false, true)}
-                            style={{
-                                width: '100%',
-                                height: '100%',
-                                border: 'none',
-                                borderRadius: borderRadius.lg,
-                            }}
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
-                        />
+                        {isMobile ? (
+                            <iframe
+                                src={getEmbedUrl(videoId, false, true)}
+                                style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    border: 'none',
+                                    borderRadius: borderRadius.lg,
+                                }}
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                            />
+                        ) : (
+                            <TouchableOpacity
+                                style={s.videoPlaceholder}
+                                onPress={() => setModalVideoId(videoId)}
+                                activeOpacity={0.9}
+                            >
+                                <Image
+                                    source={{ uri: currentArticle.thumbnail_url || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` }}
+                                    style={s.heroImageFull}
+                                    resizeMode="cover"
+                                />
+                                <View style={s.playOverlay}>
+                                    <View style={s.playButton}>
+                                        <Play size={32} color="#fff" fill="#fff" style={{ marginLeft: 4 }} />
+                                    </View>
+                                </View>
+                            </TouchableOpacity>
+                        )}
                     </View>
                 )}
 
@@ -256,6 +338,12 @@ export default function ArticleScreen() {
                     )}
                 </View>
             </ScrollView>
+
+            <VideoModal
+                videoId={modalVideoId}
+                visible={!!modalVideoId}
+                onClose={() => setModalVideoId(null)}
+            />
         </View >
     );
 }
@@ -282,6 +370,18 @@ const styles = (colors: any) => StyleSheet.create({
     backButton: {
         padding: spacing.sm,
         marginLeft: -spacing.sm,
+    },
+    navigation: {
+        flexDirection: 'row',
+        gap: spacing.xs,
+    },
+    navButton: {
+        padding: spacing.sm,
+        borderRadius: borderRadius.md,
+        backgroundColor: colors.background.secondary,
+    },
+    navButtonDisabled: {
+        opacity: 0.4,
     },
     headerActions: {
         flexDirection: 'row',
@@ -352,12 +452,46 @@ const styles = (colors: any) => StyleSheet.create({
         marginBottom: spacing.xl,
         backgroundColor: colors.background.tertiary,
     },
+    videoPlaceholder: {
+        width: '100%',
+        height: '100%',
+        position: 'relative',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    playOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.2)',
+    },
+    playButton: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: 'rgba(255,0,0,0.9)', // YouTube red
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4.65,
+        elevation: 8,
+    },
     // Hero image for non-YouTube articles
     heroImage: {
         width: '100%',
         aspectRatio: 16 / 9,
         borderRadius: borderRadius.lg,
         marginBottom: spacing.xl,
+    },
+    heroImageFull: {
+        width: '100%',
+        height: '100%',
     },
     articleContentWrapper: {
         paddingTop: spacing.md,

@@ -7,7 +7,7 @@ import { api, DiscoveredFeed, Feed, Folder } from '@/services/api';
 import {
     ArrowLeft, Plus, Search, Rss, Youtube, Headphones, MessageSquare,
     Folder as FolderIcon, Trash2, Edit2, FolderInput, Download, Upload,
-    ChevronDown, X, Check, FileUp, FileDown
+    ChevronDown, X, Check, FileUp, FileDown, AlertTriangle, RefreshCw
 } from 'lucide-react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
 
@@ -220,6 +220,20 @@ export default function ManageScreen() {
                     }
                 ]
             );
+        }
+    };
+
+    const handleRetryFeed = async (feedId: number, feedTitle: string) => {
+        try {
+            const result = await api.refreshFeed(feedId);
+            if (result.success) {
+                show(`Refreshed "${feedTitle}" - ${result.new_articles} new articles`, 'success');
+                fetchFeeds();
+            } else {
+                show('Failed to refresh feed', 'error');
+            }
+        } catch (err) {
+            show('Failed to refresh feed', 'error');
         }
     };
 
@@ -475,6 +489,7 @@ export default function ManageScreen() {
                             key={feed.id}
                             style={[
                                 s.feedItem,
+                                feed.error_count > 0 && s.feedItemError,
                                 isBulkMode && selectedFeedIds.has(feed.id) && { backgroundColor: colors.primary.DEFAULT + '11', borderColor: colors.primary.DEFAULT + '44' }
                             ]}
                         >
@@ -506,21 +521,40 @@ export default function ManageScreen() {
                                 )}
 
                                 <View style={s.feedInfo}>
-                                    <Text style={s.feedTitle} numberOfLines={1}>{feed.title}</Text>
+                                    <View style={s.feedTitleRow}>
+                                        <Text style={s.feedTitle} numberOfLines={1}>{feed.title}</Text>
+                                        {feed.error_count > 0 && (
+                                            <AlertTriangle size={14} color={colors.error} style={s.errorIcon} />
+                                        )}
+                                    </View>
                                     <Text style={s.feedUrl} numberOfLines={1}>
                                         {folders.find((f: Folder) => f.id === feed.folder_id)?.name || 'No folder'}
                                     </Text>
+                                    {feed.last_error && (
+                                        <Text style={s.errorText} numberOfLines={1}>
+                                            {feed.last_error}
+                                        </Text>
+                                    )}
                                 </View>
                             </TouchableOpacity>
 
                             {!isBulkMode && (
                                 <View style={s.feedActions}>
-                                    <TouchableOpacity
-                                        onPress={() => handleMoveFeed(feed)}
-                                        style={s.actionButton}
-                                    >
-                                        <FolderInput size={16} color={colors.text.tertiary} />
-                                    </TouchableOpacity>
+                                    {feed.error_count > 0 ? (
+                                        <TouchableOpacity
+                                            onPress={() => handleRetryFeed(feed.id, feed.title)}
+                                            style={s.actionButton}
+                                        >
+                                            <RefreshCw size={16} color={colors.error} />
+                                        </TouchableOpacity>
+                                    ) : (
+                                        <TouchableOpacity
+                                            onPress={() => handleMoveFeed(feed)}
+                                            style={s.actionButton}
+                                        >
+                                            <FolderInput size={16} color={colors.text.tertiary} />
+                                        </TouchableOpacity>
+                                    )}
                                     <TouchableOpacity
                                         onPress={() => handleEditFeed(feed)}
                                         style={s.actionButton}
@@ -887,6 +921,24 @@ const styles = (colors: any) => StyleSheet.create({
         fontSize: 12,
         color: colors.text.tertiary,
         marginTop: 2,
+    },
+    feedTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
+        flex: 1,
+    },
+    errorIcon: {
+        flexShrink: 0,
+    },
+    errorText: {
+        fontSize: 11,
+        color: colors.error,
+        marginTop: 2,
+    },
+    feedItemError: {
+        borderLeftWidth: 3,
+        borderLeftColor: colors.error,
     },
     actionButton: {
         padding: spacing.sm,

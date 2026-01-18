@@ -1,6 +1,7 @@
-import { FastifyInstance, FastifyRequest } from 'fastify';
+import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { queryAll } from '../db/index.js';
+import { rateLimiters } from '../middleware/rate-limit.js';
 
 const searchSchema = z.object({
     q: z.string().min(1),
@@ -14,6 +15,14 @@ const searchSchema = z.object({
 
 export async function searchRoutes(app: FastifyInstance) {
     app.addHook('preHandler', app.authenticate);
+
+    // Apply rate limiting to search endpoint
+    app.addHook('onRequest', async (request, reply) => {
+        const allowed = await rateLimiters.search(request as FastifyRequest, reply as FastifyReply);
+        if (!allowed) {
+            reply.code(429).send({ error: 'Too many search requests. Please try again later.' });
+        }
+    });
 
     // Full-text search
     app.get('/', async (request: FastifyRequest) => {
