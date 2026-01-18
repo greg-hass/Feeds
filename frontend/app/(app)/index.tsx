@@ -171,7 +171,7 @@ export default function ArticleListScreen() {
                     Linking.openURL(item.url);
                     return;
                 }
-                const videoId = extractVideoId(item.url);
+                const videoId = extractVideoId(item.url || '');
                 if (videoId) {
                     setActiveVideoId(videoId);
                 }
