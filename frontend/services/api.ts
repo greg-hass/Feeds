@@ -383,6 +383,7 @@ export interface Feed {
     unread_count: number;
     refresh_interval_minutes: number;
     last_fetched_at: string | null;
+    next_fetch_at: string | null;
     error_count: number;
     last_error: string | null;
 }

@@ -18,10 +18,11 @@ export default function ArticleListScreen() {
     // Use collapsible sidebar on tablets (iPad), only permanent on larger desktop screens
     const isMobile = width < 1024;
     const { articles, isLoading, hasMore, filter, fetchArticles, setFilter, markAllRead, error, clearError } = useArticleStore();
-    const { fetchFeeds, fetchFolders } = useFeedStore();
+    const { feeds, fetchFeeds, fetchFolders, refreshAllFeeds } = useFeedStore();
     const [showMenu, setShowMenu] = useState(false);
     const [selectedIndex, setSelectedIndex] = useState(-1);
     const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
+    const [timeLeft, setTimeLeft] = useState<string | null>(null);
 
     // Animated value for sidebar slide-in from left
     const [sidebarAnim] = useState(new Animated.Value(-300));
@@ -65,10 +66,47 @@ export default function ArticleListScreen() {
     };
 
     const handleRefresh = useCallback(() => {
-        fetchFeeds();
-        fetchFolders();
-        fetchArticles(true);
-    }, []);
+        refreshAllFeeds();
+    }, [refreshAllFeeds]);
+
+    // Countdown Timer Logic
+    useEffect(() => {
+        const timer = setInterval(() => {
+            if (!feeds || feeds.length === 0) {
+                setTimeLeft(null);
+                return;
+            }
+
+            const now = new Date();
+            let earliest: Date | null = null;
+
+            feeds.forEach(f => {
+                if (f.next_fetch_at) {
+                    const next = new Date(f.next_fetch_at);
+                    if (!isNaN(next.getTime())) {
+                        if (!earliest || next < earliest) {
+                            earliest = next;
+                        }
+                    }
+                }
+            });
+
+            if (earliest) {
+                const diff = (earliest as Date).getTime() - now.getTime();
+                if (diff <= 0) {
+                    setTimeLeft('Soon');
+                } else {
+                    const minutes = Math.floor(diff / 60000);
+                    const seconds = Math.floor((diff % 60000) / 1000);
+                    setTimeLeft(`${minutes}m ${seconds}s`);
+                }
+            } else {
+                setTimeLeft(null);
+            }
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [feeds]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -344,17 +382,22 @@ export default function ArticleListScreen() {
                         </View>
                     )}
                     {/* Always-visible refresh button */}
-                    <TouchableOpacity
-                        style={s.iconButton}
-                        onPress={handleRefresh}
-                        disabled={isLoading}
-                    >
-                        {isLoading ? (
-                            <ActivityIndicator size={16} color={colors.text.secondary} />
-                        ) : (
-                            <RefreshCw size={18} color={colors.text.secondary} />
+                    <View style={s.refreshContainer}>
+                        {timeLeft && !isLoading && (
+                            <Text style={s.countdownText}>{timeLeft}</Text>
                         )}
-                    </TouchableOpacity>
+                        <TouchableOpacity
+                            style={s.iconButton}
+                            onPress={handleRefresh}
+                            disabled={isLoading}
+                        >
+                            {isLoading ? (
+                                <ActivityIndicator size={16} color={colors.text.secondary} />
+                            ) : (
+                                <RefreshCw size={18} color={colors.text.secondary} />
+                            )}
+                        </TouchableOpacity>
+                    </View>
                     {/* Mark All Read */}
                     <TouchableOpacity
                         style={s.iconButton}
@@ -516,6 +559,17 @@ const styles = (colors: any, isMobile: boolean) => StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: spacing.sm,
+    },
+    refreshContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
+    },
+    countdownText: {
+        fontSize: 12,
+        fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+        color: colors.text.tertiary,
+        marginRight: spacing.xs,
     },
     iconButton: {
         padding: spacing.sm,

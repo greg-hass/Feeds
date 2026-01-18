@@ -19,6 +19,7 @@ interface FeedState {
     deleteFeed: (id: number) => Promise<void>;
     deleteFolder: (id: number) => Promise<void>;
     refreshFeed: (id: number) => Promise<number>;
+    refreshAllFeeds: (ids?: number[]) => Promise<void>;
     updateLocalFeed: (id: number, updates: Partial<Feed>) => void;
     applySyncChanges: (changes: SyncChanges) => void;
 }
@@ -86,6 +87,35 @@ export const useFeedStore = create<FeedState>()(
                 } catch (error) {
                     handleError(error, { context: 'refreshFeed', fallbackMessage: 'Failed to refresh feed' });
                     throw error;
+                }
+            },
+
+            refreshAllFeeds: async (ids) => {
+                set({ isLoading: true });
+                try {
+                    await api.refreshFeedsWithProgress(
+                        ids,
+                        (event) => {
+                            // We could track progress here if we wanted a progress bar
+                            if (event.type === 'feed_complete') {
+                                // Optionally update unread count for that feed locally
+                            }
+                        },
+                        (error) => {
+                            handleError(error, { context: 'refreshFeedsProgress', showToast: true });
+                        }
+                    );
+
+                    // Once all done, refetch everything to get latest state
+                    await Promise.all([
+                        get().fetchFeeds(),
+                        get().fetchFolders(),
+                        useArticleStore.getState().fetchArticles(true)
+                    ]);
+                } catch (error) {
+                    handleError(error, { context: 'refreshAllFeeds' });
+                } finally {
+                    set({ isLoading: false });
                 }
             },
 
