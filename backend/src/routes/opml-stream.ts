@@ -55,16 +55,23 @@ export async function opmlStreamRoutes(app: FastifyInstance) {
     app.post('/import', async (request: FastifyRequest, reply: FastifyReply) => {
         const file = await request.file();
         if (!file) {
+            console.log('[OPML Import] No file in request');
             return reply.status(400).send({ error: 'No file uploaded' });
         }
+
+        console.log('[OPML Import] File received:', file.filename, 'fieldname:', file.fieldname, 'mimetype:', file.mimetype);
 
         const buffer = await file.toBuffer();
         const opmlContent = buffer.toString('utf-8');
 
+        console.log('[OPML Import] Content length:', opmlContent.length, 'chars, first 200:', opmlContent.substring(0, 200));
+
         let parsed: { folders: OPMLFolder[]; feeds: OPMLFeed[] };
         try {
             parsed = parseOPML(opmlContent);
+            console.log('[OPML Import] Parsed:', parsed.folders.length, 'folders,', parsed.feeds.length, 'feeds');
         } catch (err) {
+            console.log('[OPML Import] Parse error:', err);
             return reply.status(400).send({
                 error: 'Invalid OPML format',
                 details: err instanceof Error ? err.message : 'Parse error',
