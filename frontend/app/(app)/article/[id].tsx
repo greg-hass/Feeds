@@ -3,8 +3,8 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { formatDistanceToNow } from 'date-fns';
 import { useArticleStore, useSettingsStore } from '@/stores';
-import { Article } from '@/services/api';
-import { ArrowLeft, ExternalLink, Circle, CircleCheck, Headphones, BookOpen, Play } from 'lucide-react-native';
+import { Article, api } from '@/services/api';
+import { ArrowLeft, ExternalLink, Circle, CircleCheck, Headphones, BookOpen, Play, Bookmark } from 'lucide-react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
 import { extractVideoId, getEmbedUrl } from '@/utils/youtube';
 import ArticleContent from '@/components/ArticleContent';
@@ -19,11 +19,18 @@ export default function ArticleScreen() {
     const { settings } = useSettingsStore();
     const [isLoading, setIsLoading] = useState(true);
     const [showReadability, setShowReadability] = useState(settings?.readability_enabled ?? false);
+    const [isBookmarked, setIsBookmarked] = useState(false);
 
     const isYouTube = currentArticle?.feed_type === 'youtube';
     const videoId = currentArticle?.url ? extractVideoId(currentArticle.url) : null;
 
     const s = styles(colors);
+
+    useEffect(() => {
+        if (currentArticle) {
+            setIsBookmarked(currentArticle.is_bookmarked || false);
+        }
+    }, [currentArticle]);
 
     useEffect(() => {
         if (id) {
@@ -54,6 +61,18 @@ export default function ArticleScreen() {
             markRead(currentArticle.id);
         }
     }, [currentArticle, markRead, markUnread]);
+
+    const handleToggleBookmark = useCallback(async () => {
+        if (!currentArticle) return;
+        try {
+            const newState = !isBookmarked;
+            setIsBookmarked(newState);
+            await api.bookmarkArticle(currentArticle.id, newState);
+        } catch (err) {
+            setIsBookmarked(isBookmarked); // Revert on error
+            console.error('Failed to toggle bookmark:', err);
+        }
+    }, [currentArticle, isBookmarked]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -136,6 +155,14 @@ export default function ArticleScreen() {
                             <ExternalLink size={22} color={colors.text.secondary} />
                         </TouchableOpacity>
                     )}
+
+                    <TouchableOpacity onPress={handleToggleBookmark} style={s.actionButton}>
+                        <Bookmark
+                            size={22}
+                            color={isBookmarked ? colors.primary.DEFAULT : colors.text.secondary}
+                            fill={isBookmarked ? colors.primary.DEFAULT : 'transparent'}
+                        />
+                    </TouchableOpacity>
                 </View>
             </View>
 
@@ -206,7 +233,7 @@ export default function ArticleScreen() {
                     )}
                 </View>
             </ScrollView>
-        </View>
+        </View >
     );
 }
 

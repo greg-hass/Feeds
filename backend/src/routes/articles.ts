@@ -105,10 +105,12 @@ export async function articlesRoutes(app: FastifyInstance) {
             feed_icon_url: string | null;
             feed_type: string;
             is_read: number | null;
+            is_bookmarked: number;
         }>(
             `SELECT 
         a.id, a.feed_id, a.title, a.url, a.author, a.summary, 
         a.enclosure_url, a.enclosure_type, a.thumbnail_url, a.published_at,
+        COALESCE(a.is_bookmarked, 0) as is_bookmarked,
         f.title as feed_title, f.icon_url as feed_icon_url, f.type as feed_type,
         rs.is_read
        FROM articles a
@@ -146,6 +148,7 @@ export async function articlesRoutes(app: FastifyInstance) {
             articles: articles.map(a => ({
                 ...a,
                 is_read: Boolean(a.is_read),
+                is_bookmarked: Boolean(a.is_bookmarked),
                 has_audio: Boolean(a.enclosure_url),
             })),
             next_cursor: nextCursor,
@@ -304,5 +307,66 @@ export async function articlesRoutes(app: FastifyInstance) {
         }
 
         return { marked };
+    });
+
+    // Toggle bookmark on article
+    app.patch('/:id/bookmark', async (request: FastifyRequest<{ Params: { id: string }; Body: { bookmarked: boolean } }>, reply: FastifyReply) => {
+        const { id: userId } = (request as any).user;
+        const articleId = parseInt(request.params.id, 10);
+        const { bookmarked } = request.body as { bookmarked: boolean };
+
+        // Verify article belongs to user's feeds
+        const article = queryOne<{ id: number }>(
+            `SELECT a.id FROM articles a
+             JOIN feeds f ON f.id = a.feed_id
+             WHERE a.id = ? AND f.user_id = ? AND f.deleted_at IS NULL`,
+            [articleId, userId]
+        );
+
+        if (!article) {
+            return reply.status(404).send({ error: 'Article not found' });
+        }
+
+        run(
+            'UPDATE articles SET is_bookmarked = ? WHERE id = ?',
+            [bookmarked ? 1 : 0, articleId]
+        );
+
+        return { success: true, is_bookmarked: bookmarked };
+    });
+
+    // List bookmarked articles
+    app.get('/bookmarks', async (request: FastifyRequest) => {
+        const { id: userId } = (request as any).user;
+
+        const articles = queryAll<Article & {
+            feed_title: string;
+            feed_icon_url: string | null;
+            feed_type: string;
+            is_read: number | null;
+            is_bookmarked: number;
+        }>(
+            `SELECT 
+                a.id, a.feed_id, a.title, a.url, a.author, a.summary, 
+                a.enclosure_url, a.enclosure_type, a.thumbnail_url, a.published_at, a.is_bookmarked,
+                f.title as feed_title, f.icon_url as feed_icon_url, f.type as feed_type,
+                rs.is_read
+             FROM articles a
+             JOIN feeds f ON f.id = a.feed_id
+             LEFT JOIN read_state rs ON rs.article_id = a.id AND rs.user_id = ?
+             WHERE f.user_id = ? AND f.deleted_at IS NULL AND a.is_bookmarked = 1
+             ORDER BY a.published_at DESC
+             LIMIT 200`,
+            [userId, userId]
+        );
+
+        return {
+            articles: articles.map(a => ({
+                ...a,
+                is_read: Boolean(a.is_read),
+                is_bookmarked: Boolean(a.is_bookmarked),
+                has_audio: Boolean(a.enclosure_url),
+            })),
+        };
     });
 }

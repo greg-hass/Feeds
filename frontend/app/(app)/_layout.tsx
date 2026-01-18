@@ -3,6 +3,7 @@ import { View, StyleSheet, useWindowDimensions } from 'react-native';
 import { Slot } from 'expo-router';
 import { useFeedStore, useAuthStore } from '@/stores';
 import Sidebar from '@/components/Sidebar';
+import MobileNav from '@/components/MobileNav';
 
 export default function AppLayout() {
     const { width } = useWindowDimensions();
@@ -29,6 +30,7 @@ export default function AppLayout() {
             <View style={styles.content}>
                 <Slot />
             </View>
+            {!isDesktop && <MobileNav />}
         </View>
     );
 }

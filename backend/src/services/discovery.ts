@@ -60,9 +60,13 @@ export async function discoverFeedsFromUrl(url: string): Promise<DiscoveredFeed[
 
         // If it's already a feed, return it directly
         if (contentType.includes('xml') || contentType.includes('rss') || contentType.includes('atom')) {
+            // Check if it's a YouTube feed URL
+            const isYouTubeFeed = parsedUrl.hostname.includes('youtube.com') &&
+                (parsedUrl.pathname.includes('/feeds/') || parsedUrl.searchParams.has('channel_id'));
+
             return [{
-                type: 'rss',
-                title: 'Direct Feed',
+                type: isYouTubeFeed ? 'youtube' : 'rss',
+                title: isYouTubeFeed ? 'YouTube Feed' : 'Direct Feed',
                 feed_url: url,
                 site_url: parsedUrl.origin,
                 confidence: 1.0,

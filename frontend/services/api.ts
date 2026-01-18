@@ -163,6 +163,17 @@ class ApiClient {
         });
     }
 
+    async bookmarkArticle(id: number, bookmarked: boolean) {
+        return this.request<{ success: boolean; is_bookmarked: boolean }>(`/articles/${id}/bookmark`, {
+            method: 'PATCH',
+            body: { bookmarked },
+        });
+    }
+
+    async getBookmarks() {
+        return this.request<{ articles: Article[] }>('/articles/bookmarks');
+    }
+
     // Search
     async search(query: string, params: SearchParams = {}) {
         const searchParams = new URLSearchParams({ q: query });
@@ -280,6 +291,7 @@ export interface Article {
     summary: string | null;
     published_at: string | null;
     is_read: boolean;
+    is_bookmarked: boolean;
     has_audio: boolean;
     enclosure_url: string | null;
     thumbnail_url?: string | null;
