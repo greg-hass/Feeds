@@ -161,7 +161,7 @@ export async function foldersRoutes(app: FastifyInstance) {
         }
 
         if (updates.length > 0) {
-            updates.push('updated_at = datetime("now")');
+            updates.push(`updated_at = datetime('now')`);
             params.push(folderId, userId);
             run(
                 `UPDATE folders SET ${updates.join(', ')} WHERE id = ? AND user_id = ?`,
@@ -179,7 +179,7 @@ export async function foldersRoutes(app: FastifyInstance) {
 
         // Soft delete folder (feeds become uncategorized)
         const result = run(
-            'UPDATE folders SET deleted_at = datetime("now"), updated_at = datetime("now") WHERE id = ? AND user_id = ? AND deleted_at IS NULL',
+            `UPDATE folders SET deleted_at = datetime('now'), updated_at = datetime('now') WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
             [folderId, userId]
         );
 

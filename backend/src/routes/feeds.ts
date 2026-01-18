@@ -181,7 +181,7 @@ export async function feedsRoutes(app: FastifyInstance) {
 
         // Update last fetched and next fetch using the feed's interval
         run(
-            'UPDATE feeds SET last_fetched_at = datetime("now"), next_fetch_at = datetime("now", "+" || refresh_interval_minutes || " minutes") WHERE id = ?',
+            `UPDATE feeds SET last_fetched_at = datetime('now'), next_fetch_at = datetime('now', '+' || refresh_interval_minutes || ' minutes') WHERE id = ?`,
             [feed!.id]
         );
 
@@ -227,7 +227,7 @@ export async function feedsRoutes(app: FastifyInstance) {
         }
 
         if (updates.length > 0) {
-            updates.push('updated_at = datetime("now")');
+            updates.push(`updated_at = datetime('now')`);
             params.push(feedId, userId);
             run(
                 `UPDATE feeds SET ${updates.join(', ')} WHERE id = ? AND user_id = ?`,
@@ -244,7 +244,7 @@ export async function feedsRoutes(app: FastifyInstance) {
         const feedId = parseInt(request.params.id, 10);
 
         const result = run(
-            'UPDATE feeds SET deleted_at = datetime("now"), updated_at = datetime("now") WHERE id = ? AND user_id = ? AND deleted_at IS NULL',
+            `UPDATE feeds SET deleted_at = datetime('now'), updated_at = datetime('now') WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
             [feedId, userId]
         );
 
@@ -276,7 +276,7 @@ export async function feedsRoutes(app: FastifyInstance) {
                 }
                 const targetFolderId = body.folder_id ?? null;
                 const moveResult = run(
-                    `UPDATE feeds SET folder_id = ?, updated_at = datetime("now")
+                    `UPDATE feeds SET folder_id = ?, updated_at = datetime('now')
            WHERE id IN (${body.feed_ids.map(() => '?').join(',')}) AND user_id = ? AND deleted_at IS NULL`,
                     [targetFolderId, ...body.feed_ids, userId]
                 );
@@ -285,7 +285,7 @@ export async function feedsRoutes(app: FastifyInstance) {
 
             case 'delete':
                 const deleteResult = run(
-                    `UPDATE feeds SET deleted_at = datetime("now"), updated_at = datetime("now")
+                    `UPDATE feeds SET deleted_at = datetime('now'), updated_at = datetime('now')
            WHERE id IN (${body.feed_ids.map(() => '?').join(',')}) AND user_id = ? AND deleted_at IS NULL`,
                     [...body.feed_ids, userId]
                 );
@@ -297,7 +297,7 @@ export async function feedsRoutes(app: FastifyInstance) {
                 for (const feedId of body.feed_ids) {
                     run(
                         `INSERT OR REPLACE INTO read_state (user_id, article_id, is_read, read_at, updated_at)
-             SELECT ?, id, 1, datetime("now"), datetime("now")
+             SELECT ?, id, 1, datetime('now'), datetime('now')
              FROM articles WHERE feed_id = ?`,
                         [userId, feedId]
                     );

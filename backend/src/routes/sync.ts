@@ -107,7 +107,7 @@ export async function syncRoutes(app: FastifyInstance): Promise<void> {
                 try {
                     run(
                         `INSERT OR REPLACE INTO read_state (user_id, article_id, is_read, read_at, updated_at)
-                         VALUES (?, ?, ?, datetime("now"), datetime("now"))`,
+                         VALUES (?, ?, ?, datetime('now'), datetime('now'))`,
                         [userId, change.article_id, change.is_read ? 1 : 0]
                     );
                     results.read_state.accepted++;

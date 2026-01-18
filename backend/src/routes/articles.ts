@@ -214,7 +214,7 @@ export async function articlesRoutes(app: FastifyInstance) {
         // Mark as read automatically
         run(
             `INSERT OR REPLACE INTO read_state (user_id, article_id, is_read, read_at, updated_at)
-       VALUES (?, ?, 1, datetime("now"), datetime("now"))`,
+       VALUES (?, ?, 1, datetime('now'), datetime('now'))`,
             [userId, articleId]
         );
 
@@ -232,7 +232,7 @@ export async function articlesRoutes(app: FastifyInstance) {
 
         run(
             `INSERT OR REPLACE INTO read_state (user_id, article_id, is_read, read_at, updated_at)
-       VALUES (?, ?, 1, datetime("now"), datetime("now"))`,
+       VALUES (?, ?, 1, datetime('now'), datetime('now'))`,
             [userId, articleId]
         );
 
@@ -245,7 +245,7 @@ export async function articlesRoutes(app: FastifyInstance) {
 
         run(
             `INSERT OR REPLACE INTO read_state (user_id, article_id, is_read, read_at, updated_at)
-       VALUES (?, ?, 0, datetime("now"), datetime("now"))`,
+       VALUES (?, ?, 0, datetime('now'), datetime('now'))`,
             [userId, articleId]
         );
 
@@ -264,7 +264,7 @@ export async function articlesRoutes(app: FastifyInstance) {
             case 'feed':
                 const feedResult = run(
                     `INSERT OR REPLACE INTO read_state (user_id, article_id, is_read, read_at, updated_at)
-           SELECT ?, a.id, 1, datetime("now"), datetime("now")
+           SELECT ?, a.id, 1, datetime('now'), datetime('now')
            FROM articles a
            WHERE a.feed_id = ? ${beforeCondition}`,
                     [userId, body.scope_id, ...beforeParam]
@@ -275,7 +275,7 @@ export async function articlesRoutes(app: FastifyInstance) {
             case 'folder':
                 const folderResult = run(
                     `INSERT OR REPLACE INTO read_state (user_id, article_id, is_read, read_at, updated_at)
-           SELECT ?, a.id, 1, datetime("now"), datetime("now")
+           SELECT ?, a.id, 1, datetime('now'), datetime('now')
            FROM articles a
            JOIN feeds f ON f.id = a.feed_id
            WHERE f.folder_id = ? AND f.user_id = ? AND f.deleted_at IS NULL ${beforeCondition}`,
@@ -287,7 +287,7 @@ export async function articlesRoutes(app: FastifyInstance) {
             case 'type':
                 const typeResult = run(
                     `INSERT OR REPLACE INTO read_state (user_id, article_id, is_read, read_at, updated_at)
-           SELECT ?, a.id, 1, datetime("now"), datetime("now")
+           SELECT ?, a.id, 1, datetime('now'), datetime('now')
            FROM articles a
            JOIN feeds f ON f.id = a.feed_id
            WHERE f.type = ? AND f.user_id = ? AND f.deleted_at IS NULL ${beforeCondition}`,
@@ -299,7 +299,7 @@ export async function articlesRoutes(app: FastifyInstance) {
             case 'all':
                 const allResult = run(
                     `INSERT OR REPLACE INTO read_state (user_id, article_id, is_read, read_at, updated_at)
-           SELECT ?, a.id, 1, datetime("now"), datetime("now")
+           SELECT ?, a.id, 1, datetime('now'), datetime('now')
            FROM articles a
            JOIN feeds f ON f.id = a.feed_id
            WHERE f.user_id = ? AND f.deleted_at IS NULL ${beforeCondition}`,
@@ -313,7 +313,7 @@ export async function articlesRoutes(app: FastifyInstance) {
                     const placeholders = body.article_ids.map(() => '?').join(',');
                     const idsResult = run(
                         `INSERT OR REPLACE INTO read_state (user_id, article_id, is_read, read_at, updated_at)
-             SELECT ?, a.id, 1, datetime("now"), datetime("now")
+             SELECT ?, a.id, 1, datetime('now'), datetime('now')
              FROM articles a
              WHERE a.id IN (${placeholders})`,
                         [userId, ...body.article_ids]
