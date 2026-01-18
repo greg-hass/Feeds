@@ -123,14 +123,28 @@ export async function parseFeed(url: string): Promise<ParsedFeed> {
             }
 
             const extendedMeta = feedMeta as any;
-            const favicon = feedMeta.favicon ||
+            let favicon = feedMeta.favicon ||
                 feedMeta.image?.url ||
                 extendedMeta['itunes:image']?.href ||
                 extendedMeta['itunes:image'] ||
                 extendedMeta['media:thumbnail']?.url ||
-                extendedMeta['media:content']?.url ||
-                extractFavicon(feedMeta.link) ||
-                (feedMeta.link ? `https://www.google.com/s2/favicons?domain=${new URL(feedMeta.link).hostname}&sz=64` : null);
+                extendedMeta['media:content']?.url;
+
+            if (!favicon && feedMeta.link) {
+                const linkUrl = feedMeta.link;
+                if (linkUrl.includes('reddit.com')) {
+                    favicon = 'https://www.redditstatic.com/desktop2x/img/favicon/favicon-32x32.png';
+                } else {
+                    favicon = extractFavicon(linkUrl);
+                    if (!favicon) {
+                        try {
+                            favicon = `https://www.google.com/s2/favicons?domain=${new URL(linkUrl).hostname}&sz=64`;
+                        } catch {
+                            favicon = null;
+                        }
+                    }
+                }
+            }
 
             resolve({
                 title: feedMeta.title || STRINGS.DEFAULT_FEED_TITLE,
@@ -307,7 +321,7 @@ function extractFavicon(siteUrl: string | null): string | null {
     if (!siteUrl) return null;
     try {
         const url = new URL(siteUrl);
-        return `${url.protocol}//${url.host}/favicon.ico`;
+        return `${url.origin}/favicon.ico`;
     } catch {
         return null;
     }

@@ -160,7 +160,7 @@ async function discoverYouTubeFeed(url: string): Promise<DiscoveredFeed | null> 
     // Handle different YouTube URL formats
     let channelId: string | null = null;
     let playlistId: string | null = null;
-    let iconUrl = 'https://www.youtube.com/s/desktop/1a6d9b9c/img/favicon_144x144.png'; // Fallback
+    let iconUrl = 'https://www.gstatic.com/youtube/img/branding/favicon/favicon_144x144.png'; // Better fallback
 
     // youtube.com/channel/UC...
     const channelMatch = parsedUrl.pathname.match(/\/channel\/(UC[a-zA-Z0-9_-]+)/);
@@ -263,6 +263,7 @@ function discoverRedditFeed(url: string): DiscoveredFeed | null {
         title,
         feed_url: feedUrl,
         site_url: url,
+        icon_url: 'https://www.redditstatic.com/desktop2x/img/favicon/favicon-32x32.png',
         confidence: 0.9,
         method: 'reddit',
     };
@@ -378,6 +379,7 @@ async function discoverRedditByKeyword(keyword: string, limit: number): Promise<
                     title: info.display_name_prefixed,
                     feed_url: `https://www.reddit.com${info.url}.rss`,
                     site_url: `https://www.reddit.com${info.url}`,
+                    icon_url: info.community_icon || info.icon_img || 'https://www.redditstatic.com/desktop2x/img/favicon/favicon-32x32.png',
                     confidence: 0.9,
                     method: 'reddit',
                 });
