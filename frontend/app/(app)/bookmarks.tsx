@@ -139,7 +139,7 @@ export default function BookmarksScreen() {
                     <View style={s.empty}>
                         <Bookmark size={48} color={colors.text.tertiary} />
                         <Text style={s.emptyTitle}>No bookmarks yet</Text>
-                        <Text style={s.emptyText}>Star articles to save them here</Text>
+                        <Text style={s.emptyText}>Bookmark articles to save them here</Text>
                     </View>
                 }
             />
