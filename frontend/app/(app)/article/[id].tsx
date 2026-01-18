@@ -15,7 +15,7 @@ export default function ArticleScreen() {
     const colors = useColors();
     const { width } = useWindowDimensions();
     const isMobile = width < 768;
-    const { currentArticle, fetchArticle, markRead, markUnread } = useArticleStore();
+    const { currentArticle, fetchArticle, markRead, markUnread, toggleBookmark } = useArticleStore();
     const { settings } = useSettingsStore();
     const [isLoading, setIsLoading] = useState(true);
     const [showReadability, setShowReadability] = useState(settings?.readability_enabled ?? false);
