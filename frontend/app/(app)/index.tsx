@@ -178,19 +178,6 @@ export default function ArticleListScreen() {
                         <View style={s.articleHeader}>
                             <Text style={s.feedName}>{item.feed_title}</Text>
                             {item.has_audio && <Headphones size={14} color={colors.secondary.DEFAULT} />}
-                            <TouchableOpacity
-                                onPress={(e) => {
-                                    e.stopPropagation();
-                                    useArticleStore.getState().toggleBookmark(item.id);
-                                }}
-                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                            >
-                                <Bookmark
-                                    size={14}
-                                    color={item.is_bookmarked ? colors.primary.DEFAULT : colors.text.tertiary}
-                                    fill={item.is_bookmarked ? colors.primary.DEFAULT : 'transparent'}
-                                />
-                            </TouchableOpacity>
                         </View>
                         <Text style={[s.articleTitle, item.is_read && s.articleTitleRead]} numberOfLines={2}>
                             {!item.is_read && (
@@ -238,8 +225,6 @@ export default function ArticleListScreen() {
                                         setActiveVideoId(videoId);
                                     }
                                 } else {
-                                    // Let it propagate to parent onPress (opening article) if not YouTube
-                                    // or handle explicitly if desired, but default behavior acts as press through
                                     handleArticlePress(item.id);
                                 }
                             }}
@@ -257,6 +242,22 @@ export default function ArticleListScreen() {
                         </TouchableOpacity>
                     )}
                 </View>
+
+                {/* Bookmark Icon - Absolute Positioned */}
+                <TouchableOpacity
+                    onPress={(e) => {
+                        e.stopPropagation();
+                        useArticleStore.getState().toggleBookmark(item.id);
+                    }}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    style={s.bookmarkButton}
+                >
+                    <Bookmark
+                        size={16}
+                        color={item.is_bookmarked ? colors.primary.DEFAULT : colors.text.tertiary}
+                        fill={item.is_bookmarked ? colors.primary.DEFAULT : 'transparent'}
+                    />
+                </TouchableOpacity>
             </TouchableOpacity>
         );
     };
@@ -425,6 +426,7 @@ const styles = (colors: any, isMobile: boolean = false) => StyleSheet.create({
     articleRowLayout: {
         flexDirection: 'row',
         gap: spacing.lg,
+        paddingRight: 24, // Space for bookmark
     },
     articleColumnLayout: {
         flexDirection: 'column',
@@ -435,8 +437,14 @@ const styles = (colors: any, isMobile: boolean = false) => StyleSheet.create({
     articleHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
         marginBottom: spacing.sm,
+        gap: spacing.sm,
+    },
+    bookmarkButton: {
+        position: 'absolute',
+        top: spacing.lg,
+        right: spacing.lg,
+        zIndex: 10,
     },
     feedName: {
         fontSize: 12,

@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { View, StyleSheet, useWindowDimensions } from 'react-native';
 import { Slot } from 'expo-router';
 import { useFeedStore, useAuthStore } from '@/stores';
+import { useColors } from '@/theme';
 import Sidebar from '@/components/Sidebar';
 import MobileNav from '@/components/MobileNav';
 
@@ -24,10 +25,14 @@ export default function AppLayout() {
         }
     }, []);
 
+    const colors = useColors(); // Ensure useColors is imported from '@/theme'
+
+    const s = styles(isDesktop, colors);
+
     return (
-        <View style={styles.container}>
+        <View style={s.container}>
             {isDesktop && <Sidebar />}
-            <View style={styles.content}>
+            <View style={s.content}>
                 <Slot />
             </View>
             {!isDesktop && <MobileNav />}
@@ -35,11 +40,11 @@ export default function AppLayout() {
     );
 }
 
-const styles = StyleSheet.create({
+const styles = (isDesktop: boolean, colors: any) => StyleSheet.create({
     container: {
         flex: 1,
-        flexDirection: 'row',
-        backgroundColor: '#18181b',
+        flexDirection: isDesktop ? 'row' : 'column',
+        backgroundColor: colors.background.primary,
     },
     content: {
         flex: 1,
