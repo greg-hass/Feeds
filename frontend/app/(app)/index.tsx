@@ -316,7 +316,7 @@ export default function ArticleListScreen() {
                         fill={item.is_bookmarked ? colors.primary.DEFAULT : 'transparent'}
                     />
                 </TouchableOpacity>
-            </TouchableOpacity >
+            </View>
         );
     };
 
