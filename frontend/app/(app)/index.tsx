@@ -10,13 +10,13 @@ import { extractVideoId, getThumbnailUrl, getEmbedUrl } from '@/utils/youtube';
 
 import { VideoModal } from '@/components/VideoModal';
 import Sidebar from '@/components/Sidebar';
-import { useRef } from 'react';
 
 export default function ArticleListScreen() {
     const router = useRouter();
     const colors = useColors();
     const { width } = useWindowDimensions();
     const isMobile = width < 768;
+    const [thumbnailPressedId, setThumbnailPressedId] = useState<number | null>(null);
     const { articles, isLoading, hasMore, filter, fetchArticles, setFilter, markAllRead } = useArticleStore();
     const { fetchFeeds, fetchFolders } = useFeedStore();
     const [showMenu, setShowMenu] = useState(false);
@@ -165,7 +165,6 @@ export default function ArticleListScreen() {
     const renderArticle = ({ item, index }: { item: Article; index: number }) => {
         const thumbnail = getArticleThumbnail(item);
         const isYouTube = item.feed_type === 'youtube';
-        const thumbnailPressedRef = useRef(false);
 
         return (
             <TouchableOpacity
@@ -175,10 +174,10 @@ export default function ArticleListScreen() {
                     index === selectedIndex && s.articleFocused
                 ]}
                 onPress={() => {
-                    if (!thumbnailPressedRef.current) {
+                    if (thumbnailPressedId !== item.id) {
                         handleArticlePress(item.id);
                     }
-                    thumbnailPressedRef.current = false;
+                    setThumbnailPressedId(null);
                 }}
             >
                 {/* Desktop: Row layout with thumbnail on right */}
@@ -203,7 +202,7 @@ export default function ArticleListScreen() {
                                 <TouchableOpacity
                                     activeOpacity={0.9}
                                     onPress={(e) => {
-                                        thumbnailPressedRef.current = true;
+                                        setThumbnailPressedId(item.id);
                                         if (isYouTube && item.url) {
                                             // On Native, open in browser/app since we lack a WebView
                                             if (Platform.OS !== 'web') {
@@ -294,7 +293,7 @@ export default function ArticleListScreen() {
                         <TouchableOpacity
                             style={s.thumbnailContainerDesktop}
                             onPress={(e) => {
-                                thumbnailPressedRef.current = true;
+                                setThumbnailPressedId(item.id);
                                 if (isYouTube && item.url) {
                                     const videoId = extractVideoId(item.url);
                                     if (videoId) {
