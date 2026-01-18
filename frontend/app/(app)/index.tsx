@@ -4,11 +4,13 @@ import { useRouter } from 'expo-router';
 import { formatDistanceToNow } from 'date-fns';
 import { useArticleStore, useFeedStore } from '@/stores';
 import { Article, api } from '@/services/api';
-import { Circle, CircleCheck, Headphones, Filter, CheckCheck, MoreVertical, Play, Bookmark } from 'lucide-react-native';
+import { Circle, CircleCheck, Headphones, Filter, CheckCheck, MoreVertical, Play, Bookmark, Menu, X } from 'lucide-react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
 import { extractVideoId, getThumbnailUrl } from '@/utils/youtube';
 
 import { VideoModal } from '@/components/VideoModal';
+import Sidebar from '@/components/Sidebar';
+import { Modal } from 'react-native';
 
 export default function ArticleListScreen() {
     const router = useRouter();
@@ -30,6 +32,8 @@ export default function ArticleListScreen() {
     }, []);
 
     const handleArticlePress = (id: number) => {
+        // Optimistically mark as read
+        useArticleStore.getState().markRead(id);
         router.push(`/(app)/article/${id}`);
     };
 
@@ -330,16 +334,22 @@ export default function ArticleListScreen() {
     return (
         <View style={s.container}>
             {/* Header */}
-            <View style={s.header}>
+            <View style={[s.header, isMobile && s.headerMobile]}>
                 <View style={s.headerLeft}>
+                    {isMobile && (
+                        <TouchableOpacity onPress={() => setShowMenu(true)} style={s.menuButton}>
+                            <Menu size={24} color={colors.text.primary} />
+                        </TouchableOpacity>
+                    )}
                     <Text style={s.headerTitle}>{getHeaderTitle()}</Text>
+                    {isLoading && <ActivityIndicator size="small" color={colors.text.secondary} style={{ marginLeft: spacing.sm }} />}
+                </View>
+                <View style={s.headerActions}>
                     {unreadCount > 0 && (
                         <View style={s.unreadBadge}>
                             <Text style={s.unreadBadgeText}>{unreadCount}</Text>
                         </View>
                     )}
-                </View>
-                <View style={s.headerActions}>
                     {/* Mark All Read */}
                     <TouchableOpacity
                         style={s.iconButton}
@@ -394,17 +404,35 @@ export default function ArticleListScreen() {
                 }
             />
             {/* Only show modal on desktop */}
-            {!isMobile && (
+            {activeVideoId && !isMobile && (
                 <VideoModal
                     videoId={activeVideoId}
+                    visible={!!activeVideoId}
                     onClose={() => setActiveVideoId(null)}
                 />
             )}
+
+            {/* Mobile Sidebar Modal */}
+            <Modal
+                visible={showMenu && isMobile}
+                animationType="slide"
+                presentationStyle="pageSheet"
+                onRequestClose={() => setShowMenu(false)}
+            >
+                <View style={{ flex: 1, backgroundColor: colors.background.primary }}>
+                    <View style={{ alignItems: 'flex-end', padding: spacing.md }}>
+                        <TouchableOpacity onPress={() => setShowMenu(false)} style={{ padding: spacing.sm }}>
+                            <X size={24} color={colors.text.primary} />
+                        </TouchableOpacity>
+                    </View>
+                    <Sidebar onNavigate={() => setShowMenu(false)} />
+                </View>
+            </Modal>
         </View>
     );
 }
 
-const styles = (colors: any, isMobile: boolean = false) => StyleSheet.create({
+const styles = (colors: any, isMobile: boolean) => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.background.primary,
@@ -413,14 +441,20 @@ const styles = (colors: any, isMobile: boolean = false) => StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: spacing.lg,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border.DEFAULT,
+        padding: spacing.xl,
+        paddingBottom: spacing.lg,
+    },
+    headerMobile: {
+        padding: spacing.md,
+        paddingTop: spacing.xl,
     },
     headerLeft: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: spacing.sm,
+    },
+    menuButton: {
+        marginRight: spacing.md,
+        padding: 4,
     },
     headerTitle: {
         fontSize: 24,
@@ -480,6 +514,7 @@ const styles = (colors: any, isMobile: boolean = false) => StyleSheet.create({
         backgroundColor: colors.background.secondary,
         borderRadius: borderRadius.lg,
         padding: spacing.lg,
+        marginBottom: spacing.md,
     },
     articleRead: {
         opacity: 0.6,
@@ -616,3 +651,35 @@ const styles = (colors: any, isMobile: boolean = false) => StyleSheet.create({
         height: '100%',
     },
 });
+separator: {
+    height: spacing.md,
+        },
+loader: {
+    paddingVertical: spacing.xl,
+        },
+empty: {
+    alignItems: 'center',
+        paddingVertical: 64,
+        },
+emptyTitle: {
+    fontSize: 20,
+        fontWeight: '600',
+            color: colors.text.primary,
+                marginTop: spacing.lg,
+        },
+emptyText: {
+    fontSize: 14,
+        color: colors.text.secondary,
+            marginTop: spacing.sm,
+        },
+// Inline player
+inlinePlayer: {
+    width: '100%',
+        height: '100%',
+            backgroundColor: '#000',
+        },
+thumbnailImageContainer: {
+    width: '100%',
+        height: '100%',
+        },
+    });

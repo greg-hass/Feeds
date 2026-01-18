@@ -16,7 +16,7 @@ const FEED_TYPE_ICONS: Record<string, React.ComponentType<any>> = {
     podcast: Headphones,
 };
 
-export default function Sidebar() {
+export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     const router = useRouter();
     const { feeds, folders, smartFolders, totalUnread, fetchFeeds, fetchFolders, isLoading } = useFeedStore();
     const { setFilter } = useArticleStore();
@@ -25,21 +25,25 @@ export default function Sidebar() {
 
     const handleSmartFolderPress = (type: string) => {
         setFilter({ type, feed_id: undefined, folder_id: undefined });
+        onNavigate?.();
         router.push('/(app)');
     };
 
     const handleFolderPress = (folderId: number) => {
         setFilter({ folder_id: folderId, type: undefined, feed_id: undefined });
+        onNavigate?.();
         router.push('/(app)');
     };
 
     const handleFeedPress = (feedId: number) => {
         setFilter({ feed_id: feedId, type: undefined, folder_id: undefined });
+        onNavigate?.();
         router.push('/(app)');
     };
 
     const handleAllPress = () => {
         setFilter({ feed_id: undefined, folder_id: undefined, type: undefined });
+        onNavigate?.();
         router.push('/(app)');
     };
 
@@ -70,7 +74,7 @@ export default function Sidebar() {
             </View>
 
             {/* Search */}
-            <TouchableOpacity style={styles.searchBar} onPress={() => router.push('/(app)/search')}>
+            <TouchableOpacity style={styles.searchBar} onPress={() => { onNavigate?.(); router.push('/(app)/search'); }}>
                 <Search size={18} color={colors.text.tertiary} />
                 <Text style={styles.searchText}>Search...</Text>
             </TouchableOpacity>
@@ -88,14 +92,14 @@ export default function Sidebar() {
                 </TouchableOpacity>
 
                 {/* Bookmarks */}
-                <TouchableOpacity style={styles.navItem} onPress={() => router.push('/(app)/bookmarks')}>
+                <TouchableOpacity style={styles.navItem} onPress={() => { onNavigate?.(); router.push('/(app)/bookmarks'); }}>
                     <Bookmark size={18} color={colors.primary.DEFAULT} />
                     <Text style={styles.navItemText}>Bookmarks</Text>
                 </TouchableOpacity>
 
                 {/* Subscriptions */}
                 {/* Manage Feeds */}
-                <TouchableOpacity style={styles.navItem} onPress={() => router.push('/(app)/manage')}>
+                <TouchableOpacity style={styles.navItem} onPress={() => { onNavigate?.(); router.push('/(app)/manage'); }}>
                     <Settings size={18} color={colors.text.secondary} />
                     <Text style={styles.navItemText}>Manage Feeds</Text>
                 </TouchableOpacity>
@@ -174,12 +178,12 @@ export default function Sidebar() {
 
             {/* Footer */}
             <View style={styles.footer}>
-                <TouchableOpacity style={styles.footerButton} onPress={() => router.push('/(app)/manage')}>
+                <TouchableOpacity style={styles.footerButton} onPress={() => { onNavigate?.(); router.push('/(app)/manage'); }}>
                     <Plus size={18} color={colors.primary.DEFAULT} />
                     <Text style={styles.footerButtonText}>Add Feed</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.footerButton} onPress={() => router.push('/(app)/settings')}>
+                <TouchableOpacity style={styles.footerButton} onPress={() => { onNavigate?.(); router.push('/(app)/settings'); }}>
                     <Settings size={18} color={colors.text.secondary} />
                     <Text style={styles.footerButtonText}>Settings</Text>
                 </TouchableOpacity>
@@ -194,7 +198,9 @@ export default function Sidebar() {
 
 const styles = StyleSheet.create({
     container: {
-        width: 280,
+        width: '100%', // Allow full width, parent constrains it
+        minWidth: 280,
+        height: '100%',
         backgroundColor: colors.background.elevated,
         borderRightWidth: 1,
         borderRightColor: colors.border.DEFAULT,
