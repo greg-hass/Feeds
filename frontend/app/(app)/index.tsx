@@ -194,12 +194,12 @@ export default function ArticleListScreen() {
                     {/* Mobile: Thumbnail after title */}
                     {isMobile && thumbnail && (
                         <View style={s.thumbnailContainerMobile}>
-                            {activeVideoId === extractVideoId(item.url || '') && isYouTube && Platform.OS === 'web' ? (
+                            {activeVideoId === extractVideoId(item.url || '') && isYouTube && Platform.OS === 'web' && activeVideoId ? (
                                 <View style={s.inlinePlayer}>
                                     <iframe
                                         width="100%"
                                         height="100%"
-                                        src={getEmbedUrl(activeVideoId, true, true)}
+                                        src={getEmbedUrl(activeVideoId!, true, true)}
                                         frameBorder="0"
                                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                         allowFullScreen
