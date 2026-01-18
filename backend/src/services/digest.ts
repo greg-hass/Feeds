@@ -7,6 +7,8 @@ export async function generateDailyDigest(userId: number = 1): Promise<boolean> 
         return false;
     }
 
+    console.log('Generating digest for user', userId);
+
     try {
         // 1. Get digest settings
         const settings = queryOne<{ enabled: number; included_feeds: string | null; style: string }>(
@@ -14,7 +16,10 @@ export async function generateDailyDigest(userId: number = 1): Promise<boolean> 
             [userId]
         );
 
-        if (settings && !settings.enabled) return false;
+        if (settings && !settings.enabled) {
+            console.log('Digest disabled in settings');
+            return false;
+        }
 
         // 2. Fetch unread articles
         let query = `
@@ -45,7 +50,12 @@ export async function generateDailyDigest(userId: number = 1): Promise<boolean> 
             feed_type: string;
         }>(query, params);
 
-        if (unreadArticles.length === 0) return false;
+        if (unreadArticles.length === 0) {
+            console.log('No unread articles found for digest');
+            return false;
+        }
+
+        console.log(`Found ${unreadArticles.length} unread articles`);
 
         // 3. Prepare prompt
         const articleData = unreadArticles.map(a => ({
@@ -93,7 +103,10 @@ Return your response as Markdown.`;
         const data = await response.json();
         const digestContent = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
-        if (!digestContent) return false;
+        if (!digestContent) {
+            console.error('No content in Gemini response');
+            return false;
+        }
 
         // 5. Store digest
         const feedCount = new Set(unreadArticles.map(a => a.feed_title)).size;
