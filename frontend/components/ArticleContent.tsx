@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, Platform, useWindowDimensions } from 'react-native';
 import { useColors, spacing, borderRadius } from '@/theme';
+import { extractVideoId, getEmbedUrl } from '@/utils/youtube';
+import { VideoModal } from './VideoModal';
 
 interface ArticleContentProps {
     html: string;
@@ -18,6 +20,40 @@ export default function ArticleContent({ html, fontSize = 'medium' }: ArticleCon
     const { width } = useWindowDimensions();
     const isMobile = width < 768;
     const sizes = fontSizes[fontSize];
+    const [modalVideoId, setModalVideoId] = useState<string | null>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!containerRef.current) return;
+
+        const links = containerRef.current.querySelectorAll('a');
+        links.forEach(link => {
+            const videoId = extractVideoId(link.href);
+            if (videoId) {
+                if (isMobile) {
+                    // Mobile: Replace with inline iframe
+                    const iframe = document.createElement('iframe');
+                    iframe.width = '100%';
+                    iframe.height = '100%';
+                    iframe.style.aspectRatio = '16/9';
+                    iframe.style.border = 'none';
+                    iframe.style.borderRadius = `${borderRadius.md}px`;
+                    iframe.style.margin = '1em 0';
+                    iframe.src = getEmbedUrl(videoId);
+                    iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+                    iframe.allowFullscreen = true;
+                    
+                    link.parentNode?.replaceChild(iframe, link);
+                } else {
+                    // Desktop: Open in modal
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        setModalVideoId(videoId);
+                    });
+                }
+            }
+        });
+    }, [html, isMobile]);
 
     if (Platform.OS !== 'web') {
         // For native, we'd need a WebView - for now just render as web
@@ -182,8 +218,15 @@ export default function ArticleContent({ html, fontSize = 'medium' }: ArticleCon
         <View style={componentStyles.container}>
             <style dangerouslySetInnerHTML={{ __html: styles }} />
             <div
+                ref={containerRef}
+                key={isMobile ? 'mobile' : 'desktop'}
                 className="article-content"
                 dangerouslySetInnerHTML={{ __html: html }}
+            />
+            <VideoModal
+                videoId={modalVideoId}
+                visible={!!modalVideoId}
+                onClose={() => setModalVideoId(null)}
             />
         </View>
     );
