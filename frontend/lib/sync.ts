@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import api, { APIError } from './api';
+import api, { APIError } from '@/services/api';
 import { SYNC } from '@/config/constants';
 
 export interface SyncChanges {
