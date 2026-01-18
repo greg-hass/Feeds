@@ -43,10 +43,25 @@ export default function ArticleListScreen() {
         fetchArticles(true);
     }, []);
 
-    const handleArticlePress = (id: number) => {
+    const handleArticlePress = (item: Article) => {
         // Optimistically mark as read
-        useArticleStore.getState().markRead(id);
-        router.push(`/(app)/article/${id}`);
+        useArticleStore.getState().markRead(item.id);
+
+        if (item.feed_type === 'youtube') {
+            const videoId = extractVideoId(item.url || item.thumbnail_url || '');
+            if (videoId) {
+                if (isMobile) {
+                    // On mobile, play inline in the list
+                    setActiveVideoId((current) => (current === videoId ? null : videoId));
+                } else {
+                    // On desktop, open VideoModal (pop-out player)
+                    setActiveVideoId(videoId);
+                }
+                return;
+            }
+        }
+
+        router.push(`/(app)/article/${item.id}`);
     };
 
     const handleRefresh = useCallback(() => {
@@ -85,7 +100,7 @@ export default function ArticleListScreen() {
                         if (e.key.toLowerCase() === 'o' && article.url) {
                             Linking.openURL(article.url);
                         } else {
-                            handleArticlePress(article.id);
+                            handleArticlePress(article);
                         }
                     }
                     break;
@@ -189,7 +204,7 @@ export default function ArticleListScreen() {
                 }
                 setActiveVideoId((current) => (current === videoId ? null : videoId));
             } else {
-                handleArticlePress(item.id);
+                handleArticlePress(item);
             }
         };
 
@@ -248,12 +263,12 @@ export default function ArticleListScreen() {
                             <Text style={s.feedName}>{item.feed_title}</Text>
                             {item.has_audio && <Headphones size={14} color={colors.secondary.DEFAULT} />}
                         </View>
-                        <TouchableOpacity onPress={() => handleArticlePress(item.id)} activeOpacity={0.7}>
+                        <TouchableOpacity onPress={() => handleArticlePress(item)} activeOpacity={0.7}>
                             <Text style={[s.articleTitle, item.is_read && s.articleTitleRead]} numberOfLines={2}>
-                            {!item.is_read && (
-                                <Circle size={8} color={colors.primary.DEFAULT} fill={colors.primary.DEFAULT} style={{ marginRight: 6 }} />
-                            )}
-                            {item.title}
+                                {!item.is_read && (
+                                    <Circle size={8} color={colors.primary.DEFAULT} fill={colors.primary.DEFAULT} style={{ marginRight: 6 }} />
+                                )}
+                                {item.title}
                             </Text>
                         </TouchableOpacity>
 
@@ -262,7 +277,7 @@ export default function ArticleListScreen() {
                                 {item.summary}
                             </Text>
                         )}
-                        <TouchableOpacity onPress={() => handleArticlePress(item.id)} activeOpacity={0.7}>
+                        <TouchableOpacity onPress={() => handleArticlePress(item)} activeOpacity={0.7}>
                             <Text style={s.articleMeta}>
                                 {item.author && `${item.author} • `}
                                 {item.published_at && formatDistanceToNow(new Date(item.published_at), { addSuffix: true })}

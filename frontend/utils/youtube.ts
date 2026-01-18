@@ -40,16 +40,28 @@ export function extractVideoId(url: string): string | null {
  * Optimized for iOS PWA inline playback
  */
 export function getEmbedUrl(videoId: string, autoplay = false, playsinline = true): string {
-    const params = new URLSearchParams({
+    const params: Record<string, string> = {
         rel: '0',
         modestbranding: '1',
         controls: '1',
         // For iOS PWA: ensure inline playback, not fullscreen
         playsinline: playsinline ? '1' : '0',
-        // Only autoplay with mute on mobile (required by browsers)
-        ...(autoplay && { autoplay: '1', mute: '1' }),
-    });
-    return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
+        enablejsapi: '1',
+    };
+
+    if (autoplay) {
+        params.autoplay = '1';
+        params.mute = '1';
+    }
+
+    // Crucial for fixing "Error 153" (Video player configuration error)
+    // YouTube requires the origin to be set for some embedded videos
+    if (typeof window !== 'undefined' && window.location) {
+        params.origin = window.location.origin;
+    }
+
+    const searchParams = new URLSearchParams(params);
+    return `https://www.youtube.com/embed/${videoId}?${searchParams.toString()}`;
 }
 
 /**
