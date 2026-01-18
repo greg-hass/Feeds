@@ -51,8 +51,17 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
         }
 
         // Update feed metadata on success
+        // We use COALESCE and NULLIF to ensure we don't overwrite existing data with nulls, 
+        // but we DO update if current data is placeholder or missing.
         run(
             `UPDATE feeds SET
+                title = CASE 
+                    WHEN title = url OR title = 'Direct Feed' OR title = 'Discovered Feed' THEN ?
+                    ELSE title 
+                END,
+                site_url = COALESCE(site_url, ?),
+                icon_url = COALESCE(icon_url, ?),
+                description = COALESCE(description, ?),
                 last_fetched_at = datetime('now'),
                 next_fetch_at = datetime('now', '+' || refresh_interval_minutes || ' minutes'),
                 error_count = 0,
@@ -60,7 +69,13 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
                 last_error_at = NULL,
                 updated_at = datetime('now')
              WHERE id = ?`,
-            [feed.id]
+            [
+                feedData.title,
+                feedData.link,
+                feedData.favicon,
+                feedData.description,
+                feed.id
+            ]
         );
 
         return { success: true, newArticles };

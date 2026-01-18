@@ -122,11 +122,21 @@ export async function parseFeed(url: string): Promise<ParsedFeed> {
                 return;
             }
 
+            const extendedMeta = feedMeta as any;
+            const favicon = feedMeta.favicon ||
+                feedMeta.image?.url ||
+                extendedMeta['itunes:image']?.href ||
+                extendedMeta['itunes:image'] ||
+                extendedMeta['media:thumbnail']?.url ||
+                extendedMeta['media:content']?.url ||
+                extractFavicon(feedMeta.link) ||
+                (feedMeta.link ? `https://www.google.com/s2/favicons?domain=${new URL(feedMeta.link).hostname}&sz=64` : null);
+
             resolve({
                 title: feedMeta.title || STRINGS.DEFAULT_FEED_TITLE,
                 description: feedMeta.description || null,
                 link: feedMeta.link || feedMeta.xmlurl || null,
-                favicon: feedMeta.favicon || feedMeta.image?.url || extractFavicon(feedMeta.link) || (feedMeta.link ? `https://www.google.com/s2/favicons?domain=${new URL(feedMeta.link).hostname}&sz=64` : null),
+                favicon: favicon,
                 articles,
                 isPodcast,
             });
