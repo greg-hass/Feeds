@@ -1,6 +1,6 @@
 import FeedParser, { Item } from 'feedparser';
 import { Readable } from 'stream';
-import type { FeedItemExtensions, FeedMetaExtensions, asString } from '../types/rss-extensions.js';
+import type { FeedItemExtensions, FeedMetaExtensions } from '../types/rss-extensions.js';
 import { HTTP, CONTENT, STRINGS, MISC } from '../config/constants.js';
 
 export type FeedType = 'rss' | 'youtube' | 'reddit' | 'podcast';
@@ -153,8 +153,8 @@ export function normalizeArticle(raw: RawArticle, feedType: FeedType): Normalize
     let thumbnail = raw.thumbnail || raw.image?.url || null;
     let author = raw.author;
     let content = raw.description || raw.summary || null;
-    let summary = raw.summary || (content ? truncate(stripHtml(content), CONTENT.PREVIEW_SUMMARY_LENGTH) : null);
     let url = raw.link || null;
+    let summary = raw.summary;
 
     if (feedType === 'youtube') {
         const guidMatch = raw.guid?.match(STRINGS.YOUTUBE_VIDEO_ID_PATTERN);
@@ -169,13 +169,20 @@ export function normalizeArticle(raw: RawArticle, feedType: FeedType): Normalize
 
     // Reddit specific normalization
     if (feedType === 'reddit') {
+        // Clean up Reddit content (often contains [link] [comments] footers)
+        if (content) {
+            content = cleanRedditContent(content);
+        }
+
+        // Regenerate summary from cleaned content to avoid Reddit footers
+        summary = content ? truncate(stripHtml(content), CONTENT.PREVIEW_SUMMARY_LENGTH) : null;
+
         // Reddit author is usually u/username
         if (author && !author.startsWith('u/')) {
             author = `u/${author}`;
         }
 
-        // Reddit thumbnails are often in description or media:thumbnail (handled)
-        // If no thumbnail, try to find one in the description HTML
+        // Reddit thumbnails
         if (!thumbnail && content) {
             const imgMatch = content.match(/<img[^>]+src="([^">]+)"/);
             if (imgMatch) {
@@ -183,14 +190,8 @@ export function normalizeArticle(raw: RawArticle, feedType: FeedType): Normalize
             }
         }
 
-        // Upgrade thumbnail to high-resolution version
         if (thumbnail) {
             thumbnail = upgradeRedditImageUrl(thumbnail);
-        }
-
-        // Clean up Reddit content (often contains [link] [comments] footers)
-        if (content) {
-            content = cleanRedditContent(content);
         }
     }
 
@@ -199,7 +200,7 @@ export function normalizeArticle(raw: RawArticle, feedType: FeedType): Normalize
         title: decodeHtmlEntities(raw.title),
         url: url,
         author: author,
-        summary: summary,
+        summary: decodeHtmlEntities(summary),
         content: content,
         enclosure_url: enclosure?.url || null,
         enclosure_type: enclosure?.type || null,
@@ -215,11 +216,6 @@ function cleanRedditContent(html: string): string {
 }
 
 function upgradeRedditImageUrl(url: string): string {
-    // Reddit images come in several formats:
-    // 1. https://i.redd.it/... - direct images (already high-res)
-    // 2. https://preview.redd.it/...?width=640&crop=... - preview images with size limits
-    // 3. https://external-preview.redd.it/... - external previews
-
     try {
         const urlObj = new URL(url);
 
@@ -232,16 +228,13 @@ function upgradeRedditImageUrl(url: string): string {
         if (urlObj.hostname === 'external-preview.redd.it') {
             urlObj.searchParams.delete('width');
             urlObj.searchParams.delete('height');
-            // Set format to jpg for better quality
             urlObj.searchParams.set('format', 'jpg');
             urlObj.searchParams.set('auto', 'webp');
             return urlObj.toString();
         }
 
-        // For i.redd.it and other formats, return as-is
         return url;
     } catch {
-        // If URL parsing fails, return original
         return url;
     }
 }
@@ -284,16 +277,29 @@ function truncate(text: string, length: number): string {
     return text.substring(0, length).replace(/\s+\S*$/, '') + CONTENT.TRUNCATION_SUFFIX;
 }
 
-function decodeHtmlEntities(text: string): string {
-    const entities: Record<string, string> = {
-        '&amp;': '&',
-        '&lt;': '<',
-        '&gt;': '>',
-        '&quot;': '"',
-        '&#39;': "'",
-        '&nbsp;': ' ',
-    };
-    return text.replace(/&[^;]+;/g, match => entities[match] || match);
+function decodeHtmlEntities(text: string | null): string {
+    if (!text) return '';
+    return text.replace(/&(#?[a-zA-Z0-9]+);/g, (match, entity) => {
+        const entities: Record<string, string> = {
+            'amp': '&',
+            'lt': '<',
+            'gt': '>',
+            'quot': '"',
+            'apos': "'",
+            'nbsp': ' ',
+        };
+        if (entity.startsWith('#')) {
+            const isHex = entity.charAt(1).toLowerCase() === 'x';
+            try {
+                const code = isHex ? parseInt(entity.slice(2), 16) : parseInt(entity.slice(1), 10);
+                return isNaN(code) ? match : String.fromCharCode(code);
+            } catch {
+                return match;
+            }
+        }
+        const lowerEntity = entity.toLowerCase();
+        return entities[lowerEntity] || match;
+    });
 }
 
 function extractFavicon(siteUrl: string | null): string | null {
