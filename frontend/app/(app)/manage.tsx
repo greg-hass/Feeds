@@ -745,12 +745,14 @@ export default function ManageScreen() {
                         <Text style={s.sectionTitle}>Folders ({folders.length})</Text>
                         {folders.map((folder: Folder) => (
                             <View key={folder.id} style={s.feedItem}>
-                                <FolderIcon size={18} color={colors.secondary.DEFAULT} />
-                                <View style={s.feedInfo}>
-                                    <Text style={s.feedTitle}>{folder.name}</Text>
-                                    <Text style={s.feedUrl}>
-                                        {feeds.filter((f: Feed) => f.folder_id === folder.id).length} feeds
-                                    </Text>
+                                <View style={s.folderContent}>
+                                    <FolderIcon size={18} color={colors.secondary.DEFAULT} />
+                                    <View style={s.feedInfo}>
+                                        <Text style={s.feedTitle}>{folder.name}</Text>
+                                        <Text style={s.feedUrl}>
+                                            {feeds.filter((f: Feed) => f.folder_id === folder.id).length} feeds
+                                        </Text>
+                                    </View>
                                 </View>
                                 <TouchableOpacity
                                     onPress={() => handleRenameFolder(folder)}
@@ -1183,6 +1185,13 @@ const styles = (colors: any) => StyleSheet.create({
         overflow: 'hidden',
     },
     feedContentClickable: { // New style for the main clickable area
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: spacing.md,
+        gap: spacing.sm,
+    },
+    folderContent: { // New style for folder content layout
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
