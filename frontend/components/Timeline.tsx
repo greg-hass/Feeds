@@ -293,12 +293,14 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                             )}
                             <Text style={s.feedName}>{item.feed_title}</Text>
                         </View>
-                        <Text style={[s.articleTitle, item.is_read && s.articleTitleRead]} numberOfLines={2}>
+                        <Text style={[s.articleTitle, item.is_read && s.articleTitleRead]} numberOfLines={thumbnail ? 2 : 3}>
                             {item.title}
                         </Text>
-                        <Text style={s.articleSummary} numberOfLines={isMobile ? 3 : 2}>
-                            {item.summary}
-                        </Text>
+                        {thumbnail && (
+                            <Text style={s.articleSummary} numberOfLines={isMobile ? 3 : 2}>
+                                {item.summary}
+                            </Text>
+                        )}
                         <Text style={s.articleMeta}>
                             {item.author ? `${item.author} • ` : ''}
                             {item.published_at ? formatDistanceToNow(new Date(item.published_at), { addSuffix: true }) : ''}
