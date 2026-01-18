@@ -1,9 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, Platform, useWindowDimensions, ActivityIndicator } from 'react-native';
-import { WebView } from 'react-native-webview';
 import { useColors, spacing, borderRadius } from '@/theme';
 import { extractVideoId, getEmbedUrl } from '@/utils/youtube';
 import { VideoModal } from './VideoModal';
+
+// Lazy load WebView only on native platforms
+const NativeWebView = Platform.OS !== 'web'
+    ? require('react-native-webview').WebView
+    : null;
 
 interface ArticleContentProps {
     html: string;
@@ -363,25 +367,27 @@ export default function ArticleContent({ html, fontSize = 'medium' }: ArticleCon
 
     return (
         <View style={componentStyles.container}>
-            <WebView
-                source={{ html: getStyledHtml(html) }}
-                style={componentStyles.webView}
-                originWhitelist={['*']}
-                javaScriptEnabled={true}
-                domStorageEnabled={false}
-                startInLoadingState={true}
-                onLoad={() => setIsWebViewReady(false)}
-                onMessage={handleWebViewMessage}
-                injectedJavaScript={injectedJavaScript}
-                renderLoading={() => (
-                    <View style={componentStyles.loadingContainer}>
-                        <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
-                    </View>
-                )}
-                scalesPageToFit={false}
-                scrollEnabled={true}
-                nestedScrollEnabled={true}
-            />
+            {NativeWebView ? (
+                <NativeWebView
+                    source={{ html: getStyledHtml(html) }}
+                    style={componentStyles.webView}
+                    originWhitelist={['*']}
+                    javaScriptEnabled={true}
+                    domStorageEnabled={false}
+                    startInLoadingState={true}
+                    onLoad={() => setIsWebViewReady(false)}
+                    onMessage={handleWebViewMessage}
+                    injectedJavaScript={injectedJavaScript}
+                    renderLoading={() => (
+                        <View style={componentStyles.loadingContainer}>
+                            <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
+                        </View>
+                    )}
+                    scalesPageToFit={false}
+                    scrollEnabled={true}
+                    nestedScrollEnabled={true}
+                />
+            ) : null}
             <VideoModal
                 videoId={modalVideoId}
                 visible={!!modalVideoId}

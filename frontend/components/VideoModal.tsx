@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, StyleSheet, Modal, TouchableOpacity, useWindowDimensions, Pressable, Platform } from 'react-native';
-import { WebView } from 'react-native-webview';
 import { X } from 'lucide-react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
 import { getEmbedUrl } from '@/utils/youtube';
@@ -10,6 +9,11 @@ interface VideoModalProps {
     visible: boolean;
     onClose: () => void;
 }
+
+// Lazy load WebView only on native platforms
+const NativeWebView = Platform.OS !== 'web'
+    ? require('react-native-webview').WebView
+    : null;
 
 export function VideoModal({ videoId, visible, onClose }: VideoModalProps) {
     const colors = useColors();
@@ -59,8 +63,8 @@ export function VideoModal({ videoId, visible, onClose }: VideoModalProps) {
                             allowFullScreen
                             style={{ borderBottomLeftRadius: borderRadius.lg, borderBottomRightRadius: borderRadius.lg }}
                         />
-                    ) : (
-                        <WebView
+                    ) : NativeWebView ? (
+                        <NativeWebView
                             source={{ uri: getEmbedUrl(videoId, true, true) }}
                             style={{ flex: 1, borderBottomLeftRadius: borderRadius.lg, borderBottomRightRadius: borderRadius.lg }}
                             allowsFullscreenVideo
@@ -69,7 +73,7 @@ export function VideoModal({ videoId, visible, onClose }: VideoModalProps) {
                             domStorageEnabled
                             allowsInlineMediaPlayback
                         />
-                    )}
+                    ) : null}
                 </View>
             </View>
         </Modal>
