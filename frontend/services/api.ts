@@ -254,10 +254,10 @@ class ApiClient {
 
         if (file.file) {
             // Web: file.file is the actual File object
-            formData.append('file', file.file);
+            formData.append('opml', file.file);
         } else {
             // Native: construct file object
-            formData.append('file', {
+            formData.append('opml', {
                 uri: file.uri,
                 name: file.name || 'feeds.opml',
                 type: file.mimeType || 'text/xml'
@@ -265,6 +265,7 @@ class ApiClient {
         }
 
         try {
+            // Note: Do NOT set Content-Type - browser will set it with proper multipart boundary
             const response = await fetch(`${API_URL}/opml-stream/import`, {
                 method: 'POST',
                 body: formData,
