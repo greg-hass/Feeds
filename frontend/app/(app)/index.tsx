@@ -10,7 +10,6 @@ import { extractVideoId, getThumbnailUrl } from '@/utils/youtube';
 
 import { VideoModal } from '@/components/VideoModal';
 import Sidebar from '@/components/Sidebar';
-import { Modal } from 'react-native';
 
 export default function ArticleListScreen() {
     const router = useRouter();
@@ -662,35 +661,3 @@ const styles = (colors: any, isMobile: boolean) => StyleSheet.create({
         height: '100%',
     },
 });
-separator: {
-    height: spacing.md,
-        },
-loader: {
-    paddingVertical: spacing.xl,
-        },
-empty: {
-    alignItems: 'center',
-        paddingVertical: 64,
-        },
-emptyTitle: {
-    fontSize: 20,
-        fontWeight: '600',
-            color: colors.text.primary,
-                marginTop: spacing.lg,
-        },
-emptyText: {
-    fontSize: 14,
-        color: colors.text.secondary,
-            marginTop: spacing.sm,
-        },
-// Inline player
-inlinePlayer: {
-    width: '100%',
-        height: '100%',
-            backgroundColor: '#000',
-        },
-thumbnailImageContainer: {
-    width: '100%',
-        height: '100%',
-        },
-    });
