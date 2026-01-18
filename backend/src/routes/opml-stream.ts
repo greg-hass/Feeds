@@ -57,23 +57,16 @@ export async function opmlStreamRoutes(app: FastifyInstance) {
     app.post('/import', async (request: FastifyRequest, reply: FastifyReply) => {
         const file = await request.file();
         if (!file) {
-            console.log('[OPML Import] No file in request');
             return reply.status(400).send({ error: 'No file uploaded' });
         }
-
-        console.log('[OPML Import] File received:', file.filename, 'fieldname:', file.fieldname, 'mimetype:', file.mimetype);
 
         const buffer = await file.toBuffer();
         const opmlContent = buffer.toString('utf-8');
 
-        console.log('[OPML Import] Content length:', opmlContent.length, 'chars, first 200:', opmlContent.substring(0, 200));
-
         let parsed: { folders: OPMLFolder[]; feeds: OPMLFeed[] };
         try {
             parsed = parseOPML(opmlContent);
-            console.log('[OPML Import] Parsed:', parsed.folders.length, 'folders,', parsed.feeds.length, 'feeds');
         } catch (err) {
-            console.log('[OPML Import] Parse error:', err);
             return reply.status(400).send({
                 error: 'Invalid OPML format',
                 details: err instanceof Error ? err.message : 'Parse error',
@@ -82,7 +75,6 @@ export async function opmlStreamRoutes(app: FastifyInstance) {
 
         // Take over raw response handling - prevents Fastify from closing the connection
         await reply.hijack();
-        console.log('[OPML Import] Hijacked response, setting up SSE stream');
 
         // Set SSE headers
         reply.raw.writeHead(200, {
@@ -94,7 +86,6 @@ export async function opmlStreamRoutes(app: FastifyInstance) {
         });
 
         const sendEvent = (event: ProgressEvent) => {
-            console.log('[OPML Import] Sending event:', event.type);
             reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
         };
 
@@ -125,7 +116,6 @@ export async function opmlStreamRoutes(app: FastifyInstance) {
                 total_folders: parsed.folders.length,
                 total_feeds: parsed.feeds.length,
             });
-            console.log('[OPML Import] Start event sent, beginning folder creation');
 
             const stats: ImportStats = {
                 success: 0,
@@ -138,7 +128,6 @@ export async function opmlStreamRoutes(app: FastifyInstance) {
             const folderMap = new Map<string, number>();
 
             for (const folder of parsed.folders) {
-                console.log('[OPML Import] Processing folder:', folder.name);
                 // Check for existing folder (including soft-deleted)
                 const existing = queryOne<Folder>(
                     'SELECT id, deleted_at FROM folders WHERE user_id = ? AND name = ?',
@@ -147,10 +136,7 @@ export async function opmlStreamRoutes(app: FastifyInstance) {
 
                 if (existing) {
                     if (existing.deleted_at) {
-                        console.log('[OPML Import] Restoring soft-deleted folder:', folder.name, 'id:', existing.id);
                         run('UPDATE folders SET deleted_at = NULL WHERE id = ?', [existing.id]);
-                    } else {
-                        console.log('[OPML Import] Folder exists:', folder.name, 'id:', existing.id);
                     }
                     folderMap.set(folder.name, existing.id);
                 } else {
@@ -159,7 +145,6 @@ export async function opmlStreamRoutes(app: FastifyInstance) {
                         [userId, folder.name]
                     );
                     const folderId = Number(result.lastInsertRowid);
-                    console.log('[OPML Import] Folder created:', folder.name, 'id:', folderId);
                     folderMap.set(folder.name, folderId);
 
                     sendEvent({
@@ -327,7 +312,6 @@ export async function opmlStreamRoutes(app: FastifyInstance) {
             }
 
             // Send completion
-            console.log('[OPML Import] Import loop finished successfully');
             sendEvent({ type: 'complete', stats });
         } catch (err) {
             console.error('[OPML Import] Fatal error during import:', err);
