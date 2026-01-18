@@ -70,7 +70,12 @@ const styles = (isDesktop: boolean, isReaderRoute: boolean, colors: any) => Styl
         flex: 1,
         flexDirection: isDesktop ? 'row' : 'column',
         backgroundColor: colors.background.primary,
-        ...(Platform.OS === 'web' && { height: '100vh' as any, minHeight: '100vh' as any }),
+        ...(Platform.OS === 'web' && {
+            height: '100vh' as any,
+            minHeight: '100vh' as any,
+            paddingTop: 'env(safe-area-inset-top)' as any,
+            paddingBottom: 'env(safe-area-inset-bottom)' as any,
+        }),
     },
     timelinePane: {
         flex: 1, // Equal width with content
