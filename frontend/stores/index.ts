@@ -1,98 +1,9 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { api, User, Feed, Folder, SmartFolder, Article, ArticleDetail, Settings } from '@/services/api';
+import { api, Feed, Folder, SmartFolder, Article, ArticleDetail, Settings } from '@/services/api';
 import { enableSync, applySyncChanges, SyncChanges } from '@/lib/sync';
 import { handleError } from '@/services/errorHandler';
-
-// Forward declaration for sync functions (defined at end of file)
-declare function initializeSync(): void;
-declare function stopSync(): void;
-
-interface AuthState {
-    user: User | null;
-    token: string | null;
-    isAuthenticated: boolean;
-    isLoading: boolean;
-    setupRequired: boolean;
-
-    checkAuthStatus: () => Promise<void>;
-    login: (username: string, password: string) => Promise<void>;
-    setup: (username: string, password: string, baseUrl?: string) => Promise<void>;
-    logout: () => void;
-    setToken: (token: string) => void;
-}
-
-export const useAuthStore = create<AuthState>()(
-    persist(
-        (set, get) => ({
-            user: null,
-            token: null,
-            isAuthenticated: false,
-            isLoading: true,
-            setupRequired: false,
-
-            checkAuthStatus: async () => {
-                // Bypass auth for single user mode
-                api.setToken('dummy-token');
-                set({
-                    isLoading: false,
-                    setupRequired: false,
-                    isAuthenticated: true,
-                    user: { id: 1, username: 'admin', is_admin: true },
-                    token: 'dummy-token'
-                });
-                // Initialize sync after auth
-                initializeSync();
-            },
-
-            login: async (username: string, password: string) => {
-                api.setToken('dummy-token');
-                set({
-                    user: { id: 1, username: 'admin', is_admin: true },
-                    token: 'dummy-token',
-                    isAuthenticated: true,
-                    setupRequired: false
-                });
-                // Initialize sync after login
-                initializeSync();
-            },
-
-            setup: async (username: string, password: string, baseUrl?: string) => {
-                api.setToken('dummy-token');
-                set({
-                    user: { id: 1, username: 'admin', is_admin: true },
-                    token: 'dummy-token',
-                    isAuthenticated: true,
-                    setupRequired: false
-                });
-                // Initialize sync after setup
-                initializeSync();
-            },
-
-            logout: () => {
-                // Stop sync when logging out
-                stopSync();
-                api.setToken(null);
-                set({ user: null, token: null, isAuthenticated: false });
-            },
-
-            setToken: (token: string) => {
-                api.setToken(token);
-                set({ token });
-                // Initialize sync if token is set
-                if (token) {
-                    initializeSync();
-                }
-            },
-        }),
-        {
-            name: 'feeds-auth',
-            storage: createJSONStorage(() => AsyncStorage),
-            partialize: (state: AuthState) => ({ token: state.token }),
-        }
-    )
-);
 
 // Feed Store
 interface FeedState {
@@ -581,8 +492,7 @@ export const useToastStore = create<ToastState>((set) => ({
 
 /**
  * Initialize background sync for all stores.
- * Call this after user authentication to enable periodic sync.
- * Returns a cleanup function that should be called on logout.
+ * Call this on app start to enable periodic sync.
  */
 let syncCleanup: (() => void) | null = null;
 
@@ -600,7 +510,6 @@ export function initializeSync(): void {
 
 /**
  * Stop background sync.
- * Call this when user logs out.
  */
 export function stopSync(): void {
     if (syncCleanup) {

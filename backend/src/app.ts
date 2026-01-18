@@ -1,8 +1,6 @@
-import Fastify, { FastifyRequest, FastifyReply } from 'fastify';
+import Fastify from 'fastify';
 import cors from '@fastify/cors';
-import jwt from '@fastify/jwt';
 import { initializeDatabase, closeDatabase, run, queryOne } from './db/index.js';
-import { authRoutes } from './routes/auth.js';
 import { feedsRoutes } from './routes/feeds.js';
 import { foldersRoutes } from './routes/folders.js';
 import { articlesRoutes } from './routes/articles.js';
@@ -12,21 +10,6 @@ import { opmlRoutes } from './routes/opml.js';
 import { syncRoutes } from './routes/sync.js';
 import { settingsRoutes } from './routes/settings.js';
 import { startScheduler, stopScheduler } from './services/scheduler.js';
-import { rateLimiters } from './middleware/rate-limit.js';
-
-// Extend Fastify types
-declare module 'fastify' {
-    interface FastifyInstance {
-        authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
-    }
-}
-
-declare module '@fastify/jwt' {
-    interface FastifyJWT {
-        payload: { id: number; username: string };
-        user: { id: number; username: string };
-    }
-}
 
 export async function buildApp() {
     const app = Fastify({
@@ -34,13 +17,6 @@ export async function buildApp() {
             level: process.env.LOG_LEVEL || 'info',
         },
     });
-
-    // Validate JWT_SECRET in production
-    const jwtSecret = process.env.JWT_SECRET;
-    const isDevelopment = process.env.NODE_ENV !== 'production';
-    if (!jwtSecret && !isDevelopment) {
-        throw new Error('JWT_SECRET environment variable must be set in production');
-    }
 
     // CORS
     await app.register(cors, {
@@ -76,32 +52,10 @@ export async function buildApp() {
         reply.header('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
     });
 
-    // JWT Auth
-    await app.register(jwt, {
-        secret: jwtSecret || 'dev-secret-do-not-use-in-production',
-        sign: {
-            expiresIn: '7d',
-        },
-    });
-
-    // Authentication decorator
-    app.decorate('authenticate', async function (request: FastifyRequest, reply: FastifyReply) {
-        if (request.method === 'OPTIONS') {
-            return;
-        }
-
-        try {
-            await request.jwtVerify();
-        } catch (err) {
-            return reply.status(401).send({ error: 'Unauthorized' });
-        }
-    });
-
     // Health check
     app.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));
 
     // API routes
-    await app.register(authRoutes, { prefix: '/api/v1/auth' });
     await app.register(feedsRoutes, { prefix: '/api/v1/feeds' });
     await app.register(foldersRoutes, { prefix: '/api/v1/folders' });
     await app.register(articlesRoutes, { prefix: '/api/v1/articles' });

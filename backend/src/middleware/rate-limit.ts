@@ -77,11 +77,4 @@ export const rateLimiters = {
         maxRequests: RATE_LIMIT.ARTICLES_MAX_REQUESTS,
         keyGenerator: (req) => `${req.ip}:articles`,
     }),
-
-    // For auth endpoints (stricter for security)
-    auth: createRateLimiter({
-        windowMs: RATE_LIMIT.WINDOW_MS,
-        maxRequests: RATE_LIMIT.AUTH_MAX_REQUESTS,
-        keyGenerator: (req) => `${req.ip}:auth`,
-    }),
 };

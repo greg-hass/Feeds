@@ -1,13 +1,12 @@
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useFeedStore, useArticleStore, useAuthStore, useToastStore } from '@/stores';
+import { useFeedStore, useArticleStore, useToastStore } from '@/stores';
 import {
     Rss, Youtube, MessageSquare, Headphones,
     Folder, Search, Settings,
-    Plus, LogOut, RefreshCw, List, Bookmark
+    Plus, RefreshCw, Bookmark
 } from 'lucide-react-native';
 import { colors, borderRadius, spacing } from '@/theme';
-import { ActivityIndicator } from 'react-native';
 
 const FEED_TYPE_ICONS: Record<string, React.ComponentType<any>> = {
     rss: Rss,
@@ -20,8 +19,6 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     const router = useRouter();
     const { feeds, folders, smartFolders, totalUnread, fetchFeeds, fetchFolders, isLoading } = useFeedStore();
     const { setFilter } = useArticleStore();
-    const { logout } = useAuthStore();
-    const { show } = useToastStore();
 
     const handleSmartFolderPress = (type: string) => {
         setFilter({ type, feed_id: undefined, folder_id: undefined });
@@ -183,10 +180,6 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 <TouchableOpacity style={styles.footerButton} onPress={() => { onNavigate?.(); router.push('/(app)/settings'); }}>
                     <Settings size={18} color={colors.text.secondary} />
                     <Text style={styles.footerButtonText}>Settings</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.footerButton} onPress={logout}>
-                    <LogOut size={18} color={colors.text.tertiary} />
                 </TouchableOpacity>
             </View>
         </View>

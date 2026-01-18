@@ -71,9 +71,6 @@ export const CONTENT = {
 // ============================================================================
 
 export const STORAGE_KEYS = {
-    /** AsyncStorage key for auth token */
-    AUTH: 'feeds-auth',
-
     /** AsyncStorage key for feeds list */
     FEEDS: 'feeds-list',
 

@@ -8,7 +8,6 @@ import { useToastStore } from '@/stores';
 
 export enum ErrorCategory {
     NETWORK = 'network',
-    AUTH = 'auth',
     SERVER = 'server',
     VALIDATION = 'validation',
     NOT_FOUND = 'not_found',
@@ -73,7 +72,6 @@ export function parseError(error: unknown): AppError {
 function categorizeStatus(status?: number): ErrorCategory {
     if (!status) return ErrorCategory.NETWORK;
 
-    if (status === 401 || status === 403) return ErrorCategory.AUTH;
     if (status === 404) return ErrorCategory.NOT_FOUND;
     if (status === 422 || status === 400) return ErrorCategory.VALIDATION;
     if (status >= 500) return ErrorCategory.SERVER;
@@ -91,10 +89,6 @@ function getUserMessageForStatus(status: number | undefined, fallback: string): 
     switch (status) {
         case 400:
             return 'Invalid request. Please check your input.';
-        case 401:
-            return 'Please log in to continue.';
-        case 403:
-            return "You don't have permission to do this.";
         case 404:
             return 'The requested resource was not found.';
         case 409:
@@ -179,11 +173,4 @@ export function isRecoverable(error: AppError): boolean {
         error.status === 503 || // Service unavailable
         error.status === 504 // Gateway timeout
     );
-}
-
-/**
- * Check if an error should trigger a logout
- */
-export function shouldLogout(error: AppError): boolean {
-    return error.category === ErrorCategory.AUTH && (error.status === 401 || error.status === 403);
 }

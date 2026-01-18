@@ -7,12 +7,6 @@ interface RequestOptions {
 }
 
 class ApiClient {
-    private token: string | null = null;
-
-    setToken(token: string | null) {
-        this.token = token;
-    }
-
     async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
         const { method = 'GET', body, headers = {} } = options;
 
@@ -33,10 +27,6 @@ class ApiClient {
             requestHeaders['Content-Type'] = 'application/json';
         }
 
-        if (this.token) {
-            requestHeaders['Authorization'] = `Bearer ${this.token}`;
-        }
-
         const response = await fetch(`${API_URL}${endpoint}`, {
             method,
             headers: requestHeaders,
@@ -54,29 +44,6 @@ class ApiClient {
         }
 
         return response.json();
-    }
-
-    // Auth
-    async getAuthStatus() {
-        return this.request<{ setup_required: boolean; version: string }>('/auth/status');
-    }
-
-    async setup(username: string, password: string, baseUrl?: string) {
-        return this.request<{ user: User; token: string }>('/auth/setup', {
-            method: 'POST',
-            body: { username, password, base_url: baseUrl },
-        });
-    }
-
-    async login(username: string, password: string) {
-        return this.request<{ user: User; token: string }>('/auth/login', {
-            method: 'POST',
-            body: { username, password },
-        });
-    }
-
-    async getCurrentUser() {
-        return this.request<{ user: User }>('/auth/me');
     }
 
     // Feeds
@@ -275,12 +242,6 @@ export class ApiError extends Error {
 }
 
 // Types
-export interface User {
-    id: number;
-    username: string;
-    is_admin: boolean;
-}
-
 export interface Feed {
     id: number;
     folder_id: number | null;

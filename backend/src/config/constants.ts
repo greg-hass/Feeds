@@ -30,30 +30,6 @@ export const HTTP = {
 } as const;
 
 // ============================================================================
-// AUTHENTICATION & SECURITY
-// ============================================================================
-
-export const AUTH = {
-    /** Default JWT token expiration time (7 days) */
-    TOKEN_EXPIRATION: '7d',
-
-    /** Bcrypt cost factor for password hashing */
-    BCRYPT_ROUNDS: 12,
-
-    /** Minimum username length */
-    MIN_USERNAME_LENGTH: 3,
-
-    /** Maximum username length */
-    MAX_USERNAME_LENGTH: 50,
-
-    /** Minimum password length */
-    MIN_PASSWORD_LENGTH: 8,
-
-    /** Maximum password length */
-    MAX_PASSWORD_LENGTH: 100,
-} as const;
-
-// ============================================================================
 // RATE LIMITING
 // ============================================================================
 
@@ -69,9 +45,6 @@ export const RATE_LIMIT = {
 
     /** Article operations per minute per IP */
     ARTICLES_MAX_REQUESTS: 60,
-
-    /** Auth attempts per minute per IP */
-    AUTH_MAX_REQUESTS: 5,
 } as const;
 
 // ============================================================================

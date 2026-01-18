@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { View, StyleSheet, useWindowDimensions } from 'react-native';
 import { Slot } from 'expo-router';
-import { useFeedStore, useAuthStore } from '@/stores';
+import { useFeedStore } from '@/stores';
 import { useColors } from '@/theme';
 import Sidebar from '@/components/Sidebar';
 import MobileNav from '@/components/MobileNav';

@@ -1,16 +1,15 @@
 import { useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useSettingsStore, useAuthStore, useToastStore } from '@/stores';
+import { useSettingsStore, useToastStore } from '@/stores';
 import { Settings } from '@/services/api';
-import { ArrowLeft, Sun, Moon, Monitor, ChevronRight } from 'lucide-react-native';
+import { ArrowLeft, Sun, Moon, Monitor } from 'lucide-react-native';
 import { useColors, spacing, borderRadius } from '@/theme';
 
 export default function SettingsScreen() {
     const router = useRouter();
     const colors = useColors();
     const { settings, fetchSettings, updateSettings } = useSettingsStore();
-    const { user, logout } = useAuthStore();
     const { show } = useToastStore();
 
     const s = styles(colors);
@@ -67,17 +66,6 @@ export default function SettingsScreen() {
             </View>
 
             <ScrollView style={s.scrollView} contentContainerStyle={s.content}>
-                {/* Account */}
-                <View style={s.section}>
-                    <Text style={s.sectionTitle}>Account</Text>
-                    <View style={s.card}>
-                        <View style={s.row}>
-                            <Text style={s.label}>Username</Text>
-                            <Text style={s.value}>{user?.username}</Text>
-                        </View>
-                    </View>
-                </View>
-
                 {/* Appearance */}
                 <View style={s.section}>
                     <Text style={s.sectionTitle}>Appearance</Text>
@@ -215,11 +203,6 @@ export default function SettingsScreen() {
                     </View>
                 </View>
 
-                {/* Logout */}
-                <TouchableOpacity style={s.logoutButton} onPress={logout}>
-                    <Text style={s.logoutText}>Log Out</Text>
-                </TouchableOpacity>
-
                 {/* Version */}
                 <Text style={s.version}>Feeds v1.0.0</Text>
             </ScrollView>
@@ -345,18 +328,6 @@ const styles = (colors: any) => StyleSheet.create({
     pickerText: {
         fontSize: 12,
         color: colors.text.secondary,
-    },
-    logoutButton: {
-        backgroundColor: colors.background.secondary,
-        borderRadius: borderRadius.lg,
-        padding: spacing.lg,
-        alignItems: 'center',
-        marginTop: spacing.lg,
-    },
-    logoutText: {
-        fontSize: 16,
-        color: colors.error,
-        fontWeight: '500',
     },
     version: {
         textAlign: 'center',
