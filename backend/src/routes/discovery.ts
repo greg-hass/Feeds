@@ -24,9 +24,10 @@ export async function discoveryRoutes(app: FastifyInstance) {
     // Get recommendations
     app.get('/recommendations', async (request: FastifyRequest) => {
         const recommendations = queryAll(
-            `SELECT * FROM feed_recommendations 
-             WHERE user_id = ? AND status = 'pending' 
-             ORDER BY relevance_score DESC LIMIT 20`,
+            `SELECT fr.* FROM feed_recommendations fr
+             LEFT JOIN feeds f ON f.user_id = fr.user_id AND f.url = fr.feed_url AND f.deleted_at IS NULL
+             WHERE fr.user_id = ? AND fr.status = 'pending' AND f.id IS NULL
+             ORDER BY fr.relevance_score DESC LIMIT 20`,
             [userId]
         );
         return { recommendations };
@@ -39,9 +40,10 @@ export async function discoveryRoutes(app: FastifyInstance) {
         await refreshRecommendations(userId);
 
         const recommendations = queryAll(
-            `SELECT * FROM feed_recommendations 
-             WHERE user_id = ? AND status = 'pending' 
-             ORDER BY relevance_score DESC LIMIT 20`,
+            `SELECT fr.* FROM feed_recommendations fr
+             LEFT JOIN feeds f ON f.user_id = fr.user_id AND f.url = fr.feed_url AND f.deleted_at IS NULL
+             WHERE fr.user_id = ? AND fr.status = 'pending' AND f.id IS NULL
+             ORDER BY fr.relevance_score DESC LIMIT 20`,
             [userId]
         );
         return { recommendations };
