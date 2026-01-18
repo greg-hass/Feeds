@@ -195,8 +195,9 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
 const styles = StyleSheet.create({
     container: {
-        width: '100%', // Allow full width, parent constrains it
+        width: 280, // Fixed width for desktop sidebar
         minWidth: 280,
+        maxWidth: 280,
         height: '100%',
         backgroundColor: colors.background.elevated,
         borderRightWidth: 1,
