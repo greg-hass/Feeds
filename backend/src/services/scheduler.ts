@@ -7,27 +7,38 @@ interface Feed extends FeedToRefresh {
 }
 
 const CHECK_INTERVAL = 60 * 1000; // Check every minute
-const FEED_DELAY = 2000; // 2 seconds delay between feeds
+const FEED_DELAY = 3000; // 3 seconds delay between feeds
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+let isRunning = false;
+let timeoutHandle: NodeJS.Timeout | null = null;
+
 export function startScheduler() {
+    if (isRunning) return;
+    isRunning = true;
     console.log('Starting background feed scheduler...');
 
-    // Initial check after 5 seconds
-    setTimeout(checkFeeds, 5000);
-
-    // Regular interval
-    interval = setInterval(checkFeeds, CHECK_INTERVAL);
+    // Schedule first run
+    timeoutHandle = setTimeout(runSchedulerCycle, 5000);
 }
 
-let interval: NodeJS.Timeout | null = null;
-
 export function stopScheduler() {
-    if (interval) {
-        clearInterval(interval);
-        interval = null;
-        console.log('Stopped background feed scheduler');
+    isRunning = false;
+    if (timeoutHandle) {
+        clearTimeout(timeoutHandle);
+        timeoutHandle = null;
+    }
+    console.log('Stopped background feed scheduler');
+}
+
+async function runSchedulerCycle() {
+    if (!isRunning) return;
+
+    await checkFeeds();
+
+    if (isRunning) {
+        timeoutHandle = setTimeout(runSchedulerCycle, CHECK_INTERVAL);
     }
 }
 
