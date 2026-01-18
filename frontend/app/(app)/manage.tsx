@@ -290,7 +290,7 @@ export default function ManageScreen() {
                 return;
             }
 
-            // Initialize progress state
+            // Show simple importing state
             setProgressState({
                 isActive: true,
                 operation: 'import',
@@ -302,20 +302,21 @@ export default function ManageScreen() {
                 failedFeeds: [],
             });
 
-            // Use SSE for real-time progress
-            await api.importOpmlWithProgress(
-                file,
-                (event: ProgressEvent) => handleProgressEvent(event),
-                (error: Error) => {
-                    setProgressState(prev => ({
-                        ...prev,
-                        complete: true,
-                        stats: { ...prev.stats, errors: prev.stats.errors + 1 },
-                        failedFeeds: [...prev.failedFeeds, { id: 0, title: 'Import', error: error.message }],
-                    }));
-                }
-            );
+            // Use the original working import method
+            const importResult = await api.importOpml(file);
 
+            // Update progress state with results
+            setProgressState(prev => ({
+                ...prev,
+                complete: true,
+                stats: {
+                    success: importResult.imported.feeds,
+                    skipped: 0,
+                    errors: 0
+                },
+            }));
+
+            show(`Imported ${importResult.imported.feeds} feeds, ${importResult.imported.folders} folders`, 'success');
             fetchFeeds();
             fetchFolders();
         } catch (err) {
