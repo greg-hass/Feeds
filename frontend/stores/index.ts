@@ -261,7 +261,7 @@ export const useArticleStore = create<ArticleState>()(
                 } catch (error) {
                     // Try to find in existing articles list
                     const found = get().articles.find(a => a.id === id);
-                    if (found) set({ currentArticle: found });
+                    if (found) set({ currentArticle: { ...found, content: null, readability_content: null, enclosure_type: null } });
                 }
 
                 // Update in list too
