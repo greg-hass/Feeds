@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Home, Search, Bookmark, Rss, Settings, Sparkles } from 'lucide-react-native';
 import { useColors, spacing, borderRadius } from '@/theme';
 
@@ -22,8 +23,9 @@ export default function MobileNav() {
     const router = useRouter();
     const pathname = usePathname();
     const colors = useColors();
+    const insets = useSafeAreaInsets();
 
-    const s = styles(colors);
+    const s = styles(colors, insets.bottom);
 
     const isActive = (path: string) => {
         if (path === '/(app)') {
@@ -58,13 +60,13 @@ export default function MobileNav() {
     );
 }
 
-const styles = (colors: any) => StyleSheet.create({
+const styles = (colors: any, bottomInset: number) => StyleSheet.create({
     container: {
         flexDirection: 'row',
         backgroundColor: colors.background.secondary,
         borderTopWidth: 1,
         borderTopColor: colors.border.DEFAULT,
-        paddingBottom: 20, // Safe area for notch devices
+        paddingBottom: bottomInset || spacing.sm,
         paddingTop: spacing.sm,
     },
     navItem: {

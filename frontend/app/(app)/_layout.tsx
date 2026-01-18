@@ -44,7 +44,7 @@ export default function AppLayout() {
     if (!mounted) return null;
 
     return (
-        <SafeAreaView style={s.container} edges={['top', 'bottom']}>
+        <SafeAreaView style={s.container} edges={['top']}>
             {isDesktop && <Sidebar />}
             {isDesktop && isReaderRoute && (
                 <View style={s.timelinePane}>
