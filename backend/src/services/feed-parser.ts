@@ -57,7 +57,7 @@ export interface NormalizedArticle {
     published_at: string | null;
 }
 
-const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Feeds/1.0';
+const USER_AGENT = 'Feeds/1.0 (Feed Reader; +https://github.com/greg-hass/Feeds) Mozilla/5.0 (compatible)';
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 
 export async function fetchYouTubeIcon(channelId: string): Promise<string | null> {

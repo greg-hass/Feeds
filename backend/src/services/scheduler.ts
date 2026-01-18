@@ -7,6 +7,9 @@ interface Feed extends FeedToRefresh {
 }
 
 const CHECK_INTERVAL = 60 * 1000; // Check every minute
+const FEED_DELAY = 2000; // 2 seconds delay between feeds
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export function startScheduler() {
     console.log('Starting background feed scheduler...');
@@ -59,6 +62,9 @@ async function checkFeeds() {
             } catch (err) {
                 console.error(`[Scheduler] Error refreshing ${feed.title}:`, err);
             }
+
+            // Stagger requests to avoid 429 errors
+            await sleep(FEED_DELAY);
         }
     } catch (err) {
         console.error('[Scheduler] Error checking feeds:', err);
