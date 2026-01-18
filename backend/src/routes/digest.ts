@@ -38,7 +38,15 @@ export async function digestRoutes(app: FastifyInstance) {
 
     // Get digest settings
     app.get('/settings', async (request: FastifyRequest) => {
-        let settings = queryOne(
+        interface RawSettings {
+            user_id: number;
+            enabled: number;
+            schedule: string;
+            included_feeds: string | null;
+            style: string;
+        }
+
+        let settings = queryOne<RawSettings>(
             'SELECT * FROM digest_settings WHERE user_id = ?',
             [userId]
         );
@@ -49,10 +57,14 @@ export async function digestRoutes(app: FastifyInstance) {
                 'INSERT INTO digest_settings (user_id, enabled, schedule, style) VALUES (?, 1, "06:00", "bullets")',
                 [userId]
             );
-            settings = queryOne(
+            settings = queryOne<RawSettings>(
                 'SELECT * FROM digest_settings WHERE user_id = ?',
                 [userId]
             );
+        }
+
+        if (!settings) {
+            throw new Error('Failed to load digest settings');
         }
 
         return {

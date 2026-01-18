@@ -1,7 +1,7 @@
 const API_URL = process.env.EXPO_PUBLIC_API_URL || '/api/v1';
 
 interface RequestOptions {
-    method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+    method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
     body?: unknown;
     headers?: Record<string, string>;
 }
