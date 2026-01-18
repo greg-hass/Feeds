@@ -80,6 +80,7 @@ export async function opmlStreamRoutes(app: FastifyInstance) {
 
         // Take over raw response handling - prevents Fastify from closing the connection
         await reply.hijack();
+        console.log('[OPML Import] Hijacked response, setting up SSE stream');
 
         // Set SSE headers
         reply.raw.writeHead(200, {
@@ -87,9 +88,11 @@ export async function opmlStreamRoutes(app: FastifyInstance) {
             'Cache-Control': 'no-cache',
             'Connection': 'keep-alive',
             'Access-Control-Allow-Origin': '*',
+            'X-Accel-Buffering': 'no', // Disable nginx buffering
         });
 
         const sendEvent = (event: ProgressEvent) => {
+            console.log('[OPML Import] Sending event:', event.type);
             reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
         };
 
@@ -120,6 +123,7 @@ export async function opmlStreamRoutes(app: FastifyInstance) {
                 total_folders: parsed.folders.length,
                 total_feeds: parsed.feeds.length,
             });
+            console.log('[OPML Import] Start event sent, beginning folder creation');
 
             const stats: ImportStats = {
                 success: 0,
