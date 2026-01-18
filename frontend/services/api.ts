@@ -239,6 +239,56 @@ class ApiClient {
         });
     }
 
+    // Digest
+    async getLatestDigest() {
+        return this.request<{ digest: Digest | null }>('/digest');
+    }
+
+    async generateDigest() {
+        return this.request<{ success: boolean; digest: Digest }>('/digest/generate', {
+            method: 'POST',
+        });
+    }
+
+    async getDigestSettings() {
+        return this.request<{ settings: DigestSettings }>('/digest/settings');
+    }
+
+    async updateDigestSettings(settings: Partial<DigestSettings>) {
+        return this.request<{ success: boolean }>('/digest/settings', {
+            method: 'PUT',
+            body: settings,
+        });
+    }
+
+    // AI Discovery
+    async getRecommendations() {
+        return this.request<{ recommendations: Recommendation[] }>('/discovery/recommendations');
+    }
+
+    async refreshRecommendations() {
+        return this.request<{ recommendations: Recommendation[] }>('/discovery/refresh', {
+            method: 'POST',
+        });
+    }
+
+    async dismissRecommendation(id: number) {
+        return this.request<{ success: boolean }>(`/discovery/${id}/dismiss`, {
+            method: 'POST',
+        });
+    }
+
+    async getInterests() {
+        return this.request<{ interests: Interest[] }>('/discovery/interests');
+    }
+
+    async updateInterests(topics: string[]) {
+        return this.request<{ success: boolean }>('/discovery/interests', {
+            method: 'PUT',
+            body: { topics },
+        });
+    }
+
     // SSE Progress Methods
 
     /**
@@ -520,6 +570,40 @@ export type RefreshProgressEvent =
     | { type: 'feed_complete'; id: number; title: string; new_articles: number }
     | { type: 'feed_error'; id: number; title: string; error: string }
     | { type: 'complete'; stats: RefreshStats };
+
+export interface Digest {
+    id: number;
+    generated_at: string;
+    content: string;
+    article_count: number;
+    feed_count: number;
+}
+
+export interface DigestSettings {
+    enabled: boolean;
+    schedule: string;
+    included_feeds: number[] | null;
+    style: 'bullets' | 'paragraphs';
+}
+
+export interface Recommendation {
+    id: number;
+    feed_url: string;
+    feed_type: 'rss' | 'youtube' | 'reddit' | 'podcast';
+    title: string;
+    description: string;
+    relevance_score: number;
+    reason: string;
+    metadata: string;
+    status: 'pending' | 'subscribed' | 'dismissed';
+    discovered_at: string;
+}
+
+export interface Interest {
+    topic: string;
+    source: 'explicit' | 'derived' | 'content_analysis';
+    confidence: number;
+}
 
 export const api = new ApiClient();
 
