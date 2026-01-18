@@ -1,4 +1,4 @@
-import FeedParser from 'feedparser';
+import FeedParser, { Item } from 'feedparser';
 import { Readable } from 'stream';
 
 export type FeedType = 'rss' | 'youtube' | 'reddit' | 'podcast';
@@ -26,7 +26,7 @@ export interface Feed {
     link: string;
     image?: string;
     icon_url?: string;
-    items: FeedItem[];
+    items: Item[];
 }
 
 export interface ParsedFeed {
