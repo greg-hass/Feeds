@@ -7,6 +7,8 @@ import { articlesRoutes } from './routes/articles.js';
 import { searchRoutes } from './routes/search.js';
 import { discoverRoutes } from './routes/discover.js';
 import { opmlRoutes } from './routes/opml.js';
+import { opmlStreamRoutes } from './routes/opml-stream.js';
+import { feedsStreamRoutes } from './routes/feeds-stream.js';
 import { syncRoutes } from './routes/sync.js';
 import { settingsRoutes } from './routes/settings.js';
 import { startScheduler, stopScheduler } from './services/scheduler.js';
@@ -62,6 +64,8 @@ export async function buildApp() {
     await app.register(searchRoutes, { prefix: '/api/v1/search' });
     await app.register(discoverRoutes, { prefix: '/api/v1/discover' });
     await app.register(opmlRoutes, { prefix: '/api/v1/opml' });
+    await app.register(opmlStreamRoutes, { prefix: '/api/v1/opml' });
+    await app.register(feedsStreamRoutes, { prefix: '/api/v1/feeds' });
     await app.register(syncRoutes, { prefix: '/api/v1/sync' });
     await app.register(settingsRoutes, { prefix: '/api/v1/settings' });
 

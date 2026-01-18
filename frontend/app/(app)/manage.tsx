@@ -1,15 +1,17 @@
 import * as DocumentPicker from 'expo-document-picker';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, Modal, Image, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFeedStore, useToastStore, useArticleStore } from '@/stores';
-import { api, DiscoveredFeed, Feed, Folder } from '@/services/api';
+import { api, DiscoveredFeed, Feed, Folder, ProgressEvent, RefreshProgressEvent } from '@/services/api';
 import {
     ArrowLeft, Plus, Search, Rss, Youtube, Headphones, MessageSquare,
     Folder as FolderIcon, Trash2, Edit2, FolderInput, Download, Upload,
-    ChevronDown, X, Check, FileUp, FileDown, AlertTriangle, RefreshCw
+    ChevronDown, X, Check, FileUp, FileDown, AlertTriangle, RefreshCw, RefreshCcw
 } from 'lucide-react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
+import { ProgressDialog, ProgressState, ProgressStats, FailedFeed } from '@/components/ProgressDialog';
+import { ProgressItemData, ItemStatus } from '@/components/ProgressItem';
 
 type ModalType = 'edit_feed' | 'rename_folder' | 'move_feed' | null;
 
@@ -35,10 +37,21 @@ export default function ManageScreen() {
     const [refreshInterval, setRefreshInterval] = useState(30);
 
     const [isExporting, setIsExporting] = useState(false);
-    const [isImporting, setIsImporting] = useState(false);
 
     // Bulk actions
     const [isBulkMode, setIsBulkMode] = useState(false);
+
+    // Progress dialog state
+    const [progressState, setProgressState] = useState<ProgressState>({
+        isActive: false,
+        operation: 'import',
+        items: [],
+        current: null,
+        total: 0,
+        stats: { success: 0, skipped: 0, errors: 0 },
+        complete: false,
+        failedFeeds: [],
+    });
     const [selectedFeedIds, setSelectedFeedIds] = useState<Set<number>>(new Set());
 
     const s = styles(colors);
@@ -259,24 +272,292 @@ export default function ManageScreen() {
 
     const handleImportOpml = async () => {
         try {
+            // Platform-aware file type configuration (design doc fix)
             const result = await DocumentPicker.getDocumentAsync({
-                type: ['text/xml', 'application/xml', 'application/x-opml+xml'],
+                type: Platform.OS === 'web'
+                    ? ['text/xml', 'application/xml', 'text/x-opml', '*/*']
+                    : ['text/xml', 'application/xml', 'text/x-opml', '*/*'],
                 copyToCacheDirectory: true,
             });
 
             if (result.canceled) return;
 
-            setIsImporting(true);
-            const importResult = await api.importOpml(result.assets[0]);
-            show(`Imported ${importResult.imported.feeds} feeds, ${importResult.imported.folders} folders`, 'success');
+            const file = result.assets[0];
+
+            // Validate file extension
+            const fileName = file.name?.toLowerCase() || '';
+            if (!fileName.endsWith('.opml') && !fileName.endsWith('.xml')) {
+                show('Please select an OPML or XML file', 'error');
+                return;
+            }
+
+            // Initialize progress state
+            setProgressState({
+                isActive: true,
+                operation: 'import',
+                items: [],
+                current: null,
+                total: 0,
+                stats: { success: 0, skipped: 0, errors: 0 },
+                complete: false,
+                failedFeeds: [],
+            });
+
+            // Use SSE for real-time progress
+            await api.importOpmlWithProgress(
+                file,
+                (event: ProgressEvent) => handleProgressEvent(event),
+                (error: Error) => {
+                    setProgressState(prev => ({
+                        ...prev,
+                        complete: true,
+                        stats: { ...prev.stats, errors: prev.stats.errors + 1 },
+                        failedFeeds: [...prev.failedFeeds, { id: 0, title: 'Import', error: error.message }],
+                    }));
+                }
+            );
+
             fetchFeeds();
             fetchFolders();
         } catch (err) {
             console.error(err);
             show('Failed to import OPML', 'error');
-        } finally {
-            setIsImporting(false);
+            setProgressState(prev => ({ ...prev, isActive: false }));
         }
+    };
+
+    const handleRefreshAll = async () => {
+        // Initialize progress state for refresh
+        setProgressState({
+            isActive: true,
+            operation: 'refresh',
+            items: feeds.map((f: Feed) => ({
+                id: `feed-${f.id}`,
+                type: 'feed' as const,
+                title: f.title,
+                folder: folders.find((folder: Folder) => folder.id === f.folder_id)?.name,
+                status: 'pending' as ItemStatus,
+            })),
+            current: null,
+            total: feeds.length,
+            stats: { success: 0, skipped: 0, errors: 0 },
+            complete: false,
+            failedFeeds: [],
+        });
+
+        await api.refreshFeedsWithProgress(
+            undefined, // Refresh all
+            (event: RefreshProgressEvent) => handleRefreshProgressEvent(event),
+            (error: Error) => {
+                setProgressState(prev => ({
+                    ...prev,
+                    complete: true,
+                    stats: { ...prev.stats, errors: prev.stats.errors + 1 },
+                    failedFeeds: [...prev.failedFeeds, { id: 0, title: 'Refresh', error: error.message }],
+                }));
+            }
+        );
+
+        fetchFeeds();
+    };
+
+    const handleRetryFailed = async (feedIds: number[]) => {
+        // Reset progress for retry
+        setProgressState(prev => ({
+            ...prev,
+            items: prev.failedFeeds.map(f => ({
+                id: `feed-${f.id}`,
+                type: 'feed' as const,
+                title: f.title,
+                status: 'pending' as ItemStatus,
+            })),
+            current: null,
+            total: feedIds.length,
+            stats: { success: 0, skipped: 0, errors: 0 },
+            complete: false,
+            failedFeeds: [],
+        }));
+
+        await api.refreshFeedsWithProgress(
+            feedIds,
+            (event: RefreshProgressEvent) => handleRefreshProgressEvent(event),
+            (error: Error) => {
+                setProgressState(prev => ({
+                    ...prev,
+                    complete: true,
+                    stats: { ...prev.stats, errors: prev.stats.errors + 1 },
+                    failedFeeds: [...prev.failedFeeds, { id: 0, title: 'Retry', error: error.message }],
+                }));
+            }
+        );
+
+        fetchFeeds();
+    };
+
+    const handleProgressEvent = (event: ProgressEvent) => {
+        setProgressState(prev => {
+            switch (event.type) {
+                case 'start':
+                    return {
+                        ...prev,
+                        total: event.total_feeds,
+                    };
+                case 'folder_created': {
+                    const newItem: ProgressItemData = {
+                        id: `folder-${event.id}`,
+                        type: 'folder',
+                        title: event.name,
+                        status: 'success',
+                    };
+                    return {
+                        ...prev,
+                        items: [...prev.items, newItem],
+                    };
+                }
+                case 'feed_created': {
+                    const newItem: ProgressItemData = {
+                        id: `feed-${event.id}`,
+                        type: 'feed',
+                        title: event.title,
+                        folder: event.folder,
+                        status: event.status === 'duplicate' ? 'skipped' : 'pending',
+                        subtitle: event.status === 'duplicate' ? 'Already exists' : undefined,
+                    };
+                    const newStats = event.status === 'duplicate'
+                        ? { ...prev.stats, skipped: prev.stats.skipped + 1 }
+                        : prev.stats;
+                    return {
+                        ...prev,
+                        items: [...prev.items, newItem],
+                        stats: newStats,
+                    };
+                }
+                case 'feed_refreshing': {
+                    const updatedItems = prev.items.map(item =>
+                        item.id === `feed-${event.id}`
+                            ? { ...item, status: 'processing' as ItemStatus }
+                            : item
+                    );
+                    const currentItem = updatedItems.find(item => item.id === `feed-${event.id}`) || null;
+                    return {
+                        ...prev,
+                        items: updatedItems,
+                        current: currentItem,
+                    };
+                }
+                case 'feed_complete': {
+                    const updatedItems = prev.items.map(item =>
+                        item.id === `feed-${event.id}`
+                            ? {
+                                ...item,
+                                status: 'success' as ItemStatus,
+                                subtitle: `${event.new_articles} new articles`,
+                            }
+                            : item
+                    );
+                    return {
+                        ...prev,
+                        items: updatedItems,
+                        stats: { ...prev.stats, success: prev.stats.success + 1 },
+                    };
+                }
+                case 'feed_error': {
+                    const updatedItems = prev.items.map(item =>
+                        item.id === `feed-${event.id}`
+                            ? {
+                                ...item,
+                                status: 'error' as ItemStatus,
+                                subtitle: event.error,
+                            }
+                            : item
+                    );
+                    return {
+                        ...prev,
+                        items: updatedItems,
+                        stats: { ...prev.stats, errors: prev.stats.errors + 1 },
+                        failedFeeds: [...prev.failedFeeds, { id: event.id, title: event.title, error: event.error }],
+                    };
+                }
+                case 'complete':
+                    return {
+                        ...prev,
+                        complete: true,
+                        current: null,
+                    };
+                default:
+                    return prev;
+            }
+        });
+    };
+
+    const handleRefreshProgressEvent = (event: RefreshProgressEvent) => {
+        setProgressState(prev => {
+            switch (event.type) {
+                case 'start':
+                    return {
+                        ...prev,
+                        total: event.total_feeds,
+                    };
+                case 'feed_refreshing': {
+                    const updatedItems = prev.items.map(item =>
+                        item.id === `feed-${event.id}`
+                            ? { ...item, status: 'processing' as ItemStatus }
+                            : item
+                    );
+                    const currentItem = updatedItems.find(item => item.id === `feed-${event.id}`) || null;
+                    return {
+                        ...prev,
+                        items: updatedItems,
+                        current: currentItem,
+                    };
+                }
+                case 'feed_complete': {
+                    const updatedItems = prev.items.map(item =>
+                        item.id === `feed-${event.id}`
+                            ? {
+                                ...item,
+                                status: 'success' as ItemStatus,
+                                subtitle: `${event.new_articles} new articles`,
+                            }
+                            : item
+                    );
+                    return {
+                        ...prev,
+                        items: updatedItems,
+                        stats: { ...prev.stats, success: prev.stats.success + 1 },
+                    };
+                }
+                case 'feed_error': {
+                    const updatedItems = prev.items.map(item =>
+                        item.id === `feed-${event.id}`
+                            ? {
+                                ...item,
+                                status: 'error' as ItemStatus,
+                                subtitle: event.error,
+                            }
+                            : item
+                    );
+                    return {
+                        ...prev,
+                        items: updatedItems,
+                        stats: { ...prev.stats, errors: prev.stats.errors + 1 },
+                        failedFeeds: [...prev.failedFeeds, { id: event.id, title: event.title, error: event.error }],
+                    };
+                }
+                case 'complete':
+                    return {
+                        ...prev,
+                        complete: true,
+                        current: null,
+                    };
+                default:
+                    return prev;
+            }
+        });
+    };
+
+    const closeProgressDialog = () => {
+        setProgressState(prev => ({ ...prev, isActive: false }));
     };
 
     const handleSelectAll = () => {
@@ -580,9 +861,9 @@ export default function ManageScreen() {
                         <TouchableOpacity
                             style={s.dataButton}
                             onPress={handleImportOpml}
-                            disabled={isImporting}
+                            disabled={progressState.isActive}
                         >
-                            {isImporting ? (
+                            {progressState.isActive && progressState.operation === 'import' ? (
                                 <ActivityIndicator color={colors.text.inverse} />
                             ) : (
                                 <FileUp size={20} color={colors.text.inverse} />
@@ -603,6 +884,20 @@ export default function ManageScreen() {
                             <Text style={[s.dataButtonText, { color: colors.text.primary }]}>Export OPML</Text>
                         </TouchableOpacity>
                     </View>
+
+                    {/* Refresh All Feeds button */}
+                    <TouchableOpacity
+                        style={[s.dataButton, { backgroundColor: colors.primary.dark, marginTop: spacing.md }]}
+                        onPress={handleRefreshAll}
+                        disabled={progressState.isActive || feeds.length === 0}
+                    >
+                        {progressState.isActive && progressState.operation === 'refresh' ? (
+                            <ActivityIndicator color={colors.text.inverse} />
+                        ) : (
+                            <RefreshCcw size={20} color={colors.text.inverse} />
+                        )}
+                        <Text style={s.dataButtonText}>Refresh All Feeds ({feeds.length})</Text>
+                    </TouchableOpacity>
                 </View>
             </ScrollView>
 
@@ -760,6 +1055,13 @@ export default function ManageScreen() {
                     </View>
                 </View>
             </Modal>
+
+            {/* Progress Dialog */}
+            <ProgressDialog
+                state={progressState}
+                onClose={closeProgressDialog}
+                onRetryFailed={handleRetryFailed}
+            />
 
         </View>
     );

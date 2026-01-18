@@ -238,6 +238,128 @@ class ApiClient {
             body: { read_state: readState },
         });
     }
+
+    // SSE Progress Methods
+
+    /**
+     * Import OPML with progress tracking via SSE
+     * Note: EventSource doesn't support POST, so we use fetch with ReadableStream
+     */
+    async importOpmlWithProgress(
+        file: any,
+        onEvent: (event: ProgressEvent) => void,
+        onError?: (error: Error) => void
+    ): Promise<void> {
+        const formData = new FormData();
+
+        if (file.file) {
+            // Web: file.file is the actual File object
+            formData.append('file', file.file);
+        } else {
+            // Native: construct file object
+            formData.append('file', {
+                uri: file.uri,
+                name: file.name || 'feeds.opml',
+                type: file.mimeType || 'text/xml'
+            } as any);
+        }
+
+        try {
+            const response = await fetch(`${API_URL}/opml/import/stream`, {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+                throw new Error(error.error || 'Import failed');
+            }
+
+            // Process SSE stream
+            const reader = response.body?.getReader();
+            if (!reader) {
+                throw new Error('No response body');
+            }
+
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        try {
+                            const event = JSON.parse(line.slice(6));
+                            onEvent(event);
+                        } catch {
+                            // Skip invalid JSON
+                        }
+                    }
+                }
+            }
+        } catch (err) {
+            onError?.(err instanceof Error ? err : new Error('Unknown error'));
+        }
+    }
+
+    /**
+     * Refresh multiple feeds with progress tracking via SSE
+     */
+    async refreshFeedsWithProgress(
+        feedIds: number[] | undefined,
+        onEvent: (event: RefreshProgressEvent) => void,
+        onError?: (error: Error) => void
+    ): Promise<void> {
+        const idsParam = feedIds?.length ? `?ids=${feedIds.join(',')}` : '';
+
+        try {
+            const response = await fetch(`${API_URL}/feeds/refresh-multiple/stream${idsParam}`, {
+                method: 'GET',
+            });
+
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+                throw new Error(error.error || 'Refresh failed');
+            }
+
+            // Process SSE stream
+            const reader = response.body?.getReader();
+            if (!reader) {
+                throw new Error('No response body');
+            }
+
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        try {
+                            const event = JSON.parse(line.slice(6));
+                            onEvent(event);
+                        } catch {
+                            // Skip invalid JSON
+                        }
+                    }
+                }
+            }
+        } catch (err) {
+            onError?.(err instanceof Error ? err : new Error('Unknown error'));
+        }
+    }
 }
 
 // Error class
@@ -367,4 +489,35 @@ export interface SyncResponse {
     server_time: string;
 }
 
+// SSE Progress Event Types
+export interface ImportStats {
+    success: number;
+    skipped: number;
+    errors: number;
+    failed_feeds: Array<{ id: number; title: string; error: string }>;
+}
+
+export type ProgressEvent =
+    | { type: 'start'; total_folders: number; total_feeds: number }
+    | { type: 'folder_created'; name: string; id: number }
+    | { type: 'feed_created'; title: string; id: number; folder?: string; status: 'created' | 'duplicate' }
+    | { type: 'feed_refreshing'; id: number; title: string }
+    | { type: 'feed_complete'; id: number; title: string; new_articles: number }
+    | { type: 'feed_error'; id: number; title: string; error: string }
+    | { type: 'complete'; stats: ImportStats };
+
+export interface RefreshStats {
+    success: number;
+    errors: number;
+    failed_feeds: Array<{ id: number; title: string; error: string }>;
+}
+
+export type RefreshProgressEvent =
+    | { type: 'start'; total_feeds: number }
+    | { type: 'feed_refreshing'; id: number; title: string }
+    | { type: 'feed_complete'; id: number; title: string; new_articles: number }
+    | { type: 'feed_error'; id: number; title: string; error: string }
+    | { type: 'complete'; stats: RefreshStats };
+
 export const api = new ApiClient();
+
