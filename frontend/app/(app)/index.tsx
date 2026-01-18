@@ -166,19 +166,28 @@ export default function ArticleListScreen() {
         const thumbnail = getArticleThumbnail(item);
         const isYouTube = item.feed_type === 'youtube';
 
+        const handleThumbnailPress = () => {
+            if (isYouTube && item.url) {
+                if (Platform.OS !== 'web') {
+                    Linking.openURL(item.url);
+                    return;
+                }
+                const videoId = extractVideoId(item.url);
+                if (videoId) {
+                    setActiveVideoId(videoId);
+                }
+            } else {
+                handleArticlePress(item.id);
+            }
+        };
+
         return (
-            <TouchableOpacity
+            <View
                 style={[
                     s.articleCard,
                     item.is_read && s.articleRead,
                     index === selectedIndex && s.articleFocused
                 ]}
-                onPress={() => {
-                    if (thumbnailPressedId !== item.id) {
-                        handleArticlePress(item.id);
-                    }
-                    setThumbnailPressedId(null);
-                }}
             >
                 {/* Desktop: Row layout with thumbnail on right */}
                 {/* Mobile: Column layout with thumbnail below title */}
@@ -201,23 +210,7 @@ export default function ArticleListScreen() {
                             ) : (
                                 <TouchableOpacity
                                     activeOpacity={0.9}
-                                    onPress={(e) => {
-                                        setThumbnailPressedId(item.id);
-                                        if (isYouTube && item.url) {
-                                            // On Native, open in browser/app since we lack a WebView
-                                            if (Platform.OS !== 'web') {
-                                                Linking.openURL(item.url);
-                                                return;
-                                            }
-
-                                            const videoId = extractVideoId(item.url);
-                                            if (videoId) {
-                                                setActiveVideoId(videoId);
-                                            }
-                                        } else {
-                                            handleArticlePress(item.id);
-                                        }
-                                    }}
+                                    onPress={handleThumbnailPress}
                                     style={s.thumbnailImageContainer}
                                 >
                                     <Image
@@ -286,23 +279,13 @@ export default function ArticleListScreen() {
                             {item.author && `${item.author} • `}
                             {item.published_at && formatDistanceToNow(new Date(item.published_at), { addSuffix: true })}
                         </Text>
-                    </View>
+                    </TouchableOpacity>
 
                     {/* Desktop: Thumbnail on right side */}
                     {!isMobile && thumbnail && (
                         <TouchableOpacity
                             style={s.thumbnailContainerDesktop}
-                            onPress={(e) => {
-                                setThumbnailPressedId(item.id);
-                                if (isYouTube && item.url) {
-                                    const videoId = extractVideoId(item.url);
-                                    if (videoId) {
-                                        setActiveVideoId(videoId);
-                                    }
-                                } else {
-                                    handleArticlePress(item.id);
-                                }
-                            }}
+                            onPress={handleThumbnailPress}
                         >
                             <Image
                                 source={{ uri: thumbnail }}
