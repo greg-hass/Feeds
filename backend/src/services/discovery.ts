@@ -7,6 +7,7 @@ export interface DiscoveredFeed {
     title: string;
     feed_url: string;
     site_url?: string;
+    icon_url?: string;
     confidence: number;
     method: 'link_tag' | 'well_known' | 'pattern' | 'redirect' | 'youtube' | 'reddit';
 }
@@ -69,6 +70,7 @@ export async function discoverFeedsFromUrl(url: string): Promise<DiscoveredFeed[
                 title: isYouTubeFeed ? 'YouTube Feed' : 'Direct Feed',
                 feed_url: url,
                 site_url: parsedUrl.origin,
+                icon_url: `https://www.google.com/s2/favicons?domain=${parsedUrl.hostname}&sz=64`,
                 confidence: 1.0,
                 method: 'redirect',
             }];
@@ -81,6 +83,15 @@ export async function discoverFeedsFromUrl(url: string): Promise<DiscoveredFeed[
     }
 
     const $ = cheerio.load(html);
+
+    // Extract icon
+    let iconUrl = `https://www.google.com/s2/favicons?domain=${parsedUrl.hostname}&sz=64`;
+    const linkIcon = $('link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]').first().attr('href');
+    if (linkIcon) {
+        try {
+            iconUrl = new URL(linkIcon, url).toString();
+        } catch { }
+    }
 
     // 1. Look for <link> tags
     $('link[type="application/rss+xml"], link[type="application/atom+xml"]').each((_: number, el: any) => {
@@ -100,6 +111,7 @@ export async function discoverFeedsFromUrl(url: string): Promise<DiscoveredFeed[
                 title,
                 feed_url: absoluteUrl,
                 site_url: url,
+                icon_url: iconUrl,
                 confidence: 0.95,
                 method: 'link_tag',
             });
@@ -124,6 +136,7 @@ export async function discoverFeedsFromUrl(url: string): Promise<DiscoveredFeed[
                         title: 'Discovered Feed',
                         feed_url: testUrl,
                         site_url: url,
+                        icon_url: iconUrl,
                         confidence: 0.8,
                         method: 'well_known',
                     });
@@ -147,6 +160,7 @@ async function discoverYouTubeFeed(url: string): Promise<DiscoveredFeed | null> 
     // Handle different YouTube URL formats
     let channelId: string | null = null;
     let playlistId: string | null = null;
+    let iconUrl = 'https://www.youtube.com/s/desktop/1a6d9b9c/img/favicon_144x144.png'; // Fallback
 
     // youtube.com/channel/UC...
     const channelMatch = parsedUrl.pathname.match(/\/channel\/(UC[a-zA-Z0-9_-]+)/);
@@ -168,9 +182,24 @@ async function discoverYouTubeFeed(url: string): Promise<DiscoveredFeed | null> 
             if (idMatch) {
                 channelId = idMatch[1];
             }
+            // Try to look for avatar
+            const avatarMatch = html.match(/"avatar":{"thumbnails":\[{"url":"([^"]+)"/);
+            if (avatarMatch) {
+                iconUrl = avatarMatch[1];
+            }
         } catch {
             return null;
         }
+    } else {
+        // try extracting icon for channel URL too
+        try {
+            const response = await fetch(url, { headers: { 'User-Agent': USER_AGENT }, signal: AbortSignal.timeout(5000) });
+            const html = await response.text();
+            const avatarMatch = html.match(/"avatar":{"thumbnails":\[{"url":"([^"]+)"/);
+            if (avatarMatch) {
+                iconUrl = avatarMatch[1];
+            }
+        } catch { }
     }
 
     // youtube.com/playlist?list=PL...
@@ -182,6 +211,7 @@ async function discoverYouTubeFeed(url: string): Promise<DiscoveredFeed | null> 
             title: 'YouTube Channel',
             feed_url: `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`,
             site_url: url,
+            icon_url: iconUrl,
             confidence: 0.95,
             method: 'youtube',
         };
@@ -193,6 +223,7 @@ async function discoverYouTubeFeed(url: string): Promise<DiscoveredFeed | null> 
             title: 'YouTube Playlist',
             feed_url: `https://www.youtube.com/feeds/videos.xml?playlist_id=${playlistId}`,
             site_url: url,
+            icon_url: iconUrl,
             confidence: 0.95,
             method: 'youtube',
         };

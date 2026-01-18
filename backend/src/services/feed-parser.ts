@@ -20,6 +20,15 @@ export interface RawArticle {
     thumbnail?: string;
 }
 
+export interface Feed {
+    title: string;
+    description: string;
+    link: string;
+    image?: string;
+    icon_url?: string;
+    items: FeedItem[];
+}
+
 export interface ParsedFeed {
     title: string;
     description: string | null;
@@ -112,7 +121,7 @@ export async function parseFeed(url: string): Promise<ParsedFeed> {
                 title: feedMeta.title || 'Untitled Feed',
                 description: feedMeta.description || null,
                 link: feedMeta.link || feedMeta.xmlurl || null,
-                favicon: feedMeta.favicon || extractFavicon(feedMeta.link),
+                favicon: feedMeta.favicon || feedMeta.image?.url || extractFavicon(feedMeta.link) || (feedMeta.link ? `https://www.google.com/s2/favicons?domain=${new URL(feedMeta.link).hostname}&sz=64` : null),
                 articles,
                 isPodcast,
             });

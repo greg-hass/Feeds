@@ -174,8 +174,84 @@ export default function ArticleListScreen() {
                 {/* Desktop: Row layout with thumbnail on right */}
                 {/* Mobile: Column layout with thumbnail below title */}
                 <View style={isMobile ? s.articleColumnLayout : s.articleRowLayout}>
+                    {/* Mobile: Thumbnail after title */}
+                    {isMobile && thumbnail && (
+                        <View style={s.thumbnailContainerMobile}>
+                            {activeVideoId === extractVideoId(item.url || '') && isYouTube ? (
+                                <View style={s.inlinePlayer}>
+                                    <iframe
+                                        width="100%"
+                                        height="100%"
+                                        src={`https://www.youtube.com/embed/${activeVideoId}?autoplay=1&vq=hd1080`}
+                                        frameBorder="0"
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                        allowFullScreen
+                                        style={{ borderBottomLeftRadius: borderRadius.md, borderBottomRightRadius: borderRadius.md }}
+                                    />
+                                </View>
+                            ) : (
+                                <TouchableOpacity
+                                    activeOpacity={0.9}
+                                    onPress={(e) => {
+                                        if (isYouTube && item.url) {
+                                            e.stopPropagation();
+                                            const videoId = extractVideoId(item.url);
+                                            if (videoId) {
+                                                setActiveVideoId(videoId);
+                                            }
+                                        } else {
+                                            handleArticlePress(item.id);
+                                        }
+                                    }}
+                                    style={s.thumbnailImageContainer}
+                                >
+                                    <Image
+                                        source={{ uri: thumbnail }}
+                                        style={s.thumbnailMobile}
+                                        resizeMode="cover"
+                                    />
+                                    {isYouTube && (
+                                        <View style={s.playOverlay}>
+                                            <Play size={32} color="#fff" fill="#fff" />
+                                        </View>
+                                    )}
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    )}
+
                     <View style={s.articleContent}>
+                        {/* Mobile Header (moved inside content for layout consistency, but logically part of row on desktop) */}
+                        {!isMobile && (
+                            <View style={s.articleHeader}>
+                                <Text style={s.feedName}>{item.feed_title}</Text>
+                                {item.has_audio && <Headphones size={14} color={colors.secondary.DEFAULT} />}
+                            </View>
+                        )}
+
+                        {/* On mobile we showed header differently or inside content above? Check original. 
+                            Original had header inside content. Let's keep it but maybe adjust if needed.
+                            Actually, the previous code had header inside content. 
+                            Let's restore the content block but without the mobile thumbnail inside it (moved out/above for mobile?).
+                            Wait, the original code had:
+                            View (row/col)
+                              View (content)
+                                Header
+                                Title
+                                Mobile Thumbnail
+                                Summary
+                              Desktop Thumbnail
+                            
+                            For mobile inline, I want the video effectively "inside" the card.
+                            If I move it out of content, it might break layout.
+                            State `activeVideoId` is singular at top level? Yes.
+                            So clicking one video closes others? Yes.
+                         */}
+
                         <View style={s.articleHeader}>
+                            {item.feed_icon_url && (
+                                <Image source={{ uri: item.feed_icon_url }} style={{ width: 16, height: 16, borderRadius: 3, marginRight: 6 }} />
+                            )}
                             <Text style={s.feedName}>{item.feed_title}</Text>
                             {item.has_audio && <Headphones size={14} color={colors.secondary.DEFAULT} />}
                         </View>
@@ -185,22 +261,6 @@ export default function ArticleListScreen() {
                             )}
                             {item.title}
                         </Text>
-
-                        {/* Mobile: Thumbnail after title */}
-                        {isMobile && thumbnail && (
-                            <View style={s.thumbnailContainerMobile}>
-                                <Image
-                                    source={{ uri: thumbnail }}
-                                    style={s.thumbnailMobile}
-                                    resizeMode="cover"
-                                />
-                                {isYouTube && (
-                                    <View style={s.playOverlay}>
-                                        <Play size={32} color="#fff" fill="#fff" />
-                                    </View>
-                                )}
-                            </View>
-                        )}
 
                         {item.summary && (
                             <Text style={s.articleSummary} numberOfLines={2}>
@@ -223,6 +283,11 @@ export default function ArticleListScreen() {
                                     const videoId = extractVideoId(item.url);
                                     if (videoId) {
                                         setActiveVideoId(videoId);
+                                        // Desktop uses modal potentially? Or maybe we want inline too?
+                                        // User asked: "on desktop i want a pop-out player"
+                                        // So keep existing behavior for desktop (which set activeVideoId and opened modal).
+                                        // Wait, `VideoModal` uses `activeVideoId`.
+                                        // If I use `activeVideoId` for inline mobile, I need to prevent VideoModal from opening on mobile.
                                     }
                                 } else {
                                     handleArticlePress(item.id);
@@ -258,7 +323,7 @@ export default function ArticleListScreen() {
                         fill={item.is_bookmarked ? colors.primary.DEFAULT : 'transparent'}
                     />
                 </TouchableOpacity>
-            </TouchableOpacity>
+            </TouchableOpacity >
         );
     };
 
@@ -328,11 +393,13 @@ export default function ArticleListScreen() {
                     ) : null
                 }
             />
-
-            <VideoModal
-                videoId={activeVideoId}
-                onClose={() => setActiveVideoId(null)}
-            />
+            {/* Only show modal on desktop */}
+            {!isMobile && (
+                <VideoModal
+                    videoId={activeVideoId}
+                    onClose={() => setActiveVideoId(null)}
+                />
+            )}
         </View>
     );
 }
@@ -537,5 +604,15 @@ const styles = (colors: any, isMobile: boolean = false) => StyleSheet.create({
         fontSize: 14,
         color: colors.text.secondary,
         marginTop: spacing.sm,
+    },
+    // Inline player
+    inlinePlayer: {
+        width: '100%',
+        height: '100%',
+        backgroundColor: '#000',
+    },
+    thumbnailImageContainer: {
+        width: '100%',
+        height: '100%',
     },
 });

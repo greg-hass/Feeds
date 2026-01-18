@@ -114,6 +114,7 @@ export async function feedsRoutes(app: FastifyInstance) {
                         source_type: best.type,
                         confidence: best.confidence,
                         method: best.method,
+                        icon_url: best.icon_url,
                     };
                 }
             } catch (err) {
@@ -143,7 +144,7 @@ export async function feedsRoutes(app: FastifyInstance) {
                 body.title || feedData.title,
                 feedUrl,
                 feedData.link || null,
-                feedData.favicon || null,
+                feedData.favicon || discovered?.icon_url || null,
                 feedData.description || null,
                 body.refresh_interval_minutes || 30,
             ]

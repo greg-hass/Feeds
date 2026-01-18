@@ -14,7 +14,7 @@ const navItems: NavItem[] = [
     { icon: Home, label: 'Home', path: '/(app)' },
     { icon: Search, label: 'Search', path: '/(app)/search' },
     { icon: Bookmark, label: 'Saved', path: '/(app)/bookmarks' },
-    { icon: Rss, label: 'Feeds', path: '/(app)/subscriptions' },
+    { icon: Rss, label: 'Feeds', path: '/(app)/manage' },
     { icon: Settings, label: 'Settings', path: '/(app)/settings' },
 ];
 

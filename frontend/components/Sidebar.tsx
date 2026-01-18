@@ -94,9 +94,10 @@ export default function Sidebar() {
                 </TouchableOpacity>
 
                 {/* Subscriptions */}
-                <TouchableOpacity style={styles.navItem} onPress={() => router.push('/(app)/subscriptions')}>
-                    <List size={18} color={colors.text.secondary} />
-                    <Text style={styles.navItemText}>Subscriptions</Text>
+                {/* Manage Feeds */}
+                <TouchableOpacity style={styles.navItem} onPress={() => router.push('/(app)/manage')}>
+                    <Settings size={18} color={colors.text.secondary} />
+                    <Text style={styles.navItemText}>Manage Feeds</Text>
                 </TouchableOpacity>
 
                 {/* Smart Folders */}

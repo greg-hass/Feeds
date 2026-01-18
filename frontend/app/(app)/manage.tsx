@@ -1,21 +1,23 @@
+import * as DocumentPicker from 'expo-document-picker';
 import { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, Modal } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, Modal, Image } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useFeedStore, useToastStore } from '@/stores';
+import { useFeedStore, useToastStore, useArticleStore } from '@/stores';
 import { api, DiscoveredFeed, Feed, Folder } from '@/services/api';
 import {
     ArrowLeft, Plus, Search, Rss, Youtube, Headphones, MessageSquare,
     Folder as FolderIcon, Trash2, Edit2, FolderInput, Download, Upload,
-    ChevronDown, X, Check
+    ChevronDown, X, Check, FileUp, FileDown
 } from 'lucide-react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
 
-type ModalType = 'edit_feed' | 'rename_folder' | 'move_feed' | 'import_opml' | null;
+type ModalType = 'edit_feed' | 'rename_folder' | 'move_feed' | null;
 
 export default function ManageScreen() {
     const router = useRouter();
     const colors = useColors();
     const { feeds, folders, addFeed, deleteFeed, fetchFeeds, fetchFolders } = useFeedStore();
+    const { setFilter } = useArticleStore();
     const { show } = useToastStore();
 
     const [urlInput, setUrlInput] = useState('');
@@ -31,8 +33,9 @@ export default function ManageScreen() {
     const [renameValue, setRenameValue] = useState('');
     const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
     const [refreshInterval, setRefreshInterval] = useState(30);
-    const [opmlContent, setOpmlContent] = useState('');
+
     const [isExporting, setIsExporting] = useState(false);
+    const [isImporting, setIsImporting] = useState(false);
 
     // Bulk actions
     const [isBulkMode, setIsBulkMode] = useState(false);
@@ -216,17 +219,24 @@ export default function ManageScreen() {
     };
 
     const handleImportOpml = async () => {
-        if (!opmlContent.trim()) return;
-
         try {
-            const result = await api.importOpml(opmlContent);
-            show(`Imported ${result.imported.feeds} feeds, ${result.imported.folders} folders`, 'success');
-            setOpmlContent('');
-            setModalType(null);
+            const result = await DocumentPicker.getDocumentAsync({
+                type: ['text/xml', 'application/xml', 'application/x-opml+xml'],
+                copyToCacheDirectory: true,
+            });
+
+            if (result.canceled) return;
+
+            setIsImporting(true);
+            const importResult = await api.importOpml(result.assets[0]);
+            show(`Imported ${importResult.imported.feeds} feeds, ${importResult.imported.folders} folders`, 'success');
             fetchFeeds();
             fetchFolders();
         } catch (err) {
+            console.error(err);
             show('Failed to import OPML', 'error');
+        } finally {
+            setIsImporting(false);
         }
     };
 
@@ -323,19 +333,6 @@ export default function ManageScreen() {
                     >
                         <Check size={18} color={isBulkMode ? colors.primary.DEFAULT : colors.text.secondary} />
                     </TouchableOpacity>
-                    <TouchableOpacity
-                        style={s.headerButton}
-                        onPress={() => setModalType('import_opml')}
-                    >
-                        <Upload size={18} color={colors.text.secondary} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={s.headerButton}
-                        onPress={handleExportOpml}
-                        disabled={isExporting}
-                    >
-                        <Download size={18} color={colors.text.secondary} />
-                    </TouchableOpacity>
                 </View>
             </View>
 
@@ -377,7 +374,11 @@ export default function ManageScreen() {
                                     onPress={() => handleAddFeed(d)}
                                     disabled={isAdding}
                                 >
-                                    {getTypeIcon(d.type)}
+                                    {d.icon_url ? (
+                                        <Image source={{ uri: d.icon_url }} style={s.feedIcon} />
+                                    ) : (
+                                        getTypeIcon(d.type)
+                                    )}
                                     <View style={s.discoveryInfo}>
                                         <Text style={s.discoveryTitle}>{d.title}</Text>
                                         <Text style={s.discoveryUrl} numberOfLines={1}>{d.feed_url}</Text>
@@ -449,8 +450,15 @@ export default function ManageScreen() {
                                 s.feedItem,
                                 isBulkMode && selectedFeedIds.has(feed.id) && { backgroundColor: colors.primary.DEFAULT + '11', borderColor: colors.primary.DEFAULT + '44' }
                             ]}
-                            onPress={() => isBulkMode ? toggleSelectFeed(feed.id) : null}
-                            activeOpacity={isBulkMode ? 0.7 : 1}
+                            onPress={() => {
+                                if (isBulkMode) {
+                                    toggleSelectFeed(feed.id);
+                                } else {
+                                    setFilter({ feed_id: feed.id, type: undefined, folder_id: undefined });
+                                    router.push('/(app)');
+                                }
+                            }}
+                            activeOpacity={0.7}
                         >
                             {isBulkMode ? (
                                 <View style={[
@@ -459,7 +467,13 @@ export default function ManageScreen() {
                                 ]}>
                                     {selectedFeedIds.has(feed.id) && <Check size={12} color={colors.text.inverse} />}
                                 </View>
-                            ) : getTypeIcon(feed.type)}
+                            ) : (
+                                feed.icon_url ? (
+                                    <Image source={{ uri: feed.icon_url }} style={s.feedIcon} />
+                                ) : (
+                                    getTypeIcon(feed.type)
+                                )
+                            )}
 
                             <View style={s.feedInfo}>
                                 <Text style={s.feedTitle} numberOfLines={1}>{feed.title}</Text>
@@ -492,6 +506,38 @@ export default function ManageScreen() {
                             )}
                         </TouchableOpacity>
                     ))}
+                </View>
+
+                {/* Data Management */}
+                <View style={s.section}>
+                    <Text style={s.sectionTitle}>Data Management</Text>
+                    <View style={s.dataActions}>
+                        <TouchableOpacity
+                            style={s.dataButton}
+                            onPress={handleImportOpml}
+                            disabled={isImporting}
+                        >
+                            {isImporting ? (
+                                <ActivityIndicator color={colors.text.inverse} />
+                            ) : (
+                                <FileUp size={20} color={colors.text.inverse} />
+                            )}
+                            <Text style={s.dataButtonText}>Import OPML</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={[s.dataButton, { backgroundColor: colors.background.tertiary }]}
+                            onPress={handleExportOpml}
+                            disabled={isExporting}
+                        >
+                            {isExporting ? (
+                                <ActivityIndicator color={colors.text.primary} />
+                            ) : (
+                                <FileDown size={20} color={colors.text.primary} />
+                            )}
+                            <Text style={[s.dataButtonText, { color: colors.text.primary }]}>Export OPML</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </ScrollView>
 
@@ -650,41 +696,6 @@ export default function ManageScreen() {
                 </View>
             </Modal>
 
-            {/* Import OPML Modal */}
-            <Modal
-                visible={modalType === 'import_opml'}
-                transparent
-                animationType="fade"
-            >
-                <View style={s.modalOverlay}>
-                    <View style={s.modal}>
-                        <Text style={s.modalTitle}>Import OPML</Text>
-                        <Text style={s.modalHint}>Paste your OPML content below:</Text>
-                        <TextInput
-                            style={[s.modalInput, { height: 150, textAlignVertical: 'top' }]}
-                            value={opmlContent}
-                            onChangeText={setOpmlContent}
-                            placeholder="<?xml version='1.0'?>..."
-                            placeholderTextColor={colors.text.tertiary}
-                            multiline
-                        />
-                        <View style={s.modalActions}>
-                            <TouchableOpacity
-                                style={s.modalCancel}
-                                onPress={() => setModalType(null)}
-                            >
-                                <Text style={s.modalCancelText}>Cancel</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={s.modalConfirm}
-                                onPress={handleImportOpml}
-                            >
-                                <Text style={s.modalConfirmText}>Import</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
         </View>
     );
 }
@@ -797,6 +808,30 @@ const styles = (colors: any) => StyleSheet.create({
         padding: spacing.md,
         gap: spacing.sm,
         marginBottom: spacing.sm,
+    },
+    feedIcon: {
+        width: 18,
+        height: 18,
+        borderRadius: 3,
+    },
+    dataActions: {
+        flexDirection: 'row',
+        gap: spacing.md,
+    },
+    dataButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: colors.primary.DEFAULT,
+        padding: spacing.lg,
+        borderRadius: borderRadius.md,
+        gap: spacing.sm,
+    },
+    dataButtonText: {
+        color: colors.text.inverse,
+        fontWeight: '600',
+        fontSize: 16,
     },
     feedInfo: {
         flex: 1,

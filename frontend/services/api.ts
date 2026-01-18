@@ -198,14 +198,29 @@ class ApiClient {
     }
 
     // OPML
-    async importOpml(opml: string) {
+    async importOpml(file: any) {
         const formData = new FormData();
-        const blob = new Blob([opml], { type: 'text/xml' });
-        formData.append('file', blob, 'import.opml');
 
-        return this.request<{ imported: { feeds: number; folders: number } }>('/opml/import', {
+        if (file.file) {
+            // Web: file.file is the actual File object
+            formData.append('opml', file.file);
+        } else {
+            // Native: construct file object
+            formData.append('opml', {
+                uri: file.uri,
+                name: file.name || 'feeds.opml',
+                type: file.mimeType || 'text/xml'
+            } as any);
+        }
+
+        return this.request<{ imported: { folders: number; feeds: number } }>('/opml/import', {
             method: 'POST',
             body: formData,
+            // Header is automatically set by fetch when body is FormData
+            headers: {
+                // Explicitly undefined to let browser/native set boundary
+                'Content-Type': undefined as any
+            }
         });
     }
 
@@ -314,6 +329,7 @@ export interface DiscoveredFeed {
     title: string;
     feed_url: string;
     site_url?: string;
+    icon_url?: string;
     confidence: number;
     method: string;
 }
