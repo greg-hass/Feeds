@@ -20,11 +20,16 @@ class ApiClient {
             'Cache-Control': 'no-cache, no-store, must-revalidate',
             'Pragma': 'no-cache',
             'Expires': '0',
-            ...headers
         };
 
-        // Don't set Content-Type for FormData, browser will set it with boundary
-        if (!(body instanceof FormData)) {
+        Object.entries(headers).forEach(([key, value]) => {
+            if (value !== undefined) {
+                requestHeaders[key] = value;
+            }
+        });
+
+        // Don't set Content-Type for empty bodies or FormData.
+        if (body !== undefined && body !== null && !(body instanceof FormData)) {
             requestHeaders['Content-Type'] = 'application/json';
         }
 

@@ -173,10 +173,7 @@ export default function ArticleListScreen() {
                 }
                 const videoId = extractVideoId(item.url || '');
                 if (videoId) {
-                    setActiveVideoId(videoId);
-                    alert(`Setting video: ${videoId}, isMobile: ${isMobile}`);
-                } else {
-                    alert('No videoId extracted');
+                    setActiveVideoId((current) => (current === videoId ? null : videoId));
                 }
             } else {
                 handleArticlePress(item.id);
@@ -371,6 +368,7 @@ export default function ArticleListScreen() {
                 data={articles}
                 keyExtractor={(item: Article) => String(item.id)}
                 renderItem={({ item, index }: { item: Article; index: number }) => renderArticle({ item, index })}
+                extraData={activeVideoId}
                 contentContainerStyle={s.list}
                 ItemSeparatorComponent={() => <View style={s.separator} />}
                 refreshControl={
