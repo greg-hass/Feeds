@@ -1,9 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useSettingsStore, useToastStore } from '@/stores';
-import { Settings } from '@/services/api';
-import { ArrowLeft, Sun, Moon, Monitor } from 'lucide-react-native';
+import { useSettingsStore, useToastStore, useFeedStore } from '@/stores';
+import { Settings, api } from '@/services/api';
+import { ArrowLeft, Sun, Moon, Monitor, RefreshCw } from 'lucide-react-native';
 import { useColors, spacing, borderRadius } from '@/theme';
 
 export default function SettingsScreen() {
@@ -11,6 +11,8 @@ export default function SettingsScreen() {
     const colors = useColors();
     const { settings, fetchSettings, updateSettings } = useSettingsStore();
     const { show } = useToastStore();
+    const { feeds, fetchFeeds } = useFeedStore();
+    const [isApplyingInterval, setIsApplyingInterval] = useState(false);
 
     const s = styles(colors);
 
@@ -35,6 +37,21 @@ export default function SettingsScreen() {
             } catch (error) {
                 show('Failed to update setting', 'error');
             }
+        }
+    };
+
+    const handleApplyIntervalToAll = async () => {
+        if (!settings) return;
+        setIsApplyingInterval(true);
+        try {
+            const allFeedIds = feeds.map(f => f.id);
+            const result = await api.bulkFeedAction('update_refresh_interval', allFeedIds, undefined, settings.refresh_interval_minutes);
+            await fetchFeeds(); // Refresh feeds to show updated intervals
+            show(`Updated ${result.affected} feeds`, 'success');
+        } catch (error) {
+            show('Failed to apply to all feeds', 'error');
+        } finally {
+            setIsApplyingInterval(false);
         }
     };
 
@@ -148,7 +165,7 @@ export default function SettingsScreen() {
                     <Text style={s.sectionTitle}>Sync & Cleanup</Text>
                     <View style={s.card}>
                         <View style={s.row}>
-                            <View>
+                            <View style={{ flex: 1 }}>
                                 <Text style={s.label}>Refresh Interval</Text>
                                 <Text style={s.hint}>Default for new feeds</Text>
                             </View>
@@ -172,6 +189,21 @@ export default function SettingsScreen() {
                                 ))}
                             </View>
                         </View>
+
+                        {feeds.length > 0 && (
+                            <View style={{ paddingTop: spacing.sm }}>
+                                <TouchableOpacity
+                                    onPress={handleApplyIntervalToAll}
+                                    disabled={isApplyingInterval}
+                                    style={[s.applyButton, isApplyingInterval && { opacity: 0.5 }]}
+                                >
+                                    <RefreshCw size={16} color={colors.primary.DEFAULT} />
+                                    <Text style={s.applyButtonText}>
+                                        {isApplyingInterval ? 'Applying...' : `Apply ${settings.refresh_interval_minutes >= 60 ? `${settings.refresh_interval_minutes / 60}h` : `${settings.refresh_interval_minutes}m`} to all ${feeds.length} existing feeds`}
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
 
                         <View style={s.divider} />
 
@@ -328,6 +360,23 @@ const styles = (colors: any) => StyleSheet.create({
     pickerText: {
         fontSize: 12,
         color: colors.text.secondary,
+    },
+    applyButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: spacing.xs,
+        paddingVertical: spacing.sm,
+        paddingHorizontal: spacing.md,
+        borderRadius: borderRadius.md,
+        backgroundColor: colors.background.tertiary,
+        borderWidth: 1,
+        borderColor: colors.border.DEFAULT,
+    },
+    applyButtonText: {
+        fontSize: 13,
+        color: colors.text.secondary,
+        fontWeight: '500',
     },
     version: {
         textAlign: 'center',

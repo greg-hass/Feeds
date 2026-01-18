@@ -2,7 +2,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { useState, useEffect, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, Modal, Image, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useFeedStore, useToastStore, useArticleStore } from '@/stores';
+import { useFeedStore, useToastStore, useArticleStore, useSettingsStore } from '@/stores';
 import { api, DiscoveredFeed, Feed, Folder, ProgressEvent, RefreshProgressEvent } from '@/services/api';
 import {
     ArrowLeft, Plus, Search, Rss, Youtube, Headphones, MessageSquare,
@@ -21,6 +21,7 @@ export default function ManageScreen() {
     const { feeds, folders, addFeed, deleteFeed, deleteFolder, fetchFeeds, fetchFolders } = useFeedStore();
     const { setFilter } = useArticleStore();
     const { show } = useToastStore();
+    const { settings } = useSettingsStore();
 
     const [urlInput, setUrlInput] = useState('');
     const [isDiscovering, setIsDiscovering] = useState(false);
@@ -79,7 +80,7 @@ export default function ManageScreen() {
     const handleAddFeed = async (discovery: DiscoveredFeed) => {
         setIsAdding(true);
         try {
-            await addFeed(discovery.feed_url);
+            await addFeed(discovery.feed_url, undefined, settings?.refresh_interval_minutes);
             setDiscoveries([]);
             setUrlInput('');
             show(`Added "${discovery.title}"`, 'success');

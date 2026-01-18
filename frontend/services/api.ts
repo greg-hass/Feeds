@@ -75,10 +75,10 @@ class ApiClient {
         });
     }
 
-    async bulkFeedAction(action: 'move' | 'delete' | 'mark_read', feedIds: number[], folderId?: number) {
+    async bulkFeedAction(action: 'move' | 'delete' | 'mark_read' | 'update_refresh_interval', feedIds: number[], folderId?: number, refreshInterval?: number) {
         return this.request<{ affected: number }>('/feeds/bulk', {
             method: 'POST',
-            body: { action, feed_ids: feedIds, folder_id: folderId },
+            body: { action, feed_ids: feedIds, folder_id: folderId, refresh_interval_minutes: refreshInterval },
         });
     }
 

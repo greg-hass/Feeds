@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, useColorScheme, Image } from 'react-native';
 import { api, Recommendation, Interest } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
-import { useFeedStore, useToastStore } from '@/stores';
+import { useFeedStore, useToastStore, useSettingsStore } from '@/stores';
 
 export const DiscoveryPage = () => {
     const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
@@ -12,6 +12,7 @@ export const DiscoveryPage = () => {
     const isDark = useColorScheme() === 'dark';
     const { addFeed } = useFeedStore();
     const { show: showToast } = useToastStore();
+    const { settings } = useSettingsStore();
 
     const fetchData = async () => {
         setIsLoading(true);
@@ -48,7 +49,7 @@ export const DiscoveryPage = () => {
 
     const handleSubscribe = async (rec: Recommendation) => {
         try {
-            await addFeed(rec.feed_url);
+            await addFeed(rec.feed_url, undefined, settings?.refresh_interval_minutes);
             setRecommendations(prev => prev.filter(r => r.id !== rec.id));
             showToast(`Subscribed to ${rec.title}`, 'success');
         } catch (error) {

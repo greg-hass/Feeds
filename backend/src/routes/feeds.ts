@@ -21,9 +21,10 @@ const updateFeedSchema = z.object({
 });
 
 const bulkActionSchema = z.object({
-    action: z.enum(['move', 'delete', 'mark_read']),
+    action: z.enum(['move', 'delete', 'mark_read', 'update_refresh_interval']),
     feed_ids: z.array(z.coerce.number()),
     folder_id: z.coerce.number().nullable().optional(),
+    refresh_interval_minutes: z.number().min(5).max(1440).optional(),
 });
 
 interface Feed {
@@ -318,6 +319,18 @@ export async function feedsRoutes(app: FastifyInstance) {
                     );
                 }
                 affected = body.feed_ids.length;
+                break;
+
+            case 'update_refresh_interval':
+                if (body.refresh_interval_minutes === undefined) {
+                    return reply.status(400).send({ error: 'refresh_interval_minutes required for update_refresh_interval action' });
+                }
+                const updateResult = run(
+                    `UPDATE feeds SET refresh_interval_minutes = ?, updated_at = datetime('now')
+           WHERE id IN (${body.feed_ids.map(() => '?').join(',')}) AND user_id = ? AND deleted_at IS NULL`,
+                    [body.refresh_interval_minutes, ...body.feed_ids, userId]
+                );
+                affected = updateResult.changes;
                 break;
         }
 
