@@ -11,6 +11,7 @@ import { opmlStreamRoutes } from './routes/opml-stream.js';
 import { feedsStreamRoutes } from './routes/feeds-stream.js';
 import { syncRoutes } from './routes/sync.js';
 import { settingsRoutes } from './routes/settings.js';
+import { digestRoutes } from './routes/digest.js';
 import { startScheduler, stopScheduler } from './services/scheduler.js';
 
 export async function buildApp() {
@@ -68,6 +69,7 @@ export async function buildApp() {
     await app.register(feedsStreamRoutes, { prefix: '/api/v1/feeds-stream' });
     await app.register(syncRoutes, { prefix: '/api/v1/sync' });
     await app.register(settingsRoutes, { prefix: '/api/v1/settings' });
+    await app.register(digestRoutes, { prefix: '/api/v1/digest' });
 
     return app;
 }

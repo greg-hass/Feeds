@@ -155,3 +155,53 @@ CREATE TRIGGER IF NOT EXISTS articles_au AFTER UPDATE ON articles BEGIN
     INSERT INTO articles_fts(rowid, title, author, summary, content)
     VALUES (NEW.id, NEW.title, NEW.author, NEW.summary, NEW.content);
 END;
+
+------------------------------------------------------------
+-- AI FEATURES: DIGESTS & DISCOVERY
+------------------------------------------------------------
+
+-- Store digest settings and generated digests
+CREATE TABLE IF NOT EXISTS digests (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    generated_at    TEXT NOT NULL DEFAULT (datetime('now')),
+    content         TEXT NOT NULL,  -- HTML/Markdown formatted summary
+    article_count   INTEGER DEFAULT 0,
+    feed_count      INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS digest_settings (
+    user_id         INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    enabled         INTEGER NOT NULL DEFAULT 1,
+    schedule        TEXT DEFAULT '06:00',  -- Time to generate (HH:MM)
+    included_feeds  TEXT,  -- JSON array of feed IDs, NULL = all
+    style           TEXT DEFAULT 'bullets'  -- 'bullets' or 'paragraphs'
+);
+
+-- Store discovered feeds and recommendations
+CREATE TABLE IF NOT EXISTS feed_recommendations (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    feed_url        TEXT NOT NULL,
+    feed_type       TEXT NOT NULL,  -- 'rss', 'youtube', 'reddit', 'podcast'
+    title           TEXT NOT NULL,
+    description     TEXT,
+    relevance_score REAL,  -- 0-100 from Gemini
+    reason          TEXT,  -- "Based on your interest in..."
+    metadata        TEXT,  -- JSON: subscriber count, last updated, etc.
+    status          TEXT DEFAULT 'pending',  -- 'pending', 'subscribed', 'dismissed'
+    discovered_at   TEXT NOT NULL DEFAULT (datetime('now')),
+    shown_at        TEXT,
+    UNIQUE(user_id, feed_url)
+);
+
+-- Track user interests (explicit and derived)
+CREATE TABLE IF NOT EXISTS user_interests (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    topic           TEXT NOT NULL,
+    source          TEXT NOT NULL,  -- 'explicit', 'derived', 'content_analysis'
+    confidence      REAL DEFAULT 1.0,  -- 0-1
+    created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(user_id, topic)
+);
