@@ -174,6 +174,9 @@ export default function ArticleListScreen() {
                 const videoId = extractVideoId(item.url || '');
                 if (videoId) {
                     setActiveVideoId(videoId);
+                    alert(`Setting video: ${videoId}, isMobile: ${isMobile}`);
+                } else {
+                    alert('No videoId extracted');
                 }
             } else {
                 handleArticlePress(item.id);
