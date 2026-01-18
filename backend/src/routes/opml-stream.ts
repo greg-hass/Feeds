@@ -78,6 +78,9 @@ export async function opmlStreamRoutes(app: FastifyInstance) {
             });
         }
 
+        // Take over raw response handling - prevents Fastify from closing the connection
+        await reply.hijack();
+
         // Set SSE headers
         reply.raw.writeHead(200, {
             'Content-Type': 'text/event-stream',
