@@ -76,7 +76,7 @@ export default function ArticleListScreen() {
                 case 'b': // Bookmark
                     if (selectedIndex >= 0 && selectedIndex < articles.length) {
                         const article = articles[selectedIndex];
-                        api.bookmarkArticle(article.id, !article.is_bookmarked);
+                        useArticleStore.getState().toggleBookmark(article.id);
                     }
                     break;
                 case '/': // Focus search (if search was on this screen, but it's separate)
@@ -178,7 +178,7 @@ export default function ArticleListScreen() {
                             <TouchableOpacity
                                 onPress={(e) => {
                                     e.stopPropagation();
-                                    api.bookmarkArticle(item.id, !item.is_bookmarked);
+                                    useArticleStore.getState().toggleBookmark(item.id);
                                 }}
                                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                             >

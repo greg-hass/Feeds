@@ -166,6 +166,7 @@ export const useFeedStore = create<FeedState>()(
 // Article Store
 interface ArticleState {
     articles: Article[];
+    bookmarkedArticles: Article[];
     currentArticle: Article | null;
     cursor: string | null;
     hasMore: boolean;
@@ -179,16 +180,19 @@ interface ArticleState {
 
     setFilter: (filter: Partial<ArticleState['filter']>) => void;
     fetchArticles: (reset?: boolean) => Promise<void>;
+    fetchBookmarks: () => Promise<void>;
     fetchArticle: (id: number) => Promise<void>;
     markRead: (id: number) => Promise<void>;
     markUnread: (id: number) => Promise<void>;
     markAllRead: (scope: 'feed' | 'folder' | 'type' | 'all', scopeId?: number, type?: string) => Promise<void>;
+    toggleBookmark: (id: number) => Promise<void>;
 }
 
 export const useArticleStore = create<ArticleState>()(
     persist(
         (set, get) => ({
             articles: [],
+            bookmarkedArticles: [],
             currentArticle: null,
             cursor: null,
             hasMore: true,
@@ -228,6 +232,15 @@ export const useArticleStore = create<ArticleState>()(
                 } catch (error) {
                     set({ isLoading: false });
                     // Fallback to cached articles if reset=true and network fails
+                }
+            },
+
+            fetchBookmarks: async () => {
+                try {
+                    const { articles } = await api.getBookmarks();
+                    set({ bookmarkedArticles: articles });
+                } catch (error) {
+                    console.error('Failed to fetch bookmarks:', error);
                 }
             },
 
@@ -277,6 +290,75 @@ export const useArticleStore = create<ArticleState>()(
                 useFeedStore.getState().fetchFolders();
                 useFeedStore.getState().fetchFeeds();
             },
+
+            toggleBookmark: async (id) => {
+                const state = get();
+                // Find article in main list, current article, or bookmarks list
+                const article = state.articles.find(a => a.id === id) ||
+                    (state.currentArticle?.id === id ? state.currentArticle : null) ||
+                    state.bookmarkedArticles.find(a => a.id === id);
+
+                if (!article) return;
+
+                const newStatus = !article.is_bookmarked;
+
+                // Optimistic update
+                set((state) => {
+                    let newBookmarks = [...state.bookmarkedArticles];
+
+                    if (newStatus) {
+                        // Add to bookmarks list if not present
+                        if (!newBookmarks.some(b => b.id === id)) {
+                            // We need full article object. 'article' has it.
+                            newBookmarks.unshift({ ...article, is_bookmarked: true });
+                        }
+                    } else {
+                        // Remove from bookmarks list
+                        newBookmarks = newBookmarks.filter(b => b.id !== id);
+                    }
+
+                    return {
+                        articles: state.articles.map((a) =>
+                            a.id === id ? { ...a, is_bookmarked: newStatus } : a
+                        ),
+                        currentArticle: state.currentArticle?.id === id
+                            ? { ...state.currentArticle, is_bookmarked: newStatus }
+                            : state.currentArticle,
+                        bookmarkedArticles: newBookmarks
+                    };
+                });
+
+                try {
+                    await api.bookmarkArticle(id, newStatus);
+                } catch (e) {
+                    // Revert on failure
+                    set((state) => {
+                        // Revert bookmarks list logic is complex, simpler to just re-fetch or invert
+                        // For simplicity, let's just fetch bookmarks again or revert strictly
+                        // Reverting strictly:
+                        let newBookmarks = [...state.bookmarkedArticles];
+                        if (!newStatus) {
+                            // We failed to remove -> add back
+                            if (!newBookmarks.some(b => b.id === id)) {
+                                newBookmarks.unshift({ ...article, is_bookmarked: true });
+                            }
+                        } else {
+                            // We failed to add -> remove
+                            newBookmarks = newBookmarks.filter(b => b.id !== id);
+                        }
+
+                        return {
+                            articles: state.articles.map((a) =>
+                                a.id === id ? { ...a, is_bookmarked: !newStatus } : a
+                            ),
+                            currentArticle: state.currentArticle?.id === id
+                                ? { ...state.currentArticle, is_bookmarked: !newStatus }
+                                : state.currentArticle,
+                            bookmarkedArticles: newBookmarks
+                        };
+                    });
+                }
+            },
         }),
         {
             name: 'articles-cache',
@@ -284,7 +366,8 @@ export const useArticleStore = create<ArticleState>()(
             partialize: (state: ArticleState) => ({
                 articles: state.articles.slice(0, 100), // Only cache the first 100 articles
                 cursor: state.cursor,
-                filter: state.filter
+                filter: state.filter,
+                bookmarkedArticles: state.bookmarkedArticles // Cache bookmarks too
             }),
         }
     )

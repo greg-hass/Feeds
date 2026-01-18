@@ -62,17 +62,11 @@ export default function ArticleScreen() {
         }
     }, [currentArticle, markRead, markUnread]);
 
-    const handleToggleBookmark = useCallback(async () => {
-        if (!currentArticle) return;
-        try {
-            const newState = !isBookmarked;
-            setIsBookmarked(newState);
-            await api.bookmarkArticle(currentArticle.id, newState);
-        } catch (err) {
-            setIsBookmarked(isBookmarked); // Revert on error
-            console.error('Failed to toggle bookmark:', err);
+    const handleToggleBookmark = useCallback(() => {
+        if (currentArticle) {
+            toggleBookmark(currentArticle.id);
         }
-    }, [currentArticle, isBookmarked]);
+    }, [currentArticle, toggleBookmark]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -159,8 +153,8 @@ export default function ArticleScreen() {
                     <TouchableOpacity onPress={handleToggleBookmark} style={s.actionButton}>
                         <Bookmark
                             size={22}
-                            color={isBookmarked ? colors.primary.DEFAULT : colors.text.secondary}
-                            fill={isBookmarked ? colors.primary.DEFAULT : 'transparent'}
+                            color={currentArticle.is_bookmarked ? colors.primary.DEFAULT : colors.text.secondary}
+                            fill={currentArticle.is_bookmarked ? colors.primary.DEFAULT : 'transparent'}
                         />
                     </TouchableOpacity>
                 </View>

@@ -14,22 +14,9 @@ export default function BookmarksScreen() {
     const colors = useColors();
     const { width } = useWindowDimensions();
     const isMobile = width < 768;
-    const [articles, setArticles] = useState<Article[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const { bookmarkedArticles, fetchBookmarks, isLoading } = useArticleStore();
 
     const s = styles(colors, isMobile);
-
-    const fetchBookmarks = useCallback(async () => {
-        try {
-            setIsLoading(true);
-            const { articles: bookmarked } = await api.getBookmarks();
-            setArticles(bookmarked);
-        } catch (err) {
-            console.error('Failed to fetch bookmarks:', err);
-        } finally {
-            setIsLoading(false);
-        }
-    }, []);
 
     useEffect(() => {
         fetchBookmarks();
@@ -130,7 +117,7 @@ export default function BookmarksScreen() {
             </View>
 
             <FlatList
-                data={articles}
+                data={bookmarkedArticles}
                 keyExtractor={(item) => String(item.id)}
                 renderItem={renderArticle}
                 contentContainerStyle={s.list}
