@@ -2,6 +2,13 @@
  * Type definitions for common RSS/Atom namespace extensions
  * These extend the base FeedParser types with proper typing for namespace properties
  */
+import type { Item as FeedParserItem, Meta as FeedParserMeta } from 'feedparser';
+
+// Re-export FeedParser types for convenience
+export type FeedParser = {
+    Item: FeedParserItem;
+    Meta: FeedParserMeta;
+};
 
 /**
  * Dublin Core (dc) namespace extensions
@@ -197,7 +204,7 @@ export function asNumber(value: unknown): number | undefined {
  * Type-safe access to extended item properties
  */
 export function getExtendedItemProperty<T>(
-    item: FeedParser.Item & Record<string, unknown>,
+    item: FeedParserItem & Record<string, unknown>,
     key: string,
     transformer: (value: unknown) => T | undefined
 ): T | undefined {
