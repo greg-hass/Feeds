@@ -83,7 +83,10 @@ export default function ManageScreen() {
             if (window.confirm(`Delete "${feedTitle}" and all its articles?`)) {
                 deleteFeed(feedId)
                     .then(() => show('Feed deleted', 'success'))
-                    .catch(() => show('Failed to delete feed', 'error'));
+                    .catch((err) => {
+                        const errorMsg = err?.message || err?.toString() || 'Unknown error';
+                        show(`Delete failed: ${errorMsg}`, 'error');
+                    });
             }
         } else {
             Alert.alert(
@@ -98,8 +101,9 @@ export default function ManageScreen() {
                             try {
                                 await deleteFeed(feedId);
                                 show('Feed deleted', 'success');
-                            } catch (err) {
-                                show('Failed to delete feed', 'error');
+                            } catch (err: any) {
+                                const errorMsg = err?.message || err?.toString() || 'Unknown error';
+                                show(`Delete failed: ${errorMsg}`, 'error');
                             }
                         }
                     },
@@ -187,7 +191,10 @@ export default function ManageScreen() {
             if (window.confirm(`Delete "${folderName}"? Feeds inside will be moved to the root.`)) {
                 deleteFolder(folderId)
                     .then(() => show('Folder deleted', 'success'))
-                    .catch(() => show('Failed to delete folder', 'error'));
+                    .catch((err) => {
+                        const errorMsg = err?.message || err?.toString() || 'Unknown error';
+                        show(`Delete failed: ${errorMsg}`, 'error');
+                    });
             }
         } else {
             Alert.alert(
@@ -202,8 +209,9 @@ export default function ManageScreen() {
                             try {
                                 await deleteFolder(folderId);
                                 show('Folder deleted', 'success');
-                            } catch (err) {
-                                show('Failed to delete folder', 'error');
+                            } catch (err: any) {
+                                const errorMsg = err?.message || err?.toString() || 'Unknown error';
+                                show(`Delete failed: ${errorMsg}`, 'error');
                             }
                         }
                     }
