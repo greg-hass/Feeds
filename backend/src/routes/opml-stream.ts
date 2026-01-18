@@ -136,12 +136,14 @@ export async function opmlStreamRoutes(app: FastifyInstance) {
             const folderMap = new Map<string, number>();
 
             for (const folder of parsed.folders) {
+                console.log('[OPML Import] Processing folder:', folder.name);
                 const existing = queryOne<Folder>(
                     'SELECT id FROM folders WHERE user_id = ? AND name = ? AND deleted_at IS NULL',
                     [userId, folder.name]
                 );
 
                 if (existing) {
+                    console.log('[OPML Import] Folder exists:', folder.name, 'id:', existing.id);
                     folderMap.set(folder.name, existing.id);
                 } else {
                     const result = run(
@@ -149,6 +151,7 @@ export async function opmlStreamRoutes(app: FastifyInstance) {
                         [userId, folder.name]
                     );
                     const folderId = Number(result.lastInsertRowid);
+                    console.log('[OPML Import] Folder created:', folder.name, 'id:', folderId);
                     folderMap.set(folder.name, folderId);
 
                     sendEvent({
@@ -294,8 +297,10 @@ export async function opmlStreamRoutes(app: FastifyInstance) {
             }
 
             // Send completion
+            console.log('[OPML Import] Import loop finished successfully');
             sendEvent({ type: 'complete', stats });
         } catch (err) {
+            console.error('[OPML Import] Fatal error during import:', err);
             sendEvent({
                 type: 'complete',
                 stats: {
