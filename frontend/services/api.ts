@@ -16,7 +16,12 @@ class ApiClient {
     async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
         const { method = 'GET', body, headers = {} } = options;
 
-        const requestHeaders: Record<string, string> = { ...headers };
+        const requestHeaders: Record<string, string> = {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+            ...headers
+        };
 
         // Don't set Content-Type for FormData, browser will set it with boundary
         if (!(body instanceof FormData)) {

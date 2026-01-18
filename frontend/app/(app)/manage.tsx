@@ -444,46 +444,50 @@ export default function ManageScreen() {
                 <View style={s.section}>
                     <Text style={s.sectionTitle}>Feeds ({feeds.length})</Text>
                     {feeds.map((feed: Feed) => (
-                        <TouchableOpacity
+                        <View
                             key={feed.id}
                             style={[
                                 s.feedItem,
                                 isBulkMode && selectedFeedIds.has(feed.id) && { backgroundColor: colors.primary.DEFAULT + '11', borderColor: colors.primary.DEFAULT + '44' }
                             ]}
-                            onPress={() => {
-                                if (isBulkMode) {
-                                    toggleSelectFeed(feed.id);
-                                } else {
-                                    setFilter({ feed_id: feed.id, type: undefined, folder_id: undefined });
-                                    router.push('/(app)');
-                                }
-                            }}
-                            activeOpacity={0.7}
                         >
-                            {isBulkMode ? (
-                                <View style={[
-                                    s.checkbox,
-                                    selectedFeedIds.has(feed.id) && s.checkboxSelected
-                                ]}>
-                                    {selectedFeedIds.has(feed.id) && <Check size={12} color={colors.text.inverse} />}
-                                </View>
-                            ) : (
-                                feed.icon_url ? (
-                                    <Image source={{ uri: feed.icon_url }} style={s.feedIcon} />
+                            <TouchableOpacity
+                                style={s.feedContentClickable}
+                                onPress={() => {
+                                    if (isBulkMode) {
+                                        toggleSelectFeed(feed.id);
+                                    } else {
+                                        setFilter({ feed_id: feed.id, type: undefined, folder_id: undefined });
+                                        router.push('/(app)');
+                                    }
+                                }}
+                                activeOpacity={0.7}
+                            >
+                                {isBulkMode ? (
+                                    <View style={[
+                                        s.checkbox,
+                                        selectedFeedIds.has(feed.id) && s.checkboxSelected
+                                    ]}>
+                                        {selectedFeedIds.has(feed.id) && <Check size={12} color={colors.text.inverse} />}
+                                    </View>
                                 ) : (
-                                    getTypeIcon(feed.type)
-                                )
-                            )}
+                                    feed.icon_url ? (
+                                        <Image source={{ uri: feed.icon_url }} style={s.feedIcon} />
+                                    ) : (
+                                        getTypeIcon(feed.type)
+                                    )
+                                )}
 
-                            <View style={s.feedInfo}>
-                                <Text style={s.feedTitle} numberOfLines={1}>{feed.title}</Text>
-                                <Text style={s.feedUrl} numberOfLines={1}>
-                                    {folders.find((f: Folder) => f.id === feed.folder_id)?.name || 'No folder'}
-                                </Text>
-                            </View>
+                                <View style={s.feedInfo}>
+                                    <Text style={s.feedTitle} numberOfLines={1}>{feed.title}</Text>
+                                    <Text style={s.feedUrl} numberOfLines={1}>
+                                        {folders.find((f: Folder) => f.id === feed.folder_id)?.name || 'No folder'}
+                                    </Text>
+                                </View>
+                            </TouchableOpacity>
 
                             {!isBulkMode && (
-                                <>
+                                <View style={s.feedActions}>
                                     <TouchableOpacity
                                         onPress={() => handleMoveFeed(feed)}
                                         style={s.actionButton}
@@ -502,9 +506,9 @@ export default function ManageScreen() {
                                     >
                                         <Trash2 size={16} color={colors.text.tertiary} />
                                     </TouchableOpacity>
-                                </>
+                                </View>
                             )}
-                        </TouchableOpacity>
+                        </View>
                     ))}
                 </View>
 
@@ -805,9 +809,20 @@ const styles = (colors: any) => StyleSheet.create({
         alignItems: 'center',
         backgroundColor: colors.background.secondary,
         borderRadius: borderRadius.md,
+        marginBottom: spacing.sm,
+        overflow: 'hidden',
+    },
+    feedContentClickable: { // New style for the main clickable area
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
         padding: spacing.md,
         gap: spacing.sm,
-        marginBottom: spacing.sm,
+    },
+    feedActions: { // New style for the action buttons container
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingRight: spacing.xs,
     },
     feedIcon: {
         width: 18,
