@@ -177,7 +177,7 @@ export function normalizeArticle(raw: RawArticle, feedType: FeedType): Normalize
             url = `https://www.youtube.com/watch?v=${videoId}`;
         }
         if (!thumbnail && videoId) {
-            thumbnail = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+            thumbnail = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
         }
     }
 
@@ -198,13 +198,16 @@ export function normalizeArticle(raw: RawArticle, feedType: FeedType): Normalize
 
         // Reddit thumbnails
         if (!thumbnail && content) {
-            const imgMatch = content.match(/<img[^>]+src="([^">]+)"/);
+            // Support both src and preview patterns
+            const imgMatch = content.match(/<img[^>]+src="([^">]+)"/) || content.match(/<a[^>]+href="([^">]+\.(?:jpg|jpeg|png|gif|webp)[^">]*)"/i);
             if (imgMatch) {
                 thumbnail = imgMatch[1];
             }
         }
 
         if (thumbnail) {
+            // First decode any &amp; entities often found in Reddit thumbnails
+            thumbnail = decodeHtmlEntities(thumbnail);
             thumbnail = upgradeRedditImageUrl(thumbnail);
         }
     }
