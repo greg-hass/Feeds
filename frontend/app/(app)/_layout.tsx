@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { View, StyleSheet, useWindowDimensions } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Slot } from 'expo-router';
 import { useFeedStore } from '@/stores';
 import { useColors } from '@/theme';
@@ -43,7 +44,7 @@ export default function AppLayout() {
     if (!mounted) return null;
 
     return (
-        <View style={s.container}>
+        <SafeAreaView style={s.container} edges={['top', 'bottom']}>
             {isDesktop && <Sidebar />}
             {isDesktop && isReaderRoute && (
                 <View style={s.timelinePane}>
@@ -61,7 +62,7 @@ export default function AppLayout() {
                 completed={refreshProgress?.completed || 0}
                 currentTitle={refreshProgress?.currentTitle || ''}
             />
-        </View >
+        </SafeAreaView>
     );
 }
 
