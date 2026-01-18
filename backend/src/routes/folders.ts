@@ -52,6 +52,12 @@ export async function foldersRoutes(app: FastifyInstance) {
         // Smart folders (by feed type)
         const smartFolders: SmartFolder[] = [];
         const types = ['rss', 'youtube', 'reddit', 'podcast'];
+        const displayNames: Record<string, string> = {
+            rss: 'RSS',
+            youtube: 'YouTube',
+            reddit: 'Reddit',
+            podcast: 'Podcasts',
+        };
 
         for (const type of types) {
             const result = queryOne<{ unread_count: number }>(
@@ -65,7 +71,7 @@ export async function foldersRoutes(app: FastifyInstance) {
 
             smartFolders.push({
                 type,
-                name: `All ${type.charAt(0).toUpperCase() + type.slice(1)}`,
+                name: displayNames[type] || type,
                 unread_count: result?.unread_count || 0,
             });
         }

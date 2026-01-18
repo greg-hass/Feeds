@@ -211,7 +211,8 @@ export async function opmlStreamRoutes(app: FastifyInstance) {
                     let feedType: FeedType = 'rss';
                     try {
                         const feedData = await parseFeed(feed.xmlUrl);
-                        // parseFeed might set type, but default to rss
+                        const { detectFeedType } = await import('../services/feed-parser.js');
+                        feedType = detectFeedType(feed.xmlUrl, feedData);
                     } catch {
                         // If parse fails, we'll still create the feed entry
                     }

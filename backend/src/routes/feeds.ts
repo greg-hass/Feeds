@@ -96,7 +96,8 @@ export async function feedsRoutes(app: FastifyInstance) {
         if (existing) {
             if (existing.deleted_at) {
                 // Restore the soft-deleted feed instead of creating a new one
-                run('UPDATE feeds SET deleted_at = NULL WHERE id = ?', [existing.id]);
+                // Also update the folder_id in case they are re-adding it to a different folder
+                run('UPDATE feeds SET deleted_at = NULL, folder_id = ? WHERE id = ?', [body.folder_id || null, existing.id]);
                 const restoredFeed = queryOne<Feed>('SELECT * FROM feeds WHERE id = ?', [existing.id]);
                 return reply.status(200).send({ feed: restoredFeed, restored: true });
             }
@@ -136,6 +137,12 @@ export async function feedsRoutes(app: FastifyInstance) {
                 error: 'Could not parse feed',
                 details: err instanceof Error ? err.message : 'Unknown error',
             });
+        }
+
+        // If type is still 'rss', try to detect more specific type from parsed data
+        if (feedType === 'rss') {
+            const { detectFeedType } = await import('../services/feed-parser.js');
+            feedType = detectFeedType(feedUrl, feedData);
         }
 
         // Insert feed

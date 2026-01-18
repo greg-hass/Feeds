@@ -53,6 +53,27 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
         // Update feed metadata on success
         // We use COALESCE and NULLIF to ensure we don't overwrite existing data with nulls, 
         // but we DO update if current data is placeholder or missing.
+
+        // Auto-upgrade type if it's currently 'rss'
+        let typeUpdate = '';
+        const params: any[] = [
+            feedData.title,
+            feedData.link,
+            feedData.favicon,
+            feedData.description
+        ];
+
+        if (feed.type === 'rss') {
+            const { detectFeedType } = await import('./feed-parser.js');
+            const newType = detectFeedType(feed.url, feedData);
+            if (newType !== 'rss') {
+                typeUpdate = ', type = ?';
+                params.push(newType);
+            }
+        }
+
+        params.push(feed.id);
+
         run(
             `UPDATE feeds SET
                 title = CASE 
@@ -68,14 +89,9 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
                 last_error = NULL,
                 last_error_at = NULL,
                 updated_at = datetime('now')
+                ${typeUpdate}
              WHERE id = ?`,
-            [
-                feedData.title,
-                feedData.link,
-                feedData.favicon,
-                feedData.description,
-                feed.id
-            ]
+            params
         );
 
         return { success: true, newArticles };
