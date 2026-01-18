@@ -280,8 +280,15 @@ export default function ArticleScreen() {
                                     border: 'none',
                                     borderRadius: borderRadius.lg,
                                 }}
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                                 allowFullScreen
+                                frameBorder="0"
+                                title={currentArticle.title}
+                                referrerPolicy="no-referrer"
+                                loading="lazy"
+                                // iOS PWA: force inline playback on iPhone/iPad
+                                {...({ webkitplaysinline: 'true' } as any)}
+                                playsInline
                             />
                         ) : (
                             <TouchableOpacity

@@ -37,13 +37,17 @@ export function extractVideoId(url: string): string | null {
 
 /**
  * Get YouTube embed URL for iframe
+ * Optimized for iOS PWA inline playback
  */
 export function getEmbedUrl(videoId: string, autoplay = false, playsinline = true): string {
     const params = new URLSearchParams({
         rel: '0',
         modestbranding: '1',
+        controls: '1',
+        // For iOS PWA: ensure inline playback, not fullscreen
+        playsinline: playsinline ? '1' : '0',
+        // Only autoplay with mute on mobile (required by browsers)
         ...(autoplay && { autoplay: '1', mute: '1' }),
-        ...(playsinline && { playsinline: '1' }),
     });
     return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
 }

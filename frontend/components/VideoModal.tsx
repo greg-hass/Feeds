@@ -59,9 +59,13 @@ export function VideoModal({ videoId, visible, onClose }: VideoModalProps) {
                             height="100%"
                             src={getEmbedUrl(videoId, true, true)}
                             frameBorder="0"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                             allowFullScreen
                             style={{ borderBottomLeftRadius: borderRadius.lg, borderBottomRightRadius: borderRadius.lg }}
+                            title="YouTube video player"
+                            // iOS PWA: inline playback support
+                            {...({ webkitplaysinline: 'true' } as any)}
+                            playsInline
                         />
                     ) : NativeWebView ? (
                         <NativeWebView

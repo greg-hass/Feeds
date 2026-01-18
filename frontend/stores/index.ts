@@ -147,14 +147,10 @@ export const useFeedStore = create<FeedState>()(
             },
 
             deleteFeed: async (id) => {
-                try {
-                    await api.deleteFeed(id);
-                    set((state) => ({ feeds: state.feeds.filter((f) => f.id !== id) }));
-                    // Refresh folders to update counts
-                    get().fetchFolders();
-                } catch (error) {
-                    handleError(error, { context: 'deleteFeed', fallbackMessage: 'Failed to delete feed' });
-                }
+                await api.deleteFeed(id);
+                set((state) => ({ feeds: state.feeds.filter((f) => f.id !== id) }));
+                // Refresh folders to update counts
+                get().fetchFolders();
             },
 
             deleteFolder: async (id) => {
@@ -506,7 +502,7 @@ interface SettingsState {
 
 export const useSettingsStore = create<SettingsState>()(
     persist(
-        (set) => ({
+        (set, get) => ({
             settings: null,
             isLoading: false,
 
@@ -516,8 +512,19 @@ export const useSettingsStore = create<SettingsState>()(
                     const { settings } = await api.getSettings();
                     set({ settings, isLoading: false });
                 } catch (error) {
-                    set({ isLoading: false });
-                    throw error;
+                    // For mobile PWA: network issues are common, use fallback settings
+                    // but show error so user knows sync failed
+                    const fallbackSettings: Settings = {
+                        refresh_interval_minutes: 30,
+                        retention_days: 90,
+                        fetch_full_content: false,
+                        readability_enabled: false,
+                        theme: 'auto',
+                        font_size: 'medium',
+                        show_images: true,
+                    };
+                    set({ settings: fallbackSettings, isLoading: false });
+                    handleError(error, { context: 'fetchSettings', fallbackMessage: 'Using offline settings' });
                 }
             },
 
