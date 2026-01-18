@@ -135,9 +135,37 @@ export default function ArticleScreen() {
                         )}
                     </TouchableOpacity>
 
-                    {currentArticle.readability_content && (
+                    {currentArticle.url && (
                         <TouchableOpacity
-                            onPress={() => setShowReadability(!showReadability)}
+                            onPress={async () => {
+                                // If we already have content, just toggle
+                                if (currentArticle.readability_content) {
+                                    setShowReadability(!showReadability);
+                                    return;
+                                }
+
+                                // If no content, try to fetch it
+                                try {
+                                    setIsLoading(true);
+                                    const { content } = await api.fetchReadability(currentArticle.id);
+                                    // Update store with new content
+                                    useArticleStore.setState((state) => ({
+                                        currentArticle: state.currentArticle?.id === currentArticle.id
+                                            ? { ...state.currentArticle, readability_content: content }
+                                            : state.currentArticle,
+                                        articles: state.articles.map(a =>
+                                            a.id === currentArticle.id
+                                                ? { ...a, readability_content: content }
+                                                : a
+                                        )
+                                    }));
+                                    setShowReadability(true);
+                                } catch (err) {
+                                    alert('Failed to extract article content.');
+                                } finally {
+                                    setIsLoading(false);
+                                }
+                            }}
                             style={[s.actionButton, showReadability && s.actionButtonActive]}
                         >
                             <BookOpen size={22} color={showReadability ? colors.primary.DEFAULT : colors.text.secondary} />

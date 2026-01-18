@@ -369,4 +369,40 @@ export async function articlesRoutes(app: FastifyInstance) {
             })),
         };
     });
+
+    // On-demand readability fetch
+    app.post('/:id/readability', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+        const { id: userId } = (request as any).user;
+        const articleId = parseInt(request.params.id, 10);
+
+        // Verify article exists and user has access
+        const article = queryOne<{ id: number; url: string | null }>(
+            `SELECT a.id, a.url FROM articles a
+             JOIN feeds f ON f.id = a.feed_id
+             WHERE a.id = ? AND f.user_id = ? AND f.deleted_at IS NULL`,
+            [articleId, userId]
+        );
+
+        if (!article) {
+            return reply.status(404).send({ error: 'Article not found' });
+        }
+
+        if (!article.url) {
+            return reply.status(400).send({ error: 'Article has no URL' });
+        }
+
+        try {
+            const { content: readable } = await fetchAndExtractReadability(article.url);
+
+            if (readable) {
+                run('UPDATE articles SET readability_content = ? WHERE id = ?', [readable, articleId]);
+                return { content: readable };
+            } else {
+                return reply.status(422).send({ error: 'Could not extract content' });
+            }
+        } catch (err) {
+            console.error('Manual readability fetch failed:', err);
+            return reply.status(502).send({ error: 'Failed to fetch article content' });
+        }
+    });
 }

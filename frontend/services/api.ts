@@ -174,6 +174,12 @@ class ApiClient {
         return this.request<{ articles: Article[] }>('/articles/bookmarks');
     }
 
+    async fetchReadability(id: number) {
+        return this.request<{ content: string }>(`/articles/${id}/readability`, {
+            method: 'POST'
+        });
+    }
+
     // Search
     async search(query: string, params: SearchParams = {}) {
         const searchParams = new URLSearchParams({ q: query });
