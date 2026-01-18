@@ -1,4 +1,6 @@
 import Database from 'better-sqlite3';
+import { mkdirSync, existsSync } from 'node:fs';
+import { dirname } from 'node:path';
 
 // Database singleton
 let db: Database.Database | null = null;
@@ -12,6 +14,13 @@ export function getDatabase(config?: DatabaseConfig): Database.Database {
     if (db) return db;
 
     const dbPath = config?.path || process.env.DATABASE_PATH || './data/feeds.db';
+
+    // Ensure directory exists
+    const dbDir = dirname(dbPath);
+    if (!existsSync(dbDir)) {
+        console.log(`Creating database directory: ${dbDir}`);
+        mkdirSync(dbDir, { recursive: true });
+    }
 
     db = new Database(dbPath, {
         verbose: config?.verbose ? console.log : undefined,
