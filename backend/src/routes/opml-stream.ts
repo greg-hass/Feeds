@@ -1,5 +1,4 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import multipart from '@fastify/multipart';
 import { queryOne, run } from '../db/index.js';
 import { parseOPML, OPMLFeed, OPMLFolder } from '../services/opml-parser.js';
 import { refreshFeed, FeedToRefresh } from '../services/feed-refresh.js';
@@ -44,11 +43,7 @@ export async function opmlStreamRoutes(app: FastifyInstance) {
     // Single user app - user_id is always 1
     const userId = 1;
 
-    await app.register(multipart, {
-        limits: {
-            fileSize: 10 * 1024 * 1024, // 10MB
-        },
-    });
+    // Note: @fastify/multipart is already registered in opml.ts on this prefix
 
     // Import OPML with SSE progress
     app.post('/import/stream', async (request: FastifyRequest, reply: FastifyReply) => {
