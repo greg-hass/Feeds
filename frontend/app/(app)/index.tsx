@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, ActivityIndicator, Alert, Linking, Image, useWindowDimensions, Platform, Modal } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, ActivityIndicator, Alert, Linking, Image, useWindowDimensions, Platform, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
 import { formatDistanceToNow } from 'date-fns';
 import { useArticleStore, useFeedStore } from '@/stores';
@@ -21,6 +21,18 @@ export default function ArticleListScreen() {
     const [showMenu, setShowMenu] = useState(false);
     const [selectedIndex, setSelectedIndex] = useState(-1);
     const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
+
+    // Animated value for sidebar slide-in from left
+    const [sidebarAnim] = useState(new Animated.Value(-300));
+
+    const toggleMenu = () => {
+        setShowMenu(!showMenu);
+        Animated.timing(sidebarAnim, {
+            toValue: showMenu ? -300 : 0,
+            duration: 250,
+            useNativeDriver: true,
+        }).start();
+    };
 
     const s = styles(colors, isMobile);
 
@@ -134,7 +146,8 @@ export default function ArticleListScreen() {
                 }
             ]
         );
-        setShowMenu(false);
+        // Close menu if open
+        if (showMenu) toggleMenu();
     };
 
     const getHeaderTitle = () => {
@@ -301,7 +314,7 @@ export default function ArticleListScreen() {
             <View style={[s.header, isMobile && s.headerMobile]}>
                 <View style={s.headerLeft}>
                     {isMobile && (
-                        <TouchableOpacity onPress={() => setShowMenu(true)} style={s.menuButton}>
+                        <TouchableOpacity onPress={toggleMenu} style={s.menuButton}>
                             <Menu size={24} color={colors.text.primary} />
                         </TouchableOpacity>
                     )}
@@ -314,6 +327,18 @@ export default function ArticleListScreen() {
                             <Text style={s.unreadBadgeText}>{unreadCount}</Text>
                         </View>
                     )}
+                    {/* Always-visible refresh button */}
+                    <TouchableOpacity
+                        style={s.iconButton}
+                        onPress={handleRefresh}
+                        disabled={isLoading}
+                    >
+                        {isLoading ? (
+                            <ActivityIndicator size={16} color={colors.text.secondary} />
+                        ) : (
+                            <RefreshCw size={18} color={colors.text.secondary} />
+                        )}
+                    </TouchableOpacity>
                     {/* Mark All Read */}
                     <TouchableOpacity
                         style={s.iconButton}
@@ -395,22 +420,36 @@ export default function ArticleListScreen() {
                 />
             )}
 
-            {/* Mobile Sidebar Modal */}
-            <Modal
-                visible={showMenu && isMobile}
-                animationType="slide"
-                presentationStyle="pageSheet"
-                onRequestClose={() => setShowMenu(false)}
-            >
-                <View style={{ flex: 1, backgroundColor: colors.background.primary }}>
-                    <View style={{ alignItems: 'flex-end', padding: spacing.md }}>
-                        <TouchableOpacity onPress={() => setShowMenu(false)} style={{ padding: spacing.sm }}>
-                            <X size={24} color={colors.text.primary} />
-                        </TouchableOpacity>
-                    </View>
-                    <Sidebar onNavigate={() => setShowMenu(false)} />
-                </View>
-            </Modal>
+            {/* Mobile Sidebar - Slide from Left */}
+            {isMobile && (
+                <>
+                    {/* Backdrop */}
+                    {showMenu && (
+                        <TouchableOpacity
+                            style={s.sidebarBackdrop}
+                            activeOpacity={1}
+                            onPress={toggleMenu}
+                        />
+                    )}
+                    {/* Sidebar */}
+                    <Animated.View
+                        style={[
+                            s.sidebarContainer,
+                            {
+                                transform: [{ translateX: sidebarAnim }],
+                                width: 280,
+                            },
+                        ]}
+                    >
+                        <View style={{ alignItems: 'flex-end', padding: spacing.md }}>
+                            <TouchableOpacity onPress={toggleMenu} style={{ padding: spacing.sm }}>
+                                <X size={24} color={colors.text.primary} />
+                            </TouchableOpacity>
+                        </View>
+                        <Sidebar onNavigate={toggleMenu} />
+                    </Animated.View>
+                </>
+            )}
         </View>
     );
 }
@@ -648,5 +687,30 @@ const styles = (colors: any, isMobile: boolean) => StyleSheet.create({
     thumbnailImageContainer: {
         width: '100%',
         height: '100%',
+    },
+    // Slide-from-left sidebar (iOS PWA style)
+    sidebarBackdrop: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        zIndex: 900,
+    },
+    sidebarContainer: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        bottom: 0,
+        backgroundColor: colors.background.elevated,
+        borderRightWidth: 1,
+        borderRightColor: colors.border.DEFAULT,
+        zIndex: 1000,
+        shadowColor: '#000',
+        shadowOffset: { width: 2, height: 0 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+        elevation: 5,
     },
 });
