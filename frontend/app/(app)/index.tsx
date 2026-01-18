@@ -16,7 +16,6 @@ export default function ArticleListScreen() {
     const colors = useColors();
     const { width } = useWindowDimensions();
     const isMobile = width < 768;
-    const [thumbnailPressedId, setThumbnailPressedId] = useState<number | null>(null);
     const { articles, isLoading, hasMore, filter, fetchArticles, setFilter, markAllRead } = useArticleStore();
     const { fetchFeeds, fetchFolders } = useFeedStore();
     const [showMenu, setShowMenu] = useState(false);
