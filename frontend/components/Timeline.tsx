@@ -209,7 +209,8 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     const getArticleThumbnail = (item: Article): string | null => {
         if (item.feed_type === 'youtube') {
             const videoId = extractVideoId(item.url || item.thumbnail_url || '');
-            if (videoId) return getThumbnailUrl(videoId, 'hq');
+            // Use maxres for desktop, hq for mobile
+            if (videoId) return getThumbnailUrl(videoId, isMobile ? 'hq' : 'maxres');
         }
         const url = item.thumbnail_url;
         if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
