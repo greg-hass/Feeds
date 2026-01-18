@@ -198,14 +198,13 @@ export async function parseFeed(url: string): Promise<ParsedFeed> {
         const type = detectFeedType(url, feed);
 
         if (type === 'youtube' && !feed.favicon) {
-            // Try to extract channel ID from link
-            // Link format: https://www.youtube.com/channel/UC... or https://www.youtube.com/user/...
-            // The XML usually has loop for recent videos, getting channel ID is safer from the <entry><yt:channelId> if available?
-            // Actually FeedParser output for 'rss' extension might help.
-            // But usually the <link> is the channel URL.
-            const channelIdMatch = feed.link?.match(/\/channel\/(UC[\w-]+)/);
-            if (channelIdMatch) {
-                const icon = await fetchYouTubeIcon(channelIdMatch[1]);
+            // Extract channel ID from feed URL parameter (more reliable than link)
+            // Feed URL format: https://www.youtube.com/feeds/videos.xml?channel_id=UC...
+            const urlObj = new URL(url);
+            const channelId = urlObj.searchParams.get('channel_id');
+
+            if (channelId) {
+                const icon = await fetchYouTubeIcon(channelId);
                 if (icon) feed.favicon = icon;
             }
         } else if (type === 'reddit') {
