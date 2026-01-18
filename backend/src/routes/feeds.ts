@@ -15,14 +15,14 @@ const addFeedSchema = z.object({
 
 const updateFeedSchema = z.object({
     title: z.string().optional(),
-    folder_id: z.number().nullable().optional(),
-    refresh_interval_minutes: z.number().min(5).max(1440).optional(),
+    folder_id: z.coerce.number().nullable().optional(),
+    refresh_interval_minutes: z.coerce.number().min(5).max(1440).optional(),
 });
 
 const bulkActionSchema = z.object({
     action: z.enum(['move', 'delete', 'mark_read']),
-    feed_ids: z.array(z.number()),
-    folder_id: z.number().optional(),
+    feed_ids: z.array(z.coerce.number()),
+    folder_id: z.coerce.number().nullable().optional(),
 });
 
 interface Feed {
@@ -198,7 +198,11 @@ export async function feedsRoutes(app: FastifyInstance) {
     app.patch('/:id', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
         const { id: userId } = (request as any).user;
         const feedId = parseInt(request.params.id, 10);
-        const body = updateFeedSchema.parse(request.body);
+        const parsed = updateFeedSchema.safeParse(request.body);
+        if (!parsed.success) {
+            return reply.status(400).send({ error: 'Invalid request', details: parsed.error.flatten() });
+        }
+        const body = parsed.data;
 
         const existing = queryOne<Feed>(
             'SELECT id FROM feeds WHERE id = ? AND user_id = ? AND deleted_at IS NULL',
@@ -256,21 +260,30 @@ export async function feedsRoutes(app: FastifyInstance) {
     });
 
     // Bulk operations
-    app.post('/bulk', async (request: FastifyRequest) => {
+    app.post('/bulk', async (request: FastifyRequest, reply: FastifyReply) => {
         const { id: userId } = (request as any).user;
-        const body = bulkActionSchema.parse(request.body);
+        const parsed = bulkActionSchema.safeParse(request.body);
+        if (!parsed.success) {
+            return reply.status(400).send({ error: 'Invalid request', details: parsed.error.flatten() });
+        }
+        const body = parsed.data;
+
+        if (body.feed_ids.length === 0) {
+            return reply.status(400).send({ error: 'feed_ids required' });
+        }
 
         let affected = 0;
 
         switch (body.action) {
             case 'move':
                 if (body.folder_id === undefined) {
-                    throw new Error('folder_id required for move action');
+                    return reply.status(400).send({ error: 'folder_id required for move action' });
                 }
+                const targetFolderId = body.folder_id ?? null;
                 const moveResult = run(
                     `UPDATE feeds SET folder_id = ?, updated_at = datetime("now")
            WHERE id IN (${body.feed_ids.map(() => '?').join(',')}) AND user_id = ? AND deleted_at IS NULL`,
-                    [body.folder_id, ...body.feed_ids, userId]
+                    [targetFolderId, ...body.feed_ids, userId]
                 );
                 affected = moveResult.changes;
                 break;

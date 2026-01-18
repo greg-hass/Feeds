@@ -42,6 +42,12 @@ interface Article {
     fetched_at: string;
 }
 
+function getYouTubeIdFromGuid(guid: string | null): string | null {
+    if (!guid) return null;
+    const match = guid.match(/(?:yt:video:|video:)([a-zA-Z0-9_-]{11})/);
+    return match ? match[1] : null;
+}
+
 export async function articlesRoutes(app: FastifyInstance) {
     app.addHook('preHandler', app.authenticate);
 
@@ -108,7 +114,7 @@ export async function articlesRoutes(app: FastifyInstance) {
             is_bookmarked: number;
         }>(
             `SELECT 
-        a.id, a.feed_id, a.title, a.url, a.author, a.summary, 
+        a.id, a.feed_id, a.guid, a.title, a.url, a.author, a.summary, 
         a.enclosure_url, a.enclosure_type, a.thumbnail_url, a.published_at,
         COALESCE(a.is_bookmarked, 0) as is_bookmarked,
         f.title as feed_title, f.icon_url as feed_icon_url, f.type as feed_type,
@@ -145,12 +151,17 @@ export async function articlesRoutes(app: FastifyInstance) {
         );
 
         return {
-            articles: articles.map(a => ({
-                ...a,
-                is_read: Boolean(a.is_read),
-                is_bookmarked: Boolean(a.is_bookmarked),
-                has_audio: Boolean(a.enclosure_url),
-            })),
+            articles: articles.map(a => {
+                const videoId = a.feed_type === 'youtube' ? getYouTubeIdFromGuid(a.guid) : null;
+                return {
+                    ...a,
+                    url: a.url || (videoId ? `https://www.youtube.com/watch?v=${videoId}` : null),
+                    thumbnail_url: a.thumbnail_url || (videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : null),
+                    is_read: Boolean(a.is_read),
+                    is_bookmarked: Boolean(a.is_bookmarked),
+                    has_audio: Boolean(a.enclosure_url),
+                };
+            }),
             next_cursor: nextCursor,
             total_unread: unreadResult?.total || 0,
         };
@@ -176,6 +187,16 @@ export async function articlesRoutes(app: FastifyInstance) {
 
         if (!article) {
             return reply.status(404).send({ error: 'Article not found' });
+        }
+
+        const videoId = article ? getYouTubeIdFromGuid(article.guid) : null;
+        if (videoId) {
+            if (!article.url) {
+                article.url = `https://www.youtube.com/watch?v=${videoId}`;
+            }
+            if (!article.thumbnail_url) {
+                article.thumbnail_url = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+            }
         }
 
         // If no readability content, try to extract it from the URL
@@ -347,7 +368,7 @@ export async function articlesRoutes(app: FastifyInstance) {
             is_bookmarked: number;
         }>(
             `SELECT 
-                a.id, a.feed_id, a.title, a.url, a.author, a.summary, 
+                a.id, a.feed_id, a.guid, a.title, a.url, a.author, a.summary, 
                 a.enclosure_url, a.enclosure_type, a.thumbnail_url, a.published_at, a.is_bookmarked,
                 f.title as feed_title, f.icon_url as feed_icon_url, f.type as feed_type,
                 rs.is_read
@@ -361,12 +382,17 @@ export async function articlesRoutes(app: FastifyInstance) {
         );
 
         return {
-            articles: articles.map(a => ({
-                ...a,
-                is_read: Boolean(a.is_read),
-                is_bookmarked: Boolean(a.is_bookmarked),
-                has_audio: Boolean(a.enclosure_url),
-            })),
+            articles: articles.map(a => {
+                const videoId = a.feed_type === 'youtube' ? getYouTubeIdFromGuid(a.guid) : null;
+                return {
+                    ...a,
+                    url: a.url || (videoId ? `https://www.youtube.com/watch?v=${videoId}` : null),
+                    thumbnail_url: a.thumbnail_url || (videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : null),
+                    is_read: Boolean(a.is_read),
+                    is_bookmarked: Boolean(a.is_bookmarked),
+                    has_audio: Boolean(a.enclosure_url),
+                };
+            }),
         };
     });
 

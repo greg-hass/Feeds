@@ -17,12 +17,20 @@ export function extractVideoId(url: string): string | null {
     if (shortMatch) return shortMatch[1];
 
     // Embed URL: https://www.youtube.com/embed/VIDEO_ID
-    const embedMatch = url.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/);
+    const embedMatch = url.match(/(?:youtube\.com|youtube-nocookie\.com)\/embed\/([a-zA-Z0-9_-]{11})/);
     if (embedMatch) return embedMatch[1];
 
     // Shorts URL: https://www.youtube.com/shorts/VIDEO_ID
     const shortsMatch = url.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/);
     if (shortsMatch) return shortsMatch[1];
+
+    // Live URL: https://www.youtube.com/live/VIDEO_ID
+    const liveMatch = url.match(/youtube\.com\/live\/([a-zA-Z0-9_-]{11})/);
+    if (liveMatch) return liveMatch[1];
+
+    // Thumbnail URL: https://i.ytimg.com/vi/VIDEO_ID/hqdefault.jpg
+    const thumbMatch = url.match(/(?:img\.youtube\.com|i\.ytimg\.com)\/vi\/([a-zA-Z0-9_-]{11})/);
+    if (thumbMatch) return thumbMatch[1];
 
     return null;
 }
@@ -34,7 +42,7 @@ export function getEmbedUrl(videoId: string, autoplay = false, playsinline = tru
     const params = new URLSearchParams({
         rel: '0',
         modestbranding: '1',
-        ...(autoplay && { autoplay: '1' }),
+        ...(autoplay && { autoplay: '1', mute: '1' }),
         ...(playsinline && { playsinline: '1' }),
     });
     return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;

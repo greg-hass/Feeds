@@ -22,7 +22,8 @@ export default function ArticleScreen() {
     const [isBookmarked, setIsBookmarked] = useState(false);
 
     const isYouTube = currentArticle?.feed_type === 'youtube';
-    const videoId = currentArticle?.url ? extractVideoId(currentArticle.url) : null;
+    const videoId = extractVideoId(currentArticle?.url || currentArticle?.thumbnail_url || '');
+    const externalUrl = currentArticle?.url || (videoId ? `https://www.youtube.com/watch?v=${videoId}` : null);
 
     const s = styles(colors);
 
@@ -48,10 +49,10 @@ export default function ArticleScreen() {
     }, [settings?.readability_enabled]);
 
     const handleOpenExternal = useCallback(() => {
-        if (currentArticle?.url) {
-            Linking.openURL(currentArticle.url);
+        if (externalUrl) {
+            Linking.openURL(externalUrl);
         }
-    }, [currentArticle?.url]);
+    }, [externalUrl]);
 
     const handleToggleRead = useCallback(() => {
         if (!currentArticle) return;
@@ -367,4 +368,3 @@ const styles = (colors: any) => StyleSheet.create({
         lineHeight: 28,
     },
 });
-

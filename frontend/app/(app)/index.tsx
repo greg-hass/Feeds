@@ -154,27 +154,26 @@ export default function ArticleListScreen() {
 
     // Get thumbnail URL - prefer YouTube thumbnail, then article thumbnail
     const getArticleThumbnail = (item: Article): string | null => {
-        if (item.feed_type === 'youtube' && item.url) {
-            const videoId = extractVideoId(item.url);
+        if (item.feed_type === 'youtube') {
+            const videoId = extractVideoId(item.url || item.thumbnail_url || '');
             if (videoId) return getThumbnailUrl(videoId, 'maxres');
         }
         return item.thumbnail_url || null;
     };
 
     const renderArticle = ({ item, index }: { item: Article; index: number }) => {
-        const thumbnail = getArticleThumbnail(item);
         const isYouTube = item.feed_type === 'youtube';
+        const videoId = isYouTube ? extractVideoId(item.url || item.thumbnail_url || '') : null;
+        const thumbnail = getArticleThumbnail(item);
 
         const handleThumbnailPress = () => {
-            if (isYouTube && item.url) {
+            if (isYouTube && videoId) {
                 if (Platform.OS !== 'web') {
-                    Linking.openURL(item.url);
+                    const watchUrl = item.url || `https://www.youtube.com/watch?v=${videoId}`;
+                    Linking.openURL(watchUrl);
                     return;
                 }
-                const videoId = extractVideoId(item.url || '');
-                if (videoId) {
-                    setActiveVideoId((current) => (current === videoId ? null : videoId));
-                }
+                setActiveVideoId((current) => (current === videoId ? null : videoId));
             } else {
                 handleArticlePress(item.id);
             }
@@ -194,7 +193,7 @@ export default function ArticleListScreen() {
                     {/* Mobile: Thumbnail after title */}
                     {isMobile && thumbnail && (
                         <View style={s.thumbnailContainerMobile}>
-                            {activeVideoId === extractVideoId(item.url || '') && isYouTube && Platform.OS === 'web' && activeVideoId ? (
+                            {isYouTube && videoId && activeVideoId === videoId && Platform.OS === 'web' ? (
                                 <View style={s.inlinePlayer}>
                                     <iframe
                                         width="100%"

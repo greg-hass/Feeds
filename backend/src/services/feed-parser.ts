@@ -139,6 +139,18 @@ export function normalizeArticle(raw: RawArticle, feedType: FeedType): Normalize
     let author = raw.author;
     let content = raw.description || raw.summary || null;
     let summary = raw.summary || (content ? truncate(stripHtml(content), 200) : null);
+    let url = raw.link || null;
+
+    if (feedType === 'youtube') {
+        const guidMatch = raw.guid?.match(/(?:yt:video:|video:)([a-zA-Z0-9_-]{11})/);
+        const videoId = guidMatch ? guidMatch[1] : null;
+        if (!url && videoId) {
+            url = `https://www.youtube.com/watch?v=${videoId}`;
+        }
+        if (!thumbnail && videoId) {
+            thumbnail = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+        }
+    }
 
     // Reddit specific normalization
     if (feedType === 'reddit') {
@@ -170,7 +182,7 @@ export function normalizeArticle(raw: RawArticle, feedType: FeedType): Normalize
     return {
         guid: raw.guid,
         title: decodeHtmlEntities(raw.title),
-        url: raw.link || null,
+        url: url,
         author: author,
         summary: summary,
         content: content,

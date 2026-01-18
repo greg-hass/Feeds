@@ -38,6 +38,8 @@ export async function buildApp() {
     await app.register(cors, {
         origin: process.env.CORS_ORIGIN || true,
         credentials: true,
+        methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization'],
     });
 
     // JWT Auth
@@ -50,10 +52,13 @@ export async function buildApp() {
 
     // Authentication decorator
     app.decorate('authenticate', async function (request: FastifyRequest, reply: FastifyReply) {
+        if (request.method === 'OPTIONS') {
+            return;
+        }
         try {
             await request.jwtVerify();
         } catch (err) {
-            reply.status(401).send({ error: 'Unauthorized' });
+            return reply.status(401).send({ error: 'Unauthorized' });
         }
     });
 

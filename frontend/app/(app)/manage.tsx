@@ -163,7 +163,7 @@ export default function ManageScreen() {
                 await api.updateFeed(selectedFeed.id, { folder_id: selectedFolderId });
             } else {
                 // Bulk move
-                await api.bulkFeedAction('move', Array.from(selectedFeedIds), selectedFolderId || undefined);
+                await api.bulkFeedAction('move', Array.from(selectedFeedIds), selectedFolderId ?? null);
                 setSelectedFeedIds(new Set());
                 setIsBulkMode(false);
             }
@@ -171,7 +171,8 @@ export default function ManageScreen() {
             setModalType(null);
             show('Feeds moved', 'success');
         } catch (err) {
-            show('Failed to move feeds', 'error');
+            const errorMsg = err instanceof Error ? err.message : 'Failed to move feeds';
+            show(errorMsg, 'error');
         }
     };
 
@@ -318,18 +319,20 @@ export default function ManageScreen() {
         if (selectedFeedIds.size === 0) return;
         setModalType('move_feed');
         setSelectedFeed(null); // Use null to indicate bulk move
+        setSelectedFolderId(null);
     };
 
     const submitBulkMove = async () => {
         try {
-            await api.bulkFeedAction('move', Array.from(selectedFeedIds), selectedFolderId || undefined);
+            await api.bulkFeedAction('move', Array.from(selectedFeedIds), selectedFolderId ?? null);
             fetchFeeds();
             setModalType(null);
             setIsBulkMode(false);
             setSelectedFeedIds(new Set());
             show(`Moved ${selectedFeedIds.size} feeds`, 'success');
         } catch (err) {
-            show('Bulk move failed', 'error');
+            const errorMsg = err instanceof Error ? err.message : 'Bulk move failed';
+            show(errorMsg, 'error');
         }
     };
 

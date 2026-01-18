@@ -27,8 +27,8 @@ export default function BookmarksScreen() {
     };
 
     const getArticleThumbnail = (item: Article): string | null => {
-        if (item.feed_type === 'youtube' && item.url) {
-            const videoId = extractVideoId(item.url);
+        if (item.feed_type === 'youtube') {
+            const videoId = extractVideoId(item.url || item.thumbnail_url || '');
             if (videoId) return getThumbnailUrl(videoId, 'maxres');
         }
         return item.thumbnail_url || null;
