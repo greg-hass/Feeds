@@ -316,8 +316,6 @@ export default function ManageScreen() {
                 }
             );
 
-            fetchFeeds();
-            fetchFolders();
         } catch (err) {
             console.error(err);
             show('Failed to import OPML', 'error');
@@ -394,6 +392,16 @@ export default function ManageScreen() {
     };
 
     const handleProgressEvent = (event: ProgressEvent) => {
+        // Live UI updates: refresh global state when items are created
+        if (event.type === 'folder_created') {
+            fetchFolders();
+        } else if (event.type === 'feed_created' && event.status === 'created') {
+            fetchFeeds();
+            fetchFolders(); // Folders might need updating if counts change
+        } else if (event.type === 'feed_complete') {
+            fetchFeeds(); // Update unread counts
+        }
+
         setProgressState(prev => {
             switch (event.type) {
                 case 'start':
