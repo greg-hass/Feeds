@@ -208,7 +208,7 @@ export default function ArticleScreen() {
                 {isYouTube && videoId && Platform.OS === 'web' && (
                     <View style={s.videoContainer}>
                         <iframe
-                            src={getEmbedUrl(videoId)}
+                            src={getEmbedUrl(videoId, false, true)}
                             style={{
                                 width: '100%',
                                 height: '100%',

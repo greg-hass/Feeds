@@ -16,7 +16,7 @@ type ModalType = 'edit_feed' | 'rename_folder' | 'move_feed' | null;
 export default function ManageScreen() {
     const router = useRouter();
     const colors = useColors();
-    const { feeds, folders, addFeed, deleteFeed, fetchFeeds, fetchFolders } = useFeedStore();
+    const { feeds, folders, addFeed, deleteFeed, deleteFolder, fetchFeeds, fetchFolders } = useFeedStore();
     const { setFilter } = useArticleStore();
     const { show } = useToastStore();
 
@@ -185,9 +185,7 @@ export default function ManageScreen() {
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            await api.deleteFolder(folderId);
-                            fetchFolders();
-                            fetchFeeds();
+                            await deleteFolder(folderId);
                             show('Folder deleted', 'success');
                         } catch (err) {
                             show('Failed to delete folder', 'error');

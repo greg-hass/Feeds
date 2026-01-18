@@ -6,7 +6,7 @@ import { useArticleStore, useFeedStore } from '@/stores';
 import { Article, api } from '@/services/api';
 import { Circle, CircleCheck, Headphones, Filter, CheckCheck, MoreVertical, Play, Bookmark, Menu, X } from 'lucide-react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
-import { extractVideoId, getThumbnailUrl } from '@/utils/youtube';
+import { extractVideoId, getThumbnailUrl, getEmbedUrl } from '@/utils/youtube';
 
 import { VideoModal } from '@/components/VideoModal';
 import Sidebar from '@/components/Sidebar';
@@ -156,7 +156,7 @@ export default function ArticleListScreen() {
     const getArticleThumbnail = (item: Article): string | null => {
         if (item.feed_type === 'youtube' && item.url) {
             const videoId = extractVideoId(item.url);
-            if (videoId) return getThumbnailUrl(videoId, 'hq');
+            if (videoId) return getThumbnailUrl(videoId, 'maxres');
         }
         return item.thumbnail_url || null;
     };
@@ -185,7 +185,7 @@ export default function ArticleListScreen() {
                                     <iframe
                                         width="100%"
                                         height="100%"
-                                        src={`https://www.youtube.com/embed/${activeVideoId}?autoplay=1&playsinline=1&vq=hd1080`}
+                                        src={getEmbedUrl(activeVideoId, true, true)}
                                         frameBorder="0"
                                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                         allowFullScreen

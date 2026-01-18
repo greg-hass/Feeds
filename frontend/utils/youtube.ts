@@ -30,8 +30,14 @@ export function extractVideoId(url: string): string | null {
 /**
  * Get YouTube embed URL for iframe
  */
-export function getEmbedUrl(videoId: string): string {
-    return `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`;
+export function getEmbedUrl(videoId: string, autoplay = false, playsinline = true): string {
+    const params = new URLSearchParams({
+        rel: '0',
+        modestbranding: '1',
+        ...(autoplay && { autoplay: '1' }),
+        ...(playsinline && { playsinline: '1' }),
+    });
+    return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
 }
 
 /**

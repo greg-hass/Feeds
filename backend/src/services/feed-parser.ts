@@ -156,6 +156,11 @@ export function normalizeArticle(raw: RawArticle, feedType: FeedType): Normalize
             }
         }
 
+        // Upgrade thumbnail to high-resolution version
+        if (thumbnail) {
+            thumbnail = upgradeRedditImageUrl(thumbnail);
+        }
+
         // Clean up Reddit content (often contains [link] [comments] footers)
         if (content) {
             content = cleanRedditContent(content);
@@ -180,6 +185,38 @@ function cleanRedditContent(html: string): string {
     // Remove the "submitted by /u/... to /r/..." footer that Reddit RSS adds
     // which consists of a table with common links
     return html.replace(/<table[^>]*>[\s\S]*?<\/table>/gi, '').trim();
+}
+
+function upgradeRedditImageUrl(url: string): string {
+    // Reddit images come in several formats:
+    // 1. https://i.redd.it/... - direct images (already high-res)
+    // 2. https://preview.redd.it/...?width=640&crop=... - preview images with size limits
+    // 3. https://external-preview.redd.it/... - external previews
+
+    try {
+        const urlObj = new URL(url);
+
+        // For preview.redd.it, remove query parameters to get full resolution
+        if (urlObj.hostname === 'preview.redd.it') {
+            return `${urlObj.origin}${urlObj.pathname}`;
+        }
+
+        // For external-preview.redd.it, try to get higher resolution
+        if (urlObj.hostname === 'external-preview.redd.it') {
+            urlObj.searchParams.delete('width');
+            urlObj.searchParams.delete('height');
+            // Set format to jpg for better quality
+            urlObj.searchParams.set('format', 'jpg');
+            urlObj.searchParams.set('auto', 'webp');
+            return urlObj.toString();
+        }
+
+        // For i.redd.it and other formats, return as-is
+        return url;
+    } catch {
+        // If URL parsing fails, return original
+        return url;
+    }
 }
 
 export function detectFeedType(url: string, feed: ParsedFeed): FeedType {

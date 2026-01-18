@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet, Modal, TouchableOpacity, useWindowDimensions, Pressable } from 'react-native';
 import { X } from 'lucide-react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
+import { getEmbedUrl } from '@/utils/youtube';
 
 interface VideoModalProps {
     videoId: string | null;
@@ -50,7 +51,7 @@ export function VideoModal({ videoId, visible, onClose }: VideoModalProps) {
                     <iframe
                         width="100%"
                         height="100%"
-                        src={`https://www.youtube.com/embed/${videoId}?autoplay=1&playsinline=1&vq=hd1080`}
+                        src={getEmbedUrl(videoId, true, true)}
                         frameBorder="0"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen

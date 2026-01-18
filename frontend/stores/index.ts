@@ -93,6 +93,7 @@ interface FeedState {
     fetchFolders: () => Promise<void>;
     addFeed: (url: string, folderId?: number, refreshInterval?: number) => Promise<Feed>;
     deleteFeed: (id: number) => Promise<void>;
+    deleteFolder: (id: number) => Promise<void>;
     refreshFeed: (id: number) => Promise<number>;
     updateLocalFeed: (id: number, updates: Partial<Feed>) => void;
 }
@@ -136,6 +137,15 @@ export const useFeedStore = create<FeedState>()(
             deleteFeed: async (id) => {
                 await api.deleteFeed(id);
                 set((state) => ({ feeds: state.feeds.filter((f) => f.id !== id) }));
+                // Refresh folders to update counts
+                get().fetchFolders();
+            },
+
+            deleteFolder: async (id) => {
+                await api.deleteFolder(id);
+                // Refetch both feeds and folders after deletion
+                await get().fetchFolders();
+                await get().fetchFeeds();
             },
 
             refreshFeed: async (id) => {
