@@ -40,6 +40,7 @@ interface Feed {
     last_fetched_at: string | null;
     error_count: number;
     last_error: string | null;
+    deleted_at: string | null;
     created_at: string;
     updated_at: string;
 }
@@ -86,13 +87,19 @@ export async function feedsRoutes(app: FastifyInstance) {
     app.post('/', async (request: FastifyRequest, reply: FastifyReply) => {
         const body = addFeedSchema.parse(request.body);
 
-        // Check for duplicate
+        // Check for existing feed (including soft-deleted)
         const existing = queryOne<Feed>(
-            'SELECT id FROM feeds WHERE user_id = ? AND url = ? AND deleted_at IS NULL',
+            'SELECT id, deleted_at FROM feeds WHERE user_id = ? AND url = ?',
             [userId, body.url]
         );
 
         if (existing) {
+            if (existing.deleted_at) {
+                // Restore the soft-deleted feed instead of creating a new one
+                run('UPDATE feeds SET deleted_at = NULL WHERE id = ?', [existing.id]);
+                const restoredFeed = queryOne<Feed>('SELECT * FROM feeds WHERE id = ?', [existing.id]);
+                return reply.status(200).send({ feed: restoredFeed, restored: true });
+            }
             return reply.status(409).send({ error: 'Feed already exists', feed_id: existing.id });
         }
 
