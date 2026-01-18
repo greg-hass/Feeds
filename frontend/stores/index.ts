@@ -12,6 +12,7 @@ interface FeedState {
     smartFolders: SmartFolder[];
     totalUnread: number;
     isLoading: boolean;
+    refreshProgress: { total: number; completed: number; currentTitle: string } | null;
 
     fetchFeeds: () => Promise<void>;
     fetchFolders: () => Promise<void>;

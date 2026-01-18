@@ -31,6 +31,7 @@
         "react-native-screens": "~4.0.0",
         "react-native-web": "~0.19.12",
         "react-native-webview": "13.12.5",
+        "react-native-markdown-display": "^7.0.0-alpha.2",
         "zustand": "^5.0.0"
     },
     "devDependencies": {

@@ -57,7 +57,7 @@ export interface NormalizedArticle {
     published_at: string | null;
 }
 
-const USER_AGENT = 'Feeds/1.0 (Feed Reader; +https://github.com/feeds)';
+const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Feeds/1.0';
 
 export async function parseFeed(url: string): Promise<ParsedFeed> {
     const response = await fetch(url, {
@@ -241,12 +241,13 @@ function upgradeRedditImageUrl(url: string): string {
 
 export function detectFeedType(url: string, feed: ParsedFeed): FeedType {
     const urlLower = url.toLowerCase();
+    const siteUrlLower = (feed.link || '').toLowerCase();
 
-    if (urlLower.includes('youtube.com') || urlLower.includes('youtu.be')) {
+    if (urlLower.includes('youtube.com') || urlLower.includes('youtu.be') || siteUrlLower.includes('youtube.com')) {
         return 'youtube';
     }
 
-    if (urlLower.includes('reddit.com')) {
+    if (urlLower.includes('reddit.com') || siteUrlLower.includes('reddit.com')) {
         return 'reddit';
     }
 

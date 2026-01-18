@@ -33,8 +33,15 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
+        // Detect type early if it's currently 'rss' to ensure correct normalization
+        let currentType = feed.type;
+        if (currentType === 'rss') {
+            const { detectFeedType } = await import('./feed-parser.js');
+            currentType = detectFeedType(feed.url, feedData);
+        }
+
         for (const article of feedData.articles) {
-            const normalized = normalizeArticle(article, feed.type);
+            const normalized = normalizeArticle(article, currentType);
             const result = run(insertArticle, [
                 feed.id,
                 normalized.guid,
@@ -52,10 +59,7 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
         }
 
         // Update feed metadata on success
-        // We use COALESCE and NULLIF to ensure we don't overwrite existing data with nulls, 
-        // but we DO update if current data is placeholder or missing.
-
-        // Auto-upgrade type if it's currently 'rss'
+        // ...
         let typeUpdate = '';
         const params: any[] = [
             feedData.title,
@@ -64,13 +68,9 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
             feedData.description
         ];
 
-        if (feed.type === 'rss') {
-            const { detectFeedType } = await import('./feed-parser.js');
-            const newType = detectFeedType(feed.url, feedData);
-            if (newType !== 'rss') {
-                typeUpdate = ', type = ?';
-                params.push(newType);
-            }
+        if (currentType !== feed.type) {
+            typeUpdate = ', type = ?';
+            params.push(currentType);
         }
 
         params.push(feed.id);
