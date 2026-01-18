@@ -79,6 +79,7 @@ export async function feedsStreamRoutes(app: FastifyInstance) {
             'Cache-Control': 'no-cache',
             'Connection': 'keep-alive',
             'Access-Control-Allow-Origin': '*',
+            'X-Accel-Buffering': 'no', // Disable nginx buffering
         });
 
         const sendEvent = (event: RefreshProgressEvent) => {
