@@ -3,8 +3,8 @@ import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, Act
 import { useRouter } from 'expo-router';
 import { formatDistanceToNow } from 'date-fns';
 import { useArticleStore, useFeedStore } from '@/stores';
-import { Article } from '@/services/api';
-import { Circle, CircleCheck, Headphones, Filter, CheckCheck, MoreVertical, Play } from 'lucide-react-native';
+import { Article, api } from '@/services/api';
+import { Circle, CircleCheck, Headphones, Filter, CheckCheck, MoreVertical, Play, Bookmark } from 'lucide-react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
 import { extractVideoId, getThumbnailUrl } from '@/utils/youtube';
 
@@ -72,6 +72,12 @@ export default function ArticleListScreen() {
                     break;
                 case 'r': // Refresh
                     handleRefresh();
+                    break;
+                case 'b': // Bookmark
+                    if (selectedIndex >= 0 && selectedIndex < articles.length) {
+                        const article = articles[selectedIndex];
+                        api.bookmarkArticle(article.id, !article.is_bookmarked);
+                    }
                     break;
                 case '/': // Focus search (if search was on this screen, but it's separate)
                     e.preventDefault();
@@ -169,6 +175,19 @@ export default function ArticleListScreen() {
                         <View style={s.articleHeader}>
                             <Text style={s.feedName}>{item.feed_title}</Text>
                             {item.has_audio && <Headphones size={14} color={colors.secondary.DEFAULT} />}
+                            <TouchableOpacity
+                                onPress={(e) => {
+                                    e.stopPropagation();
+                                    api.bookmarkArticle(item.id, !item.is_bookmarked);
+                                }}
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            >
+                                <Bookmark
+                                    size={14}
+                                    color={item.is_bookmarked ? colors.primary.DEFAULT : colors.text.tertiary}
+                                    fill={item.is_bookmarked ? colors.primary.DEFAULT : 'transparent'}
+                                />
+                            </TouchableOpacity>
                         </View>
                         <Text style={[s.articleTitle, item.is_read && s.articleTitleRead]} numberOfLines={2}>
                             {!item.is_read && (

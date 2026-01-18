@@ -4,7 +4,7 @@ import { useFeedStore, useArticleStore, useAuthStore, useToastStore } from '@/st
 import {
     Rss, Youtube, MessageSquare, Headphones,
     Folder, Search, Settings,
-    Plus, LogOut, RefreshCw, List
+    Plus, LogOut, RefreshCw, List, Bookmark
 } from 'lucide-react-native';
 import { colors, borderRadius, spacing } from '@/theme';
 import { ActivityIndicator } from 'react-native';
@@ -85,6 +85,12 @@ export default function Sidebar() {
                             <Text style={styles.badgeText}>{totalUnread}</Text>
                         </View>
                     )}
+                </TouchableOpacity>
+
+                {/* Bookmarks */}
+                <TouchableOpacity style={styles.navItem} onPress={() => router.push('/(app)/bookmarks')}>
+                    <Bookmark size={18} color={colors.primary.DEFAULT} />
+                    <Text style={styles.navItemText}>Bookmarks</Text>
                 </TouchableOpacity>
 
                 {/* Subscriptions */}
