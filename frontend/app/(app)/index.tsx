@@ -212,38 +212,33 @@ export default function ArticleListScreen() {
                                             handleArticlePress(item.id);
                                         }
                                     }}
-                                            }
-                                        } else {
-                                handleArticlePress(item.id);
-                                        }
-                                    }}
-                            style={s.thumbnailImageContainer}
+                                    style={s.thumbnailImageContainer}
                                 >
-                            <Image
-                                source={{ uri: thumbnail }}
-                                style={s.thumbnailMobile}
-                                resizeMode="cover"
-                            />
-                            {isYouTube && (
-                                <View style={s.playOverlay}>
-                                    <Play size={32} color="#fff" fill="#fff" />
-                                </View>
+                                    <Image
+                                        source={{ uri: thumbnail }}
+                                        style={s.thumbnailMobile}
+                                        resizeMode="cover"
+                                    />
+                                    {isYouTube && (
+                                        <View style={s.playOverlay}>
+                                            <Play size={32} color="#fff" fill="#fff" />
+                                        </View>
+                                    )}
+                                </TouchableOpacity>
                             )}
-                        </TouchableOpacity>
-                    )}
-                </View>
-                    )}
-
-                <View style={s.articleContent}>
-                    {/* Mobile Header (moved inside content for layout consistency, but logically part of row on desktop) */}
-                    {!isMobile && (
-                        <View style={s.articleHeader}>
-                            <Text style={s.feedName}>{item.feed_title}</Text>
-                            {item.has_audio && <Headphones size={14} color={colors.secondary.DEFAULT} />}
                         </View>
                     )}
 
-                    {/* On mobile we showed header differently or inside content above? Check original. 
+                    <View style={s.articleContent}>
+                        {/* Mobile Header (moved inside content for layout consistency, but logically part of row on desktop) */}
+                        {!isMobile && (
+                            <View style={s.articleHeader}>
+                                <Text style={s.feedName}>{item.feed_title}</Text>
+                                {item.has_audio && <Headphones size={14} color={colors.secondary.DEFAULT} />}
+                            </View>
+                        )}
+
+                        {/* On mobile we showed header differently or inside content above? Check original. 
                             Original had header inside content. Let's keep it but maybe adjust if needed.
                             Actually, the previous code had header inside content. 
                             Let's restore the content block but without the mobile thumbnail inside it (moved out/above for mobile?).
@@ -262,184 +257,184 @@ export default function ArticleListScreen() {
                             So clicking one video closes others? Yes.
                          */}
 
-                    <View style={s.articleHeader}>
-                        {item.feed_icon_url && (
-                            <Image source={{ uri: item.feed_icon_url }} style={{ width: 16, height: 16, borderRadius: 3, marginRight: 6 }} />
-                        )}
-                        <Text style={s.feedName}>{item.feed_title}</Text>
-                        {item.has_audio && <Headphones size={14} color={colors.secondary.DEFAULT} />}
-                    </View>
-                    <Text style={[s.articleTitle, item.is_read && s.articleTitleRead]} numberOfLines={2}>
-                        {!item.is_read && (
-                            <Circle size={8} color={colors.primary.DEFAULT} fill={colors.primary.DEFAULT} style={{ marginRight: 6 }} />
-                        )}
-                        {item.title}
-                    </Text>
-
-                    {item.summary && (
-                        <Text style={s.articleSummary} numberOfLines={2}>
-                            {item.summary}
+                        <View style={s.articleHeader}>
+                            {item.feed_icon_url && (
+                                <Image source={{ uri: item.feed_icon_url }} style={{ width: 16, height: 16, borderRadius: 3, marginRight: 6 }} />
+                            )}
+                            <Text style={s.feedName}>{item.feed_title}</Text>
+                            {item.has_audio && <Headphones size={14} color={colors.secondary.DEFAULT} />}
+                        </View>
+                        <Text style={[s.articleTitle, item.is_read && s.articleTitleRead]} numberOfLines={2}>
+                            {!item.is_read && (
+                                <Circle size={8} color={colors.primary.DEFAULT} fill={colors.primary.DEFAULT} style={{ marginRight: 6 }} />
+                            )}
+                            {item.title}
                         </Text>
+
+                        {item.summary && (
+                            <Text style={s.articleSummary} numberOfLines={2}>
+                                {item.summary}
+                            </Text>
+                        )}
+                        <Text style={s.articleMeta}>
+                            {item.author && `${item.author} • `}
+                            {item.published_at && formatDistanceToNow(new Date(item.published_at), { addSuffix: true })}
+                        </Text>
+                    </View>
+
+                    {/* Desktop: Thumbnail on right side */}
+                    {!isMobile && thumbnail && (
+                        <TouchableOpacity
+                            style={s.thumbnailContainerDesktop}
+                            onPress={(e) => {
+                                if (isYouTube && item.url) {
+                                    e.stopPropagation();
+                                    const videoId = extractVideoId(item.url);
+                                    if (videoId) {
+                                        setActiveVideoId(videoId);
+                                        // Desktop uses modal potentially? Or maybe we want inline too?
+                                        // User asked: "on desktop i want a pop-out player"
+                                        // So keep existing behavior for desktop (which set activeVideoId and opened modal).
+                                        // Wait, `VideoModal` uses `activeVideoId`.
+                                        // If I use `activeVideoId` for inline mobile, I need to prevent VideoModal from opening on mobile.
+                                    }
+                                } else {
+                                    handleArticlePress(item.id);
+                                }
+                            }}
+                        >
+                            <Image
+                                source={{ uri: thumbnail }}
+                                style={s.thumbnailDesktop}
+                                resizeMode="cover"
+                            />
+                            {isYouTube && (
+                                <View style={s.playOverlaySmall}>
+                                    <Play size={20} color="#fff" fill="#fff" />
+                                </View>
+                            )}
+                        </TouchableOpacity>
                     )}
-                    <Text style={s.articleMeta}>
-                        {item.author && `${item.author} • `}
-                        {item.published_at && formatDistanceToNow(new Date(item.published_at), { addSuffix: true })}
-                    </Text>
                 </View>
 
-                {/* Desktop: Thumbnail on right side */}
-                {!isMobile && thumbnail && (
-                    <TouchableOpacity
-                        style={s.thumbnailContainerDesktop}
-                        onPress={(e) => {
-                            if (isYouTube && item.url) {
-                                e.stopPropagation();
-                                const videoId = extractVideoId(item.url);
-                                if (videoId) {
-                                    setActiveVideoId(videoId);
-                                    // Desktop uses modal potentially? Or maybe we want inline too?
-                                    // User asked: "on desktop i want a pop-out player"
-                                    // So keep existing behavior for desktop (which set activeVideoId and opened modal).
-                                    // Wait, `VideoModal` uses `activeVideoId`.
-                                    // If I use `activeVideoId` for inline mobile, I need to prevent VideoModal from opening on mobile.
-                                }
-                            } else {
-                                handleArticlePress(item.id);
-                            }
-                        }}
-                    >
-                        <Image
-                            source={{ uri: thumbnail }}
-                            style={s.thumbnailDesktop}
-                            resizeMode="cover"
-                        />
-                        {isYouTube && (
-                            <View style={s.playOverlaySmall}>
-                                <Play size={20} color="#fff" fill="#fff" />
-                            </View>
-                        )}
-                    </TouchableOpacity>
-                )}
-            </View>
-
-                {/* Bookmark Icon - Absolute Positioned */ }
-        <TouchableOpacity
-            onPress={(e) => {
-                e.stopPropagation();
-                useArticleStore.getState().toggleBookmark(item.id);
-            }}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            style={s.bookmarkButton}
-        >
-            <Bookmark
-                size={16}
-                color={item.is_bookmarked ? colors.primary.DEFAULT : colors.text.tertiary}
-                fill={item.is_bookmarked ? colors.primary.DEFAULT : 'transparent'}
-            />
-        </TouchableOpacity>
+                {/* Bookmark Icon - Absolute Positioned */}
+                <TouchableOpacity
+                    onPress={(e) => {
+                        e.stopPropagation();
+                        useArticleStore.getState().toggleBookmark(item.id);
+                    }}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    style={s.bookmarkButton}
+                >
+                    <Bookmark
+                        size={16}
+                        color={item.is_bookmarked ? colors.primary.DEFAULT : colors.text.tertiary}
+                        fill={item.is_bookmarked ? colors.primary.DEFAULT : 'transparent'}
+                    />
+                </TouchableOpacity>
             </TouchableOpacity >
         );
-};
+    };
 
-return (
-    <View style={s.container}>
-        {/* Header */}
-        <View style={[s.header, isMobile && s.headerMobile]}>
-            <View style={s.headerLeft}>
-                {isMobile && (
-                    <TouchableOpacity onPress={() => setShowMenu(true)} style={s.menuButton}>
-                        <Menu size={24} color={colors.text.primary} />
+    return (
+        <View style={s.container}>
+            {/* Header */}
+            <View style={[s.header, isMobile && s.headerMobile]}>
+                <View style={s.headerLeft}>
+                    {isMobile && (
+                        <TouchableOpacity onPress={() => setShowMenu(true)} style={s.menuButton}>
+                            <Menu size={24} color={colors.text.primary} />
+                        </TouchableOpacity>
+                    )}
+                    <Text style={s.headerTitle}>{getHeaderTitle()}</Text>
+                    {isLoading && <ActivityIndicator size="small" color={colors.text.secondary} style={{ marginLeft: spacing.sm }} />}
+                </View>
+                <View style={s.headerActions}>
+                    {unreadCount > 0 && (
+                        <View style={s.unreadBadge}>
+                            <Text style={s.unreadBadgeText}>{unreadCount}</Text>
+                        </View>
+                    )}
+                    {/* Mark All Read */}
+                    <TouchableOpacity
+                        style={s.iconButton}
+                        onPress={handleMarkAllRead}
+                    >
+                        <CheckCheck size={20} color={colors.primary.DEFAULT} />
                     </TouchableOpacity>
-                )}
-                <Text style={s.headerTitle}>{getHeaderTitle()}</Text>
-                {isLoading && <ActivityIndicator size="small" color={colors.text.secondary} style={{ marginLeft: spacing.sm }} />}
-            </View>
-            <View style={s.headerActions}>
-                {unreadCount > 0 && (
-                    <View style={s.unreadBadge}>
-                        <Text style={s.unreadBadgeText}>{unreadCount}</Text>
-                    </View>
-                )}
-                {/* Mark All Read */}
-                <TouchableOpacity
-                    style={s.iconButton}
-                    onPress={handleMarkAllRead}
-                >
-                    <CheckCheck size={20} color={colors.primary.DEFAULT} />
-                </TouchableOpacity>
 
-                {/* Unread Filter */}
-                <TouchableOpacity
-                    style={[s.filterButton, filter.unread_only && s.filterButtonActive]}
-                    onPress={toggleUnreadFilter}
-                >
-                    <Filter size={16} color={filter.unread_only ? colors.text.inverse : colors.text.secondary} />
-                    <Text style={[s.filterText, filter.unread_only && s.filterTextActive]}>
-                        {filter.unread_only ? 'Unread' : 'All'}
-                    </Text>
-                </TouchableOpacity>
-            </View>
-        </View>
-
-        {/* List */}
-        <FlatList
-            data={articles}
-            keyExtractor={(item: Article) => String(item.id)}
-            renderItem={({ item, index }: { item: Article; index: number }) => renderArticle({ item, index })}
-            contentContainerStyle={s.list}
-            ItemSeparatorComponent={() => <View style={s.separator} />}
-            refreshControl={
-                <RefreshControl
-                    refreshing={isLoading && articles.length === 0}
-                    onRefresh={handleRefresh}
-                    tintColor={colors.primary.DEFAULT}
-                    colors={[colors.primary.DEFAULT]}
-                />
-            }
-            onEndReached={handleLoadMore}
-            onEndReachedThreshold={0.5}
-            ListFooterComponent={
-                isLoading && articles.length > 0 ? (
-                    <ActivityIndicator style={s.loader} color={colors.primary.DEFAULT} />
-                ) : null
-            }
-            ListEmptyComponent={
-                !isLoading ? (
-                    <View style={s.empty}>
-                        <CircleCheck size={48} color={colors.primary.DEFAULT} />
-                        <Text style={s.emptyTitle}>All caught up!</Text>
-                        <Text style={s.emptyText}>No unread articles</Text>
-                    </View>
-                ) : null
-            }
-        />
-        {/* Only show modal on desktop */}
-        {activeVideoId && !isMobile && (
-            <VideoModal
-                videoId={activeVideoId}
-                visible={!!activeVideoId}
-                onClose={() => setActiveVideoId(null)}
-            />
-        )}
-
-        {/* Mobile Sidebar Modal */}
-        <Modal
-            visible={showMenu && isMobile}
-            animationType="slide"
-            presentationStyle="pageSheet"
-            onRequestClose={() => setShowMenu(false)}
-        >
-            <View style={{ flex: 1, backgroundColor: colors.background.primary }}>
-                <View style={{ alignItems: 'flex-end', padding: spacing.md }}>
-                    <TouchableOpacity onPress={() => setShowMenu(false)} style={{ padding: spacing.sm }}>
-                        <X size={24} color={colors.text.primary} />
+                    {/* Unread Filter */}
+                    <TouchableOpacity
+                        style={[s.filterButton, filter.unread_only && s.filterButtonActive]}
+                        onPress={toggleUnreadFilter}
+                    >
+                        <Filter size={16} color={filter.unread_only ? colors.text.inverse : colors.text.secondary} />
+                        <Text style={[s.filterText, filter.unread_only && s.filterTextActive]}>
+                            {filter.unread_only ? 'Unread' : 'All'}
+                        </Text>
                     </TouchableOpacity>
                 </View>
-                <Sidebar onNavigate={() => setShowMenu(false)} />
             </View>
-        </Modal>
-    </View>
-);
+
+            {/* List */}
+            <FlatList
+                data={articles}
+                keyExtractor={(item: Article) => String(item.id)}
+                renderItem={({ item, index }: { item: Article; index: number }) => renderArticle({ item, index })}
+                contentContainerStyle={s.list}
+                ItemSeparatorComponent={() => <View style={s.separator} />}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={isLoading && articles.length === 0}
+                        onRefresh={handleRefresh}
+                        tintColor={colors.primary.DEFAULT}
+                        colors={[colors.primary.DEFAULT]}
+                    />
+                }
+                onEndReached={handleLoadMore}
+                onEndReachedThreshold={0.5}
+                ListFooterComponent={
+                    isLoading && articles.length > 0 ? (
+                        <ActivityIndicator style={s.loader} color={colors.primary.DEFAULT} />
+                    ) : null
+                }
+                ListEmptyComponent={
+                    !isLoading ? (
+                        <View style={s.empty}>
+                            <CircleCheck size={48} color={colors.primary.DEFAULT} />
+                            <Text style={s.emptyTitle}>All caught up!</Text>
+                            <Text style={s.emptyText}>No unread articles</Text>
+                        </View>
+                    ) : null
+                }
+            />
+            {/* Only show modal on desktop */}
+            {activeVideoId && !isMobile && (
+                <VideoModal
+                    videoId={activeVideoId}
+                    visible={!!activeVideoId}
+                    onClose={() => setActiveVideoId(null)}
+                />
+            )}
+
+            {/* Mobile Sidebar Modal */}
+            <Modal
+                visible={showMenu && isMobile}
+                animationType="slide"
+                presentationStyle="pageSheet"
+                onRequestClose={() => setShowMenu(false)}
+            >
+                <View style={{ flex: 1, backgroundColor: colors.background.primary }}>
+                    <View style={{ alignItems: 'flex-end', padding: spacing.md }}>
+                        <TouchableOpacity onPress={() => setShowMenu(false)} style={{ padding: spacing.sm }}>
+                            <X size={24} color={colors.text.primary} />
+                        </TouchableOpacity>
+                    </View>
+                    <Sidebar onNavigate={() => setShowMenu(false)} />
+                </View>
+            </Modal>
+        </View>
+    );
 }
 
 const styles = (colors: any, isMobile: boolean) => StyleSheet.create({
