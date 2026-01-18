@@ -272,11 +272,10 @@ export default function ManageScreen() {
 
     const handleImportOpml = async () => {
         try {
-            // Platform-aware file type configuration (design doc fix)
+            // Use '*/*' to allow all files - OPML has inconsistent MIME type support across platforms
+            // We validate the extension after selection
             const result = await DocumentPicker.getDocumentAsync({
-                type: Platform.OS === 'web'
-                    ? ['text/xml', 'application/xml', 'text/x-opml', '*/*']
-                    : ['text/xml', 'application/xml', 'text/x-opml', '*/*'],
+                type: '*/*',
                 copyToCacheDirectory: true,
             });
 
