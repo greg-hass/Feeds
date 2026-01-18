@@ -294,15 +294,18 @@ function upgradeRedditImageUrl(url: string): string {
     try {
         const urlObj = new URL(url);
 
-        // For preview.redd.it, remove query parameters to get full resolution
+        // For preview.redd.it, optimize for thumbnails (640px width)
         if (urlObj.hostname === 'preview.redd.it') {
-            return `${urlObj.origin}${urlObj.pathname}`;
+            urlObj.searchParams.set('width', '640');
+            urlObj.searchParams.set('crop', 'smart');
+            urlObj.searchParams.set('auto', 'webp');
+            urlObj.searchParams.set('s', ''); // Keep the signature if present
+            return urlObj.toString();
         }
 
-        // For external-preview.redd.it, try to get higher resolution
+        // For external-preview.redd.it, optimize for thumbnails
         if (urlObj.hostname === 'external-preview.redd.it') {
-            urlObj.searchParams.delete('width');
-            urlObj.searchParams.delete('height');
+            urlObj.searchParams.set('width', '640');
             urlObj.searchParams.set('format', 'jpg');
             urlObj.searchParams.set('auto', 'webp');
             return urlObj.toString();

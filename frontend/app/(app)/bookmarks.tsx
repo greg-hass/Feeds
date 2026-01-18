@@ -29,7 +29,7 @@ export default function BookmarksScreen() {
     const getArticleThumbnail = (item: Article): string | null => {
         if (item.feed_type === 'youtube') {
             const videoId = extractVideoId(item.url || item.thumbnail_url || '');
-            if (videoId) return getThumbnailUrl(videoId, 'maxres');
+            if (videoId) return getThumbnailUrl(videoId, 'hq');
         }
         return item.thumbnail_url || null;
     };
