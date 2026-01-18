@@ -84,8 +84,10 @@ export default function ManageScreen() {
                 deleteFeed(feedId)
                     .then(() => show('Feed deleted', 'success'))
                     .catch((err) => {
+                        console.error('Delete error:', err);
                         const errorMsg = err?.message || err?.toString() || 'Unknown error';
-                        show(`Delete failed: ${errorMsg}`, 'error');
+                        const statusMsg = err?.status ? ` (${err.status})` : '';
+                        show(`Delete failed: ${errorMsg}${statusMsg}`, 'error');
                     });
             }
         } else {
