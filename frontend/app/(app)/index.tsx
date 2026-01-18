@@ -15,7 +15,8 @@ export default function ArticleListScreen() {
     const router = useRouter();
     const colors = useColors();
     const { width } = useWindowDimensions();
-    const isMobile = width < 768;
+    // Use collapsible sidebar on tablets (iPad), only permanent on larger desktop screens
+    const isMobile = width < 1024;
     const { articles, isLoading, hasMore, filter, fetchArticles, setFilter, markAllRead, error, clearError } = useArticleStore();
     const { fetchFeeds, fetchFolders } = useFeedStore();
     const [showMenu, setShowMenu] = useState(false);

@@ -13,7 +13,7 @@ export default function BookmarksScreen() {
     const router = useRouter();
     const colors = useColors();
     const { width } = useWindowDimensions();
-    const isMobile = width < 768;
+    const isMobile = width < 1024;
     const { bookmarkedArticles, fetchBookmarks, isLoading } = useArticleStore();
 
     const s = styles(colors, isMobile);

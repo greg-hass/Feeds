@@ -8,7 +8,8 @@ import MobileNav from '@/components/MobileNav';
 
 export default function AppLayout() {
     const { width } = useWindowDimensions();
-    const isDesktop = width >= 768;
+    // Use collapsible sidebar on tablets (iPad), only permanent on larger desktop screens
+    const isDesktop = width >= 1024;
     const { fetchFeeds, fetchFolders } = useFeedStore();
 
     useEffect(() => {

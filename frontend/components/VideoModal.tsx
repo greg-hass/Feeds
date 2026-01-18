@@ -18,7 +18,7 @@ const NativeWebView = Platform.OS !== 'web'
 export function VideoModal({ videoId, visible, onClose }: VideoModalProps) {
     const colors = useColors();
     const { width, height } = useWindowDimensions();
-    const isMobile = width < 768;
+    const isMobile = width < 1024;
 
     if (!videoId) return null;
 
