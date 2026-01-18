@@ -10,6 +10,7 @@ import { extractVideoId, getThumbnailUrl, getEmbedUrl } from '@/utils/youtube';
 
 import { VideoModal } from '@/components/VideoModal';
 import Sidebar from '@/components/Sidebar';
+import { RefreshProgressDialog } from '@/components/RefreshProgressDialog';
 
 export default function ArticleListScreen() {
     const router = useRouter();
@@ -18,7 +19,7 @@ export default function ArticleListScreen() {
     // Use collapsible sidebar on tablets (iPad), only permanent on larger desktop screens
     const isMobile = width < 1024;
     const { articles, isLoading, hasMore, filter, fetchArticles, setFilter, markAllRead, error, clearError } = useArticleStore();
-    const { feeds, fetchFeeds, fetchFolders, refreshAllFeeds } = useFeedStore();
+    const { feeds, fetchFeeds, fetchFolders, refreshAllFeeds, refreshProgress } = useFeedStore();
     const [showMenu, setShowMenu] = useState(false);
     const [selectedIndex, setSelectedIndex] = useState(-1);
     const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
@@ -72,13 +73,11 @@ export default function ArticleListScreen() {
     // Countdown Timer Logic
     useEffect(() => {
         const timer = setInterval(() => {
-            if (!feeds || feeds.length === 0) {
-                setTimeLeft(null);
-                return;
-            }
-
             const now = new Date();
             let earliest: Date | null = null;
+
+            // Log for debugging if needed
+            // console.log('Checking feeds for next_fetch_at');
 
             feeds.forEach(f => {
                 if (f.next_fetch_at) {
@@ -509,6 +508,14 @@ export default function ArticleListScreen() {
                     </Animated.View>
                 </>
             )}
+
+            {/* Refresh Progress Dialogue */}
+            <RefreshProgressDialog
+                visible={!!refreshProgress}
+                total={refreshProgress?.total || 0}
+                completed={refreshProgress?.completed || 0}
+                currentTitle={refreshProgress?.currentTitle || ''}
+            />
         </View>
     );
 }

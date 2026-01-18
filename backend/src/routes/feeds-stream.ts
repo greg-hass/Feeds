@@ -7,7 +7,7 @@ import { FeedType } from '../services/feed-parser.js';
 type RefreshProgressEvent =
     | { type: 'start'; total_feeds: number }
     | { type: 'feed_refreshing'; id: number; title: string }
-    | { type: 'feed_complete'; id: number; title: string; new_articles: number }
+    | { type: 'feed_complete'; id: number; title: string; new_articles: number; next_fetch_at?: string }
     | { type: 'feed_error'; id: number; title: string; error: string }
     | { type: 'complete'; stats: RefreshStats };
 
@@ -150,6 +150,7 @@ export async function feedsStreamRoutes(app: FastifyInstance) {
                             id: feed.id,
                             title: feed.title,
                             new_articles: result.newArticles,
+                            next_fetch_at: result.next_fetch_at,
                         });
                         stats.success++;
                     } else {

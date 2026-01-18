@@ -1,4 +1,4 @@
-import { run } from '../db/index.js';
+import { run, queryOne } from '../db/index.js';
 import { parseFeed, normalizeArticle, FeedType } from './feed-parser.js';
 
 export interface FeedToRefresh {
@@ -11,6 +11,7 @@ export interface FeedToRefresh {
 export interface RefreshResult {
     success: boolean;
     newArticles: number;
+    next_fetch_at?: string;
     error?: string;
 }
 
@@ -94,7 +95,12 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
             params
         );
 
-        return { success: true, newArticles };
+        const updatedFeed = queryOne<{ next_fetch_at: string }>(
+            'SELECT next_fetch_at FROM feeds WHERE id = ?',
+            [feed.id]
+        );
+
+        return { success: true, newArticles, next_fetch_at: updatedFeed?.next_fetch_at };
     } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
 

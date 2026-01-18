@@ -32,6 +32,7 @@ export const useFeedStore = create<FeedState>()(
             smartFolders: [],
             totalUnread: 0,
             isLoading: false,
+            refreshProgress: null,
 
             fetchFeeds: async () => {
                 set({ isLoading: true });
@@ -108,14 +109,31 @@ export const useFeedStore = create<FeedState>()(
                     await api.refreshFeedsWithProgress(
                         ids,
                         (event) => {
-                            if (event.type === 'feed_complete' && event.new_articles > 0) {
-                                hasNewArticles = true;
-                                debouncedRefresh();
-                                // Also update specific feed in local state if found
+                            if (event.type === 'start') {
+                                set({ refreshProgress: { total: event.total_feeds, completed: 0, currentTitle: '' } });
+                            } else if (event.type === 'feed_refreshing') {
                                 set((state) => ({
+                                    refreshProgress: state.refreshProgress ? { ...state.refreshProgress, currentTitle: event.title } : null
+                                }));
+                            } else if (event.type === 'feed_complete' || event.type === 'feed_error') {
+                                if (event.type === 'feed_complete' && event.new_articles > 0) {
+                                    hasNewArticles = true;
+                                    debouncedRefresh();
+                                }
+
+                                set((state) => ({
+                                    refreshProgress: state.refreshProgress ? {
+                                        ...state.refreshProgress,
+                                        completed: state.refreshProgress.completed + 1
+                                    } : null,
                                     feeds: state.feeds.map(f =>
-                                        f.id === event.id
-                                            ? { ...f, unread_count: (f.unread_count || 0) + event.new_articles, last_fetched_at: new Date().toISOString() }
+                                        f.id === (event as any).id
+                                            ? {
+                                                ...f,
+                                                unread_count: event.type === 'feed_complete' ? (f.unread_count || 0) + event.new_articles : f.unread_count,
+                                                last_fetched_at: new Date().toISOString(),
+                                                next_fetch_at: event.type === 'feed_complete' ? event.next_fetch_at || f.next_fetch_at : f.next_fetch_at
+                                            }
                                             : f
                                     )
                                 }));
@@ -136,7 +154,7 @@ export const useFeedStore = create<FeedState>()(
                 } catch (error) {
                     handleError(error, { context: 'refreshAllFeeds' });
                 } finally {
-                    set({ isLoading: false });
+                    set({ isLoading: false, refreshProgress: null });
                 }
             },
 
