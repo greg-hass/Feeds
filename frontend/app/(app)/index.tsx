@@ -227,7 +227,7 @@ export default function ArticleListScreen() {
                         </View>
                     )}
 
-                    <View style={s.articleContent}>
+                    <TouchableOpacity style={s.articleContent} onPress={() => handleArticlePress(item.id)} activeOpacity={0.7}>
                         {/* Mobile Header (moved inside content for layout consistency, but logically part of row on desktop) */}
                         {!isMobile && (
                             <View style={s.articleHeader}>
