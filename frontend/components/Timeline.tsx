@@ -4,9 +4,11 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { formatDistanceToNow } from 'date-fns';
 import { useArticleStore, useFeedStore } from '@/stores';
 import { Article } from '@/services/api';
-import { Circle, CircleCheck, Play, Bookmark, MoreVertical, CheckCheck, AlertTriangle } from 'lucide-react-native';
+import { Circle, CircleCheck, Play, Bookmark, MoreVertical, CheckCheck, AlertTriangle, Filter, RefreshCw } from 'lucide-react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
 import { extractVideoId, getThumbnailUrl, getEmbedUrl } from '@/utils/youtube';
+import { VideoModal } from '@/components/VideoModal';
+
 
 interface TimelineProps {
     onArticlePress?: (article: Article) => void;
@@ -19,11 +21,89 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     const { width } = useWindowDimensions();
     const isMobile = width < 1024;
     const { articles, isLoading, hasMore, filter, fetchArticles, setFilter, markAllRead, error, clearError } = useArticleStore();
-    const { refreshAllFeeds } = useFeedStore();
+    const { feeds, refreshAllFeeds } = useFeedStore();
     const [selectedIndex, setSelectedIndex] = useState(-1);
     const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
+    const [timeLeft, setTimeLeft] = useState<string | null>(null);
 
     const s = styles(colors, isMobile);
+
+    useEffect(() => {
+        // Countdown Timer Logic
+        const timer = setInterval(() => {
+            const now = new Date();
+            let earliest: Date | null = null;
+
+            feeds.forEach(f => {
+                if (f.next_fetch_at) {
+                    const next = new Date(f.next_fetch_at);
+                    if (!isNaN(next.getTime())) {
+                        if (!earliest || next < earliest) {
+                            earliest = next;
+                        }
+                    }
+                }
+            });
+
+            if (earliest) {
+                const diff = (earliest as Date).getTime() - now.getTime();
+                if (diff <= 0) {
+                    setTimeLeft('Soon');
+                } else {
+                    const minutes = Math.floor(diff / 60000);
+                    const seconds = Math.floor((diff % 60000) / 1000);
+                    setTimeLeft(`${minutes}m ${seconds}s`);
+                }
+            } else {
+                setTimeLeft(null);
+            }
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [feeds]);
+
+    const handleMarkAllRead = () => {
+        const getScope = (): { scope: 'feed' | 'folder' | 'type' | 'all'; scopeId?: number; type?: string } => {
+            if (filter.feed_id) return { scope: 'feed', scopeId: filter.feed_id };
+            if (filter.folder_id) return { scope: 'folder', scopeId: filter.folder_id };
+            if (filter.type) return { scope: 'type', type: filter.type };
+            return { scope: 'all' };
+        };
+
+        const { scope, scopeId, type } = getScope();
+        const scopeName = scope === 'all' ? 'all articles' : `these ${scope} articles`;
+
+        Alert.alert(
+            'Mark All as Read',
+            `Mark ${scopeName} as read?`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Mark Read',
+                    onPress: async () => {
+                        try {
+                            await markAllRead(scope, scopeId, type);
+                        } catch (err) {
+                            Alert.alert('Error', 'Failed to mark articles as read');
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    const getHeaderTitle = () => {
+        if (filter.type) {
+            const typeNames: Record<string, string> = {
+                rss: 'RSS',
+                youtube: 'YouTube',
+                podcast: 'Podcasts',
+                reddit: 'Reddit',
+            };
+            return typeNames[filter.type] || 'Articles';
+        }
+        return 'Articles';
+    };
 
     useEffect(() => {
         if (activeArticleId) {
@@ -234,7 +314,6 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                     )}
                 </View>
 
-                {/* Bookmark Button */}
                 <TouchableOpacity
                     style={s.bookmarkButton}
                     onPress={() => useArticleStore.getState().toggleBookmark(item.id)}
@@ -250,57 +329,164 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     };
 
     return (
-        <FlatList
-            data={articles}
-            renderItem={renderArticle}
-            keyExtractor={(item) => item.id.toString()}
-            contentContainerStyle={s.list}
-            refreshControl={
-                <RefreshControl
-                    refreshing={isLoading && articles.length === 0}
-                    onRefresh={handleRefresh}
-                    colors={[colors.primary.DEFAULT]}
-                    tintColor={colors.primary.DEFAULT}
-                />
-            }
-            onEndReached={handleLoadMore}
-            onEndReachedThreshold={0.5}
-            ListFooterComponent={
-                isLoading && articles.length > 0 ? (
-                    <ActivityIndicator style={s.loader} color={colors.primary.DEFAULT} />
-                ) : null
-            }
-            ListEmptyComponent={
-                !isLoading ? (
-                    error ? (
-                        <View style={s.empty}>
-                            <AlertTriangle size={48} color={colors.error} />
-                            <Text style={s.emptyTitle}>Something went wrong</Text>
-                            <Text style={s.emptyText}>{error}</Text>
-                            <TouchableOpacity
-                                style={s.retryButton}
-                                onPress={() => {
-                                    clearError();
-                                    fetchArticles(true);
-                                }}
-                            >
-                                <Text style={s.retryButtonText}>Retry</Text>
+        <View style={s.container}>
+            {/* Header */}
+            <View style={s.header}>
+                <View style={s.headerLeft}>
+                    <Text style={s.headerTitle}>{getHeaderTitle()}</Text>
+                </View>
+
+                <View style={s.headerActions}>
+                    {timeLeft && (
+                        <View style={s.refreshContainer}>
+                            <Text style={s.countdownText}>{timeLeft}</Text>
+                            <TouchableOpacity onPress={() => refreshAllFeeds()} style={s.iconButton}>
+                                <RefreshCw size={18} color={colors.primary.DEFAULT} />
                             </TouchableOpacity>
                         </View>
-                    ) : (
-                        <View style={s.empty}>
-                            <CircleCheck size={48} color={colors.primary.DEFAULT} />
-                            <Text style={s.emptyTitle}>All caught up!</Text>
-                            <Text style={s.emptyText}>No unread articles</Text>
-                        </View>
-                    )
-                ) : null
-            }
-        />
+                    )}
+
+                    <TouchableOpacity
+                        style={[s.filterButton, filter.unread_only && s.filterButtonActive]}
+                        onPress={() => setFilter({ unread_only: !filter.unread_only })}
+                    >
+                        <Filter size={16} color={filter.unread_only ? colors.text.inverse : colors.text.secondary} />
+                        {!isMobile && (
+                            <Text style={[s.filterText, filter.unread_only && s.filterTextActive]}>
+                                Unread Only
+                            </Text>
+                        )}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity onPress={handleMarkAllRead} style={s.iconButton}>
+                        <CircleCheck size={20} color={colors.text.secondary} />
+                    </TouchableOpacity>
+                </View>
+            </View>
+
+            <FlatList
+                data={articles}
+                renderItem={renderArticle}
+                keyExtractor={(item) => item.id.toString()}
+                contentContainerStyle={s.list}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={isLoading && articles.length === 0}
+                        onRefresh={handleRefresh}
+                        colors={[colors.primary.DEFAULT]}
+                        tintColor={colors.primary.DEFAULT}
+                    />
+                }
+                onEndReached={handleLoadMore}
+                onEndReachedThreshold={0.5}
+                ListFooterComponent={
+                    isLoading && articles.length > 0 ? (
+                        <ActivityIndicator style={s.loader} color={colors.primary.DEFAULT} />
+                    ) : null
+                }
+                ListEmptyComponent={
+                    !isLoading ? (
+                        error ? (
+                            <View style={s.empty}>
+                                <AlertTriangle size={48} color={colors.error} />
+                                <Text style={s.emptyTitle}>Something went wrong</Text>
+                                <Text style={s.emptyText}>{error}</Text>
+                                <TouchableOpacity
+                                    style={s.retryButton}
+                                    onPress={() => {
+                                        clearError();
+                                        fetchArticles(true);
+                                    }}
+                                >
+                                    <Text style={s.retryButtonText}>Retry</Text>
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            <View style={s.empty}>
+                                <CircleCheck size={48} color={colors.primary.DEFAULT} />
+                                <Text style={s.emptyTitle}>All caught up!</Text>
+                                <Text style={s.emptyText}>No unread articles</Text>
+                            </View>
+                        )
+                    ) : null
+                }
+            />
+
+            {activeVideoId && Platform.OS !== 'web' && (
+                <VideoModal
+                    videoId={activeVideoId}
+                    visible={!!activeVideoId}
+                    onClose={() => setActiveVideoId(null)}
+                />
+            )}
+        </View>
     );
 }
 
 const styles = (colors: any, isMobile: boolean) => StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: colors.background.primary,
+    },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: spacing.md,
+        paddingHorizontal: spacing.lg,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border.DEFAULT,
+        minHeight: 60,
+    },
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    headerTitle: {
+        fontSize: 20, // Smaller than 24 for timeline pane
+        fontWeight: '700',
+        color: colors.text.primary,
+    },
+    headerActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+    },
+    refreshContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
+        marginRight: spacing.sm,
+    },
+    countdownText: {
+        fontSize: 12,
+        fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+        color: colors.text.tertiary,
+    },
+    iconButton: {
+        padding: spacing.sm,
+        borderRadius: borderRadius.md,
+    },
+    filterButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: spacing.sm,
+        paddingVertical: spacing.xs + 2,
+        borderRadius: borderRadius.md,
+        backgroundColor: colors.background.secondary,
+    },
+    filterButtonActive: {
+        backgroundColor: colors.primary.DEFAULT,
+    },
+    filterText: {
+        fontSize: 12,
+        color: colors.text.secondary,
+    },
+    filterTextActive: {
+        color: colors.text.inverse,
+        fontWeight: '500',
+    },
     list: {
         padding: spacing.lg,
     },

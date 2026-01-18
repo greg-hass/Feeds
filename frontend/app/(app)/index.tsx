@@ -1,14 +1,11 @@
-import { useEffect, useCallback, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Linking, Image, useWindowDimensions, Platform, Animated } from 'react-native';
+import { useEffect, useState } from 'react';
+import { View, TouchableOpacity, StyleSheet, useWindowDimensions, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useArticleStore, useFeedStore } from '@/stores';
-import { Article } from '@/services/api';
-import { CircleCheck, Filter, Menu, X, RefreshCw } from 'lucide-react-native';
+import { Menu, X } from 'lucide-react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
 
-import { VideoModal } from '@/components/VideoModal';
 import Sidebar from '@/components/Sidebar';
-import { RefreshProgressDialog } from '@/components/RefreshProgressDialog';
 import Timeline from '@/components/Timeline';
 import { DigestView } from '@/components/DigestView';
 
@@ -18,13 +15,10 @@ export default function ArticleListScreen() {
     const router = useRouter();
     const colors = useColors();
     const { width } = useWindowDimensions();
-    // Use collapsible sidebar on tablets (iPad), only permanent on larger desktop screens
     const isMobile = width < 1024;
-    const { fetchArticles, setFilter, markAllRead, error, clearError, filter } = useArticleStore();
-    const { feeds, fetchFeeds, fetchFolders, refreshAllFeeds, refreshProgress } = useFeedStore();
+    const { fetchArticles } = useArticleStore();
+    const { fetchFeeds, fetchFolders } = useFeedStore();
     const [showMenu, setShowMenu] = useState(false);
-    const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
-    const [timeLeft, setTimeLeft] = useState<string | null>(null);
 
     // Animated value for sidebar slide-in from left
     const [sidebarAnim] = useState(new Animated.Value(-300));
@@ -38,161 +32,50 @@ export default function ArticleListScreen() {
         }).start();
     };
 
-    const s = styles(colors, isMobile);
-
     useEffect(() => {
+        // Redundant but harmless to ensure data is fresh if index is mounted directly
+        // _layout also calls these but isDesktop check might affect things
         fetchFeeds();
         fetchFolders();
         fetchArticles(true);
     }, []);
 
-    const handleRefresh = useCallback(() => {
-        refreshAllFeeds();
-    }, [refreshAllFeeds]);
-
-    // Countdown Timer Logic
-    useEffect(() => {
-        const timer = setInterval(() => {
-            const now = new Date();
-            let earliest: Date | null = null;
-
-            feeds.forEach(f => {
-                if (f.next_fetch_at) {
-                    const next = new Date(f.next_fetch_at);
-                    if (!isNaN(next.getTime())) {
-                        if (!earliest || next < earliest) {
-                            earliest = next;
-                        }
-                    }
-                }
-            });
-
-            if (earliest) {
-                const diff = (earliest as Date).getTime() - now.getTime();
-                if (diff <= 0) {
-                    setTimeLeft('Soon');
-                } else {
-                    const minutes = Math.floor(diff / 60000);
-                    const seconds = Math.floor((diff % 60000) / 1000);
-                    setTimeLeft(`${minutes}m ${seconds}s`);
-                }
-            } else {
-                setTimeLeft(null);
-            }
-        }, 1000);
-
-        return () => clearInterval(timer);
-    }, [feeds]);
-
-    const handleMarkAllRead = () => {
-        const getScope = (): { scope: 'feed' | 'folder' | 'type' | 'all'; scopeId?: number; type?: string } => {
-            if (filter.feed_id) return { scope: 'feed', scopeId: filter.feed_id };
-            if (filter.folder_id) return { scope: 'folder', scopeId: filter.folder_id };
-            if (filter.type) return { scope: 'type', type: filter.type };
-            return { scope: 'all' };
-        };
-
-        const { scope, scopeId, type } = getScope();
-        const scopeName = scope === 'all' ? 'all articles' : `these ${scope} articles`;
-
-        Alert.alert(
-            'Mark All as Read',
-            `Mark ${scopeName} as read?`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Mark Read',
-                    onPress: async () => {
-                        try {
-                            await markAllRead(scope, scopeId, type);
-                        } catch (err) {
-                            Alert.alert('Error', 'Failed to mark articles as read');
-                        }
-                    }
-                }
-            ]
-        );
-        // Close menu if open
-        if (showMenu) toggleMenu();
-    };
-
-    const getHeaderTitle = () => {
-        if (filter.type) {
-            const typeNames: Record<string, string> = {
-                rss: 'RSS',
-                youtube: 'YouTube',
-                podcast: 'Podcasts',
-                reddit: 'Reddit',
-            };
-            return typeNames[filter.type] || 'Articles';
-        }
-        return 'Articles';
-    };
+    const s = styles(colors, isMobile);
 
     if (!mounted) return null;
 
     return (
         <View style={s.container}>
-            {/* Split layout for desktop: List | Reader-Placeholder */}
+            {/* Desktop: Column 3 Content (Placeholder/Digest) */}
+            {/* Mobile: Full Screen Timeline (which includes Header) */}
+
             <View style={s.mainLayout}>
-                <View style={[s.listPane, isMobile && s.fullPane]}>
-                    {/* Header */}
-                    <View style={[s.header, isMobile && s.headerMobile]}>
-                        <View style={s.headerLeft}>
-                            {isMobile && (
-                                <TouchableOpacity onPress={toggleMenu} style={s.menuButton}>
-                                    <Menu size={24} color={colors.text.primary} />
-                                </TouchableOpacity>
-                            )}
-                            <Text style={s.headerTitle}>{getHeaderTitle()}</Text>
-                        </View>
+                {isMobile ? (
+                    <View style={s.fullPane}>
+                        {/* Mobile Header with Menu Button needs to be inside Timeline? 
+                            Wait, Timeline has a header now. 
+                            But Mobile needs the Menu button to toggle sidebar.
+                            Timeline header doesn't have the Menu button logic.
+                            I should pass a prop to Timeline for "onMenuPress"?
+                        */}
+                        <Timeline />
 
-                        <View style={s.headerActions}>
-                            {timeLeft && (
-                                <View style={s.refreshContainer}>
-                                    <Text style={s.countdownText}>{timeLeft}</Text>
-                                    <TouchableOpacity onPress={handleRefresh} style={s.iconButton}>
-                                        <RefreshCw size={18} color={colors.primary.DEFAULT} />
-                                    </TouchableOpacity>
-                                </View>
-                            )}
-
-                            <TouchableOpacity
-                                style={[s.filterButton, filter.unread_only && s.filterButtonActive]}
-                                onPress={() => setFilter({ unread_only: !filter.unread_only })}
-                            >
-                                <Filter size={16} color={filter.unread_only ? colors.text.inverse : colors.text.secondary} />
-                                {!isMobile && (
-                                    <Text style={[s.filterText, filter.unread_only && s.filterTextActive]}>
-                                        Unread Only
-                                    </Text>
-                                )}
-                            </TouchableOpacity>
-
-                            <TouchableOpacity onPress={handleMarkAllRead} style={s.iconButton}>
-                                <CircleCheck size={20} color={colors.text.secondary} />
-                            </TouchableOpacity>
-                        </View>
+                        {/* We need the MENU button on mobile. 
+                            The new Timeline header has "Articles" title but no Menu button. 
+                            I should add 'onMenuPress' prop to Timeline or render a floating button?
+                            Timeline header corresponds to the "List Pane" header.
+                            Previous index.tsx header had the Menu button.
+                        */}
+                        <TouchableOpacity onPress={toggleMenu} style={s.mobileMenuButton}>
+                            <Menu size={24} color={colors.text.primary} />
+                        </TouchableOpacity>
                     </View>
-
-                    {isMobile && <Timeline />}
-                </View>
-
-                {/* Desktop Reader Column Placeholder */}
-                {!isMobile && (
+                ) : (
                     <View style={s.readerPane}>
                         <DigestView />
                     </View>
                 )}
             </View>
-
-            {activeVideoId && !isMobile && (
-                <VideoModal
-                    videoId={activeVideoId}
-                    visible={!!activeVideoId}
-                    onClose={() => setActiveVideoId(null)}
-                />
-            )}
 
             {isMobile && (
                 <>
@@ -223,13 +106,6 @@ export default function ArticleListScreen() {
                     </Animated.View>
                 </>
             )}
-
-            <RefreshProgressDialog
-                visible={!!refreshProgress}
-                total={refreshProgress?.total || 0}
-                completed={refreshProgress?.completed || 0}
-                currentTitle={refreshProgress?.currentTitle || ''}
-            />
         </View>
     );
 }
@@ -243,85 +119,29 @@ const styles = (colors: any, isMobile: boolean) => StyleSheet.create({
         flex: 1,
         flexDirection: 'row',
     },
-    listPane: {
-        width: isMobile ? '100%' : 400,
-        borderRightWidth: isMobile ? 0 : 1,
-        borderRightColor: colors.border.DEFAULT,
-        backgroundColor: colors.background.primary,
-    },
     fullPane: {
+        flex: 1,
         width: '100%',
     },
     readerPane: {
         flex: 1,
         height: '100%',
         backgroundColor: colors.background.secondary,
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: spacing.xl,
-        paddingBottom: spacing.lg,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border.DEFAULT,
-    },
-    headerMobile: {
-        padding: spacing.md,
-        paddingTop: spacing.xl,
-    },
-    headerLeft: {
-        flexDirection: 'row',
+        justifyContent: 'center',
         alignItems: 'center',
     },
-    menuButton: {
-        marginRight: spacing.md,
-        padding: 4,
-    },
-    headerTitle: {
-        fontSize: 24,
-        fontWeight: '700',
-        color: colors.text.primary,
-    },
-    headerActions: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.sm,
-    },
-    refreshContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.xs,
-    },
-    countdownText: {
-        fontSize: 12,
-        fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-        color: colors.text.tertiary,
-        marginRight: spacing.xs,
-    },
-    iconButton: {
-        padding: spacing.sm,
-        borderRadius: borderRadius.md,
-    },
-    filterButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        paddingHorizontal: spacing.md,
-        paddingVertical: spacing.sm,
-        borderRadius: borderRadius.md,
-        backgroundColor: colors.background.secondary,
-    },
-    filterButtonActive: {
-        backgroundColor: colors.primary.DEFAULT,
-    },
-    filterText: {
-        fontSize: 14,
-        color: colors.text.secondary,
-    },
-    filterTextActive: {
-        color: colors.text.inverse,
-        fontWeight: '500',
+    mobileMenuButton: {
+        position: 'absolute',
+        top: spacing.md,
+        left: spacing.md,
+        zIndex: 100,
+        padding: 8,
+        backgroundColor: colors.background.elevated,
+        borderRadius: borderRadius.full,
+        shadowColor: '#000',
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
     },
     // Slide-from-left sidebar (iOS PWA style)
     sidebarBackdrop: {

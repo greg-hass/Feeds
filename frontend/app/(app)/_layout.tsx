@@ -6,6 +6,7 @@ import { useColors } from '@/theme';
 import Sidebar from '@/components/Sidebar';
 import MobileNav from '@/components/MobileNav';
 import Timeline from '@/components/Timeline';
+import { RefreshProgressDialog } from '@/components/RefreshProgressDialog';
 import { usePathname } from 'expo-router';
 import { useArticleStore } from '@/stores';
 
@@ -14,8 +15,9 @@ export default function AppLayout() {
     useEffect(() => setMounted(true), []);
     const { width } = useWindowDimensions();
     // Use collapsible sidebar on tablets (iPad), only permanent on larger desktop screens
+    // Use collapsible sidebar on tablets (iPad), only permanent on larger desktop screens
     const isDesktop = width >= 1024;
-    const { fetchFeeds, fetchFolders } = useFeedStore();
+    const { fetchFeeds, fetchFolders, refreshProgress } = useFeedStore();
 
     useEffect(() => {
         fetchFeeds();
@@ -33,7 +35,7 @@ export default function AppLayout() {
 
     const pathname = usePathname();
     const colors = useColors();
-    const isReaderRoute = pathname === '/' || pathname.startsWith('/article/');
+    const isReaderRoute = pathname === '/' || pathname.startsWith('/article/') || pathname.startsWith('/digest');
     const activeArticleId = pathname.startsWith('/article/') ? parseInt(pathname.split('/').pop() || '') : null;
 
     const s = styles(isDesktop, isReaderRoute, colors);
@@ -52,7 +54,14 @@ export default function AppLayout() {
                 <Slot />
             </View>
             {!isDesktop && <MobileNav />}
-        </View>
+
+            <RefreshProgressDialog
+                visible={!!refreshProgress}
+                total={refreshProgress?.total || 0}
+                completed={refreshProgress?.completed || 0}
+                currentTitle={refreshProgress?.currentTitle || ''}
+            />
+        </View >
     );
 }
 
@@ -63,7 +72,7 @@ const styles = (isDesktop: boolean, isReaderRoute: boolean, colors: any) => Styl
         backgroundColor: colors.background.primary,
     },
     timelinePane: {
-        width: 350,
+        flex: 1, // Equal width with content
         borderRightWidth: 1,
         borderRightColor: colors.border.DEFAULT,
         backgroundColor: colors.background.primary,
