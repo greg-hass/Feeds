@@ -1,5 +1,5 @@
 import * as cheerio from 'cheerio';
-import { FeedType } from './feed-parser.js';
+import { FeedType, fetchYouTubeIcon, fetchRedditIcon } from './feed-parser.js';
 import { getAiSuggestedFeeds } from './ai.js';
 
 export interface DiscoveredFeed {
@@ -41,7 +41,7 @@ export async function discoverFeedsFromUrl(url: string): Promise<DiscoveredFeed[
 
     // Check for Reddit patterns
     if (parsedUrl.hostname.includes('reddit.com')) {
-        const redditFeed = discoverRedditFeed(url);
+        const redditFeed = await discoverRedditFeed(url);
         if (redditFeed) {
             discoveries.push(redditFeed);
         }
@@ -211,7 +211,7 @@ async function discoverYouTubeFeed(url: string): Promise<DiscoveredFeed | null> 
             title: 'YouTube Channel',
             feed_url: `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`,
             site_url: url,
-            icon_url: iconUrl,
+            icon_url: (await fetchYouTubeIcon(channelId)) || iconUrl,
             confidence: 0.95,
             method: 'youtube',
         };
@@ -232,7 +232,7 @@ async function discoverYouTubeFeed(url: string): Promise<DiscoveredFeed | null> 
     return null;
 }
 
-function discoverRedditFeed(url: string): DiscoveredFeed | null {
+async function discoverRedditFeed(url: string): Promise<DiscoveredFeed | null> {
     const parsedUrl = new URL(url);
     let feedUrl: string;
     let title = 'Reddit Feed';
@@ -263,7 +263,7 @@ function discoverRedditFeed(url: string): DiscoveredFeed | null {
         title,
         feed_url: feedUrl,
         site_url: url,
-        icon_url: 'https://www.redditstatic.com/desktop2x/img/favicon/favicon-32x32.png',
+        icon_url: (await fetchRedditIcon(title.replace('r/', '').replace('u/', ''))) || 'https://www.redditstatic.com/desktop2x/img/favicon/favicon-32x32.png',
         confidence: 0.9,
         method: 'reddit',
     };
@@ -300,11 +300,14 @@ async function discoverYouTubeByKeyword(keyword: string, limit: number): Promise
                 const channelId = info.channelId;
                 const title = info.title?.simpleText || info.title?.runs?.[0]?.text || 'YouTube Channel';
 
+                const icon = await fetchYouTubeIcon(channelId);
+
                 discoveries.push({
                     type: 'youtube',
                     title,
                     feed_url: `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`,
                     site_url: `https://www.youtube.com/channel/${channelId}`,
+                    icon_url: icon || `https://www.google.com/s2/favicons?domain=youtube.com&sz=64`,
                     confidence: 0.9,
                     method: 'youtube',
                 });
@@ -374,12 +377,14 @@ async function discoverRedditByKeyword(keyword: string, limit: number): Promise<
 
             for (const sub of subreddits) {
                 const info = sub.data;
+                const icon = await fetchRedditIcon(info.display_name);
+
                 discoveries.push({
                     type: 'reddit',
                     title: info.display_name_prefixed,
                     feed_url: `https://www.reddit.com${info.url}.rss`,
                     site_url: `https://www.reddit.com${info.url}`,
-                    icon_url: info.community_icon || info.icon_img || 'https://www.redditstatic.com/desktop2x/img/favicon/favicon-32x32.png',
+                    icon_url: icon || info.community_icon || info.icon_img || 'https://www.redditstatic.com/desktop2x/img/favicon/favicon-32x32.png',
                     confidence: 0.9,
                     method: 'reddit',
                 });

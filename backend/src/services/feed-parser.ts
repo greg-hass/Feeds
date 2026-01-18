@@ -58,6 +58,40 @@ export interface NormalizedArticle {
 }
 
 const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Feeds/1.0';
+const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
+
+export async function fetchYouTubeIcon(channelId: string): Promise<string | null> {
+    if (!YOUTUBE_API_KEY) return null;
+    try {
+        const response = await fetch(
+            `https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${channelId}&key=${YOUTUBE_API_KEY}`
+        );
+        if (!response.ok) return null;
+        const data = await response.json();
+        return data.items?.[0]?.snippet?.thumbnails?.default?.url || null;
+    } catch {
+        return null;
+    }
+}
+
+export async function fetchRedditIcon(subreddit: string): Promise<string | null> {
+    try {
+        const response = await fetch(`https://www.reddit.com/r/${subreddit}/about.json`, {
+            headers: { 'User-Agent': USER_AGENT }
+        });
+        if (!response.ok) return null;
+        const data = await response.json();
+        const icon = data.data?.community_icon || data.data?.icon_img;
+        if (icon) {
+            // Reddit icons often have escaped unicode like \u0026 -> &
+            const url = icon.split('?')[0]; // Remove query params which often expire
+            return url.replace(/&amp;/g, '&');
+        }
+        return null;
+    } catch {
+        return null;
+    }
+}
 
 export async function parseFeed(url: string): Promise<ParsedFeed> {
     const response = await fetch(url, {
@@ -159,6 +193,31 @@ export async function parseFeed(url: string): Promise<ParsedFeed> {
         // Stream the text to feedparser
         const stream = Readable.from([text]);
         stream.pipe(feedparser);
+    }).then(async (feed: any) => {
+        // Post-processing for specific feed types (async icon fetching)
+        const type = detectFeedType(url, feed);
+
+        if (type === 'youtube' && !feed.favicon) {
+            // Try to extract channel ID from link
+            // Link format: https://www.youtube.com/channel/UC... or https://www.youtube.com/user/...
+            // The XML usually has loop for recent videos, getting channel ID is safer from the <entry><yt:channelId> if available?
+            // Actually FeedParser output for 'rss' extension might help.
+            // But usually the <link> is the channel URL.
+            const channelIdMatch = feed.link?.match(/\/channel\/(UC[\w-]+)/);
+            if (channelIdMatch) {
+                const icon = await fetchYouTubeIcon(channelIdMatch[1]);
+                if (icon) feed.favicon = icon;
+            }
+        } else if (type === 'reddit') {
+            // Link format: https://www.reddit.com/r/subreddit/
+            const subredditMatch = feed.link?.match(/\/r\/([^\/]+)/);
+            if (subredditMatch) {
+                const icon = await fetchRedditIcon(subredditMatch[1]);
+                if (icon) feed.favicon = icon;
+            }
+        }
+
+        return feed;
     });
 }
 

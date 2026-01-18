@@ -5,7 +5,7 @@ import { feedsRoutes } from './routes/feeds.js';
 import { foldersRoutes } from './routes/folders.js';
 import { articlesRoutes } from './routes/articles.js';
 import { searchRoutes } from './routes/search.js';
-import { discoverRoutes } from './routes/discover.js';
+import { discoveryRoutes } from './routes/discovery.js';
 import { opmlRoutes } from './routes/opml.js';
 import { opmlStreamRoutes } from './routes/opml-stream.js';
 import { feedsStreamRoutes } from './routes/feeds-stream.js';
@@ -63,7 +63,7 @@ export async function buildApp() {
     await app.register(foldersRoutes, { prefix: '/api/v1/folders' });
     await app.register(articlesRoutes, { prefix: '/api/v1/articles' });
     await app.register(searchRoutes, { prefix: '/api/v1/search' });
-    await app.register(discoverRoutes, { prefix: '/api/v1/discover' });
+    await app.register(discoveryRoutes, { prefix: '/api/v1/discover' });
     await app.register(opmlRoutes, { prefix: '/api/v1/opml' });
     await app.register(opmlStreamRoutes, { prefix: '/api/v1/opml-stream' });
     await app.register(feedsStreamRoutes, { prefix: '/api/v1/feeds-stream' });

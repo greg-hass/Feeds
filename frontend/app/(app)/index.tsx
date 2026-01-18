@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { View, TouchableOpacity, StyleSheet, useWindowDimensions, Animated } from 'react-native';
+import { useEffect, useState, useRef } from 'react';
+import { View, TouchableOpacity, StyleSheet, useWindowDimensions, Animated, AppState, AppStateStatus } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useArticleStore, useFeedStore } from '@/stores';
 import { Menu, X } from 'lucide-react-native';
@@ -38,6 +38,20 @@ export default function ArticleListScreen() {
         fetchFeeds();
         fetchFolders();
         fetchArticles(true);
+
+        // Listen for app state changes to refresh when returning to foreground
+        const subscription = AppState.addEventListener('change', (nextAppState) => {
+            if (nextAppState === 'active') {
+                console.log('App returned to foreground, refreshing data...');
+                fetchFeeds();
+                fetchFolders();
+                fetchArticles(true); // silent refresh (loading=true strictly speaking, but list handles it)
+            }
+        });
+
+        return () => {
+            subscription.remove();
+        };
     }, []);
 
     const s = styles(colors, isMobile);

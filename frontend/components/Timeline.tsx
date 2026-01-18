@@ -21,7 +21,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     const { width } = useWindowDimensions();
     const isMobile = width < 1024;
     const { articles, isLoading, hasMore, filter, fetchArticles, setFilter, markAllRead, error, clearError } = useArticleStore();
-    const { feeds, refreshAllFeeds } = useFeedStore();
+    const { feeds, folders, refreshAllFeeds } = useFeedStore();
     const [selectedIndex, setSelectedIndex] = useState(-1);
     const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
     const [timeLeft, setTimeLeft] = useState<string | null>(null);
@@ -93,6 +93,14 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     };
 
     const getHeaderTitle = () => {
+        if (filter.feed_id) {
+            const feed = feeds.find(f => f.id === filter.feed_id);
+            return feed ? feed.title : 'Feed';
+        }
+        if (filter.folder_id) {
+            const folder = folders.find(f => f.id === filter.folder_id);
+            return folder ? folder.name : 'Folder';
+        }
         if (filter.type) {
             const typeNames: Record<string, string> = {
                 rss: 'RSS',
@@ -203,7 +211,11 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
             const videoId = extractVideoId(item.url || item.thumbnail_url || '');
             if (videoId) return getThumbnailUrl(videoId, 'maxres');
         }
-        return item.thumbnail_url || null;
+        const url = item.thumbnail_url;
+        if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+            return url;
+        }
+        return null; // Ignore invalid entries like "self", "default"
     };
 
     const renderArticle = ({ item, index }: { item: Article; index: number }) => {
@@ -446,6 +458,7 @@ const styles = (colors: any, isMobile: boolean) => StyleSheet.create({
         fontSize: 20, // Smaller than 24 for timeline pane
         fontWeight: '700',
         color: colors.text.primary,
+        marginLeft: isMobile ? 44 : 0, // Add space for absolute menu button
     },
     headerActions: {
         flexDirection: 'row',

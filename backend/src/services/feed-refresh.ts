@@ -82,7 +82,7 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
                     ELSE title 
                 END,
                 site_url = COALESCE(site_url, ?),
-                icon_url = COALESCE(icon_url, ?),
+                icon_url = COALESCE(?, icon_url),
                 description = COALESCE(description, ?),
                 last_fetched_at = datetime('now'),
                 next_fetch_at = datetime('now', '+' || refresh_interval_minutes || ' minutes'),
