@@ -28,11 +28,13 @@ interface Feed {
     type: string;
     title: string;
     url: string;
+    deleted_at: string | null;
 }
 
 interface Folder {
     id: number;
     name: string;
+    deleted_at: string | null;
 }
 
 // Timeout configuration
@@ -137,13 +139,19 @@ export async function opmlStreamRoutes(app: FastifyInstance) {
 
             for (const folder of parsed.folders) {
                 console.log('[OPML Import] Processing folder:', folder.name);
+                // Check for existing folder (including soft-deleted)
                 const existing = queryOne<Folder>(
-                    'SELECT id FROM folders WHERE user_id = ? AND name = ? AND deleted_at IS NULL',
+                    'SELECT id, deleted_at FROM folders WHERE user_id = ? AND name = ?',
                     [userId, folder.name]
                 );
 
                 if (existing) {
-                    console.log('[OPML Import] Folder exists:', folder.name, 'id:', existing.id);
+                    if (existing.deleted_at) {
+                        console.log('[OPML Import] Restoring soft-deleted folder:', folder.name, 'id:', existing.id);
+                        run('UPDATE folders SET deleted_at = NULL WHERE id = ?', [existing.id]);
+                    } else {
+                        console.log('[OPML Import] Folder exists:', folder.name, 'id:', existing.id);
+                    }
                     folderMap.set(folder.name, existing.id);
                 } else {
                     const result = run(
@@ -171,22 +179,44 @@ export async function opmlStreamRoutes(app: FastifyInstance) {
                     continue;
                 }
 
-                // Check for duplicate
+                // Check for duplicate (including soft-deleted)
                 const existing = queryOne<Feed>(
-                    'SELECT id FROM feeds WHERE user_id = ? AND url = ? AND deleted_at IS NULL',
+                    'SELECT id, deleted_at FROM feeds WHERE user_id = ? AND url = ?',
                     [userId, feed.xmlUrl]
                 );
 
                 if (existing) {
-                    sendEvent({
-                        type: 'feed_created',
-                        title: feed.title || feed.xmlUrl,
-                        id: existing.id,
-                        folder: feed.folder,
-                        status: 'duplicate',
-                    });
-                    stats.skipped++;
-                    continue;
+                    if (existing.deleted_at) {
+                        console.log('[OPML Import] Restoring soft-deleted feed:', feed.title || feed.xmlUrl, 'id:', existing.id);
+                        run('UPDATE feeds SET deleted_at = NULL, folder_id = ? WHERE id = ?',
+                            [feed.folder ? folderMap.get(feed.folder) || null : null, existing.id]);
+
+                        sendEvent({
+                            type: 'feed_created',
+                            title: feed.title || feed.xmlUrl,
+                            id: existing.id,
+                            folder: feed.folder,
+                            status: 'created',
+                        });
+
+                        createdFeeds.push({
+                            id: existing.id,
+                            title: feed.title || feed.xmlUrl,
+                            url: feed.xmlUrl,
+                            type: 'rss', // We'll update type during refresh if needed
+                        });
+                        continue;
+                    } else {
+                        sendEvent({
+                            type: 'feed_created',
+                            title: feed.title || feed.xmlUrl,
+                            id: existing.id,
+                            folder: feed.folder,
+                            status: 'duplicate',
+                        });
+                        stats.skipped++;
+                        continue;
+                    }
                 }
 
                 try {
