@@ -1,5 +1,4 @@
-import { AxiosError } from 'axios';
-import { APIError } from './api';
+import { ApiError } from './api';
 import { useToastStore } from '@/stores';
 
 /**
@@ -28,25 +27,13 @@ export interface AppError {
  * Parse an error into a standardized AppError format
  */
 export function parseError(error: unknown): AppError {
-    // Handle APIError from our api.ts
-    if (error instanceof APIError) {
+    // Handle ApiError from our api.ts
+    if (error instanceof ApiError) {
         return {
             category: categorizeStatus(error.status),
             message: error.message,
             userMessage: getUserMessageForStatus(error.status, error.message),
             status: error.status,
-            originalError: error,
-        };
-    }
-
-    // Handle Axios errors
-    if (error instanceof AxiosError) {
-        const status = error.response?.status;
-        return {
-            category: categorizeStatus(status),
-            message: error.message,
-            userMessage: getUserMessageForStatus(status, error.message),
-            status,
             originalError: error,
         };
     }
