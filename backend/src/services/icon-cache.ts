@@ -20,9 +20,3 @@ export function getCachedIconPath(fileName: string) {
 export function resolveIconMime(fileName: string, override?: string | null) {
     return resolveImageMime(fileName, override);
 }
-
-export function resolveIconMime(fileName: string, override?: string | null): string {
-    if (override) return override;
-    const extension = extname(fileName).toLowerCase();
-    return MIME_FROM_EXTENSION[extension] || 'application/octet-stream';
-}
