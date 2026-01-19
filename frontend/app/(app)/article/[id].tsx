@@ -296,20 +296,7 @@ export default function ArticleScreen() {
 
                         <View style={s.articleContentWrapper}>
                             {Platform.OS === 'web' && content ? (
-                                <ArticleContent
-                                    html={content}
-                                    fontSize={settings?.font_size || 'medium'}
-                                    article={{
-                                        title: currentArticle.title,
-                                        author: currentArticle.author,
-                                        feed_title: currentArticle.feed_title,
-                                        published_at: currentArticle.published_at,
-                                        thumbnail_url: currentArticle.thumbnail_url,
-                                        feed_icon_url: currentArticle.feed_icon_url,
-                                        site_name: currentArticle.site_name,
-                                        hero_image: currentArticle.hero_image,
-                                    }}
-                                />
+                                <ArticleContent html={content} fontSize={settings?.font_size || 'medium'} />
                             ) : (
                                 <Text style={s.contentText}>
                                     {content || currentArticle.summary || 'No content available'}
