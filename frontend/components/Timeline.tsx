@@ -1,8 +1,9 @@
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, ActivityIndicator, Alert, Linking, Image, useWindowDimensions, Platform, Animated } from 'react-native';
+import { WebView } from 'react-native-webview'; // Import WebView
 import { useRouter } from 'expo-router';
 import { formatDistanceToNow } from 'date-fns';
-import { useArticleStore, useFeedStore, useAudioStore } from '@/stores';
+import { useArticleStore, useFeedStore, useAudioStore, useVideoStore } from '@/stores'; // Import useVideoStore
 import { Article } from '@/services/api';
 import { Circle, CircleCheck, Play, Bookmark, MoreVertical, Filter, RefreshCw, Clock, Headphones, Flame } from 'lucide-react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
@@ -25,7 +26,9 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     const isMobile = width < 1024;
     const { articles, isLoading, hasMore, filter, scrollPosition, fetchArticles, setFilter, setScrollPosition, markAllRead, error, clearError, prefetchArticle } = useArticleStore();
     const { feeds, folders, refreshAllFeeds } = useFeedStore();
+
     const { currentArticleId: playingArticleId, isPlaying } = useAudioStore();
+    const { activeVideoId, playVideo, setPlaying: setVideoPlaying } = useVideoStore(); // Destructure video store
     const [selectedIndex, setSelectedIndex] = useState(-1);
     const [timeLeft, setTimeLeft] = useState<string | null>(null);
     const flatListRef = useRef<FlatList>(null);
@@ -115,6 +118,16 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
         }
     }, []);
 
+    const handleVideoPress = useCallback((item: Article) => {
+        const videoId = extractVideoId(item.url || '');
+        if (videoId) {
+            playVideo(videoId, item.title);
+        } else {
+            // Fallback if no video ID found, just open article
+            handleArticlePress(item);
+        }
+    }, [playVideo, handleArticlePress]);
+
     const renderRightActions = (progress: any, dragX: any, item: Article) => {
         const trans = dragX.interpolate({
             inputRange: [-100, 0],
@@ -157,13 +170,17 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
         const isActive = activeArticleId === item.id;
         const thumbnail = item.thumbnail_url;
         const isYouTube = item.feed_type === 'youtube';
-        const isFeatured = index % 5 === 0 && !isMobile && thumbnail; // Every 5th item is featured on desktop
+        const videoId = isYouTube ? extractVideoId(item.url || '') : null;
+        const isVideoPlaying = isYouTube && videoId && activeVideoId === videoId;
+
+        // Featured logic needs to be mindful of YouTube videos which are now always "featured" in style
+        const isFeatured = (index % 5 === 0 && !isMobile && thumbnail) || isYouTube;
         const isHot = item.published_at && (new Date(item.published_at).getTime() > Date.now() - 4 * 60 * 60 * 1000);
 
         const Content = (
             <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() => handleArticlePress(item)}
+                activeOpacity={0.9}
+                onPress={() => isYouTube ? handleVideoPress(item) : handleArticlePress(item)}
                 style={[
                     s.articleCard,
                     item.is_read && s.articleRead,
@@ -190,7 +207,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                             {item.title}
                         </Text>
 
-                        {isFeatured && (
+                        {!isYouTube && isFeatured && (
                             <Text style={s.featuredSummary} numberOfLines={3}>
                                 {item.summary?.replace(/<[^>]*>?/gm, '')}
                             </Text>
@@ -222,25 +239,46 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                         </View>
                     </View>
 
-                    {thumbnail && (
-                        <View style={[s.thumbnailWrapper, isFeatured && s.featuredThumbnailWrapper]}>
-                            <Image source={{ uri: thumbnail }} style={s.thumbnail} resizeMode="cover" />
-                            {isYouTube && (
-                                <View style={s.youtubeIndicator}><Play size={14} color="#fff" fill="#fff" /></View>
-                            )}
-                            {item.has_audio && !isYouTube && (
-                                <TouchableOpacity
-                                    style={s.podcastIndicator}
-                                    onPress={() => handlePlayPress(item)}
-                                >
-                                    {(isPlaying && playingArticleId === item.id) ? (
-                                        <PlayingWaveform color="#fff" size={14} />
-                                    ) : (
-                                        <Headphones size={14} color="#fff" />
-                                    )}
-                                </TouchableOpacity>
+                    {/* YouTube Video or Thumbnail */}
+                    {isYouTube && videoId ? (
+                        <View style={s.videoContainer}>
+                            {isVideoPlaying ? (
+                                <WebView
+                                    style={s.webview}
+                                    source={{ uri: `https://www.youtube.com/embed/${videoId}?autoplay=1&playsinline=1` }}
+                                    allowsInlineMediaPlayback={true}
+                                    mediaPlaybackRequiresUserAction={false}
+                                />
+                            ) : (
+                                <View style={s.videoThumbnailWrapper}>
+                                    <Image source={{ uri: thumbnail || `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` }} style={s.thumbnail} resizeMode="cover" />
+                                    <View style={s.playButtonOverlay}>
+                                        <View style={s.playButtonCircle}>
+                                            <Play size={24} color="#fff" fill="#fff" style={{ marginLeft: 4 }} />
+                                        </View>
+                                    </View>
+                                </View>
                             )}
                         </View>
+                    ) : (
+                        /* Standard RSS Thumbnail */
+                        thumbnail && (
+                            <View style={[s.thumbnailWrapper, isFeatured && s.featuredThumbnailWrapper]}>
+                                <Image source={{ uri: thumbnail }} style={s.thumbnail} resizeMode="cover" />
+                                {item.has_audio && !isYouTube && (
+                                    <TouchableOpacity
+                                        style={s.podcastIndicator}
+                                        onPress={() => handlePlayPress(item)}
+                                    >
+                                        {(isPlaying && playingArticleId === item.id) ? (
+                                            <PlayingWaveform color="#fff" size={14} />
+                                        ) : (
+                                            <Headphones size={14} color="#fff" />
+                                        )}
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+                        )
                     )}
                 </View>
                 {!item.is_read && <View style={s.unreadIndicator} />}
@@ -596,6 +634,41 @@ const styles = (colors: any, isMobile: boolean) => StyleSheet.create({
     thumbnail: {
         width: '100%',
         height: '100%',
+    },
+    videoContainer: {
+        width: '100%',
+        height: 220,
+        borderRadius: borderRadius.lg,
+        overflow: 'hidden',
+        marginTop: spacing.md,
+        backgroundColor: '#000',
+    },
+    videoThumbnailWrapper: {
+        width: '100%',
+        height: '100%',
+        position: 'relative',
+    },
+    webview: {
+        flex: 1,
+        backgroundColor: '#000',
+    },
+    playButtonOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.2)',
+    },
+    playButtonCircle: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     youtubeIndicator: {
         position: 'absolute',
