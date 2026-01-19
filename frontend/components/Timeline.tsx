@@ -261,23 +261,27 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                             )}
                         </View>
                     ) : (
-                        /* Standard RSS Thumbnail */
-                        thumbnail && (
-                            <View style={[s.thumbnailWrapper, isFeatured && s.featuredThumbnailWrapper]}>
-                                <Image source={{ uri: thumbnail }} style={s.thumbnail} resizeMode="cover" />
-                                {item.has_audio && !isYouTube && (
-                                    <TouchableOpacity
-                                        style={s.podcastIndicator}
-                                        onPress={() => handlePlayPress(item)}
-                                    >
+                        thumbnail && !isYouTube && (
+                            item.has_audio ? (
+                                <TouchableOpacity
+                                    style={[s.thumbnailWrapper, isFeatured && s.featuredThumbnailWrapper]}
+                                    onPress={() => handlePlayPress(item)}
+                                    activeOpacity={0.8}
+                                >
+                                    <Image source={{ uri: thumbnail }} style={s.thumbnail} resizeMode="cover" />
+                                    <View style={s.podcastIndicator}>
                                         {(isPlaying && playingArticleId === item.id) ? (
                                             <PlayingWaveform color="#fff" size={14} />
                                         ) : (
                                             <Headphones size={14} color="#fff" />
                                         )}
-                                    </TouchableOpacity>
-                                )}
-                            </View>
+                                    </View>
+                                </TouchableOpacity>
+                            ) : (
+                                <View style={[s.thumbnailWrapper, isFeatured && s.featuredThumbnailWrapper]}>
+                                    <Image source={{ uri: thumbnail }} style={s.thumbnail} resizeMode="cover" />
+                                </View>
+                            )
                         )
                     )}
                 </View>

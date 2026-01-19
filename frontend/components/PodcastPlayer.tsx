@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Modal, useWindowDimensions, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAudioStore } from '@/stores/audioStore';
 import { useColors, borderRadius, spacing } from '@/theme';
 import {
@@ -16,6 +17,7 @@ interface PodcastPlayerProps {
 export const PodcastPlayer = () => {
     const colors = useColors();
     const { width, height } = useWindowDimensions();
+    const insets = useSafeAreaInsets();
     const isMobile = width < 1024;
 
     const {
@@ -44,7 +46,7 @@ export const PodcastPlayer = () => {
         return `${minutes}:${seconds.toString().padStart(2, '0')}`;
     };
 
-    const s = styles(colors, isMobile, width, height);
+    const s = styles(colors, isMobile, width, height, insets);
 
     return (
         <Modal visible={isPlayerVisible} animationType="slide" presentationStyle="fullScreen" onRequestClose={handleMinimize}>
@@ -119,7 +121,7 @@ export const PodcastPlayer = () => {
                         style={[s.footerPill, playbackSpeed !== 1 && s.footerPillActive]}
                         onPress={() => setSpeed(playbackSpeed === 2 ? 1 : playbackSpeed + 0.25)}
                     >
-                        <Gauge size={16} color={playbackSpeed !== 1 ? '#fff' : colors.text.secondary} />
+                        <Gauge size={16} color={playbackSpeed !== 1 ? '#fff' : colors.text.primary} />
                         <Text style={[s.footerText, playbackSpeed !== 1 && s.footerTextActive]}>{playbackSpeed}x</Text>
                     </TouchableOpacity>
 
@@ -127,7 +129,7 @@ export const PodcastPlayer = () => {
                         style={[s.footerPill, !!sleepTimer && s.footerPillActive]}
                         onPress={() => setSleepTimer(sleepTimer ? null : 30)}
                     >
-                        <Timer size={16} color={!!sleepTimer ? '#fff' : colors.text.secondary} />
+                        <Timer size={16} color={!!sleepTimer ? '#fff' : colors.text.primary} />
                         <Text style={[s.footerText, !!sleepTimer && s.footerTextActive]}>
                             {sleepTimer ? `${sleepTimer}m` : 'Sleep'}
                         </Text>
@@ -138,11 +140,11 @@ export const PodcastPlayer = () => {
     );
 };
 
-const styles = (colors: any, isMobile: boolean, width: number, height: number) => StyleSheet.create({
+const styles = (colors: any, isMobile: boolean, width: number, height: number, insets: any) => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.background.primary,
-        paddingTop: Platform.OS === 'ios' ? 60 : 20,
+        paddingTop: Platform.OS === 'ios' ? Math.max(insets.top, 50) + 10 : 20,
     },
     header: {
         flexDirection: 'row',
