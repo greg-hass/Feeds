@@ -69,7 +69,7 @@ export async function fetchYouTubeIcon(channelId: string): Promise<string | null
             );
             if (response.ok) {
                 const data = await response.json();
-                const icon = data.items?.[0]?.snippet?.thumbnails?.default?.url || null;
+                const icon = data.items?.[0]?.snippet?.thumbnails?.high?.url || data.items?.[0]?.snippet?.thumbnails?.default?.url || null;
                 if (icon) return icon;
             }
         } catch {
@@ -80,12 +80,41 @@ export async function fetchYouTubeIcon(channelId: string): Promise<string | null
     // 2. Scrape the channel page
     try {
         const response = await fetch(`https://www.youtube.com/channel/${channelId}`, {
-            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36' }
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept-Language': 'en-US,en;q=0.9',
+            }
         });
         if (!response.ok) return null;
         const html = await response.text();
 
-        // Try various patterns for avatar extraction
+        // 3. Try parsing ytInitialData (most reliable)
+        const jsonMatch = html.match(/var ytInitialData = (\{.*?\});/);
+        if (jsonMatch) {
+            try {
+                const data = JSON.parse(jsonMatch[1]);
+
+                // Path 1: C4 Tabbed Header (Standard Channel Layout)
+                const c4Avatar = data.header?.c4TabbedHeaderRenderer?.avatar?.thumbnails;
+                if (c4Avatar && c4Avatar.length > 0) {
+                    return c4Avatar[c4Avatar.length - 1].url; // Get largest
+                }
+
+                // Path 2: Carousel Header
+                const carouselAvatar = data.header?.carouselHeaderRenderer?.avatar?.thumbnails;
+                if (carouselAvatar && carouselAvatar.length > 0) {
+                    return carouselAvatar[carouselAvatar.length - 1].url;
+                }
+
+                // Path 3: Page Owner Details
+                const ownerAvatar = data.sidebar?.playlistSidebarRenderer?.items?.[0]?.playlistSidebarPrimaryInfoRenderer?.navigationEndpoint?.commandMetadata?.webCommandMetadata?.url;
+                // (This is effectively checking if we are on a playlist page that leads to a channel, might be overkill, sticking to header)
+            } catch (e) {
+                // JSON parse failed, fall through to regex
+            }
+        }
+
+        // 4. Try regex patterns (Fallback)
         const patterns = [
             /"avatar":\{"thumbnails":\[\{"url":"([^"]+)"/,
             /channelMetadataRenderer":\{"avatar":\{"thumbnails":\[\{"url":"([^"]+)"/,
@@ -108,6 +137,7 @@ export async function fetchYouTubeIcon(channelId: string): Promise<string | null
         // Fallback to Google favicon service
     }
 
+    // 5. Last resort fallback
     return `https://www.google.com/s2/favicons?domain=youtube.com&sz=128`;
 }
 
