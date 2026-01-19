@@ -17,6 +17,10 @@ export const ReaderControls = () => {
         setIsExpanded(!isExpanded);
     };
 
+    const currentFontFamily = settings.font_family || 'sans';
+    const currentFontSize = settings.font_size || 'medium';
+    const currentReaderTheme = settings.reader_theme || 'default';
+
     const setFontSize = (size: 'small' | 'medium' | 'large') => {
         updateSettings({ font_size: size });
     };
@@ -40,13 +44,13 @@ export const ReaderControls = () => {
                         {/* Font Family */}
                         <View style={s.section}>
                             <TouchableOpacity
-                                style={[s.option, settings.font_family === 'sans' && s.optionActive]}
+                                style={[s.option, currentFontFamily === 'sans' && s.optionActive]}
                                 onPress={() => setFontFamily('sans')}
                             >
                                 <Text style={[s.optionText, { fontFamily: 'sans-serif' }]}>Sans</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
-                                style={[s.option, settings.font_family === 'serif' && s.optionActive]}
+                                style={[s.option, currentFontFamily === 'serif' && s.optionActive]}
                                 onPress={() => setFontFamily('serif')}
                             >
                                 <Text style={[s.optionText, { fontFamily: 'serif' }]}>Serif</Text>
@@ -57,13 +61,13 @@ export const ReaderControls = () => {
 
                         {/* Font Size */}
                         <View style={s.section}>
-                            <TouchableOpacity onPress={() => setFontSize('small')} style={[s.iconButton, settings.font_size === 'small' && s.iconButtonActive]}>
+                            <TouchableOpacity onPress={() => setFontSize('small')} style={[s.iconButton, currentFontSize === 'small' && s.iconButtonActive]}>
                                 <Text style={s.sizeTextSmall}>A</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity onPress={() => setFontSize('medium')} style={[s.iconButton, settings.font_size === 'medium' && s.iconButtonActive]}>
+                            <TouchableOpacity onPress={() => setFontSize('medium')} style={[s.iconButton, currentFontSize === 'medium' && s.iconButtonActive]}>
                                 <Text style={s.sizeTextMedium}>A</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity onPress={() => setFontSize('large')} style={[s.iconButton, settings.font_size === 'large' && s.iconButtonActive]}>
+                            <TouchableOpacity onPress={() => setFontSize('large')} style={[s.iconButton, currentFontSize === 'large' && s.iconButtonActive]}>
                                 <Text style={s.sizeTextLarge}>A</Text>
                             </TouchableOpacity>
                         </View>
@@ -72,14 +76,14 @@ export const ReaderControls = () => {
 
                         {/* Themes */}
                         <View style={s.section}>
-                            <TouchableOpacity onPress={() => setTheme('default')} style={[s.themeCircle, { backgroundColor: colors.background.primary }, settings.reader_theme === 'default' && s.themeCircleActive]}>
-                                {settings.reader_theme === 'default' && <Check size={12} color={colors.primary.DEFAULT} />}
+                            <TouchableOpacity onPress={() => setTheme('default')} style={[s.themeCircle, { backgroundColor: colors.background.primary }, currentReaderTheme === 'default' && s.themeCircleActive]}>
+                                {currentReaderTheme === 'default' && <Check size={12} color={colors.primary.DEFAULT} />}
                             </TouchableOpacity>
-                            <TouchableOpacity onPress={() => setTheme('sepia')} style={[s.themeCircle, { backgroundColor: '#f4ecd8' }, settings.reader_theme === 'sepia' && s.themeCircleActive]}>
-                                {settings.reader_theme === 'sepia' && <Check size={12} color="#5b4636" />}
+                            <TouchableOpacity onPress={() => setTheme('sepia')} style={[s.themeCircle, { backgroundColor: '#f4ecd8' }, currentReaderTheme === 'sepia' && s.themeCircleActive]}>
+                                {currentReaderTheme === 'sepia' && <Check size={12} color="#5b4636" />}
                             </TouchableOpacity>
-                            <TouchableOpacity onPress={() => setTheme('paper')} style={[s.themeCircle, { backgroundColor: '#fdfcf8' }, settings.reader_theme === 'paper' && s.themeCircleActive]}>
-                                {settings.reader_theme === 'paper' && <Check size={12} color="#2c3e50" />}
+                            <TouchableOpacity onPress={() => setTheme('paper')} style={[s.themeCircle, { backgroundColor: '#fdfcf8' }, currentReaderTheme === 'paper' && s.themeCircleActive]}>
+                                {currentReaderTheme === 'paper' && <Check size={12} color="#2c3e50" />}
                             </TouchableOpacity>
                         </View>
 

@@ -82,7 +82,7 @@ const styles = (isDesktop: boolean, isReaderRoute: boolean, colors: any) => Styl
         }),
     },
     timelinePane: {
-        width: isDesktop ? '50%' : '100%',
+        flex: 1, // Changed from width: 50% to flex: 1
         borderRightWidth: 1,
         borderRightColor: colors.border.DEFAULT,
         backgroundColor: colors.background.primary,

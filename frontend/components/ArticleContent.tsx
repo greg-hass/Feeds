@@ -73,6 +73,10 @@ export default function ArticleContent({ html }: ArticleContentProps) {
             word-wrap: break-word;
             -webkit-font-smoothing: antialiased;
         }
+        /* Force color inheritance for common text containers to override inline styles */
+        p, span, div, li {
+            color: ${contentColors.text} !important;
+        }
         h1, h2, h3, h4 {
             font-family: ${fontStack};
             color: ${contentColors.text};
