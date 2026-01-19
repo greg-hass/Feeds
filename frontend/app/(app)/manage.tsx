@@ -15,6 +15,8 @@ import { ProgressItemData, ItemStatus } from '@/components/ProgressItem';
 
 type ModalType = 'edit_feed' | 'rename_folder' | 'move_feed' | null;
 
+type DiscoveryType = 'all' | 'rss' | 'youtube' | 'reddit' | 'podcast';
+
 export default function ManageScreen() {
     const router = useRouter();
     const colors = useColors();
@@ -24,6 +26,7 @@ export default function ManageScreen() {
     const { settings } = useSettingsStore();
 
     const [urlInput, setUrlInput] = useState('');
+    const [discoveryType, setDiscoveryType] = useState<DiscoveryType>('all');
     const [isDiscovering, setIsDiscovering] = useState(false);
     const [discoveries, setDiscoveries] = useState<DiscoveredFeed[]>([]);
     const [isAdding, setIsAdding] = useState(false);
@@ -64,7 +67,10 @@ export default function ManageScreen() {
         setDiscoveries([]);
 
         try {
-            const result = await api.discover(urlInput);
+            // Pass type if not 'all'
+            const typeParam = discoveryType === 'all' ? undefined : discoveryType;
+            // @ts-ignore - api.discover will be updated to accept params object or optional arg
+            const result = await api.discover(urlInput, typeParam);
             if (result.discoveries.length > 0) {
                 setDiscoveries(result.discoveries);
             } else {
@@ -670,10 +676,36 @@ export default function ManageScreen() {
                 {/* Add Feed */}
                 <View style={s.section}>
                     <Text style={s.sectionTitle}>Add Feed</Text>
+
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={s.filterPillsContainer}
+                        style={s.filterPillsScroll}
+                    >
+                        {(['all', 'rss', 'youtube', 'reddit', 'podcast'] as DiscoveryType[]).map((type) => (
+                            <TouchableOpacity
+                                key={type}
+                                style={[
+                                    s.filterPill,
+                                    discoveryType === type && s.filterPillActive,
+                                ]}
+                                onPress={() => setDiscoveryType(type)}
+                            >
+                                <Text style={[
+                                    s.filterPillText,
+                                    discoveryType === type && s.filterPillTextActive
+                                ]}>
+                                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+
                     <View style={s.inputRow}>
                         <TextInput
                             style={s.input}
-                            placeholder="Enter feed URL or website..."
+                            placeholder={`Search ${discoveryType === 'all' ? 'feeds' : discoveryType}...`}
                             placeholderTextColor={colors.text.tertiary}
                             value={urlInput}
                             onChangeText={setUrlInput}
@@ -1458,5 +1490,34 @@ const styles = (colors: any) => StyleSheet.create({
     bulkButtonText: {
         fontSize: 13,
         fontWeight: '600',
+    },
+    filterPillsContainer: {
+        flexDirection: 'row',
+        gap: spacing.sm,
+        paddingBottom: spacing.sm,
+    },
+    filterPillsScroll: {
+        flexGrow: 0,
+        marginBottom: spacing.sm,
+    },
+    filterPill: {
+        paddingHorizontal: spacing.md,
+        paddingVertical: 6,
+        borderRadius: borderRadius.full,
+        backgroundColor: colors.background.tertiary,
+        borderWidth: 1,
+        borderColor: colors.border.DEFAULT,
+    },
+    filterPillActive: {
+        backgroundColor: colors.primary.DEFAULT,
+        borderColor: colors.primary.DEFAULT,
+    },
+    filterPillText: {
+        fontSize: 13,
+        color: colors.text.secondary,
+        fontWeight: '500',
+    },
+    filterPillTextActive: {
+        color: colors.text.inverse,
     },
 });

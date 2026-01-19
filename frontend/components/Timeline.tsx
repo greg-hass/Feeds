@@ -343,6 +343,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                         { id: 'all', label: 'All', active: !filter.type },
                         { id: 'youtube', label: 'Videos', active: filter.type === 'youtube' },
                         { id: 'podcast', label: 'Podcasts', active: filter.type === 'podcast' },
+                        { id: 'reddit', label: 'Reddit', active: filter.type === 'reddit' },
                         { id: 'rss', label: 'Articles', active: filter.type === 'rss' },
                     ]}
                     keyExtractor={item => item.id}

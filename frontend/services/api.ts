@@ -170,8 +170,12 @@ class ApiClient {
     }
 
     // Discovery
-    async discover(q: string) {
-        return this.request<{ discoveries: DiscoveredFeed[] }>(`/discover?q=${encodeURIComponent(q)}`);
+    async discover(q: string, type?: string) {
+        let url = `/discover?q=${encodeURIComponent(q)}`;
+        if (type) {
+            url += `&type=${encodeURIComponent(type)}`;
+        }
+        return this.request<{ discoveries: DiscoveredFeed[] }>(url);
     }
 
     // OPML

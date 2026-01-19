@@ -46,6 +46,12 @@ export default function ArticleScreen() {
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
+        if (settings?.readability_enabled !== undefined) {
+            setShowReadability(settings.readability_enabled);
+        }
+    }, [settings?.readability_enabled]);
+
+    useEffect(() => {
         if (id) {
             if (!isMobile && activeVideoId && !isMinimized) {
                 minimize();

@@ -2,54 +2,31 @@ import { run, queryOne } from '../db/index.js';
 import { parseFeed, normalizeArticle, FeedType } from './feed-parser.js';
 import { cacheFeedIcon } from './icon-cache.js';
 import { cacheArticleThumbnail } from './thumbnail-cache.js';
+import { getUserSettings } from './settings.js';
+import { fetchAndExtractReadability } from './readability.js';
 
 export interface FeedToRefresh {
-    id: number;
-    url: string;
-    type: FeedType;
-    refresh_interval_minutes: number;
-}
+// ... (unchanged)
 
-export interface RefreshResult {
-    success: boolean;
-    newArticles: number;
-    next_fetch_at?: string;
-    error?: string;
-}
-
-/**
- * Refreshes a single feed and inserts new articles.
- * Used by both manual refresh (API endpoint) and scheduled refresh.
- *
- * @param feed - The feed to refresh
- * @returns RefreshResult with success status and new article count
- */
 export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
     try {
         const feedData = await parseFeed(feed.url);
         let newArticles = 0;
 
+        // Get user settings for this feed
+        const feedUser = queryOne<{ user_id: number }>('SELECT user_id FROM feeds WHERE id = ?', [feed.id]);
+        const userId = feedUser?.user_id || 1; // Default to 1 if not found
+        const settings = getUserSettings(userId);
+        const shouldFetchContent = settings.fetch_full_content;
+
         const insertArticle = `
-            INSERT OR IGNORE INTO articles
-            (feed_id, guid, title, url, author, summary, content, enclosure_url, enclosure_type, thumbnail_url, published_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `;
+// ... (unchanged)
 
-        // Detect type early if it's currently 'rss' to ensure correct normalization
-        let currentType = feed.type;
-        if (currentType === 'rss') {
-            const { detectFeedType } = await import('./feed-parser.js');
-            currentType = detectFeedType(feed.url, feedData);
-        }
-
-        const database = (await import('../db/index.js')).db();
-        const insertStmt = database.prepare(insertArticle);
-        const updateThumbnailStmt = database.prepare(
-            `UPDATE articles SET thumbnail_cached_path = ?, thumbnail_cached_content_type = ? WHERE id = ?`
-        );
-
-        const refreshTransaction = database.transaction(async (articles: any[], type: FeedType) => {
+        const refreshTransaction = database.transaction((articles: any[], type: FeedType) => {
             let count = 0;
+            const articlesToCache: { id: number; url: string }[] = [];
+            const articlesToEnrich: { id: number; url: string }[] = [];
+
             for (const article of articles) {
                 const normalized = normalizeArticle(article, type);
                 const insertResult = insertStmt.run(
@@ -70,21 +47,52 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
                     count++;
                     const articleId = Number(insertResult.lastInsertRowid);
                     if (normalized.thumbnail_url) {
-                        try {
-                            const cachedThumbnail = await cacheArticleThumbnail(articleId, normalized.thumbnail_url);
-                            if (cachedThumbnail) {
-                                updateThumbnailStmt.run(cachedThumbnail.fileName, cachedThumbnail.mime, articleId);
-                            }
-                        } catch (err) {
-                            console.error(`Failed to cache thumbnail for article ${articleId}:`, err);
-                        }
+                        articlesToCache.push({ id: articleId, url: normalized.thumbnail_url });
+                    }
+                    if (normalized.url) {
+                        articlesToEnrich.push({ id: articleId, url: normalized.url });
                     }
                 }
             }
-            return count;
+            return { count, articlesToCache, articlesToEnrich };
         });
 
-        newArticles = await refreshTransaction(feedData.articles, currentType);
+        const { count: insertedCount, articlesToCache, articlesToEnrich } = refreshTransaction(feedData.articles, currentType);
+        newArticles = insertedCount;
+
+        // Process thumbnail caching asynchronously
+        for (const item of articlesToCache) {
+             // ... existing thumbnail logic ...
+             try {
+                const cachedThumbnail = await cacheArticleThumbnail(item.id, item.url);
+                if (cachedThumbnail) {
+                    updateThumbnailStmt.run(cachedThumbnail.fileName, cachedThumbnail.mime, item.id);
+                }
+            } catch (err) {
+                console.error(`Failed to cache thumbnail for article ${ item.id }: `, err);
+            }
+        }
+        
+        // Fetch full content if enabled
+        if (shouldFetchContent && articlesToEnrich.length > 0) {
+            const updateContentStmt = database.prepare('UPDATE articles SET readability_content = ? WHERE id = ?');
+            
+            // Limit concurrency or count to avoid timeouts? 
+            // For now, process sequentially to be safe
+            for (const item of articlesToEnrich) {
+                // Short delay to be nice to servers?
+                // await new Promise(r => setTimeout(r, 500)); 
+                try {
+                    const { content } = await fetchAndExtractReadability(item.url);
+                    if (content) {
+                        updateContentStmt.run(content, item.id);
+                    }
+                } catch (err) {
+                    console.error(`Failed to fetch content for article ${ item.id }: `, err);
+                }
+            }
+        }
+
 
         // Update feed metadata on success
         // ...
@@ -110,23 +118,23 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
 
         run(
             `UPDATE feeds SET
-                title = CASE 
+        title = CASE 
                     WHEN title = url OR title = 'Direct Feed' OR title = 'Discovered Feed' THEN ?
-                    ELSE title 
-                END,
-                site_url = COALESCE(site_url, ?),
-                icon_url = COALESCE(?, icon_url),
-                icon_cached_path = COALESCE(?, icon_cached_path),
-                icon_cached_content_type = COALESCE(?, icon_cached_content_type),
-                description = COALESCE(description, ?),
-                last_fetched_at = datetime('now'),
-                next_fetch_at = datetime('now', '+' || refresh_interval_minutes || ' minutes'),
-                error_count = 0,
-                last_error = NULL,
-                last_error_at = NULL,
-                updated_at = datetime('now')
-                ${typeUpdate}
-             WHERE id = ?`,
+            ELSE title
+        END,
+            site_url = COALESCE(site_url, ?),
+            icon_url = COALESCE(?, icon_url),
+            icon_cached_path = COALESCE(?, icon_cached_path),
+            icon_cached_content_type = COALESCE(?, icon_cached_content_type),
+            description = COALESCE(description, ?),
+            last_fetched_at = datetime('now'),
+            next_fetch_at = datetime('now', '+' || refresh_interval_minutes || ' minutes'),
+            error_count = 0,
+            last_error = NULL,
+            last_error_at = NULL,
+            updated_at = datetime('now')
+                ${ typeUpdate }
+             WHERE id = ? `,
             params
         );
 
@@ -142,12 +150,12 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
         // Update feed with error information
         run(
             `UPDATE feeds SET
-                error_count = error_count + 1,
-                last_error = ?,
-                last_error_at = datetime('now'),
-                next_fetch_at = datetime('now', '+' || (refresh_interval_minutes * 2) || ' minutes'),
-                updated_at = datetime('now')
-             WHERE id = ?`,
+        error_count = error_count + 1,
+            last_error = ?,
+            last_error_at = datetime('now'),
+            next_fetch_at = datetime('now', '+' || (refresh_interval_minutes * 2) || ' minutes'),
+            updated_at = datetime('now')
+             WHERE id = ? `,
             [errorMessage, feed.id]
         );
 

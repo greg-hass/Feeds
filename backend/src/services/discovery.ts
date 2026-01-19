@@ -322,37 +322,56 @@ async function discoverYouTubeByKeyword(keyword: string, limit: number): Promise
     return discoveries;
 }
 
-export async function discoverByKeyword(keyword: string, limit: number = 10): Promise<DiscoveredFeed[]> {
-    const [redditDiscoveries, youtubeDiscoveries, aiSuggestions] = await Promise.all([
-        discoverRedditByKeyword(keyword, limit),
-        discoverYouTubeByKeyword(keyword, limit),
-        getAiSuggestedFeeds(keyword),
-    ]);
+export async function discoverByKeyword(keyword: string, limit: number = 10, type?: string): Promise<DiscoveredFeed[]> {
+    let redditDiscoveries: DiscoveredFeed[] = [];
+    let youtubeDiscoveries: DiscoveredFeed[] = [];
+    let aiSuggestionsList: import('./ai.js').AiSuggestedUrl[] = [];
 
-    const combined = [...redditDiscoveries, ...youtubeDiscoveries];
-
-    // Expand AI suggestions by trying to find actual feeds at those URLs
-    if (aiSuggestions.length > 0) {
-        const aiFeedsPromises = aiSuggestions.map(async (s) => {
-            try {
-                const feeds = await discoverFeedsFromUrl(s.url);
-                return feeds.map(f => ({
-                    ...f,
-                    title: f.title === 'RSS Feed' || f.title === 'Discovered Feed' ? s.title : f.title,
-                }));
-            } catch (err) {
-                console.error(`AI expansion failed for ${s.url}:`, err);
-                return [];
-            }
-        });
-
-        const aiFeeds = (await Promise.all(aiFeedsPromises)).flat();
-        combined.push(...aiFeeds);
+    // 1. Fetch from sources conditionally
+    if (!type || type === 'reddit') {
+        redditDiscoveries = await discoverRedditByKeyword(keyword, limit);
     }
 
-    // Deduplicate by feed_url
+    if (!type || type === 'youtube') {
+        youtubeDiscoveries = await discoverYouTubeByKeyword(keyword, limit);
+    }
+
+    // Always fetch AI suggestions as a fallback or broad search
+    // Note: Can we hint AI? The prompt in ai.ts is generic.
+    // For now, we fetch all and filter later to be safe, or just rely on post-fetch validation.
+    aiSuggestionsList = await getAiSuggestedFeeds(keyword);
+
+    // 2. Combine formatted results
+    let allDiscoveries: DiscoveredFeed[] = [...redditDiscoveries, ...youtubeDiscoveries];
+
+    // 3. Process AI suggestions (they need to be "discovered" to find the actual feed URL)
+    if (aiSuggestionsList.length > 0) {
+        const aiResults = await Promise.all(
+            aiSuggestionsList.map(async (suggestion) => {
+                try {
+                    const foundFeeds = await discoverFeedsFromUrl(suggestion.url);
+                    // Add AI title context if generic
+                    return foundFeeds.map(f => ({
+                        ...f,
+                        title: (f.title === 'RSS Feed' || f.title === 'Discovered Feed') ? suggestion.title : f.title
+                    }));
+                } catch (err) {
+                    return [];
+                }
+            })
+        );
+
+        allDiscoveries.push(...aiResults.flat());
+    }
+
+    // 4. Filter results by specific type if requested
+    if (type) {
+        allDiscoveries = allDiscoveries.filter(f => f.type === type);
+    }
+
+    // 5. Deduplicate by feed_url
     const seen = new Set<string>();
-    const unique = combined.filter(f => {
+    const unique = allDiscoveries.filter(f => {
         if (seen.has(f.feed_url)) return false;
         seen.add(f.feed_url);
         return true;

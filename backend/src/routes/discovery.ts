@@ -16,6 +16,7 @@ const urlDiscoverSchema = z.object({
 const keywordSchema = z.object({
     q: z.string().min(2),
     limit: z.coerce.number().min(1).max(20).default(10),
+    type: z.enum(['rss', 'youtube', 'reddit', 'podcast']).optional(),
 });
 
 export async function discoveryRoutes(app: FastifyInstance) {
@@ -107,7 +108,7 @@ export async function discoveryRoutes(app: FastifyInstance) {
             }
         }
 
-        const discoveries = await discoverByKeyword(q, query.limit);
+        const discoveries = await discoverByKeyword(q, query.limit, query.type);
         return { discoveries };
     });
 

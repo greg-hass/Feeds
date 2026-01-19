@@ -29,6 +29,7 @@ export default function ArticleContent({ html }: ArticleContentProps) {
     const fontFamily = settings?.font_family || 'sans';
     const readerTheme = settings?.reader_theme || 'default';
     const customLineHeight = settings?.reader_line_height;
+    const showImages = settings?.show_images ?? true;
 
     const sizes = fontSizes[fontSize];
     const fontStack = typography[fontFamily].family;
@@ -98,7 +99,7 @@ export default function ArticleContent({ html }: ArticleContentProps) {
             height: auto;
             border-radius: ${borderRadius.md}px;
             margin: 2.5em auto;
-            display: block;
+            display: ${showImages ? 'block' : 'none'};
         }
         
         blockquote {
