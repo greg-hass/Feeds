@@ -57,8 +57,8 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
 
             if (earliestTimestamp) {
                 const diff = earliestTimestamp - now;
-                if (diff <= 1000) {
-                    setTimeLeft('Live');
+                if (diff <= 0) {
+                    setTimeLeft('Refreshing');
                 } else if (diff < 60000) {
                     setTimeLeft(`${Math.floor(diff / 1000)}s`);
                 } else if (diff < 3600000) {
