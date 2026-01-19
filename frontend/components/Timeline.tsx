@@ -94,7 +94,20 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     const handleMarkAllRead = () => {
         Alert.alert('Mark All Read', 'Mark visible articles as read?', [
             { text: 'Cancel', style: 'cancel' },
-            { text: 'Mark Read', onPress: () => markAllRead('all') }
+            {
+                text: 'Mark Read',
+                onPress: () => {
+                    if (filter.feed_id) {
+                        markAllRead('feed', filter.feed_id);
+                    } else if (filter.folder_id) {
+                        markAllRead('folder', filter.folder_id);
+                    } else if (filter.type) {
+                        markAllRead('type', undefined, filter.type);
+                    } else {
+                        markAllRead('all');
+                    }
+                }
+            }
         ]);
     };
 
@@ -679,7 +692,7 @@ const styles = (colors: any, isMobile: boolean) => StyleSheet.create({
         borderRadius: borderRadius.lg,
         overflow: 'hidden',
         marginTop: spacing.md,
-        backgroundColor: '#000',
+        backgroundColor: colors.background.tertiary, // Changed from #000
     },
     videoThumbnailWrapper: {
         width: '100%',
@@ -688,7 +701,7 @@ const styles = (colors: any, isMobile: boolean) => StyleSheet.create({
     },
     webview: {
         flex: 1,
-        backgroundColor: '#000',
+        backgroundColor: colors.background.tertiary, // Changed from #000
     },
     playButtonOverlay: {
         position: 'absolute',
