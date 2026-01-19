@@ -82,7 +82,7 @@ const styles = (isDesktop: boolean, isReaderRoute: boolean, colors: any) => Styl
         }),
     },
     timelinePane: {
-        width: isDesktop ? 400 : '100%',
+        width: isDesktop ? '50%' : '100%',
         borderRightWidth: 1,
         borderRightColor: colors.border.DEFAULT,
         backgroundColor: colors.background.primary,

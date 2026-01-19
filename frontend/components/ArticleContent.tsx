@@ -65,7 +65,7 @@ export default function ArticleContent({ html }: ArticleContentProps) {
             font-family: ${fontStack};
             font-size: ${sizes.body}px;
             line-height: ${customLineHeight || sizes.lineHeight};
-            color: ${contentColors.text};
+            color: ${contentColors.text} !important;
             background-color: ${contentColors.bg};
             margin: 0;
             padding: ${isNative ? '20px' : '0'};
