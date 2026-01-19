@@ -60,6 +60,19 @@ export const DigestView = () => {
     return (
         <ScrollView style={s.container} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
             <View style={s.header}>
+                <TouchableOpacity
+                    onPress={generateDigest}
+                    disabled={isLoading}
+                    style={s.headerRefreshButton}
+                    accessibilityLabel="Regenerate digest"
+                >
+                    {isLoading ? (
+                        <ActivityIndicator size={20} color={colors.primary.DEFAULT} />
+                    ) : (
+                        <RefreshCw size={20} color={colors.text.tertiary} />
+                    )}
+                </TouchableOpacity>
+
                 <View style={s.headerBadge}>
                     <Sparkles size={12} color={colors.primary.DEFAULT} />
                     <Text style={s.badgeText}>AI INSIGHTS</Text>
@@ -138,6 +151,14 @@ const styles = (colors: any) => StyleSheet.create({
     header: {
         marginBottom: spacing.xxl,
         alignItems: 'center',
+        position: 'relative', // Enable absolute positioning for children
+    },
+    headerRefreshButton: {
+        position: 'absolute',
+        right: 0,
+        top: 0,
+        padding: spacing.sm,
+        zIndex: 10,
     },
     headerBadge: {
         flexDirection: 'row',

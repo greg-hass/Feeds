@@ -25,7 +25,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     const { width } = useWindowDimensions();
     const isMobile = width < 1024;
     const { articles, isLoading, hasMore, filter, scrollPosition, fetchArticles, setFilter, setScrollPosition, markAllRead, error, clearError, prefetchArticle } = useArticleStore();
-    const { feeds, folders, refreshAllFeeds } = useFeedStore();
+    const { feeds, folders, refreshAllFeeds, isLoading: isFeedLoading } = useFeedStore();
 
     const { currentArticleId: playingArticleId, isPlaying } = useAudioStore();
     const { activeVideoId, playVideo, setPlaying: setVideoPlaying } = useVideoStore(); // Destructure video store
@@ -326,7 +326,25 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                     {timeLeft && <View style={s.timerPill}><Text style={s.timerText}>{timeLeft}</Text></View>}
                 </View>
                 <View style={s.headerActions}>
-                    <TouchableOpacity onPress={handleMarkAllRead} style={s.iconButton}>
+                    <TouchableOpacity
+                        onPress={() => refreshAllFeeds()}
+                        style={s.iconButton}
+                        disabled={isFeedLoading}
+                        accessibilityLabel="Refresh feeds"
+                        accessibilityRole="button"
+                    >
+                        {isFeedLoading ? (
+                            <ActivityIndicator size={18} color={colors.primary.DEFAULT} />
+                        ) : (
+                            <RefreshCw size={20} color={colors.text.secondary} />
+                        )}
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={handleMarkAllRead}
+                        style={s.iconButton}
+                        accessibilityLabel="Mark all as read"
+                        accessibilityRole="button"
+                    >
                         <CircleCheck size={20} color={colors.text.secondary} />
                     </TouchableOpacity>
                 </View>
