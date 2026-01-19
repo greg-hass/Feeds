@@ -5,7 +5,7 @@ import { api, Article, ArticleDetail } from '@/services/api';
 import { applySyncChanges, SyncChanges } from '@/lib/sync';
 import { handleError } from '@/services/errorHandler';
 import { ArticleState } from './types';
-import { useFeedStore } from './feedStore';
+import { FeedState } from './types';
 
 export const useArticleStore = create<ArticleState>()(
     persist(
@@ -89,10 +89,29 @@ export const useArticleStore = create<ArticleState>()(
                 }
             },
 
+            contentCache: {},
+
             fetchArticle: async (id) => {
+                const state = get();
+
+                // Check cache first
+                if (state.contentCache[id]) {
+                    set({ currentArticle: state.contentCache[id] });
+                    // Still mark as read
+                    set((state) => ({
+                        articles: state.articles.map((a) =>
+                            a.id === id ? { ...a, is_read: true } : a
+                        ),
+                    }));
+                    return;
+                }
+
                 try {
                     const { article } = await api.getArticle(id);
-                    set({ currentArticle: article });
+                    set((state) => ({
+                        currentArticle: article,
+                        contentCache: { ...state.contentCache, [id]: article }
+                    }));
                 } catch (error) {
                     handleError(error, { context: 'fetchArticle', showToast: false });
                     // Try to find in existing articles list
@@ -106,6 +125,20 @@ export const useArticleStore = create<ArticleState>()(
                         a.id === id ? { ...a, is_read: true } : a
                     ),
                 }));
+            },
+
+            prefetchArticle: async (id) => {
+                const state = get();
+                if (state.contentCache[id]) return; // Already cached
+
+                try {
+                    const { article } = await api.getArticle(id);
+                    set((state) => ({
+                        contentCache: { ...state.contentCache, [id]: article }
+                    }));
+                } catch (e) {
+                    // Silent fail for prefetch
+                }
             },
 
             markRead: async (id) => {
@@ -133,6 +166,8 @@ export const useArticleStore = create<ArticleState>()(
             markAllRead: async (scope, scopeId, type) => {
                 await api.markArticlesRead({ scope, scope_id: scopeId, type });
                 get().fetchArticles(true);
+                // Dynamic import to avoid circular dependency
+                const { useFeedStore } = require('./feedStore');
                 useFeedStore.getState().fetchFolders();
                 useFeedStore.getState().fetchFeeds();
             },
@@ -212,6 +247,7 @@ export const useArticleStore = create<ArticleState>()(
                 cursor: state.cursor,
                 filter: state.filter,
                 bookmarkedArticles: state.bookmarkedArticles // Cache bookmarks too
+                // contentCache is deliberately excluded to keep storage light and fresh
             }),
         }
     )

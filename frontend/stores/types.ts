@@ -24,6 +24,7 @@ export interface ArticleState {
     articles: Article[];
     bookmarkedArticles: Article[];
     currentArticle: ArticleDetail | null;
+    contentCache: Record<number, ArticleDetail>;
     cursor: string | null;
     hasMore: boolean;
     isLoading: boolean;
@@ -41,6 +42,7 @@ export interface ArticleState {
     fetchArticles: (reset?: boolean) => Promise<void>;
     fetchBookmarks: () => Promise<void>;
     fetchArticle: (id: number) => Promise<void>;
+    prefetchArticle: (id: number) => Promise<void>;
     markRead: (id: number) => Promise<void>;
     markUnread: (id: number) => Promise<void>;
     markAllRead: (scope: 'feed' | 'folder' | 'type' | 'all', scopeId?: number, type?: string) => Promise<void>;

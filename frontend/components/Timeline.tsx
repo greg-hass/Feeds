@@ -23,7 +23,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     const colors = useColors();
     const { width } = useWindowDimensions();
     const isMobile = width < 1024;
-    const { articles, isLoading, hasMore, filter, scrollPosition, fetchArticles, setFilter, setScrollPosition, markAllRead, error, clearError } = useArticleStore();
+    const { articles, isLoading, hasMore, filter, scrollPosition, fetchArticles, setFilter, setScrollPosition, markAllRead, error, clearError, prefetchArticle } = useArticleStore();
     const { feeds, folders, refreshAllFeeds } = useFeedStore();
     const { currentArticleId: playingArticleId, isPlaying } = useAudioStore();
     const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -334,6 +334,24 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                     onEndReachedThreshold={0.5}
                     refreshControl={<RefreshControl refreshing={isLoading && articles.length === 0} onRefresh={refreshAllFeeds} tintColor={colors.primary.DEFAULT} />}
                     ListFooterComponent={isLoading ? <ActivityIndicator style={s.loader} color={colors.primary.DEFAULT} /> : null}
+                    // Prefetching strategy
+                    onViewableItemsChanged={useRef(({ viewableItems }: any) => {
+                        if (viewableItems.length > 0) {
+                            const lastIndex = viewableItems[viewableItems.length - 1].index;
+                            // Prefetch next 3 items
+                            if (articles && articles.length > lastIndex + 1) {
+                                const nextArticles = articles.slice(lastIndex + 1, lastIndex + 4);
+                                nextArticles.forEach(a => prefetchArticle(a.id));
+                            }
+                        }
+                    }).current}
+                    viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
+                    scrollEventThrottle={16}
+                    onScroll={(e) => {
+                        if (!hasRestoredScroll.current) {
+                            hasRestoredScroll.current = true;
+                        }
+                    }}
                 />
             )}
         </View>
