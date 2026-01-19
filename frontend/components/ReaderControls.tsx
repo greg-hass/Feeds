@@ -17,16 +17,11 @@ export const ReaderControls = () => {
         setIsExpanded(!isExpanded);
     };
 
-    const currentFontFamily = settings.font_family || 'sans';
     const currentFontSize = settings.font_size || 'medium';
     const currentReaderTheme = settings.reader_theme || 'default';
 
     const setFontSize = (size: 'small' | 'medium' | 'large') => {
         updateSettings({ font_size: size });
-    };
-
-    const setFontFamily = (family: 'sans' | 'serif') => {
-        updateSettings({ font_family: family });
     };
 
     const setTheme = (theme: 'default' | 'sepia' | 'paper' | 'dark') => {
@@ -41,24 +36,6 @@ export const ReaderControls = () => {
             <View style={[s.pill, isExpanded && s.pillExpanded]}>
                 {isExpanded ? (
                     <View style={s.expandedContent}>
-                        {/* Font Family */}
-                        <View style={s.section}>
-                            <TouchableOpacity
-                                style={[s.option, currentFontFamily === 'sans' && s.optionActive]}
-                                onPress={() => setFontFamily('sans')}
-                            >
-                                <Text style={[s.optionText, { fontFamily: 'sans-serif' }]}>Sans</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[s.option, currentFontFamily === 'serif' && s.optionActive]}
-                                onPress={() => setFontFamily('serif')}
-                            >
-                                <Text style={[s.optionText, { fontFamily: 'serif' }]}>Serif</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        <View style={s.divider} />
-
                         {/* Font Size */}
                         <View style={s.section}>
                             <TouchableOpacity onPress={() => setFontSize('small')} style={[s.iconButton, currentFontSize === 'small' && s.iconButtonActive]}>
@@ -94,7 +71,7 @@ export const ReaderControls = () => {
                 ) : (
                     <TouchableOpacity style={s.collapsedTrigger} onPress={toggleExpanded}>
                         <Type size={20} color={colors.text.primary} />
-                        <Text style={s.triggerText}>Appearance</Text>
+                        <Text style={s.triggerText}>Text Size</Text>
                     </TouchableOpacity>
                 )}
             </View>
@@ -149,22 +126,6 @@ const styles = (colors: any) => StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         gap: spacing.lg,
-    },
-    option: {
-        paddingHorizontal: spacing.xl,
-        paddingVertical: spacing.sm,
-        borderRadius: borderRadius.md,
-        borderWidth: 1,
-        borderColor: colors.border.DEFAULT,
-    },
-    optionActive: {
-        borderColor: colors.primary.DEFAULT,
-        backgroundColor: colors.primary.DEFAULT + '11',
-    },
-    optionText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: colors.text.primary,
     },
     divider: {
         height: 1,

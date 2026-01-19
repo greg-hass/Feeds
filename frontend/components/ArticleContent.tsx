@@ -26,13 +26,13 @@ export default function ArticleContent({ html }: ArticleContentProps) {
     const { width } = useWindowDimensions();
 
     const fontSize = settings?.font_size || 'medium';
-    const fontFamily = settings?.font_family || 'sans';
     const readerTheme = settings?.reader_theme || 'default';
     const customLineHeight = settings?.reader_line_height;
     const showImages = settings?.show_images ?? true;
 
     const sizes = fontSizes[fontSize];
-    const fontStack = typography[fontFamily].family;
+    // Use default app font (sans-serif system font)
+    const fontStack = typography.sans.family;
 
     // Theme colors for the reader content
     let contentColors = {
@@ -161,7 +161,7 @@ export default function ArticleContent({ html }: ArticleContentProps) {
                 });
             }
         });
-    }, [html, settings, fontSize, fontFamily, readerTheme, customLineHeight]);
+    }, [html, settings, fontSize, readerTheme, customLineHeight]);
 
     const renderWebContent = () => (
         <View style={componentStyles.container}>
