@@ -1,6 +1,7 @@
-import React from 'react';
-import { View, Text, StyleSheet, Modal, ActivityIndicator } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Animated, useWindowDimensions, Platform, ActivityIndicator } from 'react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
+import { RefreshCw } from 'lucide-react-native';
 
 interface RefreshProgressDialogProps {
     visible: boolean;
@@ -11,90 +12,165 @@ interface RefreshProgressDialogProps {
 
 export function RefreshProgressDialog({ visible, total, completed, currentTitle }: RefreshProgressDialogProps) {
     const colors = useColors();
+    const { width } = useWindowDimensions();
+    const isDesktop = width >= 1024;
+
+    // Animation
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const slideAnim = useRef(new Animated.Value(20)).current;
+
     const progress = total > 0 ? completed / total : 0;
     const percentage = Math.round(progress * 100);
 
-    if (!visible) return null;
+    useEffect(() => {
+        if (visible) {
+            Animated.parallel([
+                Animated.timing(fadeAnim, {
+                    toValue: 1,
+                    duration: 400,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(slideAnim, {
+                    toValue: 0,
+                    duration: 400,
+                    useNativeDriver: true,
+                })
+            ]).start();
+        } else {
+            Animated.parallel([
+                Animated.timing(fadeAnim, {
+                    toValue: 0,
+                    duration: 300,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(slideAnim, {
+                    toValue: 20,
+                    duration: 300,
+                    useNativeDriver: true,
+                })
+            ]).start();
+        }
+    }, [visible]);
+
+    if (!visible && fadeAnim._value === 0) return null;
+
+    const s = styles(colors, isDesktop);
 
     return (
-        <Modal transparent visible={visible} animationType="fade">
-            <View style={styles.overlay}>
-                <View style={[styles.container, { backgroundColor: colors.background.elevated }]}>
-                    <Text style={[styles.title, { color: colors.text.primary }]}>Refreshing Feeds</Text>
-
-                    <View style={styles.progressContainer}>
-                        <View style={[styles.progressBar, { backgroundColor: colors.background.tertiary }]}>
-                            <View
-                                style={[
-                                    styles.progressFill,
-                                    { backgroundColor: colors.primary.DEFAULT, width: `${percentage}%` }
-                                ]}
-                            />
-                        </View>
-                        <Text style={[styles.progressText, { color: colors.text.secondary }]}>
-                            {completed} of {total} ({percentage}%)
-                        </Text>
+        <Animated.View
+            style={[
+                s.floatingContainer,
+                {
+                    opacity: fadeAnim,
+                    transform: [{ translateY: slideAnim }]
+                }
+            ]}
+        >
+            <View style={s.content}>
+                <View style={s.header}>
+                    <View style={s.titleRow}>
+                        <RefreshCw size={14} color={colors.primary.DEFAULT} style={s.spinIcon} />
+                        <Text style={s.title}>Refreshing Feeds</Text>
                     </View>
-
-                    {currentTitle ? (
-                        <Text style={[styles.currentFeed, { color: colors.text.tertiary }]} numberOfLines={1}>
-                            Currently: {currentTitle}
-                        </Text>
-                    ) : null}
-
-                    <ActivityIndicator size="small" color={colors.primary.DEFAULT} style={{ marginTop: spacing.md }} />
+                    <Text style={s.countText}>{completed} / {total}</Text>
                 </View>
+
+                <View style={s.progressBarContainer}>
+                    <View style={s.progressBar}>
+                        <View style={[s.progressFill, { width: `${percentage}%` }]} />
+                    </View>
+                </View>
+
+                {currentTitle ? (
+                    <Text style={s.currentFeed} numberOfLines={1}>
+                        {currentTitle}
+                    </Text>
+                ) : null}
             </View>
-        </Modal>
+        </Animated.View>
     );
 }
 
-const styles = StyleSheet.create({
-    overlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: spacing.xl,
-    },
-    container: {
-        width: '100%',
-        maxWidth: 400,
-        padding: spacing.xl,
+const styles = (colors: any, isDesktop: boolean) => StyleSheet.create({
+    floatingContainer: {
+        position: 'absolute',
+        zIndex: 9999,
+        // Responsive positioning
+        bottom: isDesktop ? 40 : 100, // Above nav on mobile
+        right: isDesktop ? 40 : spacing.lg,
+        left: isDesktop ? undefined : spacing.lg,
+        // Sizing
+        width: isDesktop ? 320 : 'auto',
+        // Aesthetics
+        backgroundColor: colors.background.elevated,
         borderRadius: borderRadius.lg,
+        borderWidth: 1,
+        borderColor: colors.border.DEFAULT,
+        // Solid depth shadow
+        ...Platform.select({
+            web: {
+                boxShadow: '0 8px 30px rgba(0,0,0,0.15)',
+            },
+            default: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: 0.2,
+                shadowRadius: 16,
+                elevation: 10,
+            }
+        }),
+    },
+    content: {
+        padding: spacing.md,
+    },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 10,
-        elevation: 10,
+        marginBottom: spacing.sm,
+    },
+    titleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
     },
     title: {
-        fontSize: 18,
-        fontWeight: '700',
-        marginBottom: spacing.lg,
+        fontSize: 13,
+        fontWeight: '800',
+        color: colors.text.primary,
+        letterSpacing: -0.2,
     },
-    progressContainer: {
+    countText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: colors.primary.DEFAULT,
+        backgroundColor: colors.primary.DEFAULT + '15',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+    },
+    progressBarContainer: {
+        height: 4,
         width: '100%',
-        marginBottom: spacing.md,
+        backgroundColor: colors.background.tertiary,
+        borderRadius: 2,
+        overflow: 'hidden',
+        marginBottom: spacing.xs,
     },
     progressBar: {
-        height: 8,
-        borderRadius: 4,
-        overflow: 'hidden',
-        marginBottom: spacing.sm,
+        flex: 1,
     },
     progressFill: {
         height: '100%',
-    },
-    progressText: {
-        fontSize: 12,
-        textAlign: 'center',
-        fontWeight: '600',
+        backgroundColor: colors.primary.DEFAULT,
     },
     currentFeed: {
-        fontSize: 13,
-        fontStyle: 'italic',
-        marginTop: spacing.sm,
+        fontSize: 11,
+        color: colors.text.tertiary,
+        fontWeight: '500',
     },
+    spinIcon: {
+        // We can't easily rotate with CSS properties in react-native styles without extra logic, 
+        // but the ActivityIndicator is a fallback if needed.
+    }
 });

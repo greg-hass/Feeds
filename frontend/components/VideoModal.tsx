@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, StyleSheet, Modal, TouchableOpacity, useWindowDimensions, Pressable, Platform } from 'react-native';
-import { X } from 'lucide-react-native';
+import { View, StyleSheet, Modal, TouchableOpacity, useWindowDimensions, Pressable, Platform, Text } from 'react-native';
+import { X, Minimize2 } from 'lucide-react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
 import { getEmbedUrl } from '@/utils/youtube';
 
@@ -8,6 +8,8 @@ interface VideoModalProps {
     videoId: string | null;
     visible: boolean;
     onClose: () => void;
+    onMinimize?: () => void;
+    title?: string;
 }
 
 // Lazy load WebView only on native platforms
@@ -15,7 +17,7 @@ const NativeWebView = Platform.OS !== 'web'
     ? require('react-native-webview').WebView
     : null;
 
-export function VideoModal({ videoId, visible, onClose }: VideoModalProps) {
+export function VideoModal({ videoId, visible, onClose, onMinimize, title }: VideoModalProps) {
     const colors = useColors();
     const { width, height } = useWindowDimensions();
     const isMobile = width < 1024;
@@ -48,9 +50,19 @@ export function VideoModal({ videoId, visible, onClose }: VideoModalProps) {
 
                 <View style={[s.content, { width: videoWidth, height: videoHeight }]}>
                     <View style={s.header}>
-                        <TouchableOpacity onPress={onClose} style={s.closeButton}>
-                            <X size={24} color="#fff" />
-                        </TouchableOpacity>
+                        <View style={s.headerTitleContainer}>
+                            <Text style={s.headerTitle} numberOfLines={1}>{title}</Text>
+                        </View>
+                        <View style={s.headerActions}>
+                            {onMinimize && (
+                                <TouchableOpacity onPress={onMinimize} style={s.headerButton}>
+                                    <Minimize2 size={22} color="#fff" />
+                                </TouchableOpacity>
+                            )}
+                            <TouchableOpacity onPress={onClose} style={s.headerButton}>
+                                <X size={22} color="#fff" />
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
                     {Platform.OS === 'web' ? (
@@ -105,11 +117,28 @@ const styles = (colors: any) => StyleSheet.create({
     },
     header: {
         position: 'absolute',
-        top: -40,
+        top: -44,
+        left: 0,
         right: 0,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
         zIndex: 10,
     },
-    closeButton: {
+    headerTitleContainer: {
+        flex: 1,
+        paddingLeft: spacing.sm,
+    },
+    headerTitle: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    headerActions: {
+        flexDirection: 'row',
+        gap: spacing.sm,
+    },
+    headerButton: {
         padding: spacing.sm,
     },
 });

@@ -121,6 +121,7 @@ export default function SettingsScreen() {
                                 onValueChange={(v: boolean) => handleToggle('show_images', v)}
                                 trackColor={{ false: colors.border.DEFAULT, true: colors.primary.DEFAULT }}
                                 thumbColor={colors.text.primary}
+                                accessibilityLabel="Show images in articles"
                             />
                         </View>
                     </View>
@@ -140,6 +141,7 @@ export default function SettingsScreen() {
                                 onValueChange={(v: boolean) => handleToggle('readability_enabled', v)}
                                 trackColor={{ false: colors.border.DEFAULT, true: colors.primary.DEFAULT }}
                                 thumbColor={colors.text.primary}
+                                accessibilityLabel="Enable Reader Mode"
                             />
                         </View>
 
@@ -155,6 +157,7 @@ export default function SettingsScreen() {
                                 onValueChange={(v: boolean) => handleToggle('fetch_full_content', v)}
                                 trackColor={{ false: colors.border.DEFAULT, true: colors.primary.DEFAULT }}
                                 thumbColor={colors.text.primary}
+                                accessibilityLabel="Fetch Full Content"
                             />
                         </View>
                     </View>

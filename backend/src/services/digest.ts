@@ -48,11 +48,16 @@ export async function generateDailyDigest(userId: number = 1): Promise<boolean> 
         if (unreadArticles.length === 0) return false;
 
         // 3. Prepare prompt
+        const sanitize = (text: string | null | undefined, length: number) => {
+            if (!text) return '';
+            return text.replace(/[\n\r]/g, ' ').substring(0, length).trim();
+        };
+
         const articleData = unreadArticles.map(a => ({
-            title: a.title,
-            source: a.feed_title,
+            title: sanitize(a.title, 100),
+            source: sanitize(a.feed_title, 50),
             type: a.feed_type,
-            summary: a.summary?.substring(0, 200) || '',
+            summary: sanitize(a.summary, 200),
             url: a.url
         }));
 

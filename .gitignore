@@ -44,3 +44,11 @@ coverage/
 
 # Worktrees
 .worktrees/
+
+# Agent
+.agent/
+.claude/
+task-*.md
+READER_VIEW_AND_IMAGES.md
+FIX_PLAN.md
+TESTFILE

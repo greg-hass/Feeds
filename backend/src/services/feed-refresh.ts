@@ -42,35 +42,49 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
             currentType = detectFeedType(feed.url, feedData);
         }
 
-        for (const article of feedData.articles) {
-            const normalized = normalizeArticle(article, currentType);
-            const insertResult = run(insertArticle, [
-                feed.id,
-                normalized.guid,
-                normalized.title,
-                normalized.url,
-                normalized.author,
-                normalized.summary,
-                normalized.content,
-                normalized.enclosure_url,
-                normalized.enclosure_type,
-                normalized.thumbnail_url,
-                normalized.published_at,
-            ]);
-            if (insertResult.changes > 0) {
-                newArticles++;
-                const articleId = Number(insertResult.lastInsertRowid);
-                if (normalized.thumbnail_url) {
-                    const cachedThumbnail = await cacheArticleThumbnail(articleId, normalized.thumbnail_url);
-                    if (cachedThumbnail) {
-                        run(
-                            `UPDATE articles SET thumbnail_cached_path = ?, thumbnail_cached_content_type = ? WHERE id = ?`,
-                            [cachedThumbnail.fileName, cachedThumbnail.mime, articleId]
-                        );
+        const database = (await import('../db/index.js')).db();
+        const insertStmt = database.prepare(insertArticle);
+        const updateThumbnailStmt = database.prepare(
+            `UPDATE articles SET thumbnail_cached_path = ?, thumbnail_cached_content_type = ? WHERE id = ?`
+        );
+
+        const refreshTransaction = database.transaction(async (articles: any[], type: FeedType) => {
+            let count = 0;
+            for (const article of articles) {
+                const normalized = normalizeArticle(article, type);
+                const insertResult = insertStmt.run(
+                    feed.id,
+                    normalized.guid,
+                    normalized.title,
+                    normalized.url,
+                    normalized.author,
+                    normalized.summary,
+                    normalized.content,
+                    normalized.enclosure_url,
+                    normalized.enclosure_type,
+                    normalized.thumbnail_url,
+                    normalized.published_at
+                );
+
+                if (insertResult.changes > 0) {
+                    count++;
+                    const articleId = Number(insertResult.lastInsertRowid);
+                    if (normalized.thumbnail_url) {
+                        try {
+                            const cachedThumbnail = await cacheArticleThumbnail(articleId, normalized.thumbnail_url);
+                            if (cachedThumbnail) {
+                                updateThumbnailStmt.run(cachedThumbnail.fileName, cachedThumbnail.mime, articleId);
+                            }
+                        } catch (err) {
+                            console.error(`Failed to cache thumbnail for article ${articleId}:`, err);
+                        }
                     }
                 }
             }
-        }
+            return count;
+        });
+
+        newArticles = await refreshTransaction(feedData.articles, currentType);
 
         // Update feed metadata on success
         // ...

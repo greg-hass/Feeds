@@ -1,12 +1,12 @@
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, ActivityIndicator, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useFeedStore, useArticleStore, useToastStore } from '@/stores';
+import { useFeedStore, useArticleStore } from '@/stores';
 import {
     Rss, Youtube, MessageSquare, Headphones,
     Folder, Search, Settings,
     Plus, RefreshCw, Bookmark, Sparkles, BookOpen
 } from 'lucide-react-native';
-import { colors, borderRadius, spacing } from '@/theme';
+import { useColors, borderRadius, spacing } from '@/theme';
 
 const FEED_TYPE_ICONS: Record<string, React.ComponentType<any>> = {
     rss: Rss,
@@ -17,8 +17,11 @@ const FEED_TYPE_ICONS: Record<string, React.ComponentType<any>> = {
 
 export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     const router = useRouter();
+    const colors = useColors();
     const { feeds, folders, smartFolders, totalUnread, fetchFeeds, fetchFolders, isLoading } = useFeedStore();
-    const { setFilter } = useArticleStore();
+    const { filter, setFilter } = useArticleStore();
+
+    const s = styles(colors);
 
     const handleSmartFolderPress = (type: string) => {
         setFilter({ type, feed_id: undefined, folder_id: undefined });
@@ -45,20 +48,26 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     };
 
     const handleRefresh = async () => {
-        // fetchFeeds/fetchFolders handle their own errors silently
-        // Don't show toast since we don't know if they actually succeeded
         await Promise.all([fetchFeeds(), fetchFolders()]);
     };
 
+    const isAllActive = !filter.feed_id && !filter.folder_id && !filter.type;
+
     return (
-        <View style={styles.container}>
+        <View style={s.container}>
             {/* Header */}
-            <View style={styles.header}>
-                <View style={styles.logoRow}>
+            <View style={s.header}>
+                <View style={s.logoRow}>
                     <Rss size={24} color={colors.primary.DEFAULT} />
-                    <Text style={styles.logoText}>Feeds</Text>
+                    <Text style={s.logoText}>Feeds</Text>
                 </View>
-                <TouchableOpacity onPress={handleRefresh} style={styles.iconButton} disabled={isLoading}>
+                <TouchableOpacity
+                    onPress={handleRefresh}
+                    style={s.iconButton}
+                    disabled={isLoading}
+                    accessibilityLabel="Refresh feeds"
+                    accessibilityRole="button"
+                >
                     {isLoading ? (
                         <ActivityIndicator size={18} color={colors.primary.DEFAULT} />
                     ) : (
@@ -68,64 +77,86 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             </View>
 
             {/* Search */}
-            <TouchableOpacity style={styles.searchBar} onPress={() => { onNavigate?.(); router.push('/(app)/search'); }}>
+            <TouchableOpacity
+                style={s.searchBar}
+                onPress={() => { onNavigate?.(); router.push('/(app)/search'); }}
+                accessibilityLabel="Search articles"
+                accessibilityRole="search"
+            >
                 <Search size={18} color={colors.text.tertiary} />
-                <Text style={styles.searchText}>Search...</Text>
+                <Text style={s.searchText}>Search...</Text>
             </TouchableOpacity>
 
-            <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+            <ScrollView style={s.scrollView} showsVerticalScrollIndicator={false}>
                 {/* All */}
-                <TouchableOpacity style={styles.navItem} onPress={handleAllPress}>
-                    <Rss size={18} color={colors.primary.DEFAULT} />
-                    <Text style={styles.navItemText}>All Articles</Text>
+                <TouchableOpacity
+                    style={[s.navItem, isAllActive && s.navItemActive]}
+                    onPress={handleAllPress}
+                    accessibilityLabel="View all articles"
+                    accessibilityRole="link"
+                >
+                    <Rss size={18} color={isAllActive ? colors.text.inverse : colors.primary.DEFAULT} />
+                    <Text style={[s.navItemText, isAllActive && s.navItemTextActive]}>All Articles</Text>
                     {totalUnread > 0 && (
-                        <View style={styles.badge}>
-                            <Text style={styles.badgeText}>{totalUnread}</Text>
+                        <View style={[s.badge, isAllActive && s.badgeActive]}>
+                            <Text style={[s.badgeText, isAllActive && s.badgeTextActive]}>{totalUnread}</Text>
                         </View>
                     )}
                 </TouchableOpacity>
 
                 {/* Bookmarks */}
-                <TouchableOpacity style={styles.navItem} onPress={() => { onNavigate?.(); router.push('/(app)/bookmarks'); }}>
+                <TouchableOpacity
+                    style={s.navItem}
+                    onPress={() => { onNavigate?.(); router.push('/(app)/bookmarks'); }}
+                    accessibilityLabel="View bookmarks"
+                    accessibilityRole="link"
+                >
                     <Bookmark size={18} color={colors.primary.DEFAULT} />
-                    <Text style={styles.navItemText}>Bookmarks</Text>
+                    <Text style={s.navItemText}>Bookmarks</Text>
                 </TouchableOpacity>
 
                 {/* AI Discovery */}
-                <TouchableOpacity style={styles.navItem} onPress={() => { onNavigate?.(); router.push('/(app)/discovery'); }}>
+                <TouchableOpacity
+                    style={s.navItem}
+                    onPress={() => { onNavigate?.(); router.push('/(app)/discovery'); }}
+                    accessibilityLabel="Explore new feeds"
+                    accessibilityRole="link"
+                >
                     <Sparkles size={18} color={colors.warning} />
-                    <Text style={styles.navItemText}>Discovery</Text>
+                    <Text style={s.navItemText}>Discovery</Text>
                 </TouchableOpacity>
 
                 {/* Daily Digest */}
-                <TouchableOpacity style={styles.navItem} onPress={() => { onNavigate?.(); router.push('/(app)/digest'); }}>
+                <TouchableOpacity
+                    style={s.navItem}
+                    onPress={() => { onNavigate?.(); router.push('/(app)/digest'); }}
+                    accessibilityLabel="View daily digest"
+                    accessibilityRole="link"
+                >
                     <BookOpen size={18} color={colors.secondary.DEFAULT} />
-                    <Text style={styles.navItemText}>Daily Digest</Text>
-                </TouchableOpacity>
-
-                {/* Subscriptions */}
-                {/* Manage Feeds */}
-                <TouchableOpacity style={styles.navItem} onPress={() => { onNavigate?.(); router.push('/(app)/manage'); }}>
-                    <Settings size={18} color={colors.text.secondary} />
-                    <Text style={styles.navItemText}>Manage Feeds</Text>
+                    <Text style={s.navItemText}>Daily Digest</Text>
                 </TouchableOpacity>
 
                 {/* Smart Folders */}
-                <Text style={styles.sectionTitle}>By Type</Text>
+                <Text style={s.sectionTitle}>By Type</Text>
                 {smartFolders.map((sf) => {
                     const Icon = FEED_TYPE_ICONS[sf.type] || Rss;
-                    const iconColor = sf.type === 'podcast' ? colors.secondary.DEFAULT : colors.text.secondary;
+                    const isActive = filter.type === sf.type;
+                    const iconColor = sf.type === 'podcast' ? colors.secondary.DEFAULT : (isActive ? colors.text.inverse : colors.text.secondary);
+
                     return (
                         <TouchableOpacity
                             key={sf.type}
-                            style={styles.navItem}
+                            style={[s.navItem, isActive && s.navItemActive]}
                             onPress={() => handleSmartFolderPress(sf.type)}
+                            accessibilityLabel={`View ${sf.name}`}
+                            accessibilityRole="link"
                         >
-                            <Icon size={18} color={iconColor} />
-                            <Text style={styles.navItemText}>{sf.name}</Text>
+                            <Icon size={18} color={isActive ? colors.text.inverse : iconColor} />
+                            <Text style={[s.navItemText, isActive && s.navItemTextActive]}>{sf.name}</Text>
                             {sf.unread_count > 0 && (
-                                <View style={styles.badge}>
-                                    <Text style={styles.badgeText}>{sf.unread_count}</Text>
+                                <View style={[s.badge, isActive && s.badgeActive]}>
+                                    <Text style={[s.badgeText, isActive && s.badgeTextActive]}>{sf.unread_count}</Text>
                                 </View>
                             )}
                         </TouchableOpacity>
@@ -135,46 +166,56 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 {/* User Folders */}
                 {folders.length > 0 && (
                     <>
-                        <Text style={styles.sectionTitle}>Folders</Text>
-                        {folders.map((folder) => (
-                            <TouchableOpacity
-                                key={folder.id}
-                                style={styles.navItem}
-                                onPress={() => handleFolderPress(folder.id)}
-                            >
-                                <Folder size={18} color={colors.secondary.DEFAULT} />
-                                <Text style={styles.navItemText}>{folder.name}</Text>
-                                {folder.unread_count > 0 && (
-                                    <View style={styles.badge}>
-                                        <Text style={styles.badgeText}>{folder.unread_count}</Text>
-                                    </View>
-                                )}
-                            </TouchableOpacity>
-                        ))}
+                        <Text style={s.sectionTitle}>Folders</Text>
+                        {folders.map((folder) => {
+                            const isActive = filter.folder_id === folder.id;
+                            return (
+                                <TouchableOpacity
+                                    key={folder.id}
+                                    style={[s.navItem, isActive && s.navItemActive]}
+                                    onPress={() => handleFolderPress(folder.id)}
+                                    accessibilityLabel={`View folder ${folder.name}`}
+                                    accessibilityRole="link"
+                                >
+                                    <Folder size={18} color={isActive ? colors.text.inverse : colors.secondary.DEFAULT} />
+                                    <Text style={[s.navItemText, isActive && s.navItemTextActive]}>{folder.name}</Text>
+                                    {folder.unread_count > 0 && (
+                                        <View style={[s.badge, isActive && s.badgeActive]}>
+                                            <Text style={[s.badgeText, isActive && s.badgeTextActive]}>{folder.unread_count}</Text>
+                                        </View>
+                                    )}
+                                </TouchableOpacity>
+                            );
+                        })}
                     </>
                 )}
 
                 {/* Feeds without folder */}
-                <Text style={styles.sectionTitle}>Feeds</Text>
+                <Text style={s.sectionTitle}>Feeds</Text>
                 {feeds
                     .filter((f) => !f.folder_id)
                     .map((feed) => {
                         const Icon = FEED_TYPE_ICONS[feed.type] || Rss;
+                        const isActive = filter.feed_id === feed.id;
                         return (
                             <TouchableOpacity
                                 key={feed.id}
-                                style={styles.navItem}
+                                style={[s.navItem, isActive && s.navItemActive]}
                                 onPress={() => handleFeedPress(feed.id)}
+                                accessibilityLabel={`View feed ${feed.title}`}
+                                accessibilityRole="link"
                             >
                                 {feed.icon_url ? (
-                                    <Image source={{ uri: feed.icon_url }} style={styles.feedIcon} />
+                                    <View style={s.feedIconWrapper}>
+                                        <Image source={{ uri: feed.icon_url }} style={s.feedIcon} />
+                                    </View>
                                 ) : (
-                                    <Icon size={18} color={colors.text.tertiary} />
+                                    <Icon size={18} color={isActive ? colors.text.inverse : colors.text.tertiary} />
                                 )}
-                                <Text style={styles.navItemText} numberOfLines={1}>{feed.title}</Text>
+                                <Text style={[s.navItemText, isActive && s.navItemTextActive]} numberOfLines={1}>{feed.title}</Text>
                                 {feed.unread_count > 0 && (
-                                    <View style={styles.badge}>
-                                        <Text style={styles.badgeText}>{feed.unread_count}</Text>
+                                    <View style={[s.badge, isActive && s.badgeActive]}>
+                                        <Text style={[s.badgeText, isActive && s.badgeTextActive]}>{feed.unread_count}</Text>
                                     </View>
                                 )}
                             </TouchableOpacity>
@@ -183,37 +224,52 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             </ScrollView>
 
             {/* Footer */}
-            <View style={styles.footer}>
-                <TouchableOpacity style={styles.footerButton} onPress={() => { onNavigate?.(); router.push('/(app)/manage'); }}>
+            <View style={s.footer}>
+                <TouchableOpacity
+                    style={s.footerButton}
+                    onPress={() => { onNavigate?.(); router.push('/(app)/manage'); }}
+                    accessibilityLabel="Add new feed"
+                    accessibilityRole="button"
+                >
                     <Plus size={18} color={colors.primary.DEFAULT} />
-                    <Text style={styles.footerButtonText}>Add Feed</Text>
+                    <Text style={s.footerButtonText}>Add Feed</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.footerButton} onPress={() => { onNavigate?.(); router.push('/(app)/settings'); }}>
+                <TouchableOpacity
+                    style={[s.footerButton, { backgroundColor: 'transparent' }]}
+                    onPress={() => { onNavigate?.(); router.push('/(app)/settings'); }}
+                    accessibilityLabel="App settings"
+                    accessibilityRole="button"
+                >
                     <Settings size={18} color={colors.text.secondary} />
-                    <Text style={styles.footerButtonText}>Settings</Text>
                 </TouchableOpacity>
             </View>
         </View>
     );
 }
 
-const styles = StyleSheet.create({
+const styles = (colors: any) => StyleSheet.create({
     container: {
-        width: 280, // Fixed width for desktop sidebar
+        width: 280,
         minWidth: 280,
         maxWidth: 280,
         height: '100%',
-        backgroundColor: colors.background.elevated,
+        backgroundColor: colors.background.primary,
         borderRightWidth: 1,
         borderRightColor: colors.border.DEFAULT,
+        // Premium elevation for desktop
+        ...Platform.select({
+            web: {
+                boxShadow: '4px 0 16px rgba(0, 0, 0, 0.05)',
+            },
+        }),
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: spacing.lg,
-        paddingTop: 20,
+        paddingTop: Platform.OS === 'ios' ? 60 : 20,
     },
     logoRow: {
         flexDirection: 'row',
@@ -221,90 +277,128 @@ const styles = StyleSheet.create({
         gap: 10,
     },
     logoText: {
-        fontSize: 20,
-        fontWeight: '700',
+        fontSize: 22,
+        fontWeight: '800',
         color: colors.text.primary,
+        letterSpacing: -0.5,
     },
     iconButton: {
         padding: spacing.sm,
+        borderRadius: borderRadius.md,
+        backgroundColor: colors.background.tertiary,
     },
     searchBar: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: colors.background.secondary,
-        marginHorizontal: spacing.md,
-        marginBottom: spacing.lg,
+        marginHorizontal: spacing.lg,
+        marginBottom: spacing.xl,
         padding: spacing.md,
-        borderRadius: borderRadius.md,
+        borderRadius: borderRadius.lg,
         gap: spacing.sm,
+        borderWidth: 1,
+        borderColor: colors.border.DEFAULT,
     },
     searchText: {
         color: colors.text.tertiary,
         fontSize: 14,
+        fontWeight: '500',
     },
     scrollView: {
         flex: 1,
-        paddingHorizontal: spacing.sm,
+        paddingHorizontal: spacing.md,
     },
     sectionTitle: {
         fontSize: 11,
-        fontWeight: '600',
+        fontWeight: '700',
         color: colors.text.tertiary,
         textTransform: 'uppercase',
-        letterSpacing: 0.5,
+        letterSpacing: 1,
         paddingHorizontal: spacing.sm,
-        paddingTop: spacing.lg,
+        paddingTop: spacing.xl,
         paddingBottom: spacing.sm,
     },
     navItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 10,
+        gap: 12,
         padding: spacing.md,
         borderRadius: borderRadius.md,
-        marginBottom: 2,
+        marginBottom: 4,
+    },
+    navItemActive: {
+        backgroundColor: colors.primary.DEFAULT,
+        // Premium shadow for active state
+        ...Platform.select({
+            web: {
+                boxShadow: `0 4px 12px ${colors.primary.DEFAULT}33`,
+            },
+        }),
     },
     navItemText: {
         flex: 1,
         fontSize: 14,
-        color: colors.text.primary,
+        fontWeight: '500',
+        color: colors.text.secondary,
+    },
+    navItemTextActive: {
+        color: colors.text.inverse,
+        fontWeight: '700',
     },
     badge: {
         backgroundColor: colors.background.tertiary,
         paddingHorizontal: spacing.sm,
         paddingVertical: 2,
         borderRadius: borderRadius.full,
-        minWidth: 24,
+        minWidth: 28,
         alignItems: 'center',
     },
-    badgeText: {
-        fontSize: 12,
-        color: colors.text.secondary,
-        fontWeight: '500',
+    badgeActive: {
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
     },
-    feedIcon: {
+    badgeText: {
+        fontSize: 11,
+        color: colors.text.secondary,
+        fontWeight: '700',
+    },
+    badgeTextActive: {
+        color: colors.text.inverse,
+    },
+    feedIconWrapper: {
         width: 18,
         height: 18,
         borderRadius: 4,
+        overflow: 'hidden',
+        backgroundColor: colors.background.tertiary,
+    },
+    feedIcon: {
+        width: '100%',
+        height: '100%',
     },
     footer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        padding: spacing.md,
+        padding: spacing.lg,
         borderTopWidth: 1,
         borderTopColor: colors.border.DEFAULT,
-        gap: spacing.sm,
+        backgroundColor: colors.background.primary,
+        gap: spacing.md,
     },
     footerButton: {
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
-        padding: spacing.md,
-        borderRadius: borderRadius.md,
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: spacing.md,
+        borderRadius: borderRadius.lg,
         backgroundColor: colors.background.secondary,
+        borderWidth: 1,
+        borderColor: colors.border.DEFAULT,
     },
     footerButtonText: {
-        fontSize: 13,
-        color: colors.text.secondary,
+        fontSize: 14,
+        fontWeight: '600',
+        color: colors.text.primary,
     },
 });

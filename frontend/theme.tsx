@@ -47,9 +47,9 @@ const sharedColors = {
         dark: '#059669',
     },
     secondary: {
-        DEFAULT: '#8b5cf6',
-        light: '#a78bfa',
-        dark: '#7c3aed',
+        DEFAULT: '#0d9488', // Teal 600
+        light: '#2dd4bf',   // Teal 400
+        dark: '#0f766e',    // Teal 700
     },
     success: '#10b981',
     error: '#ef4444',
@@ -57,9 +57,30 @@ const sharedColors = {
     feedTypes: {
         rss: '#10b981',
         youtube: '#ef4444',
-        podcast: '#8b5cf6',
+        podcast: '#0d9488',
         reddit: '#f97316',
     },
+    reader: {
+        sepia: {
+            background: '#f4ecd8',
+            text: '#5b4636',
+            border: '#e1d4b1',
+        },
+        paper: {
+            background: '#fdfcf8',
+            text: '#2c3e50',
+            border: '#ebedef',
+        },
+    }
+};
+
+export const typography = {
+    sans: {
+        family: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+    },
+    serif: {
+        family: "Lora, Georgia, 'Times New Roman', serif",
+    }
 };
 
 // Default export for backward compatibility and static use
@@ -83,6 +104,8 @@ export const borderRadius = {
     sm: 6,
     md: 10,
     lg: 14,
+    xl: 20,
+    xxl: 28,
     full: 9999,
 };
 

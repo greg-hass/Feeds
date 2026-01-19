@@ -32,20 +32,30 @@ export default function ArticleListScreen() {
         }).start();
     };
 
+    const lastRefreshRef = useRef<number>(0);
+    const STALE_THRESHOLD = 5 * 60 * 1000; // 5 minutes
+
     useEffect(() => {
-        // Redundant but harmless to ensure data is fresh if index is mounted directly
-        // _layout also calls these but isDesktop check might affect things
-        fetchFeeds();
-        fetchFolders();
-        fetchArticles(true);
+        const refreshData = (isSilent = false) => {
+            const now = Date.now();
+            if (now - lastRefreshRef.current < STALE_THRESHOLD && isSilent) {
+                console.log('Skipping foreground refresh, data is still fresh');
+                return;
+            }
+            fetchFeeds();
+            fetchFolders();
+            fetchArticles(true);
+            lastRefreshRef.current = now;
+        };
+
+        // initial load
+        refreshData();
 
         // Listen for app state changes to refresh when returning to foreground
         const subscription = AppState.addEventListener('change', (nextAppState) => {
             if (nextAppState === 'active') {
-                console.log('App returned to foreground, refreshing data...');
-                fetchFeeds();
-                fetchFolders();
-                fetchArticles(true); // silent refresh (loading=true strictly speaking, but list handles it)
+                console.log('App returned to foreground, checking for refresh...');
+                refreshData(true);
             }
         });
 

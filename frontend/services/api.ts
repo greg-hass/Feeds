@@ -75,7 +75,7 @@ class ApiClient {
         });
     }
 
-    async bulkFeedAction(action: 'move' | 'delete' | 'mark_read' | 'update_refresh_interval', feedIds: number[], folderId?: number, refreshInterval?: number) {
+    async bulkFeedAction(action: 'move' | 'delete' | 'mark_read' | 'update_refresh_interval', feedIds: number[], folderId?: number | null, refreshInterval?: number) {
         return this.request<{ affected: number }>('/feeds/bulk', {
             method: 'POST',
             body: { action, feed_ids: feedIds, folder_id: folderId, refresh_interval_minutes: refreshInterval },
@@ -497,6 +497,9 @@ export interface Settings {
     theme: 'light' | 'dark' | 'auto';
     font_size: 'small' | 'medium' | 'large';
     show_images: boolean;
+    font_family?: 'sans' | 'serif';
+    reader_theme?: 'default' | 'sepia' | 'paper' | 'dark';
+    reader_line_height?: number;
 }
 
 export interface ArticleListParams {

@@ -1,34 +1,40 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, useColorScheme } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Platform } from 'react-native';
 import { useDigestStore } from '@/stores';
-import { Ionicons } from '@expo/vector-icons';
+import { Sparkles, BarChart3, BookOpen, RefreshCw, AlertCircle, Calendar } from 'lucide-react-native';
 import Markdown from 'react-native-markdown-display';
 import { format } from 'date-fns';
+import { useColors, spacing, borderRadius } from '@/theme';
 
 export const DigestView = () => {
     const { latestDigest, isLoading, error, fetchLatestDigest, generateDigest } = useDigestStore();
-    const isDark = useColorScheme() === 'dark';
+    const colors = useColors();
 
     useEffect(() => {
         fetchLatestDigest();
     }, []);
 
+    const s = styles(colors);
+
     if (isLoading && !latestDigest) {
         return (
-            <View style={styles.center}>
-                <ActivityIndicator size="large" color="#007AFF" />
-                <Text style={[styles.loadingText, isDark && styles.darkText]}>Generating your digest...</Text>
+            <View style={s.center}>
+                <RefreshCw size={48} color={colors.primary.DEFAULT} style={s.spinIcon} />
+                <Text style={s.loadingText}>Curating your personalized digest...</Text>
             </View>
         );
     }
 
     if (error && !latestDigest) {
         return (
-            <View style={styles.center}>
-                <Ionicons name="alert-circle-outline" size={48} color="#FF3B30" />
-                <Text style={[styles.errorText, isDark && styles.darkText]}>{error}</Text>
-                <TouchableOpacity style={styles.button} onPress={generateDigest}>
-                    <Text style={styles.buttonText}>Try Again</Text>
+            <View style={s.center}>
+                <AlertCircle size={48} color={colors.error} />
+                <Text style={s.errorText}>{error}</Text>
+                <TouchableOpacity
+                    style={s.button}
+                    onPress={generateDigest}
+                >
+                    <Text style={s.buttonText}>Try Again</Text>
                 </TouchableOpacity>
             </View>
         );
@@ -36,159 +42,243 @@ export const DigestView = () => {
 
     if (!latestDigest) {
         return (
-            <View style={styles.center}>
-                <Ionicons name="book-outline" size={64} color="#8E8E93" />
-                <Text style={[styles.emptyText, isDark && styles.darkText]}>No digest available yet.</Text>
-                <TouchableOpacity style={styles.button} onPress={generateDigest}>
-                    <Text style={styles.buttonText}>Generate My First Digest</Text>
+            <View style={s.center}>
+                <Sparkles size={64} color={colors.text.tertiary} />
+                <Text style={s.emptySubtitle}>STAY INFORMED</Text>
+                <Text style={s.emptyText}>Your daily intelligence briefing is ready to be generated.</Text>
+                <TouchableOpacity
+                    style={s.button}
+                    onPress={generateDigest}
+                >
+                    <Sparkles size={18} color="#fff" style={{ marginRight: 8 }} />
+                    <Text style={s.buttonText}>Generate Daily Digest</Text>
                 </TouchableOpacity>
             </View>
         );
     }
 
     return (
-        <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-            <View style={styles.header}>
-                <View>
-                    <Text style={[styles.title, isDark && styles.darkText]}>Daily Digest</Text>
-                    <Text style={styles.date}>
+        <ScrollView style={s.container} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+            <View style={s.header}>
+                <View style={s.headerBadge}>
+                    <Sparkles size={12} color={colors.primary.DEFAULT} />
+                    <Text style={s.badgeText}>AI INSIGHTS</Text>
+                </View>
+                <Text style={s.title}>Intelligence Briefing</Text>
+                <View style={s.headerMeta}>
+                    <Calendar size={14} color={colors.text.tertiary} />
+                    <Text style={s.date}>
                         {format(new Date(latestDigest.generated_at), 'MMMM do, yyyy • h:mm a')}
                     </Text>
                 </View>
-                <TouchableOpacity onPress={generateDigest} disabled={isLoading}>
-                    <Ionicons name="refresh" size={24} color="#007AFF" style={isLoading && { opacity: 0.5 }} />
-                </TouchableOpacity>
             </View>
 
-            <View style={styles.statsRow}>
-                <View style={styles.stat}>
-                    <Text style={styles.statValue}>{latestDigest.article_count}</Text>
-                    <Text style={styles.statLabel}>Articles</Text>
+            <View style={s.statsRow}>
+                <View style={[s.statCard, { backgroundColor: colors.background.elevated }]}>
+                    <BookOpen size={20} color={colors.primary.DEFAULT} />
+                    <View>
+                        <Text style={s.statValue}>{latestDigest.article_count}</Text>
+                        <Text style={s.statLabel}>Articles Analyzed</Text>
+                    </View>
                 </View>
-                <View style={[styles.stat, styles.statDivider]}>
-                    <Text style={styles.statValue}>{latestDigest.feed_count}</Text>
-                    <Text style={styles.statLabel}>Sources</Text>
-                </View>
-                <View style={styles.stat}>
-                    <Ionicons name="sparkles" size={16} color="#FFCC00" />
-                    <Text style={styles.statLabel}>AI Powered</Text>
+                <View style={[s.statCard, { backgroundColor: colors.background.elevated }]}>
+                    <BarChart3 size={20} color={colors.primary.DEFAULT} />
+                    <View>
+                        <Text style={s.statValue}>{latestDigest.feed_count}</Text>
+                        <Text style={s.statLabel}>Sources Synced</Text>
+                    </View>
                 </View>
             </View>
 
-            <View style={[styles.card, isDark && styles.darkCard]}>
+            <View style={s.card}>
                 <Markdown
                     style={{
-                        body: { color: isDark ? '#FFFFFF' : '#000000', fontSize: 16, lineHeight: 24 },
-                        heading2: { color: isDark ? '#FFFFFF' : '#000000', marginTop: 20, marginBottom: 10 },
-                        bullet_list: { marginBottom: 10 },
-                        link: { color: '#007AFF' }
+                        body: { color: colors.text.primary, fontSize: 17, lineHeight: 28, fontWeight: '400' },
+                        heading2: { color: colors.text.primary, fontSize: 22, fontWeight: '800', marginTop: 32, marginBottom: 16, letterSpacing: -0.5 },
+                        bullet_list: { marginBottom: 16 },
+                        list_item: { marginBottom: 8 },
+                        link: { color: colors.primary.DEFAULT, fontWeight: '700', textDecorationLine: 'none' },
+                        paragraph: { marginBottom: 16 }
                     }}
                 >
                     {latestDigest.content}
                 </Markdown>
             </View>
+
+            <TouchableOpacity
+                style={s.refreshFooter}
+                onPress={generateDigest}
+                disabled={isLoading}
+            >
+                <RefreshCw size={16} color={colors.text.tertiary} />
+                <Text style={s.refreshFooterText}>Regenerate Briefing</Text>
+            </TouchableOpacity>
         </ScrollView>
     );
 };
 
-const styles = StyleSheet.create({
+const styles = (colors: any) => StyleSheet.create({
     container: {
         flex: 1,
+        backgroundColor: colors.background.primary,
     },
     content: {
-        padding: 16,
-        paddingBottom: 40,
+        padding: spacing.xl,
+        paddingBottom: 60,
+        maxWidth: 800,
+        alignSelf: 'center',
+        width: '100%',
     },
     center: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 20,
+        padding: spacing.xl,
     },
     header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+        marginBottom: spacing.xxl,
         alignItems: 'center',
-        marginBottom: 20,
+    },
+    headerBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: colors.primary.DEFAULT + '15',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: borderRadius.full,
+        marginBottom: spacing.md,
+    },
+    badgeText: {
+        fontSize: 10,
+        fontWeight: '900',
+        color: colors.primary.DEFAULT,
+        letterSpacing: 1.5,
     },
     title: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        color: '#000000',
+        fontSize: 32,
+        fontWeight: '900',
+        color: colors.text.primary,
+        textAlign: 'center',
+        letterSpacing: -1,
+    },
+    headerMeta: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginTop: spacing.sm,
     },
     date: {
         fontSize: 14,
-        color: '#8E8E93',
-        marginTop: 4,
+        fontWeight: '600',
+        color: colors.text.tertiary,
     },
     statsRow: {
         flexDirection: 'row',
-        backgroundColor: 'rgba(0,122,255,0.1)',
-        borderRadius: 12,
-        padding: 12,
-        marginBottom: 20,
+        gap: spacing.md,
+        marginBottom: spacing.xxl,
     },
-    stat: {
+    statCard: {
         flex: 1,
+        flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-    },
-    statDivider: {
-        borderLeftWidth: 1,
-        borderRightWidth: 1,
-        borderColor: 'rgba(0,122,255,0.2)',
+        gap: spacing.md,
+        padding: spacing.lg,
+        borderRadius: borderRadius.xl,
+        borderWidth: 1,
+        borderColor: colors.border.DEFAULT,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 2,
     },
     statValue: {
         fontSize: 18,
-        fontWeight: 'bold',
-        color: '#007AFF',
+        fontWeight: '900',
+        color: colors.text.primary,
     },
     statLabel: {
-        fontSize: 12,
-        color: '#007AFF',
-        marginTop: 2,
+        fontSize: 11,
+        fontWeight: '700',
+        color: colors.text.tertiary,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
     card: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        padding: 20,
+        backgroundColor: colors.background.elevated,
+        borderRadius: borderRadius.xxl,
+        padding: spacing.xl,
+        borderWidth: 1,
+        borderColor: colors.border.DEFAULT,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
+        shadowOffset: { width: 0, height: 20 },
         shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 3,
-    },
-    darkCard: {
-        backgroundColor: '#1C1C1E',
-    },
-    darkText: {
-        color: '#FFFFFF',
+        shadowRadius: 40,
+        elevation: 5,
     },
     loadingText: {
-        marginTop: 12,
-        color: '#8E8E93',
+        marginTop: spacing.xl,
+        fontSize: 16,
+        fontWeight: '600',
+        color: colors.text.secondary,
+        textAlign: 'center',
     },
     errorText: {
-        marginTop: 12,
-        color: '#FF3B30',
+        marginTop: spacing.md,
+        color: colors.error,
         textAlign: 'center',
-        marginBottom: 20,
+        marginBottom: spacing.xl,
+        fontWeight: '600',
+    },
+    emptySubtitle: {
+        fontSize: 12,
+        fontWeight: '900',
+        color: colors.primary.DEFAULT,
+        letterSpacing: 2,
+        marginBottom: 8,
     },
     emptyText: {
-        marginTop: 12,
-        fontSize: 18,
-        color: '#8E8E93',
-        marginBottom: 20,
+        fontSize: 16,
+        color: colors.text.secondary,
+        textAlign: 'center',
+        marginBottom: spacing.xl,
+        paddingHorizontal: spacing.xl,
+        lineHeight: 24,
     },
     button: {
-        backgroundColor: '#007AFF',
-        paddingHorizontal: 24,
-        paddingVertical: 12,
-        borderRadius: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.primary.DEFAULT,
+        paddingHorizontal: spacing.xxl,
+        paddingVertical: spacing.lg,
+        borderRadius: borderRadius.full,
+        shadowColor: colors.primary.DEFAULT,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 15,
+        elevation: 8,
     },
     buttonText: {
-        color: '#FFFFFF',
-        fontWeight: 'bold',
+        color: '#fff',
+        fontWeight: '900',
         fontSize: 16,
     },
+    refreshFooter: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        marginTop: spacing.xxl,
+        padding: spacing.md,
+    },
+    refreshFooterText: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: colors.text.tertiary,
+    },
+    spinIcon: {
+        // Animation handled in component logic or via external lib if needed
+    }
 });
+
