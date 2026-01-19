@@ -5,6 +5,17 @@ import { type PropsWithChildren } from 'react';
  * Custom HTML root for the app.
  * Adds viewport-fit=cover to enable full-screen PWA display on iOS Safari.
  */
+const OVERSCROLL_RESET = `
+:root,
+body {
+    overscroll-behavior: none;
+}
+
+body {
+    min-height: 100vh;
+}
+`;
+
 export default function Root({ children }: PropsWithChildren) {
     return (
         <html lang="en">
@@ -21,6 +32,7 @@ export default function Root({ children }: PropsWithChildren) {
                 <meta name="apple-mobile-web-app-capable" content="yes" />
                 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
+                <style>{OVERSCROLL_RESET}</style>
                 <ScrollViewStyleReset />
             </head>
             <body>{children}</body>
