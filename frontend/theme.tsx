@@ -76,7 +76,7 @@ const sharedColors = {
 
 export const typography = {
     sans: {
-        family: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+        family: "Outfit, Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
     },
     serif: {
         family: "Lora, Georgia, 'Times New Roman', serif",

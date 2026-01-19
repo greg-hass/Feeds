@@ -152,7 +152,7 @@ export default function ArticleContent({ html }: ArticleContentProps) {
                     });
                 }
             });
-        }, [html]);
+        }, [html, settings, fontSize, fontFamily, readerTheme, customLineHeight]);
 
         return (
             <View style={componentStyles.container}>
