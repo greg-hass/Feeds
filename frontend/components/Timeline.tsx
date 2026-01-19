@@ -77,6 +77,22 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
         return () => clearInterval(timer);
     }, [feeds]);
 
+    // Reset scroll restoration flag when filter changes
+    useEffect(() => {
+        hasRestoredScroll.current = false;
+    }, [filter]);
+
+    // Restore scroll position when articles are loaded
+    useEffect(() => {
+        if (!hasRestoredScroll.current && articles.length > 0 && scrollPosition > 0 && flatListRef.current) {
+            // Use a timeout to ensure the list is fully rendered
+            setTimeout(() => {
+                flatListRef.current?.scrollToOffset({ offset: scrollPosition, animated: false });
+                hasRestoredScroll.current = true;
+            }, 100);
+        }
+    }, [articles.length, scrollPosition]);
+
     // Determine header title
     let headerTitle = 'Timeline';
     if (filter.folder_id) {
@@ -434,11 +450,10 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                         }
                     }).current}
                     viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
-                    scrollEventThrottle={16}
+                    scrollEventThrottle={400}
                     onScroll={(e) => {
-                        if (!hasRestoredScroll.current) {
-                            hasRestoredScroll.current = true;
-                        }
+                        const offset = e.nativeEvent.contentOffset.y;
+                        setScrollPosition(offset);
                     }}
                 />
             )}
