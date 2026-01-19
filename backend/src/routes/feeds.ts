@@ -4,6 +4,7 @@ import { queryOne, queryAll, run } from '../db/index.js';
 import { discoverFeedsFromUrl, discoverByKeyword } from '../services/discovery.js';
 import { parseFeed, normalizeArticle, FeedType } from '../services/feed-parser.js';
 import { refreshFeed } from '../services/feed-refresh.js';
+import { cacheFeedIcon } from '../services/icon-cache.js';
 
 // Schemas
 const addFeedSchema = z.object({
@@ -45,6 +46,19 @@ interface Feed {
     deleted_at: string | null;
     created_at: string;
     updated_at: string;
+    icon_cached_path: string | null;
+    icon_cached_content_type: string | null;
+}
+
+const ICON_ENDPOINT_PREFIX = '/api/v1/icons';
+
+function toApiFeed(feed: Feed) {
+    const iconUrl = feed.icon_cached_path ? `${ICON_ENDPOINT_PREFIX}/${feed.id}` : feed.icon_url;
+    const { icon_cached_path, icon_cached_content_type, ...rest } = feed;
+    return {
+        ...rest,
+        icon_url: iconUrl,
+    };
 }
 
 export async function feedsRoutes(app: FastifyInstance) {
@@ -66,7 +80,7 @@ export async function feedsRoutes(app: FastifyInstance) {
             [userId, userId]
         );
 
-        return { feeds };
+        return { feeds: feeds.map(toApiFeed) };
     });
 
     // Get single feed
@@ -82,7 +96,7 @@ export async function feedsRoutes(app: FastifyInstance) {
             return reply.status(404).send({ error: 'Feed not found' });
         }
 
-        return { feed };
+        return { feed: toApiFeed(feed) };
     });
 
     // Add feed (with discovery)
@@ -148,6 +162,8 @@ export async function feedsRoutes(app: FastifyInstance) {
         }
 
         // Insert feed
+        const iconForInsert = feedData.favicon || discovered?.icon_url || null;
+
         const result = run(
             `INSERT INTO feeds (user_id, folder_id, type, title, url, site_url, icon_url, description, refresh_interval_minutes)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -158,7 +174,7 @@ export async function feedsRoutes(app: FastifyInstance) {
                 body.title || feedData.title,
                 feedUrl,
                 feedData.link || null,
-                feedData.favicon || discovered?.icon_url || null,
+                iconForInsert,
                 feedData.description || null,
                 body.refresh_interval_minutes || 30,
             ]
@@ -201,8 +217,27 @@ export async function feedsRoutes(app: FastifyInstance) {
             [feed!.id]
         );
 
+        if (feed && iconForInsert) {
+            const cached = await cacheFeedIcon(feed.id, iconForInsert);
+            if (cached) {
+                run(
+                    `UPDATE feeds SET icon_cached_path = ?, icon_cached_content_type = ? WHERE id = ?`,
+                    [cached.fileName, cached.mime, feed.id]
+                );
+                feed.icon_cached_path = cached.fileName;
+                feed.icon_cached_content_type = cached.mime;
+            }
+        }
+
         return {
-            feed: { ...feed, unread_count: feedData.articles.length },
+            feed: {
+                ...toApiFeed({
+                    ...feed!,
+                    icon_cached_path: feed?.icon_cached_path ?? null,
+                    icon_cached_content_type: feed?.icon_cached_content_type ?? null,
+                }),
+                unread_count: feedData.articles.length,
+            },
             discovered,
             articles_added: feedData.articles.length,
         };
@@ -252,7 +287,10 @@ export async function feedsRoutes(app: FastifyInstance) {
         }
 
         const feed = queryOne<Feed>('SELECT * FROM feeds WHERE id = ?', [feedId]);
-        return { feed };
+        if (!feed) {
+            return reply.status(404).send({ error: 'Feed not found' });
+        }
+        return { feed: toApiFeed(feed) };
     });
 
     // Delete feed

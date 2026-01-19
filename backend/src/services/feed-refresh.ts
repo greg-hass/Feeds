@@ -1,5 +1,7 @@
 import { run, queryOne } from '../db/index.js';
 import { parseFeed, normalizeArticle, FeedType } from './feed-parser.js';
+import { cacheFeedIcon } from './icon-cache.js';
+import { cacheArticleThumbnail } from './thumbnail-cache.js';
 
 export interface FeedToRefresh {
     id: number;
@@ -42,7 +44,7 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
 
         for (const article of feedData.articles) {
             const normalized = normalizeArticle(article, currentType);
-            const result = run(insertArticle, [
+            const insertResult = run(insertArticle, [
                 feed.id,
                 normalized.guid,
                 normalized.title,
@@ -55,17 +57,34 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
                 normalized.thumbnail_url,
                 normalized.published_at,
             ]);
-            if (result.changes > 0) newArticles++;
+            if (insertResult.changes > 0) {
+                newArticles++;
+                const articleId = Number(insertResult.lastInsertRowid);
+                if (normalized.thumbnail_url) {
+                    const cachedThumbnail = await cacheArticleThumbnail(articleId, normalized.thumbnail_url);
+                    if (cachedThumbnail) {
+                        run(
+                            `UPDATE articles SET thumbnail_cached_path = ?, thumbnail_cached_content_type = ? WHERE id = ?`,
+                            [cachedThumbnail.fileName, cachedThumbnail.mime, articleId]
+                        );
+                    }
+                }
+            }
         }
 
         // Update feed metadata on success
         // ...
+        const iconUrl = feedData.favicon;
+        const cachedIcon = iconUrl ? await cacheFeedIcon(feed.id, iconUrl) : null;
+
         let typeUpdate = '';
         const params: any[] = [
             feedData.title,
             feedData.link,
             feedData.favicon,
-            feedData.description
+            cachedIcon?.fileName ?? null,
+            cachedIcon?.mime ?? null,
+            feedData.description,
         ];
 
         if (currentType !== feed.type) {
@@ -83,6 +102,8 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
                 END,
                 site_url = COALESCE(site_url, ?),
                 icon_url = COALESCE(?, icon_url),
+                icon_cached_path = COALESCE(?, icon_cached_path),
+                icon_cached_content_type = COALESCE(?, icon_cached_content_type),
                 description = COALESCE(description, ?),
                 last_fetched_at = datetime('now'),
                 next_fetch_at = datetime('now', '+' || refresh_interval_minutes || ' minutes'),

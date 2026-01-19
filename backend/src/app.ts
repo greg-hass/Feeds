@@ -12,7 +12,11 @@ import { feedsStreamRoutes } from './routes/feeds-stream.js';
 import { syncRoutes } from './routes/sync.js';
 import { settingsRoutes } from './routes/settings.js';
 import { digestRoutes } from './routes/digest.js';
+import { iconsRoutes } from './routes/icons.js';
+import { thumbnailsRoutes } from './routes/thumbnails.js';
 import { startScheduler, stopScheduler } from './services/scheduler.js';
+import { ensureIconCacheDir } from './services/icon-cache.js';
+import { ensureThumbnailCacheDir } from './services/thumbnail-cache.js';
 
 export async function buildApp() {
     const app = Fastify({
@@ -20,6 +24,9 @@ export async function buildApp() {
             level: process.env.LOG_LEVEL || 'info',
         },
     });
+
+    ensureIconCacheDir();
+    ensureThumbnailCacheDir();
 
     // CORS
     await app.register(cors, {
@@ -70,6 +77,8 @@ export async function buildApp() {
     await app.register(syncRoutes, { prefix: '/api/v1/sync' });
     await app.register(settingsRoutes, { prefix: '/api/v1/settings' });
     await app.register(digestRoutes, { prefix: '/api/v1/digest' });
+    await app.register(iconsRoutes, { prefix: '/api/v1/icons' });
+    await app.register(thumbnailsRoutes, { prefix: '/api/v1/thumbnails' });
 
     return app;
 }

@@ -38,6 +38,7 @@ interface Article {
     enclosure_length: number | null;
     duration_seconds: number | null;
     thumbnail_url: string | null;
+    thumbnail_cached_path: string | null;
     published_at: string | null;
     fetched_at: string;
 }
@@ -46,6 +47,24 @@ function getYouTubeIdFromGuid(guid: string | null): string | null {
     if (!guid) return null;
     const match = guid.match(/(?:yt:video:|video:)([a-zA-Z0-9_-]{11})/);
     return match ? match[1] : null;
+}
+
+const ICON_ENDPOINT_PREFIX = '/api/v1/icons';
+
+function resolveArticleIconUrl(feedId: number, cachedPath: string | null, fallback: string | null) {
+    if (cachedPath) {
+        return `${ICON_ENDPOINT_PREFIX}/${feedId}`;
+    }
+    return fallback;
+}
+
+const THUMBNAIL_ENDPOINT_PREFIX = '/api/v1/thumbnails';
+
+function resolveArticleThumbnailUrl(articleId: number, cachedPath: string | null, fallback: string | null) {
+    if (cachedPath) {
+        return `${THUMBNAIL_ENDPOINT_PREFIX}/${articleId}`;
+    }
+    return fallback;
 }
 
 export async function articlesRoutes(app: FastifyInstance) {
@@ -109,15 +128,16 @@ export async function articlesRoutes(app: FastifyInstance) {
         const articles = queryAll<Article & {
             feed_title: string;
             feed_icon_url: string | null;
+            feed_icon_cached_path: string | null;
             feed_type: string;
             is_read: number | null;
             is_bookmarked: number;
         }>(
             `SELECT 
         a.id, a.feed_id, a.guid, a.title, a.url, a.author, a.summary, 
-        a.enclosure_url, a.enclosure_type, a.thumbnail_url, a.published_at,
+        a.enclosure_url, a.enclosure_type, a.thumbnail_url, a.thumbnail_cached_path, a.published_at,
         COALESCE(a.is_bookmarked, 0) as is_bookmarked,
-        f.title as feed_title, f.icon_url as feed_icon_url, f.type as feed_type,
+        f.title as feed_title, f.icon_url as feed_icon_url, f.icon_cached_path as feed_icon_cached_path, f.type as feed_type,
         rs.is_read
        FROM articles a
        JOIN feeds f ON f.id = a.feed_id
@@ -150,18 +170,27 @@ export async function articlesRoutes(app: FastifyInstance) {
             [userId, ...params.slice(0, -1)]
         );
 
+        const normalizedArticles = articles.map(a => {
+            const videoId = a.feed_type === 'youtube' ? getYouTubeIdFromGuid(a.guid) : null;
+            const iconUrl = resolveArticleIconUrl(a.feed_id, a.feed_icon_cached_path, a.feed_icon_url);
+            const { feed_icon_cached_path, thumbnail_cached_path, ...rest } = a;
+            let thumbnailUrl = resolveArticleThumbnailUrl(rest.id, thumbnail_cached_path, rest.thumbnail_url);
+            if (!thumbnailUrl && videoId) {
+                thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+            }
+            return {
+                ...rest,
+                feed_icon_url: iconUrl,
+                thumbnail_url: thumbnailUrl,
+                url: rest.url || (videoId ? `https://www.youtube.com/watch?v=${videoId}` : null),
+                is_read: Boolean(rest.is_read),
+                is_bookmarked: Boolean(rest.is_bookmarked),
+                has_audio: Boolean(rest.enclosure_url),
+            };
+        });
+
         return {
-            articles: articles.map(a => {
-                const videoId = a.feed_type === 'youtube' ? getYouTubeIdFromGuid(a.guid) : null;
-                return {
-                    ...a,
-                    url: a.url || (videoId ? `https://www.youtube.com/watch?v=${videoId}` : null),
-                    thumbnail_url: a.thumbnail_url || (videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : null),
-                    is_read: Boolean(a.is_read),
-                    is_bookmarked: Boolean(a.is_bookmarked),
-                    has_audio: Boolean(a.enclosure_url),
-                };
-            }),
+            articles: normalizedArticles,
             next_cursor: nextCursor,
             total_unread: unreadResult?.total || 0,
         };
@@ -174,9 +203,10 @@ export async function articlesRoutes(app: FastifyInstance) {
         const article = queryOne<Article & {
             feed_title: string;
             feed_icon_url: string | null;
+            feed_icon_cached_path: string | null;
             is_read: number | null;
         }>(
-            `SELECT a.*, f.title as feed_title, f.icon_url as feed_icon_url, rs.is_read
+            `SELECT a.*, f.title as feed_title, f.icon_url as feed_icon_url, f.icon_cached_path as feed_icon_cached_path, rs.is_read
        FROM articles a
        JOIN feeds f ON f.id = a.feed_id
        LEFT JOIN read_state rs ON rs.article_id = a.id AND rs.user_id = ?
@@ -218,9 +248,18 @@ export async function articlesRoutes(app: FastifyInstance) {
             [userId, articleId]
         );
 
+        const iconUrl = resolveArticleIconUrl(article.feed_id, article.feed_icon_cached_path ?? null, article.feed_icon_url);
+        const { feed_icon_cached_path, thumbnail_cached_path, ...articleRest } = article;
+        let thumbnailUrl = resolveArticleThumbnailUrl(article.id, thumbnail_cached_path ?? null, articleRest.thumbnail_url);
+        if (!thumbnailUrl && videoId) {
+            thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+        }
+
         return {
             article: {
-                ...article,
+                ...articleRest,
+                feed_icon_url: iconUrl,
+                thumbnail_url: thumbnailUrl,
                 is_read: true,
             },
         };
@@ -357,14 +396,15 @@ export async function articlesRoutes(app: FastifyInstance) {
         const articles = queryAll<Article & {
             feed_title: string;
             feed_icon_url: string | null;
+            feed_icon_cached_path: string | null;
             feed_type: string;
             is_read: number | null;
             is_bookmarked: number;
         }>(
             `SELECT 
                 a.id, a.feed_id, a.guid, a.title, a.url, a.author, a.summary, 
-                a.enclosure_url, a.enclosure_type, a.thumbnail_url, a.published_at, a.is_bookmarked,
-                f.title as feed_title, f.icon_url as feed_icon_url, f.type as feed_type,
+                a.enclosure_url, a.enclosure_type, a.thumbnail_url, a.thumbnail_cached_path, a.published_at, a.is_bookmarked,
+                f.title as feed_title, f.icon_url as feed_icon_url, f.icon_cached_path as feed_icon_cached_path, f.type as feed_type,
                 rs.is_read
              FROM articles a
              JOIN feeds f ON f.id = a.feed_id
@@ -378,13 +418,20 @@ export async function articlesRoutes(app: FastifyInstance) {
         return {
             articles: articles.map(a => {
                 const videoId = a.feed_type === 'youtube' ? getYouTubeIdFromGuid(a.guid) : null;
+                const iconUrl = resolveArticleIconUrl(a.feed_id, a.feed_icon_cached_path, a.feed_icon_url);
+                const { feed_icon_cached_path, thumbnail_cached_path, ...rest } = a;
+                let thumbnailUrl = resolveArticleThumbnailUrl(rest.id, thumbnail_cached_path, rest.thumbnail_url);
+                if (!thumbnailUrl && videoId) {
+                    thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+                }
                 return {
-                    ...a,
-                    url: a.url || (videoId ? `https://www.youtube.com/watch?v=${videoId}` : null),
-                    thumbnail_url: a.thumbnail_url || (videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : null),
-                    is_read: Boolean(a.is_read),
-                    is_bookmarked: Boolean(a.is_bookmarked),
-                    has_audio: Boolean(a.enclosure_url),
+                    ...rest,
+                    feed_icon_url: iconUrl,
+                    thumbnail_url: thumbnailUrl,
+                    url: rest.url || (videoId ? `https://www.youtube.com/watch?v=${videoId}` : null),
+                    is_read: Boolean(rest.is_read),
+                    is_bookmarked: Boolean(rest.is_bookmarked),
+                    has_audio: Boolean(rest.enclosure_url),
                 };
             }),
         };
