@@ -321,7 +321,16 @@ export function normalizeArticle(raw: RawArticle, feedType: FeedType): Normalize
 
     if (feedType === 'youtube') {
         const guidMatch = raw.guid?.match(STRINGS.YOUTUBE_VIDEO_ID_PATTERN);
-        const videoId = guidMatch ? guidMatch[1] : null;
+        let videoId = guidMatch ? guidMatch[1] : null;
+
+        // Fallback: Try to find video ID in the link if not in GUID
+        if (!videoId && raw.link) {
+            const urlMatch = raw.link.match(/(?:v=|youtu\.be\/|\/embed\/)([a-zA-Z0-9_-]{11})/);
+            if (urlMatch) {
+                videoId = urlMatch[1];
+            }
+        }
+
         if (!url && videoId) {
             url = `https://www.youtube.com/watch?v=${videoId}`;
         }

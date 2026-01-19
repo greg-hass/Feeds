@@ -18,7 +18,7 @@ const FEED_TYPE_ICONS: Record<string, React.ComponentType<any>> = {
 export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     const router = useRouter();
     const colors = useColors();
-    const { feeds, folders, smartFolders, totalUnread, fetchFeeds, fetchFolders, isLoading } = useFeedStore();
+    const { feeds, folders, smartFolders, totalUnread, fetchFeeds, fetchFolders, isLoading, refreshAllFeeds } = useFeedStore();
     const { filter, setFilter } = useArticleStore();
 
     const s = styles(colors);
@@ -48,7 +48,8 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     };
 
     const handleRefresh = async () => {
-        await Promise.all([fetchFeeds(), fetchFolders()]);
+        // Trigger generic refresh for all feeds
+        await refreshAllFeeds();
     };
 
     const isAllActive = !filter.feed_id && !filter.folder_id && !filter.type;
