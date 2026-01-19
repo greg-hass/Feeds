@@ -32,28 +32,29 @@ export async function feedsRoutes(app: FastifyInstance) {
     app.get('/:id', FeedsController.getOne);
 
     // Add feed (with discovery)
-    app.post('/', {
-        schema: {
-            body: addFeedSchema,
-        },
-    }, FeedsController.add);
+    app.post('/', async (request, reply) => {
+        const body = addFeedSchema.parse(request.body);
+        request.body = body;
+        return FeedsController.add(request as any, reply);
+    });
 
     // Update feed
-    app.patch('/:id', {
-        schema: {
-            body: updateFeedSchema,
-        },
-    }, FeedsController.update);
+    app.patch('/:id', async (request, reply) => {
+        const body = updateFeedSchema.parse(request.body);
+        request.body = body;
+        // The controller expects params.id
+        return FeedsController.update(request as any, reply);
+    });
 
     // Delete feed
     app.delete('/:id', FeedsController.delete);
 
     // Bulk operations
-    app.post('/bulk', {
-        schema: {
-            body: bulkActionSchema,
-        },
-    }, FeedsController.bulk);
+    app.post('/bulk', async (request, reply) => {
+        const body = bulkActionSchema.parse(request.body);
+        request.body = body;
+        return FeedsController.bulk(request as any, reply);
+    });
 
     // Force refresh feed
     app.post('/:id/refresh', FeedsController.refresh);

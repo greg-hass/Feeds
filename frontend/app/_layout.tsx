@@ -19,7 +19,7 @@ const queryClient = new QueryClient({
 function AppInitializer() {
     useEffect(() => {
         // Initialize settings and sync on app start
-        useSettingsStore.getState().fetchSettings().catch(() => {});
+        useSettingsStore.getState().fetchSettings().catch(() => { });
         initializeSync();
     }, []);
 
@@ -30,14 +30,18 @@ function AppInitializer() {
     );
 }
 
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
 export default function RootLayout() {
     return (
-        <QueryClientProvider client={queryClient}>
-            <ThemeProvider>
-                <StatusBar style="auto" />
-                <AppInitializer />
-                <ToastContainer />
-            </ThemeProvider>
-        </QueryClientProvider>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+            <QueryClientProvider client={queryClient}>
+                <ThemeProvider>
+                    <StatusBar style="auto" />
+                    <AppInitializer />
+                    <ToastContainer />
+                </ThemeProvider>
+            </QueryClientProvider>
+        </GestureHandlerRootView>
     );
 }

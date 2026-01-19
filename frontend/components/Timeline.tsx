@@ -4,11 +4,13 @@ import { useRouter } from 'expo-router';
 import { formatDistanceToNow } from 'date-fns';
 import { useArticleStore, useFeedStore, useAudioStore } from '@/stores';
 import { Article } from '@/services/api';
-import { Circle, CircleCheck, Play, Bookmark, MoreVertical, Filter, RefreshCw, Clock, Headphones } from 'lucide-react-native';
+import { Circle, CircleCheck, Play, Bookmark, MoreVertical, Filter, RefreshCw, Clock, Headphones, Flame } from 'lucide-react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
 import { extractVideoId, getThumbnailUrl } from '@/utils/youtube';
 import { TimelineSkeleton } from './Skeleton';
 import { PlayingWaveform } from './PlayingWaveform';
+import Swipeable from 'react-native-gesture-handler/Swipeable';
+import { Check, Star } from 'lucide-react-native';
 
 interface TimelineProps {
     onArticlePress?: (article: Article) => void;
@@ -84,13 +86,74 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
         else router.push(`/(app)/article/${item.id}`);
     }, [onArticlePress, router]);
 
+    const handlePlayPress = useCallback((item: Article) => {
+        const { currentArticleId, isPlaying, play, pause, resume } = useAudioStore.getState();
+
+        if (currentArticleId === item.id) {
+            if (isPlaying) {
+                pause();
+            } else {
+                resume();
+            }
+        } else {
+            // Prefer enclosure_url for podcasts, fall back to url (though for podcasts enclosure is key)
+            // We can check item.enclosure_url if it was part of Article interface, but let's assume item.url 
+            // or similar. Wait, Article interface might not have enclosure_url explicity typed in all contexts
+            // but it is passed from backend. Let's use item.url for now or assume enclosure_url is on item as any.
+            // Actually, the audioStore play expects { id, url, title, author, coverArt }.
+            // We should find the audio URL.
+            // For now, I'll use item.url or check if I can access enclosure_url.
+            // Looking at api.ts, Article has enclosure_url?: string.
+            play({
+                id: item.id,
+                url: item.enclosure_url || item.url || '',
+                title: item.title,
+                author: item.feed_title || 'Unknown Source',
+                coverArt: item.thumbnail_url || item.feed_icon_url || ''
+            });
+        }
+    }, []);
+
+    const renderRightActions = (progress: any, dragX: any, item: Article) => {
+        const trans = dragX.interpolate({
+            inputRange: [-100, 0],
+            outputRange: [1, 0],
+            extrapolate: 'clamp',
+        });
+        return (
+            <Animated.View style={[s.swipeActionRight, { transform: [{ translateX: trans }] }]}>
+                <TouchableOpacity onPress={() => useArticleStore.getState().markRead(item.id)} style={s.swipeActionButton}>
+                    <Check size={24} color="#fff" />
+                    <Text style={s.swipeActionText}>Read</Text>
+                </TouchableOpacity>
+            </Animated.View>
+        );
+    };
+
+    const renderLeftActions = (progress: any, dragX: any, item: Article) => {
+        const trans = dragX.interpolate({
+            inputRange: [0, 100],
+            outputRange: [0, 1],
+            extrapolate: 'clamp',
+        });
+        return (
+            <Animated.View style={[s.swipeActionLeft, { transform: [{ translateX: trans }] }]}>
+                <TouchableOpacity onPress={() => useArticleStore.getState().toggleBookmark(item.id)} style={s.swipeActionButton}>
+                    <Bookmark size={24} color="#fff" fill="#fff" />
+                    <Text style={s.swipeActionText}>Save</Text>
+                </TouchableOpacity>
+            </Animated.View>
+        );
+    };
+
     const renderArticle = ({ item, index }: { item: Article; index: number }) => {
         const isActive = activeArticleId === item.id;
         const thumbnail = item.thumbnail_url;
         const isYouTube = item.feed_type === 'youtube';
         const isFeatured = index % 5 === 0 && !isMobile && thumbnail; // Every 5th item is featured on desktop
+        const isHot = item.published_at && (new Date(item.published_at).getTime() > Date.now() - 4 * 60 * 60 * 1000);
 
-        return (
+        const Content = (
             <TouchableOpacity
                 activeOpacity={0.8}
                 onPress={() => handleArticlePress(item)}
@@ -128,6 +191,12 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
 
                         <View style={s.articleFooter}>
                             <View style={s.metaRow}>
+                                {isHot && (
+                                    <View style={s.hotBadge}>
+                                        <Flame size={10} color="#fff" fill="#fff" />
+                                        <Text style={s.hotText}>HOT</Text>
+                                    </View>
+                                )}
                                 <Clock size={12} color={colors.text.tertiary} />
                                 <Text style={s.articleMeta}>
                                     {item.published_at ? formatDistanceToNow(new Date(item.published_at), { addSuffix: true }) : ''}
@@ -153,13 +222,16 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                                 <View style={s.youtubeIndicator}><Play size={14} color="#fff" fill="#fff" /></View>
                             )}
                             {item.has_audio && !isYouTube && (
-                                <View style={s.podcastIndicator}>
+                                <TouchableOpacity
+                                    style={s.podcastIndicator}
+                                    onPress={() => handlePlayPress(item)}
+                                >
                                     {(isPlaying && playingArticleId === item.id) ? (
                                         <PlayingWaveform color="#fff" size={14} />
                                     ) : (
                                         <Headphones size={14} color="#fff" />
                                     )}
-                                </View>
+                                </TouchableOpacity>
                             )}
                         </View>
                     )}
@@ -167,6 +239,20 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                 {!item.is_read && <View style={s.unreadIndicator} />}
             </TouchableOpacity>
         );
+
+        if (isMobile) {
+            return (
+                <Swipeable
+                    renderRightActions={(p, d) => renderRightActions(p, d, item)}
+                    renderLeftActions={(p, d) => renderLeftActions(p, d, item)}
+                    containerStyle={s.swipeableContainer}
+                >
+                    {Content}
+                </Swipeable>
+            );
+        }
+
+        return Content;
     };
 
     return (
@@ -177,23 +263,62 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                     {timeLeft && <View style={s.timerPill}><Text style={s.timerText}>{timeLeft}</Text></View>}
                 </View>
                 <View style={s.headerActions}>
-                    <TouchableOpacity
-                        style={[s.filterPill, filter.unread_only && s.filterPillActive]}
-                        onPress={() => setFilter({ unread_only: !filter.unread_only })}
-                    >
-                        <Filter size={14} color={filter.unread_only ? '#fff' : colors.text.secondary} />
-                        <Text style={[s.filterText, filter.unread_only && s.filterTextActive]}>Unread</Text>
-                    </TouchableOpacity>
                     <TouchableOpacity onPress={handleMarkAllRead} style={s.iconButton}>
                         <CircleCheck size={20} color={colors.text.secondary} />
                     </TouchableOpacity>
                 </View>
             </View>
 
+            <View style={s.filterWrapper}>
+                <FlatList
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={s.filterScroll}
+                    data={[
+                        { id: 'unread', label: 'Unread Only', type: 'toggle', active: filter.unread_only },
+                        { id: 'sep', type: 'separator' },
+                        { id: 'all', label: 'All', active: !filter.type },
+                        { id: 'youtube', label: 'Videos', active: filter.type === 'youtube' },
+                        { id: 'podcast', label: 'Podcasts', active: filter.type === 'podcast' },
+                        { id: 'rss', label: 'Articles', active: filter.type === 'rss' },
+                    ]}
+                    keyExtractor={item => item.id}
+                    renderItem={({ item }) => {
+                        if (item.type === 'separator') return <View style={s.filterDivider} />;
+
+                        return (
+                            <TouchableOpacity
+                                style={[
+                                    s.filterPill,
+                                    item.active && s.filterPillActive,
+                                    item.id === 'unread' && item.active && s.unreadPillActive
+                                ]}
+                                onPress={() => {
+                                    if (item.id === 'unread') {
+                                        setFilter({ unread_only: !filter.unread_only });
+                                    } else {
+                                        setFilter({ type: item.id === 'all' ? undefined : item.id });
+                                    }
+                                }}
+                            >
+                                {item.id === 'unread' && (
+                                    <View style={[s.unreadDot, item.active && s.unreadDotActive]} />
+                                )}
+                                <Text style={[
+                                    s.filterText,
+                                    item.active && s.filterTextActive
+                                ]}>{item.label}</Text>
+                            </TouchableOpacity>
+                        );
+                    }}
+                />
+            </View>
+
             {isLoading && articles.length === 0 ? (
                 <TimelineSkeleton />
             ) : (
                 <FlatList
+                    ref={flatListRef}
                     data={articles}
                     renderItem={renderArticle}
                     keyExtractor={(item) => item.id.toString()}
@@ -217,9 +342,19 @@ const styles = (colors: any, isMobile: boolean) => StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: spacing.lg,
+        paddingHorizontal: spacing.lg,
+        paddingTop: spacing.lg,
+        paddingBottom: spacing.md,
+    },
+    filterWrapper: {
         borderBottomWidth: 1,
         borderBottomColor: colors.border.DEFAULT,
+        paddingBottom: spacing.md,
+    },
+    filterScroll: {
+        paddingHorizontal: spacing.lg,
+        gap: 8,
+        alignItems: 'center',
     },
     headerLeft: {
         flexDirection: 'row',
@@ -256,9 +391,16 @@ const styles = (colors: any, isMobile: boolean) => StyleSheet.create({
         paddingVertical: 6,
         borderRadius: borderRadius.full,
         backgroundColor: colors.background.secondary,
+        borderWidth: 1,
+        borderColor: colors.border.DEFAULT,
     },
     filterPillActive: {
+        backgroundColor: colors.text.primary,
+        borderColor: colors.text.primary,
+    },
+    unreadPillActive: {
         backgroundColor: colors.primary.DEFAULT,
+        borderColor: colors.primary.DEFAULT,
     },
     filterText: {
         fontSize: 12,
@@ -266,7 +408,22 @@ const styles = (colors: any, isMobile: boolean) => StyleSheet.create({
         color: colors.text.secondary,
     },
     filterTextActive: {
-        color: '#fff',
+        color: colors.background.primary,
+    },
+    filterDivider: {
+        width: 1,
+        height: 16,
+        backgroundColor: colors.border.DEFAULT,
+        marginHorizontal: 4,
+    },
+    unreadDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: colors.text.tertiary,
+    },
+    unreadDotActive: {
+        backgroundColor: '#fff',
     },
     iconButton: {
         padding: spacing.sm,
@@ -332,6 +489,7 @@ const styles = (colors: any, isMobile: boolean) => StyleSheet.create({
         shadowOpacity: 0.2,
         shadowRadius: 4,
         elevation: 3,
+        zIndex: 10,
     },
     articleRead: {
         opacity: 0.6,
@@ -437,5 +595,53 @@ const styles = (colors: any, isMobile: boolean) => StyleSheet.create({
     },
     cardAction: {
         padding: 4,
+    },
+    hotBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FF4500', // Orange Red
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: borderRadius.sm,
+        gap: 4,
+        marginRight: 8,
+    },
+    hotText: {
+        color: '#fff',
+        fontSize: 10,
+        fontWeight: '900',
+        letterSpacing: 0.5,
+    },
+    swipeableContainer: {
+        marginBottom: spacing.md,
+        borderRadius: borderRadius.xl,
+        overflow: 'hidden',
+        backgroundColor: colors.background.secondary,
+    },
+    swipeActionRight: {
+        backgroundColor: colors.primary.DEFAULT,
+        justifyContent: 'center',
+        alignItems: 'flex-end',
+        flex: 1,
+        borderRadius: borderRadius.xl,
+    },
+    swipeActionLeft: {
+        backgroundColor: '#F59E0B', // Amber 500
+        justifyContent: 'center',
+        alignItems: 'flex-start',
+        flex: 1,
+        borderRadius: borderRadius.xl,
+    },
+    swipeActionButton: {
+        width: 80,
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 4,
+    },
+    swipeActionText: {
+        color: '#fff',
+        fontSize: 12,
+        fontWeight: '700',
     }
 });
