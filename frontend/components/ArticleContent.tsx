@@ -31,8 +31,6 @@ export default function ArticleContent({ html }: ArticleContentProps) {
     const showImages = settings?.show_images ?? true;
 
     const sizes = fontSizes[fontSize];
-    // Use default app font (sans-serif system font)
-    const fontStack = typography.sans.family;
 
     // Theme colors for the reader content
     let contentColors = {
@@ -60,49 +58,64 @@ export default function ArticleContent({ html }: ArticleContentProps) {
 
     const containerRef = useRef<HTMLDivElement>(null);
 
+    // Aggressive font stack enforcement
+    const FONT_STACK = "'SF Pro Display', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+
     // CSS for both web div and native webview
-    const getBaseStyles = (isNative = false) => `
-        body {
-            font-family: ${fontStack};
+    const getBaseStyles = (prefix = '') => {
+        const s = prefix ? `${prefix} ` : '';
+        const bodySelector = prefix || 'body';
+
+        return `
+        ${bodySelector} {
+            font-family: ${FONT_STACK} !important;
             font-size: ${sizes.body}px;
             line-height: ${customLineHeight || (sizes.lineHeight * 1.05)};
             color: ${contentColors.text} !important;
             background-color: ${contentColors.bg};
             margin: 0;
-            padding: ${isNative ? '24px' : '0'};
+            padding: ${prefix ? '0' : '24px'};
             word-wrap: break-word;
             -webkit-font-smoothing: antialiased;
             letter-spacing: -0.011em;
             font-weight: 450;
         }
-        /* Force color and font inheritance for common text containers to override inline styles */
-        p, span, div, li {
-            color: ${contentColors.text} !important;
-            font-family: inherit !important;
+
+        /* Extremely aggressive override for ALL elements to prevent source styles from leaking */
+        ${s}*, ${s}*::before, ${s}*::after {
+            font-family: ${FONT_STACK} !important;
         }
-        h1, h2, h3, h4 {
-            font-family: ${fontStack};
-            color: ${contentColors.text};
+
+        /* Force color and font for common text containers */
+        ${s}p, ${s}span, ${s}div, ${s}li, ${s}section, ${s}article, ${s}main, ${s}header, ${s}footer {
+            color: ${contentColors.text} !important;
+            font-family: ${FONT_STACK} !important;
+        }
+
+        ${s}h1, ${s}h2, ${s}h3, ${s}h4 {
+            font-family: ${FONT_STACK} !important;
+            color: ${contentColors.text} !important;
             line-height: 1.2;
             margin-top: 2em;
             margin-bottom: 0.8em;
             letter-spacing: -0.025em;
             font-weight: 800;
         }
-        h1 { font-size: ${sizes.h1}px; }
-        h2 { font-size: ${sizes.h2}px; }
-        h3 { font-size: ${sizes.h3}px; }
+        ${s}h1 { font-size: ${sizes.h1}px; }
+        ${s}h2 { font-size: ${sizes.h2}px; }
+        ${s}h3 { font-size: ${sizes.h3}px; }
         
-        p { margin-bottom: 1.6em; }
+        ${s}p { margin-bottom: 1.6em; }
         
-        a {
-            color: ${colors.primary.DEFAULT};
-            text-decoration: underline;
-            text-decoration-thickness: 1px;
-            text-underline-offset: 4px;
+        ${s}a {
+            color: ${colors.primary.DEFAULT} !important;
+            text-decoration: underline !important;
+            text-decoration-thickness: 1px !important;
+            text-underline-offset: 4px !important;
+            font-family: ${FONT_STACK} !important;
         }
         
-        img {
+        ${s}img {
             max-width: 100%;
             height: auto;
             border-radius: ${borderRadius.lg}px;
@@ -111,43 +124,45 @@ export default function ArticleContent({ html }: ArticleContentProps) {
             display: ${showImages ? 'block' : 'none'};
         }
         
-        blockquote {
+        ${s}blockquote {
             margin: 3em 0;
             padding: 0.5em 0 0.5em 2em;
-            border-left: 4px solid ${colors.primary.DEFAULT};
-            font-style: italic;
-            color: ${contentColors.secondary};
+            border-left: 4px solid ${colors.primary.DEFAULT} !important;
+            font-style: italic !important;
+            color: ${contentColors.secondary} !important;
         }
         
-        pre {
-            background: ${colors.background.tertiary};
-            padding: 2em;
-            border-radius: ${borderRadius.xl}px;
-            overflow-x: auto;
-            font-family: 'SF Mono', Monaco, monospace;
-            font-size: 0.9em;
-            line-height: 1.6;
-            margin: 2.5em 0;
+        ${s}pre {
+            background: ${colors.background.tertiary} !important;
+            padding: 2em !important;
+            border-radius: ${borderRadius.xl}px !important;
+            overflow-x: auto !important;
+            font-family: 'SF Mono', Monaco, monospace !important;
+            font-size: 0.9em !important;
+            line-height: 1.6 !important;
+            margin: 2.5em 0 !important;
         }
         
-        code {
-            background: ${colors.background.tertiary};
-            padding: 0.25em 0.5em;
-            border-radius: ${borderRadius.sm}px;
-            font-family: 'SF Mono', Monaco, monospace;
+        ${s}code {
+            background: ${colors.background.tertiary} !important;
+            padding: 0.25em 0.5em !important;
+            border-radius: ${borderRadius.sm}px !important;
+            font-family: 'SF Mono', Monaco, monospace !important;
         }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 3em 0;
+        ${s}table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            margin: 3em 0 !important;
         }
-        th, td {
-            text-align: left;
-            padding: 16px;
-            border-bottom: 1px solid ${contentColors.border};
+        ${s}th, ${s}td {
+            text-align: left !important;
+            padding: 16px !important;
+            border-bottom: 1px solid ${contentColors.border} !important;
+            font-family: ${FONT_STACK} !important;
         }
     `;
+    };
 
     useEffect(() => {
         if (Platform.OS !== 'web') return;
@@ -168,7 +183,7 @@ export default function ArticleContent({ html }: ArticleContentProps) {
         <View style={componentStyles.container}>
             <style dangerouslySetInnerHTML={{
                 __html: `
-                .zen-article { ${getBaseStyles()} }
+                ${getBaseStyles('.zen-article')}
                 @media (max-width: 600px) {
                     .zen-article img {
                         width: auto;
@@ -194,7 +209,7 @@ export default function ArticleContent({ html }: ArticleContentProps) {
                         <html>
                             <head>
                                 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-                                <style>${getBaseStyles(true)}</style>
+                                <style>${getBaseStyles('')}</style>
                             </head>
                             <body>${html}</body>
                         </html>
