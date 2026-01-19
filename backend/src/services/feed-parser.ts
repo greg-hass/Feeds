@@ -61,17 +61,78 @@ const USER_AGENT = 'Feeds/1.0 (Feed Reader; +https://github.com/greg-hass/Feeds)
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 
 export async function fetchYouTubeIcon(channelId: string): Promise<string | null> {
-    if (!YOUTUBE_API_KEY) return null;
-    try {
-        const response = await fetch(
-            `https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${channelId}&key=${YOUTUBE_API_KEY}`
-        );
-        if (!response.ok) return null;
-        const data = await response.json();
-        return data.items?.[0]?.snippet?.thumbnails?.default?.url || null;
-    } catch {
-        return null;
+    // 1. Try API first if key is available
+    if (YOUTUBE_API_KEY) {
+        try {
+            const response = await fetch(
+                `https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${channelId}&key=${YOUTUBE_API_KEY}`
+            );
+            if (response.ok) {
+                const data = await response.json();
+                const icon = data.items?.[0]?.snippet?.thumbnails?.default?.url || null;
+                if (icon) return icon;
+            }
+        } catch {
+            // Fallback to scraping
+        }
     }
+
+    // 2. Scrape the channel page
+    try {
+        const response = await fetch(`https://www.youtube.com/channel/${channelId}`, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36' }
+        });
+        if (!response.ok) return null;
+        const html = await response.text();
+
+        // Try various patterns for avatar extraction
+        const patterns = [
+            /"avatar":\{"thumbnails":\[\{"url":"([^"]+)"/,
+            /channelMetadataRenderer":\{"avatar":\{"thumbnails":\[\{"url":"([^"]+)"/,
+            /<meta property="og:image" content="([^"]+)">/,
+            /<link rel="image_src" href="([^"]+)">/
+        ];
+
+        for (const pattern of patterns) {
+            const match = html.match(pattern);
+            if (match && match[1]) {
+                let icon = match[1];
+                // Normalize size for high res
+                if (icon.includes('=s')) {
+                    icon = icon.replace(/=s\d+[^"]*/, '=s176-c-k-c0x00ffffff-no-rj-mo');
+                }
+                return icon;
+            }
+        }
+    } catch {
+        // Fallback to Google favicon service
+    }
+
+    return `https://www.google.com/s2/favicons?domain=youtube.com&sz=128`;
+}
+
+export function extractHeroImage(content: string, meta: any = {}): string | null {
+    // 1. Check meta tags
+    if (meta.image?.url) return meta.image.url;
+    if (meta['media:thumbnail']?.url) return meta['media:thumbnail'].url;
+    if (meta['og:image']) return meta['og:image'];
+    if (meta['twitter:image']) return meta['twitter:image'];
+
+    // 2. Scrape first usable img from content
+    if (content) {
+        // Skip common icons/small images
+        const imgRegex = /<img[^>]+src="([^">]+)"[^>]*>/gi;
+        let match;
+        while ((match = imgRegex.exec(content)) !== null) {
+            const src = match[1];
+            // Skip data URLs, icons, avatars, etc.
+            if (src.startsWith('data:')) continue;
+            if (src.includes('icon') || src.includes('avatar') || src.includes('logo') || src.includes('spinner')) continue;
+            return src;
+        }
+    }
+
+    return null;
 }
 
 export async function fetchRedditIcon(subreddit: string): Promise<string | null> {
@@ -222,7 +283,7 @@ export async function parseFeed(url: string): Promise<ParsedFeed> {
 
 export function normalizeArticle(raw: RawArticle, feedType: FeedType): NormalizedArticle {
     const enclosure = raw.enclosures?.[0];
-    let thumbnail = raw.thumbnail || raw.image?.url || null;
+    let thumbnail = extractHeroImage(raw.description || raw.summary || '', raw);
     let author = raw.author;
     let content = raw.description || raw.summary || null;
     let url = raw.link || null;

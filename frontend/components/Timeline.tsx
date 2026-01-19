@@ -289,10 +289,16 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
 
                     <View style={s.articleContent}>
                         <View style={s.articleHeader}>
-                            {item.feed_icon_url && (
-                                <Image source={{ uri: item.feed_icon_url }} style={{ width: 16, height: 16, borderRadius: 3, marginRight: 6 }} />
+                            {item.feed_icon_url ? (
+                                <Image source={{ uri: item.feed_icon_url }} style={s.feedIcon} />
+                            ) : (
+                                <View style={[s.feedIcon, { backgroundColor: colors.background.tertiary, justifyContent: 'center', alignItems: 'center' }]}>
+                                    <Text style={{ fontSize: 9, fontWeight: 'bold', color: colors.text.tertiary }}>
+                                        {item.feed_title?.charAt(0).toUpperCase()}
+                                    </Text>
+                                </View>
                             )}
-                            <Text style={s.feedName}>{item.feed_title}</Text>
+                            <Text style={s.feedName} numberOfLines={1}>{item.feed_title}</Text>
                         </View>
                         <Text style={[s.articleTitle, item.is_read && s.articleTitleRead]} numberOfLines={thumbnail ? 2 : 3}>
                             {item.title}
@@ -532,29 +538,18 @@ const styles = (colors: any, isMobile: boolean) => StyleSheet.create({
     articleContent: {
         flex: 1,
     },
-    articleHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: spacing.sm,
-        gap: spacing.sm,
-    },
     bookmarkButton: {
         position: 'absolute',
         top: spacing.lg,
         right: spacing.lg,
         zIndex: 10,
     },
-    feedName: {
-        fontSize: 12,
-        color: colors.secondary.DEFAULT,
-        fontWeight: '500',
-    },
     articleTitle: {
-        fontSize: 17,
-        fontWeight: '600',
+        fontSize: 16,
+        fontWeight: '700',
         color: colors.text.primary,
-        lineHeight: 24,
-        marginBottom: spacing.sm,
+        marginBottom: 4,
+        lineHeight: 22,
     },
     articleTitleRead: {
         color: colors.text.secondary,
@@ -564,6 +559,23 @@ const styles = (colors: any, isMobile: boolean) => StyleSheet.create({
         color: colors.text.secondary,
         lineHeight: 20,
         marginBottom: spacing.sm,
+    },
+    articleHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 4,
+    },
+    feedIcon: {
+        width: 16,
+        height: 16,
+        borderRadius: 4,
+        marginRight: 6,
+    },
+    feedName: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: colors.text.secondary,
+        marginRight: 4,
     },
     articleMeta: {
         fontSize: 12,
@@ -576,6 +588,7 @@ const styles = (colors: any, isMobile: boolean) => StyleSheet.create({
         borderRadius: borderRadius.md,
         overflow: 'hidden',
         flexShrink: 0,
+        marginLeft: spacing.lg,
     },
     thumbnailDesktop: {
         width: '100%',

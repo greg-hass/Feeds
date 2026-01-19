@@ -468,6 +468,9 @@ export interface Article {
     has_audio: boolean;
     enclosure_url: string | null;
     thumbnail_url?: string | null;
+    site_name?: string | null;
+    byline?: string | null;
+    hero_image?: string | null;
 }
 
 export interface ArticleDetail extends Article {

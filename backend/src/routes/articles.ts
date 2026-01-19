@@ -231,22 +231,35 @@ export async function articlesRoutes(app: FastifyInstance) {
         // If no readability content, try to extract it from the URL
         if (!article.readability_content && article.url) {
             try {
-                const { content: readable } = await fetchAndExtractReadability(article.url);
-                if (readable) {
-                    run('UPDATE articles SET readability_content = ? WHERE id = ?', [readable, articleId]);
-                    article.readability_content = readable;
+                const readable = await fetchAndExtractReadability(article.url);
+                if (readable.content) {
+                    run('UPDATE articles SET readability_content = ? WHERE id = ?', [readable.content, articleId]);
+                    article.readability_content = readable.content;
+
+                    // Return all the metadata even if not stored yet
+                    const iconUrl = resolveArticleIconUrl(article.feed_id, article.feed_icon_cached_path ?? null, article.feed_icon_url);
+                    const { feed_icon_cached_path, thumbnail_cached_path, ...articleRest } = article;
+                    let thumbnailUrl = resolveArticleThumbnailUrl(article.id, thumbnail_cached_path ?? null, readable.imageUrl || articleRest.thumbnail_url);
+                    if (!thumbnailUrl && videoId) {
+                        thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+                    }
+
+                    return {
+                        article: {
+                            ...articleRest,
+                            feed_icon_url: iconUrl,
+                            thumbnail_url: thumbnailUrl,
+                            is_read: true,
+                            site_name: readable.siteName,
+                            byline: readable.byline,
+                            hero_image: readable.imageUrl,
+                        },
+                    };
                 }
             } catch {
                 // Ignore readability errors
             }
         }
-
-        // Mark as read automatically
-        run(
-            `INSERT OR REPLACE INTO read_state (user_id, article_id, is_read, read_at, updated_at)
-       VALUES (?, ?, 1, datetime('now'), datetime('now'))`,
-            [userId, articleId]
-        );
 
         const iconUrl = resolveArticleIconUrl(article.feed_id, article.feed_icon_cached_path ?? null, article.feed_icon_url);
         const { feed_icon_cached_path, thumbnail_cached_path, ...articleRest } = article;

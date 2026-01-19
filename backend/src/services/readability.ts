@@ -1,6 +1,8 @@
 import { JSDOM } from 'jsdom';
 import { Readability } from '@mozilla/readability';
 
+import { extractHeroImage } from './feed-parser.js';
+
 export function extractReadability(html: string, url?: string): string | null {
     try {
         const dom = new JSDOM(html, { url });
@@ -22,11 +24,14 @@ export async function fetchAndExtractReadability(url: string): Promise<{
     content: string | null;
     title: string | null;
     excerpt: string | null;
+    siteName: string | null;
+    byline: string | null;
+    imageUrl: string | null;
 }> {
     try {
         const response = await fetch(url, {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; Feeds/1.0)',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             },
             signal: AbortSignal.timeout(30000),
@@ -41,13 +46,19 @@ export async function fetchAndExtractReadability(url: string): Promise<{
         const reader = new Readability(dom.window.document);
         const article = reader.parse();
 
+        // Extract hero image using our robust logic
+        const imageUrl = extractHeroImage(html, article);
+
         return {
             content: article?.content || null,
             title: article?.title || null,
             excerpt: article?.excerpt || null,
+            siteName: article?.siteName || null,
+            byline: article?.byline || null,
+            imageUrl: imageUrl,
         };
     } catch (err) {
         console.error('Failed to fetch and extract readability:', err);
-        return { content: null, title: null, excerpt: null };
+        return { content: null, title: null, excerpt: null, siteName: null, byline: null, imageUrl: null };
     }
 }
