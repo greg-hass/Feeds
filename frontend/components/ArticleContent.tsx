@@ -75,9 +75,10 @@ export default function ArticleContent({ html }: ArticleContentProps) {
             letter-spacing: -0.011em;
             font-weight: 450;
         }
-        /* Force color inheritance for common text containers to override inline styles */
+        /* Force color and font inheritance for common text containers to override inline styles */
         p, span, div, li {
             color: ${contentColors.text} !important;
+            font-family: inherit !important;
         }
         h1, h2, h3, h4 {
             font-family: ${fontStack};
