@@ -13,6 +13,7 @@ export const FloatingAudioPlayer = ({ onRestore }: FloatingAudioPlayerProps) => 
     const colors = useColors();
     const { width } = useWindowDimensions();
     const isMobile = width < 1024;
+    const isMobileWeb = Platform.OS === 'web' && width < 768;
 
     const opacity = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(100)).current;
@@ -75,7 +76,7 @@ export const FloatingAudioPlayer = ({ onRestore }: FloatingAudioPlayerProps) => 
                     transform: [{ translateY: slideAnim }],
                     width: isMobile ? width - spacing.xl * 2 : 400,
                     right: isMobile ? spacing.xl : 40,
-                    bottom: isMobile ? (Platform.OS === 'ios' ? 100 : 80) : 40,
+                    bottom: isMobile ? (Platform.OS === 'ios' ? 100 : (isMobileWeb ? 85 : 80)) : 40,
                 },
             ]}
         >

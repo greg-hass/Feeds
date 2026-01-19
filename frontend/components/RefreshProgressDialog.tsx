@@ -14,6 +14,7 @@ export function RefreshProgressDialog({ visible, total, completed, currentTitle 
     const colors = useColors();
     const { width } = useWindowDimensions();
     const isDesktop = width >= 1024;
+    const isMobileWeb = Platform.OS === 'web' && width < 768;
 
     // Animation
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -52,9 +53,9 @@ export function RefreshProgressDialog({ visible, total, completed, currentTitle 
         }
     }, [visible]);
 
-    if (!visible && fadeAnim._value === 0) return null;
+    if (!visible && (fadeAnim as any)._value === 0) return null;
 
-    const s = styles(colors, isDesktop);
+    const s = styles(colors, isDesktop, isMobileWeb);
 
     return (
         <Animated.View
@@ -91,12 +92,12 @@ export function RefreshProgressDialog({ visible, total, completed, currentTitle 
     );
 }
 
-const styles = (colors: any, isDesktop: boolean) => StyleSheet.create({
+const styles = (colors: any, isDesktop: boolean, isMobileWeb?: boolean) => StyleSheet.create({
     floatingContainer: {
         position: 'absolute',
         zIndex: 9999,
         // Responsive positioning
-        bottom: isDesktop ? 40 : 100, // Above nav on mobile
+        bottom: isDesktop ? 40 : (isMobileWeb ? 90 : 100), // Above nav on mobile
         right: isDesktop ? 40 : spacing.lg,
         left: isDesktop ? undefined : spacing.lg,
         // Sizing

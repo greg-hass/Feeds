@@ -11,6 +11,7 @@ import { TimelineSkeleton } from './Skeleton';
 import { PlayingWaveform } from './PlayingWaveform';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { Check, Star } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
 
 interface TimelineProps {
     onArticlePress?: (article: Article) => void;
@@ -122,7 +123,10 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
         });
         return (
             <Animated.View style={[s.swipeActionRight, { transform: [{ translateX: trans }] }]}>
-                <TouchableOpacity onPress={() => useArticleStore.getState().markRead(item.id)} style={s.swipeActionButton}>
+                <TouchableOpacity onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    useArticleStore.getState().markRead(item.id);
+                }} style={s.swipeActionButton}>
                     <Check size={24} color="#fff" />
                     <Text style={s.swipeActionText}>Read</Text>
                 </TouchableOpacity>
@@ -138,7 +142,10 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
         });
         return (
             <Animated.View style={[s.swipeActionLeft, { transform: [{ translateX: trans }] }]}>
-                <TouchableOpacity onPress={() => useArticleStore.getState().toggleBookmark(item.id)} style={s.swipeActionButton}>
+                <TouchableOpacity onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    useArticleStore.getState().toggleBookmark(item.id);
+                }} style={s.swipeActionButton}>
                     <Bookmark size={24} color="#fff" fill="#fff" />
                     <Text style={s.swipeActionText}>Save</Text>
                 </TouchableOpacity>

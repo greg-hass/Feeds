@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Animated, TouchableOpacity, Platform, useWindowDimensions } from 'react-native';
 import { useToastStore } from '@/stores';
 import { X, CheckCircle, AlertCircle, Info } from 'lucide-react-native';
 import { colors, borderRadius, spacing } from '@/theme';
@@ -37,11 +37,21 @@ const ToastItem = ({ id, message, type }: { id: string; message: string; type: '
 
 export default function ToastContainer() {
     const { toasts } = useToastStore();
+    const { width } = useWindowDimensions();
+    const isMobile = width < 1024;
+    const isMobileWeb = Platform.OS === 'web' && width < 768; // Simple breakpoint
 
     if (toasts.length === 0) return null;
 
     return (
-        <View style={styles.container}>
+        <View style={[
+            styles.container,
+            {
+                width: isMobile ? width - spacing.xl * 2 : 400,
+                right: isMobile ? spacing.xl : 40,
+                bottom: isMobile ? (Platform.OS === 'ios' ? 100 : (isMobileWeb ? 85 : 80)) : 40,
+            }
+        ]}>
             {toasts.map((toast) => (
                 <ToastItem key={toast.id} {...toast} />
             ))}
@@ -52,7 +62,7 @@ export default function ToastContainer() {
 const styles = StyleSheet.create({
     container: {
         position: 'absolute',
-        top: 60,
+        top: Platform.OS === 'web' ? 20 : 60, // Safe area on web PWA
         right: 20,
         zIndex: 1000,
         gap: spacing.sm,

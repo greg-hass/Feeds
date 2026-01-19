@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, Animated, LayoutAnimation, Platform } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, Animated, LayoutAnimation, Platform, useWindowDimensions } from 'react-native';
 import { useSettingsStore } from '@/stores';
 import { useColors, borderRadius, spacing } from '@/theme';
 import { Type, Minus, Plus, Palette, AlignLeft, Check } from 'lucide-react-native';
@@ -7,6 +7,7 @@ import { Type, Minus, Plus, Palette, AlignLeft, Check } from 'lucide-react-nativ
 export const ReaderControls = () => {
     const { settings, updateSettings } = useSettingsStore();
     const colors = useColors();
+    const { width } = useWindowDimensions();
     const [isExpanded, setIsExpanded] = useState(false);
 
     if (!settings) return null;
@@ -29,9 +30,10 @@ export const ReaderControls = () => {
     };
 
     const s = styles(colors);
+    const isMobileWeb = Platform.OS === 'web' && width < 768;
 
     return (
-        <View style={s.container}>
+        <View style={[s.container, isMobileWeb && { bottom: 85 }]}>
             <View style={[s.pill, isExpanded && s.pillExpanded]}>
                 {isExpanded ? (
                     <View style={s.expandedContent}>
