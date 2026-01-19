@@ -142,7 +142,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 {smartFolders.map((sf) => {
                     const Icon = FEED_TYPE_ICONS[sf.type] || Rss;
                     const isActive = filter.type === sf.type;
-                    const iconColor = sf.type === 'podcast' ? colors.secondary.DEFAULT : (isActive ? colors.text.inverse : colors.text.secondary);
+                    const iconColor = isActive ? colors.text.inverse : colors.text.secondary;
 
                     return (
                         <TouchableOpacity
