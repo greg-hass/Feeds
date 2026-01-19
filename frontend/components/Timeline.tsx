@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useRef } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, ActivityIndicator, Alert, Linking, Image, useWindowDimensions, Platform } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { formatDistanceToNow } from 'date-fns';
@@ -20,11 +20,13 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     const colors = useColors();
     const { width } = useWindowDimensions();
     const isMobile = width < 1024;
-    const { articles, isLoading, hasMore, filter, fetchArticles, setFilter, markAllRead, error, clearError } = useArticleStore();
+    const { articles, isLoading, hasMore, filter, scrollPosition, fetchArticles, setFilter, setScrollPosition, markAllRead, error, clearError } = useArticleStore();
     const { feeds, folders, refreshAllFeeds } = useFeedStore();
     const [selectedIndex, setSelectedIndex] = useState(-1);
     const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
     const [timeLeft, setTimeLeft] = useState<string | null>(null);
+    const flatListRef = useRef<FlatList>(null);
+    const hasRestoredScroll = useRef(false);
 
     const s = styles(colors, isMobile);
 
@@ -121,6 +123,28 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
             }
         }
     }, [activeArticleId, articles]);
+
+    // Reset scroll restoration flag when filter changes
+    useEffect(() => {
+        hasRestoredScroll.current = false;
+    }, [filter]);
+
+    // Restore scroll position when articles are loaded
+    useEffect(() => {
+        if (!hasRestoredScroll.current && articles.length > 0 && scrollPosition > 0 && flatListRef.current) {
+            // Use a timeout to ensure the list is fully rendered
+            setTimeout(() => {
+                flatListRef.current?.scrollToOffset({ offset: scrollPosition, animated: false });
+                hasRestoredScroll.current = true;
+            }, 100);
+        }
+    }, [articles.length, scrollPosition]);
+
+    // Save scroll position periodically
+    const handleScroll = useCallback((event: any) => {
+        const offset = event.nativeEvent.contentOffset.y;
+        setScrollPosition(offset);
+    }, [setScrollPosition]);
 
     const handleArticlePress = useCallback((item: Article) => {
         // Optimistically mark as read
@@ -386,10 +410,13 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
             </View>
 
             <FlatList
+                ref={flatListRef}
                 data={articles}
                 renderItem={renderArticle}
                 keyExtractor={(item) => item.id.toString()}
                 contentContainerStyle={s.list}
+                onScroll={handleScroll}
+                scrollEventThrottle={400}
                 refreshControl={
                     <RefreshControl
                         refreshing={isLoading && articles.length === 0}

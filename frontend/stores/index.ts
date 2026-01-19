@@ -231,6 +231,7 @@ interface ArticleState {
     hasMore: boolean;
     isLoading: boolean;
     error: string | null;
+    scrollPosition: number;
     filter: {
         feed_id?: number;
         folder_id?: number;
@@ -239,6 +240,7 @@ interface ArticleState {
     };
 
     setFilter: (filter: Partial<ArticleState['filter']>) => void;
+    setScrollPosition: (position: number) => void;
     fetchArticles: (reset?: boolean) => Promise<void>;
     fetchBookmarks: () => Promise<void>;
     fetchArticle: (id: number) => Promise<void>;
@@ -260,6 +262,7 @@ export const useArticleStore = create<ArticleState>()(
             hasMore: true,
             isLoading: false,
             error: null,
+            scrollPosition: 0,
             filter: {
                 unread_only: true,
             },
@@ -271,8 +274,13 @@ export const useArticleStore = create<ArticleState>()(
                     cursor: null,
                     hasMore: true,
                     error: null,
+                    scrollPosition: 0,
                 }));
                 get().fetchArticles(true);
+            },
+
+            setScrollPosition: (position) => {
+                set({ scrollPosition: position });
             },
 
             fetchArticles: async (reset = false) => {
