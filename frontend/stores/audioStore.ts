@@ -130,8 +130,17 @@ export const useAudioStore = create<AudioState>((set, get) => ({
             await soundInstance.stopAsync();
             await soundInstance.unloadAsync();
             soundInstance = null;
-            set({ isPlaying: false, currentArticleId: null, position: 0 });
         }
+        set({
+            isPlaying: false,
+            currentArticleId: null,
+            position: 0,
+            title: null,
+            author: null,
+            coverArt: null,
+            isMinimized: false,
+            isPlayerVisible: false
+        });
     },
 
     seek: async (position) => {

@@ -821,10 +821,11 @@ export default function ManageScreen() {
                                     <Text style={s.feedUrl} numberOfLines={1}>
                                         {folders.find((f: Folder) => f.id === feed.folder_id)?.name || 'No folder'}
                                     </Text>
-                                    {feed.last_error && (
-                                        <Text style={s.errorText} numberOfLines={1}>
-                                            {feed.last_error}
-                                        </Text>
+                                    {feed.error_count > 0 && (
+                                        <View style={s.errorBadge}>
+                                            <AlertTriangle size={10} color={colors.error} />
+                                            <Text style={s.errorBadgeText}>Connection Issue</Text>
+                                        </View>
                                     )}
                                 </View>
                             </TouchableOpacity>
@@ -1181,9 +1182,26 @@ const styles = (colors: any) => StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: colors.background.secondary,
-        borderRadius: borderRadius.md,
-        marginBottom: spacing.sm,
+        borderRadius: borderRadius.lg,
+        marginBottom: spacing.md,
         overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: colors.border.DEFAULT,
+        // Elevation for premium feel
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+            },
+            android: {
+                elevation: 2,
+            },
+            web: {
+                boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+            },
+        }),
     },
     feedContentClickable: { // New style for the main clickable area
         flex: 1,
@@ -1250,10 +1268,21 @@ const styles = (colors: any) => StyleSheet.create({
     errorIcon: {
         flexShrink: 0,
     },
-    errorText: {
+    errorBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        marginTop: 4,
+        alignSelf: 'flex-start',
+        backgroundColor: colors.error + '22',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: borderRadius.sm,
+    },
+    errorBadgeText: {
         fontSize: 11,
         color: colors.error,
-        marginTop: 2,
+        fontWeight: '600',
     },
     feedItemError: {
         borderLeftWidth: 3,
