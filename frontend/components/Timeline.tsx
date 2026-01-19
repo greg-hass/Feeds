@@ -77,6 +77,20 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
         return () => clearInterval(timer);
     }, [feeds]);
 
+    // Determine header title
+    let headerTitle = 'Timeline';
+    if (filter.folder_id) {
+        const folder = folders.find(f => f.id === filter.folder_id);
+        if (folder) headerTitle = folder.name;
+    } else if (filter.feed_id) {
+        const feed = feeds.find(f => f.id === filter.feed_id);
+        if (feed) headerTitle = feed.title;
+    } else if (filter.type) {
+        headerTitle = filter.type.charAt(0).toUpperCase() + filter.type.slice(1) + 's';
+    } else {
+        headerTitle = 'All Articles';
+    }
+
     const handleMarkAllRead = () => {
         Alert.alert('Mark All Read', 'Mark visible articles as read?', [
             { text: 'Cancel', style: 'cancel' },
@@ -308,7 +322,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
         <View style={s.container}>
             <View style={s.header}>
                 <View style={s.headerLeft}>
-                    <Text style={s.headerTitle}>Timeline</Text>
+                    <Text style={s.headerTitle} numberOfLines={1}>{headerTitle}</Text>
                     {timeLeft && <View style={s.timerPill}><Text style={s.timerText}>{timeLeft}</Text></View>}
                 </View>
                 <View style={s.headerActions}>
@@ -427,6 +441,7 @@ const styles = (colors: any, isMobile: boolean) => StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: spacing.sm,
+        marginLeft: isMobile ? 40 : 0, // Add space for menu hamburger
     },
     headerTitle: {
         fontSize: 22,

@@ -76,7 +76,7 @@ export const FloatingAudioPlayer = ({ onRestore }: FloatingAudioPlayerProps) => 
                     transform: [{ translateY: slideAnim }],
                     width: isMobile ? width - spacing.xl * 2 : 400,
                     right: isMobile ? spacing.xl : 40,
-                    bottom: isMobile ? (Platform.OS === 'ios' ? 100 : (isMobileWeb ? 85 : 80)) : 40,
+                    bottom: isMobile ? (Platform.OS === 'ios' ? 130 : (isMobileWeb ? 115 : 110)) : 40,
                 },
             ]}
         >
