@@ -303,7 +303,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                         <Text style={[s.articleTitle, item.is_read && s.articleTitleRead]} numberOfLines={thumbnail ? 2 : 3}>
                             {item.title}
                         </Text>
-                        {thumbnail && (
+                        {item.summary && (
                             <Text style={s.articleSummary} numberOfLines={isMobile ? 3 : 2}>
                                 {item.summary}
                             </Text>
