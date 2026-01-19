@@ -12,6 +12,7 @@ import { FloatingPlayer } from '@/components/FloatingPlayer';
 import { PodcastPlayer } from '@/components/PodcastPlayer';
 import { FloatingAudioPlayer } from '@/components/FloatingAudioPlayer';
 import { useAudioStore } from '@/stores/audioStore';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 export default function AppLayout() {
     const [mounted, setMounted] = useState(false);
@@ -34,39 +35,51 @@ export default function AppLayout() {
         }
     }, []);
 
-    const pathname = usePathname();
+    const pathname = usePathname() || '';
     const colors = useColors();
-    const isReaderRoute = pathname === '/' || pathname.startsWith('/article/') || pathname.startsWith('/digest');
-    const activeArticleId = pathname.startsWith('/article/') ? parseInt(pathname.split('/').pop() || '') : null;
+
+    // Robust checks for routes, handling environment differences in pathname format
+    const isHome = pathname === '/' || pathname.endsWith('/index');
+    const isArticle = pathname.includes('/article/');
+    const isDigest = pathname.includes('/digest');
+    const isReaderRoute = isHome || isArticle || isDigest;
+
+    const activeArticleId = isArticle ? parseInt(pathname.split('/').pop() || '') : null;
 
     const s = styles(isDesktop, isReaderRoute, colors);
 
     if (!mounted) return null;
 
     return (
-        <View style={s.container}>
-            {isDesktop && <Sidebar />}
-            {isDesktop && isReaderRoute && (
-                <View style={s.timelinePane}>
-                    <Timeline activeArticleId={activeArticleId} />
+        <ErrorBoundary>
+            <View style={s.container}>
+                {isDesktop && <Sidebar />}
+                {isDesktop && isReaderRoute && (
+                    <View style={s.timelinePane}>
+                        <ErrorBoundary>
+                            <Timeline activeArticleId={activeArticleId} />
+                        </ErrorBoundary>
+                    </View>
+                )}
+                <View style={s.content}>
+                    <ErrorBoundary>
+                        <Slot />
+                    </ErrorBoundary>
                 </View>
-            )}
-            <View style={s.content}>
-                <Slot />
-            </View>
-            {!isDesktop && <MobileNav />}
+                {!isDesktop && <MobileNav />}
 
-            <FloatingPlayer />
-            <FloatingAudioPlayer onRestore={showPlayer} />
-            <PodcastPlayer />
+                <FloatingPlayer />
+                <FloatingAudioPlayer onRestore={showPlayer} />
+                <PodcastPlayer />
 
-            <RefreshProgressDialog
-                visible={!!refreshProgress}
-                total={refreshProgress?.total || 0}
-                completed={refreshProgress?.completed || 0}
-                currentTitle={refreshProgress?.currentTitle || ''}
-            />
-        </View >
+                <RefreshProgressDialog
+                    visible={!!refreshProgress}
+                    total={refreshProgress?.total || 0}
+                    completed={refreshProgress?.completed || 0}
+                    currentTitle={refreshProgress?.currentTitle || ''}
+                />
+            </View >
+        </ErrorBoundary>
     );
 }
 

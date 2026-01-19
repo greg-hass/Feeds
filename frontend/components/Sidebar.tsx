@@ -26,25 +26,25 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     const handleSmartFolderPress = (type: string) => {
         setFilter({ type, feed_id: undefined, folder_id: undefined });
         onNavigate?.();
-        router.push('/(app)');
+        router.push('/');
     };
 
     const handleFolderPress = (folderId: number) => {
         setFilter({ folder_id: folderId, type: undefined, feed_id: undefined });
         onNavigate?.();
-        router.push('/(app)');
+        router.push('/');
     };
 
     const handleFeedPress = (feedId: number) => {
         setFilter({ feed_id: feedId, type: undefined, folder_id: undefined });
         onNavigate?.();
-        router.push('/(app)');
+        router.push('/');
     };
 
     const handleAllPress = () => {
         setFilter({ feed_id: undefined, folder_id: undefined, type: undefined });
         onNavigate?.();
-        router.push('/(app)');
+        router.push('/');
     };
 
     const handleRefresh = async () => {
@@ -80,7 +80,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             {/* Search */}
             <TouchableOpacity
                 style={s.searchBar}
-                onPress={() => { onNavigate?.(); router.push('/(app)/search'); }}
+                onPress={() => { onNavigate?.(); router.push('/search'); }}
                 accessibilityLabel="Search articles"
                 accessibilityRole="search"
             >
@@ -108,7 +108,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 {/* Bookmarks */}
                 <TouchableOpacity
                     style={s.navItem}
-                    onPress={() => { onNavigate?.(); router.push('/(app)/bookmarks'); }}
+                    onPress={() => { onNavigate?.(); router.push('/bookmarks'); }}
                     accessibilityLabel="View bookmarks"
                     accessibilityRole="link"
                 >
@@ -119,7 +119,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 {/* AI Discovery */}
                 <TouchableOpacity
                     style={s.navItem}
-                    onPress={() => { onNavigate?.(); router.push('/(app)/discovery'); }}
+                    onPress={() => { onNavigate?.(); router.push('/discovery'); }}
                     accessibilityLabel="Explore new feeds"
                     accessibilityRole="link"
                 >
@@ -130,7 +130,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 {/* Daily Digest */}
                 <TouchableOpacity
                     style={s.navItem}
-                    onPress={() => { onNavigate?.(); router.push('/(app)/digest'); }}
+                    onPress={() => { onNavigate?.(); router.push('/digest'); }}
                     accessibilityLabel="View daily digest"
                     accessibilityRole="link"
                 >
@@ -228,7 +228,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             <View style={s.footer}>
                 <TouchableOpacity
                     style={s.footerButton}
-                    onPress={() => { onNavigate?.(); router.push('/(app)/manage'); }}
+                    onPress={() => { onNavigate?.(); router.push('/manage'); }}
                     accessibilityLabel="Add new feed"
                     accessibilityRole="button"
                 >
@@ -238,7 +238,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
                 <TouchableOpacity
                     style={[s.footerButton, { backgroundColor: 'transparent' }]}
-                    onPress={() => { onNavigate?.(); router.push('/(app)/settings'); }}
+                    onPress={() => { onNavigate?.(); router.push('/settings'); }}
                     accessibilityLabel="App settings"
                     accessibilityRole="button"
                 >
