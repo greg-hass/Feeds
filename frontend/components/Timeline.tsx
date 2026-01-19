@@ -401,8 +401,8 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                             <TouchableOpacity
                                 style={[
                                     s.filterPill,
-                                    item.active && s.filterPillActive,
-                                    item.id === 'unread' && item.active && s.unreadPillActive
+                                    item.active ? s.filterPillActive : null,
+                                    item.id === 'unread' && item.active ? s.unreadPillActive : null
                                 ]}
                                 onPress={() => {
                                     if (item.id === 'unread') {
@@ -413,12 +413,14 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                                 }}
                             >
                                 {item.id === 'unread' && (
-                                    <View style={[s.unreadDot, item.active && s.unreadDotActive]} />
+                                    <View style={[s.unreadDot, item.active ? s.unreadDotActive : null]} />
                                 )}
                                 <Text style={[
                                     s.filterText,
-                                    item.active && s.filterTextActive
-                                ]}>{item.label}</Text>
+                                    item.active ? s.filterTextActive : null
+                                ]}>
+                                    {item.label}
+                                </Text>
                             </TouchableOpacity>
                         );
                     }}

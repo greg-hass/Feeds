@@ -58,8 +58,8 @@ export default function ArticleContent({ html }: ArticleContentProps) {
 
     const containerRef = useRef<HTMLDivElement>(null);
 
-    // Aggressive font stack enforcement
-    const FONT_STACK = "'SF Pro Display', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+    // Use system font stack matching the app's default text rendering
+    const FONT_STACK = "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
     // CSS for both web div and native webview
     const getBaseStyles = (prefix = '') => {

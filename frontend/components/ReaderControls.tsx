@@ -53,13 +53,34 @@ export const ReaderControls = () => {
 
                         {/* Themes */}
                         <View style={s.section}>
-                            <TouchableOpacity onPress={() => setTheme('default')} style={[s.themeCircle, { backgroundColor: colors.background.primary }, currentReaderTheme === 'default' && s.themeCircleActive]}>
+                            <TouchableOpacity
+                                onPress={() => setTheme('default')}
+                                style={[
+                                    s.themeCircle,
+                                    { backgroundColor: colors.background.primary },
+                                    currentReaderTheme === 'default' && s.themeCircleActive
+                                ]}
+                            >
                                 {currentReaderTheme === 'default' && <Check size={12} color={colors.primary.DEFAULT} />}
                             </TouchableOpacity>
-                            <TouchableOpacity onPress={() => setTheme('sepia')} style={[s.themeCircle, { backgroundColor: '#f4ecd8' }, currentReaderTheme === 'sepia' && s.themeCircleActive]}>
+                            <TouchableOpacity
+                                onPress={() => setTheme('sepia')}
+                                style={[
+                                    s.themeCircle,
+                                    { backgroundColor: '#f4ecd8' },
+                                    currentReaderTheme === 'sepia' && s.themeCircleActive
+                                ]}
+                            >
                                 {currentReaderTheme === 'sepia' && <Check size={12} color="#5b4636" />}
                             </TouchableOpacity>
-                            <TouchableOpacity onPress={() => setTheme('paper')} style={[s.themeCircle, { backgroundColor: '#fdfcf8' }, currentReaderTheme === 'paper' && s.themeCircleActive]}>
+                            <TouchableOpacity
+                                onPress={() => setTheme('paper')}
+                                style={[
+                                    s.themeCircle,
+                                    { backgroundColor: '#fdfcf8' },
+                                    currentReaderTheme === 'paper' && s.themeCircleActive
+                                ]}
+                            >
                                 {currentReaderTheme === 'paper' && <Check size={12} color="#2c3e50" />}
                             </TouchableOpacity>
                         </View>
