@@ -6,8 +6,26 @@ import { getUserSettings } from './settings.js';
 import { fetchAndExtractReadability } from './readability.js';
 
 export interface FeedToRefresh {
-// ... (unchanged)
+    id: number;
+    url: string;
+    type: FeedType;
+    refresh_interval_minutes: number;
+}
 
+export interface RefreshResult {
+    success: boolean;
+    newArticles: number;
+    next_fetch_at?: string;
+    error?: string;
+}
+
+/**
+ * Refreshes a single feed and inserts new articles.
+ * Used by both manual refresh (API endpoint) and scheduled refresh.
+ *
+ * @param feed - The feed to refresh
+ * @returns RefreshResult with success status and new article count
+ */
 export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
     try {
         const feedData = await parseFeed(feed.url);
@@ -20,7 +38,23 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
         const shouldFetchContent = settings.fetch_full_content;
 
         const insertArticle = `
-// ... (unchanged)
+            INSERT OR IGNORE INTO articles
+            (feed_id, guid, title, url, author, summary, content, enclosure_url, enclosure_type, thumbnail_url, published_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+
+        // Detect type early if it's currently 'rss' to ensure correct normalization
+        let currentType = feed.type;
+        if (currentType === 'rss') {
+            const { detectFeedType } = await import('./feed-parser.js');
+            currentType = detectFeedType(feed.url, feedData);
+        }
+
+        const database = (await import('../db/index.js')).db();
+        const insertStmt = database.prepare(insertArticle);
+        const updateThumbnailStmt = database.prepare(
+            `UPDATE articles SET thumbnail_cached_path = ?, thumbnail_cached_content_type = ? WHERE id = ?`
+        );
 
         const refreshTransaction = database.transaction((articles: any[], type: FeedType) => {
             let count = 0;
@@ -62,21 +96,21 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
 
         // Process thumbnail caching asynchronously
         for (const item of articlesToCache) {
-             // ... existing thumbnail logic ...
-             try {
+            // ... existing thumbnail logic ...
+            try {
                 const cachedThumbnail = await cacheArticleThumbnail(item.id, item.url);
                 if (cachedThumbnail) {
                     updateThumbnailStmt.run(cachedThumbnail.fileName, cachedThumbnail.mime, item.id);
                 }
             } catch (err) {
-                console.error(`Failed to cache thumbnail for article ${ item.id }: `, err);
+                console.error(`Failed to cache thumbnail for article ${item.id}: `, err);
             }
         }
-        
+
         // Fetch full content if enabled
         if (shouldFetchContent && articlesToEnrich.length > 0) {
             const updateContentStmt = database.prepare('UPDATE articles SET readability_content = ? WHERE id = ?');
-            
+
             // Limit concurrency or count to avoid timeouts? 
             // For now, process sequentially to be safe
             for (const item of articlesToEnrich) {
@@ -88,7 +122,7 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
                         updateContentStmt.run(content, item.id);
                     }
                 } catch (err) {
-                    console.error(`Failed to fetch content for article ${ item.id }: `, err);
+                    console.error(`Failed to fetch content for article ${item.id}: `, err);
                 }
             }
         }
@@ -133,7 +167,7 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
             last_error = NULL,
             last_error_at = NULL,
             updated_at = datetime('now')
-                ${ typeUpdate }
+                ${typeUpdate}
              WHERE id = ? `,
             params
         );
