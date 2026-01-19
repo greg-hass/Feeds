@@ -9,7 +9,7 @@ import {
     Headphones, BookOpen, Play, Bookmark,
     ChevronLeft, ChevronRight, Maximize2, Pause
 } from 'lucide-react-native';
-import { useColors, borderRadius, spacing } from '@/theme';
+import { useColors, borderRadius, spacing, typography } from '@/theme';
 import { extractVideoId, getEmbedUrl, isYouTubeUrl } from '@/utils/youtube';
 import ArticleContent from '@/components/ArticleContent';
 import { VideoModal } from '@/components/VideoModal';
@@ -373,8 +373,8 @@ const styles = (colors: any, isMobile: boolean, readerTheme?: string) => {
         },
         contentContainer: {
             width: '100%',
-            maxWidth: 800,
-            padding: spacing.xl,
+            maxWidth: 720,
+            paddingHorizontal: spacing.xl,
             borderRadius: isMobile ? 0 : borderRadius.lg,
         },
         feedName: {
@@ -386,12 +386,13 @@ const styles = (colors: any, isMobile: boolean, readerTheme?: string) => {
             letterSpacing: 1,
         },
         title: {
-            fontSize: isMobile ? 32 : 46,
+            fontFamily: typography.sans.family,
+            fontSize: isMobile ? 34 : 48,
             fontWeight: '900',
             color: colors.text.primary,
-            lineHeight: isMobile ? 40 : 56,
+            lineHeight: isMobile ? 42 : 58,
             marginBottom: spacing.md,
-            letterSpacing: -1.5,
+            letterSpacing: isMobile ? -1.2 : -1.8,
         },
         meta: {
             flexDirection: 'row',

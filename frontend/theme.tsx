@@ -76,10 +76,13 @@ const sharedColors = {
 
 export const typography = {
     sans: {
-        family: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Icons', 'Helvetica Neue', Helvetica, Arial, sans-serif",
+        family: "'SF Pro Display', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
     },
     serif: {
-        family: "Lora, Georgia, 'Times New Roman', serif",
+        family: "'New York', 'Charter', 'Source Serif Pro', 'Georgia', serif",
+    },
+    system: {
+        family: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', sans-serif",
     }
 };
 

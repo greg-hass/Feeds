@@ -65,13 +65,15 @@ export default function ArticleContent({ html }: ArticleContentProps) {
         body {
             font-family: ${fontStack};
             font-size: ${sizes.body}px;
-            line-height: ${customLineHeight || sizes.lineHeight};
+            line-height: ${customLineHeight || (sizes.lineHeight * 1.05)};
             color: ${contentColors.text} !important;
             background-color: ${contentColors.bg};
             margin: 0;
-            padding: ${isNative ? '20px' : '0'};
+            padding: ${isNative ? '24px' : '0'};
             word-wrap: break-word;
             -webkit-font-smoothing: antialiased;
+            letter-spacing: -0.011em;
+            font-weight: 450;
         }
         /* Force color inheritance for common text containers to override inline styles */
         p, span, div, li {
@@ -80,54 +82,56 @@ export default function ArticleContent({ html }: ArticleContentProps) {
         h1, h2, h3, h4 {
             font-family: ${fontStack};
             color: ${contentColors.text};
-            line-height: 1.25;
-            margin-top: 1.6em;
-            margin-bottom: 0.6em;
-            letter-spacing: -0.02em;
+            line-height: 1.2;
+            margin-top: 2em;
+            margin-bottom: 0.8em;
+            letter-spacing: -0.025em;
+            font-weight: 800;
         }
-        h1 { font-size: ${sizes.h1}px; font-weight: 800; }
-        h2 { font-size: ${sizes.h2}px; font-weight: 700; }
-        h3 { font-size: ${sizes.h3}px; font-weight: 700; }
+        h1 { font-size: ${sizes.h1}px; }
+        h2 { font-size: ${sizes.h2}px; }
+        h3 { font-size: ${sizes.h3}px; }
         
-        p { margin-bottom: 1.5em; }
+        p { margin-bottom: 1.6em; }
         
         a {
             color: ${colors.primary.DEFAULT};
             text-decoration: underline;
             text-decoration-thickness: 1px;
-            text-underline-offset: 3px;
+            text-underline-offset: 4px;
         }
         
         img {
             max-width: 100%;
             height: auto;
-            border-radius: ${borderRadius.md}px;
-            margin: 2.5em auto;
+            border-radius: ${borderRadius.lg}px;
+            margin: 3em auto;
+            display: block;
             display: ${showImages ? 'block' : 'none'};
         }
         
         blockquote {
-            margin: 2.5em 0;
-            padding: 0.5em 0 0.5em 1.5em;
-            border-left: 3px solid ${colors.primary.DEFAULT};
+            margin: 3em 0;
+            padding: 0.5em 0 0.5em 2em;
+            border-left: 4px solid ${colors.primary.DEFAULT};
             font-style: italic;
             color: ${contentColors.secondary};
         }
         
         pre {
             background: ${colors.background.tertiary};
-            padding: 1.5em;
-            border-radius: ${borderRadius.lg}px;
+            padding: 2em;
+            border-radius: ${borderRadius.xl}px;
             overflow-x: auto;
             font-family: 'SF Mono', Monaco, monospace;
-            font-size: 0.85em;
-            line-height: 1.5;
-            margin: 2em 0;
+            font-size: 0.9em;
+            line-height: 1.6;
+            margin: 2.5em 0;
         }
         
         code {
             background: ${colors.background.tertiary};
-            padding: 0.2em 0.4em;
+            padding: 0.25em 0.5em;
             border-radius: ${borderRadius.sm}px;
             font-family: 'SF Mono', Monaco, monospace;
         }
@@ -135,55 +139,51 @@ export default function ArticleContent({ html }: ArticleContentProps) {
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 2em 0;
+            margin: 3em 0;
         }
         th, td {
             text-align: left;
-            padding: 12px;
+            padding: 16px;
             border-bottom: 1px solid ${contentColors.border};
         }
     `;
 
-    if (Platform.OS === 'web') {
-        useEffect(() => {
-            if (!containerRef.current) return;
-            const links = containerRef.current.querySelectorAll('a');
-            links.forEach(link => {
-                const vid = extractVideoId((link as HTMLAnchorElement).href);
-                if (vid) {
-                    link.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        playVideo(vid);
-                    });
-                }
-            });
-        }, [html, settings, fontSize, fontFamily, readerTheme, customLineHeight]);
+    useEffect(() => {
+        if (Platform.OS !== 'web') return;
+        if (!containerRef.current) return;
+        const links = containerRef.current.querySelectorAll('a');
+        links.forEach(link => {
+            const vid = extractVideoId((link as HTMLAnchorElement).href);
+            if (vid) {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    playVideo(vid);
+                });
+            }
+        });
+    }, [html, settings, fontSize, fontFamily, readerTheme, customLineHeight]);
 
-        return (
-            <View style={componentStyles.container}>
-                <style dangerouslySetInnerHTML={{
-                    __html: `
-                    .zen-article { ${getBaseStyles()} }
-                    .zen-article img { width: 100%; }
-                    @media (max-width: 600px) {
-                        .zen-article img {
-                            width: calc(100% + ${spacing.xl * 2}px);
-                            margin-left: -${spacing.xl}px;
-                            border-radius: 0;
-                        }
+    const renderWebContent = () => (
+        <View style={componentStyles.container}>
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                .zen-article { ${getBaseStyles()} }
+                @media (max-width: 600px) {
+                    .zen-article img {
+                        width: auto;
+                        max-width: 100%;
                     }
-                ` }} />
-                <div
-                    ref={containerRef}
-                    className="zen-article"
-                    dangerouslySetInnerHTML={{ __html: html }}
-                />
-            </View>
-        );
-    }
+                }
+            ` }} />
+            <div
+                ref={containerRef}
+                className="zen-article"
+                dangerouslySetInnerHTML={{ __html: html }}
+            />
+        </View>
+    );
 
-    // Native support utilizing WebView
-    return (
+    const renderNativeContent = () => (
         <View style={componentStyles.container}>
             {NativeWebView ? (
                 <NativeWebView
@@ -221,6 +221,8 @@ export default function ArticleContent({ html }: ArticleContentProps) {
             ) : null}
         </View>
     );
+
+    return Platform.OS === 'web' ? renderWebContent() : renderNativeContent();
 }
 
 const componentStyles = StyleSheet.create({
