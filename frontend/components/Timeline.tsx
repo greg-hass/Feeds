@@ -289,32 +289,54 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                     isFeatured && s.articleFeatured
                 ]}
             >
-                <View style={[s.cardBody, isFeatured && s.featuredBody]}>
-                    <View style={s.cardInfo}>
-                        <View style={s.feedPill}>
-                            {item.feed_icon_url ? (
-                                <Image source={{ uri: item.feed_icon_url }} style={s.feedIcon} />
-                            ) : (
-                                <View style={s.feedInitial}><Text style={s.initialText}>{item.feed_title?.charAt(0)}</Text></View>
+                <View style={isFeatured && !isYouTube ? [s.cardBody, s.featuredBody] : s.cardBody}>
+                        <View style={s.cardInfo}>
+                            <View style={s.feedPill}>
+                                {item.feed_icon_url ? (
+                                    <Image source={{ uri: item.feed_icon_url }} style={s.feedIcon} />
+                                ) : (
+                                    <View style={s.feedInitial}><Text style={s.initialText}>{item.feed_title?.charAt(0)}</Text></View>
+                                )}
+                                <Text style={s.feedName} numberOfLines={1}>{item.feed_title}</Text>
+                            </View>
+
+                            <Text style={[
+                                s.articleTitle,
+                                item.is_read && s.articleTitleRead
+                            ]} numberOfLines={3}>
+                                {item.title}
+                            </Text>
+
+                            {!isYouTube && isFeatured && (
+                                <Text style={s.featuredSummary} numberOfLines={3}>
+                                    {item.summary?.replace(/<[^>]*>?/gm, '')}
+                                </Text>
                             )}
-                            <Text style={s.feedName} numberOfLines={1}>{item.feed_title}</Text>
                         </View>
 
-                        <Text style={[
-                            s.articleTitle,
-                            item.is_read && s.articleTitleRead,
-                            isFeatured && s.featuredTitle
-                        ]} numberOfLines={isFeatured ? 4 : 3}>
-                            {item.title}
-                        </Text>
-
-                        {!isYouTube && isFeatured && (
-                            <Text style={s.featuredSummary} numberOfLines={3}>
-                                {item.summary?.replace(/<[^>]*>?/gm, '')}
-                            </Text>
+                        {/* Thumbnail - positioned consistently */}
+                        {!isYouTube && thumbnail && (
+                            item.has_audio ? (
+                                <TouchableOpacity
+                                    style={[s.thumbnailWrapper, isFeatured && s.featuredThumbnailWrapper]}
+                                    onPress={() => handlePlayPress(item)}
+                                    activeOpacity={0.8}
+                                >
+                                    <Image source={{ uri: thumbnail }} style={s.thumbnail} resizeMode="cover" />
+                                    <View style={s.podcastIndicator}>
+                                        <Headphones size={12} color="#fff" />
+                                    </View>
+                                </TouchableOpacity>
+                            ) : (
+                                <View style={[s.thumbnailWrapper, isFeatured && s.featuredThumbnailWrapper]}>
+                                    <Image source={{ uri: thumbnail }} style={s.thumbnail} resizeMode="cover" />
+                                </View>
+                            )
                         )}
+                    </View>
 
-                        <View style={s.articleFooter}>
+                    {/* Footer with metadata and bookmark - always at bottom */}
+                    <View style={s.articleFooter}>
                             <View style={s.metaRow}>
                                 {isHot && (
                                     <Animated.View style={{ transform: [{ scale: hotPulseAnim }] }}>
@@ -387,8 +409,8 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                         </View>
                     </View>
 
-                    {/* YouTube Video or Thumbnail */}
-                    {isYouTube && videoId ? (
+                    {/* YouTube Video - shown after footer */}
+                    {isYouTube && videoId && (
                         <View style={s.videoContainer}>
                             {isVideoPlaying ? (
                                 <WebView
@@ -408,31 +430,8 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                                 </View>
                             )}
                         </View>
-                    ) : (
-                        thumbnail && !isYouTube && (
-                            item.has_audio ? (
-                                <TouchableOpacity
-                                    style={[s.thumbnailWrapper, isFeatured && s.featuredThumbnailWrapper]}
-                                    onPress={() => handlePlayPress(item)}
-                                    activeOpacity={0.8}
-                                >
-                                    <Image source={{ uri: thumbnail }} style={s.thumbnail} resizeMode="cover" />
-                                    <View style={s.podcastIndicator}>
-                                        {(isPlaying && playingArticleId === item.id) ? (
-                                            <PlayingWaveform color="#fff" size={14} />
-                                        ) : (
-                                            <Headphones size={14} color="#fff" />
-                                        )}
-                                    </View>
-                                </TouchableOpacity>
-                            ) : (
-                                <View style={[s.thumbnailWrapper, isFeatured && s.featuredThumbnailWrapper]}>
-                                    <Image source={{ uri: thumbnail }} style={s.thumbnail} resizeMode="cover" />
-                                </View>
-                            )
-                        )
                     )}
-                </View>
+                </TouchableOpacity>
                 {!item.is_read && <View style={s.unreadIndicator} />}
             </TouchableOpacity>
         );
@@ -686,7 +685,6 @@ const styles = (colors: any, isMobile: boolean) => StyleSheet.create({
         elevation: 4,
     },
     articleFeatured: {
-        backgroundColor: colors.background.elevated,
         padding: spacing.xl,
     },
     featuredBody: {
@@ -694,9 +692,9 @@ const styles = (colors: any, isMobile: boolean) => StyleSheet.create({
         gap: spacing.lg,
     },
     featuredTitle: {
-        fontSize: 24,
-        lineHeight: 30,
-        fontWeight: '900',
+        fontSize: 16,
+        lineHeight: 22,
+        fontWeight: '700',
     },
     featuredSummary: {
         fontSize: 14,
