@@ -62,8 +62,6 @@ export default function ToastContainer() {
 const styles = StyleSheet.create({
     container: {
         position: 'absolute',
-        top: Platform.OS === 'web' ? 20 : 60, // Safe area on web PWA
-        right: 20,
         zIndex: 1000,
         gap: spacing.sm,
     },
