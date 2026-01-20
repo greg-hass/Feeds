@@ -107,7 +107,13 @@ export async function fetchYouTubeIcon(channelId: string): Promise<string | null
                     return carouselAvatar[carouselAvatar.length - 1].url;
                 }
 
-                // Path 3: Page Owner Details
+                // Path 3: Page Header Renderer (New Layout 2024/2025)
+                const pageHeaderAvatar = data.header?.pageHeaderRenderer?.content?.pageHeaderViewModel?.image?.decoratedAvatarViewModel?.avatar?.avatarViewModel?.image?.sources;
+                if (pageHeaderAvatar && pageHeaderAvatar.length > 0) {
+                    return pageHeaderAvatar[pageHeaderAvatar.length - 1].url;
+                }
+
+                // Path 4: Page Owner Details
                 const ownerAvatar = data.sidebar?.playlistSidebarRenderer?.items?.[0]?.playlistSidebarPrimaryInfoRenderer?.navigationEndpoint?.commandMetadata?.webCommandMetadata?.url;
                 // (This is effectively checking if we are on a playlist page that leads to a channel, might be overkill, sticking to header)
             } catch (e) {
