@@ -68,6 +68,14 @@ if (YOUTUBE_API_KEY) {
 }
 
 export async function fetchYouTubeIcon(channelId: string): Promise<string | null> {
+    // Validate channel ID format (should start with UC and be 24 chars)
+    if (!channelId || !channelId.startsWith('UC') || channelId.length !== 24) {
+        console.log(`[YouTube Icon] Invalid channel ID format: "${channelId}" (expected UC + 22 chars)`);
+        return null;
+    }
+    
+    console.log(`[YouTube Icon] Fetching icon for channel: ${channelId}`);
+    
     // Scrape the channel page (proven working approach)
     try {
         const response = await fetch(`https://www.youtube.com/channel/${channelId}`, {
