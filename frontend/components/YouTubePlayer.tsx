@@ -6,6 +6,7 @@ interface YouTubePlayerProps {
     videoId: string;
     thumbnail: string | null;
     isPlaying: boolean;
+    isShort?: boolean;
     onPress: () => void;
 }
 
@@ -17,6 +18,7 @@ const YouTubePlayer = React.memo<YouTubePlayerProps>(({
     videoId,
     thumbnail,
     isPlaying,
+    isShort = false,
     onPress,
 }) => {
     return (
@@ -37,7 +39,7 @@ const YouTubePlayer = React.memo<YouTubePlayerProps>(({
                     <Image 
                         source={{ uri: thumbnail || `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` }} 
                         style={styles.thumbnail} 
-                        resizeMode="contain"
+                        resizeMode={isShort ? "contain" : "cover"}
                     />
                     <View style={styles.playButtonOverlay}>
                         <View style={styles.playButtonCircle}>
@@ -52,7 +54,8 @@ const YouTubePlayer = React.memo<YouTubePlayerProps>(({
     // Custom comparison - only re-render if these props change
     return (
         prevProps.videoId === nextProps.videoId &&
-        prevProps.isPlaying === nextProps.isPlaying
+        prevProps.isPlaying === nextProps.isPlaying &&
+        prevProps.isShort === nextProps.isShort
     );
 });
 

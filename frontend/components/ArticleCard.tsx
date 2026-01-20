@@ -50,6 +50,7 @@ const ArticleCard = React.memo<ArticleCardProps>(({
     const thumbnail = item.thumbnail_url;
     const isYouTube = item.feed_type === 'youtube';
     const videoId = isYouTube ? extractVideoId(item.url || '') : null;
+    const isShort = !!(isYouTube && item.url?.includes('/shorts/'));
     const isVideoPlaying = !!(isYouTube && videoId && activeVideoId === videoId);
     const isFeatured = (index % 5 === 0 && !isMobile && thumbnail) || isYouTube;
     const isHot = !!(item.published_at && (new Date(item.published_at).getTime() > Date.now() - 4 * 60 * 60 * 1000));
@@ -164,6 +165,7 @@ const ArticleCard = React.memo<ArticleCardProps>(({
                     videoId={videoId}
                     thumbnail={thumbnail ?? null}
                     isPlaying={isVideoPlaying}
+                    isShort={isShort}
                     onPress={() => onVideoPress(item)}
                 />
             )}
