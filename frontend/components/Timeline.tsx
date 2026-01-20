@@ -412,6 +412,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                                 </Animated.View>
                             </TouchableOpacity>
                         </View>
+                        </View>
                     </View>
 
                     {/* YouTube Video - shown after footer */}
