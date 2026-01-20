@@ -23,7 +23,7 @@ export default function ArticleScreen() {
     const { width } = useWindowDimensions();
     const isMobile = width < 1024;
     const { currentArticle, fetchArticle, markRead, markUnread, toggleBookmark, articles } = useArticleStore();
-    const { settings } = useSettingsStore();
+    const { settings, updateSettings } = useSettingsStore();
     const { show } = useToastStore();
     const [isLoading, setIsLoading] = useState(true);
     const [showReadability, setShowReadability] = useState(settings?.readability_enabled ?? false);
@@ -32,6 +32,7 @@ export default function ArticleScreen() {
     const [scrollOffset, setScrollOffset] = useState(0);
     const headerOpacity = useRef(new Animated.Value(1)).current;
     const [readingProgress, setReadingProgress] = useState(0);
+    const [showTextSizeMenu, setShowTextSizeMenu] = useState(false);
 
     const { activeVideoId, playVideo, minimize, close: closeVideo, isMinimized } = useVideoStore();
     const { play: playPodcast, isPlaying: isAudioPlaying, showPlayer } = useAudioStore();
@@ -234,9 +235,33 @@ export default function ArticleScreen() {
                         <TouchableOpacity onPress={handleOpenExternal} style={s.actionButton}>
                             <ExternalLink size={22} color={colors.text.secondary} />
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={() => router.push('/(app)/settings')} style={s.actionButton}>
-                            <Type size={22} color={colors.text.secondary} />
-                        </TouchableOpacity>
+                        <View style={{ position: 'relative' as const }}>
+                            <TouchableOpacity onPress={() => setShowTextSizeMenu(!showTextSizeMenu)} style={s.actionButton}>
+                                <Type size={22} color={showTextSizeMenu ? colors.primary.DEFAULT : colors.text.secondary} />
+                            </TouchableOpacity>
+                            {showTextSizeMenu && (
+                                <View style={s.textSizeMenu}>
+                                    <TouchableOpacity 
+                                        onPress={() => { updateSettings({ font_size: 'small' }); setShowTextSizeMenu(false); }} 
+                                        style={[s.textSizeOption, settings?.font_size === 'small' && s.textSizeOptionActive]}
+                                    >
+                                        <Text style={[s.textSizeLabel, { fontSize: 12 }]}>A</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity 
+                                        onPress={() => { updateSettings({ font_size: 'medium' }); setShowTextSizeMenu(false); }} 
+                                        style={[s.textSizeOption, (settings?.font_size === 'medium' || !settings?.font_size) && s.textSizeOptionActive]}
+                                    >
+                                        <Text style={[s.textSizeLabel, { fontSize: 16 }]}>A</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity 
+                                        onPress={() => { updateSettings({ font_size: 'large' }); setShowTextSizeMenu(false); }} 
+                                        style={[s.textSizeOption, settings?.font_size === 'large' && s.textSizeOptionActive]}
+                                    >
+                                        <Text style={[s.textSizeLabel, { fontSize: 20 }]}>A</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+                        </View>
                     </View>
                 </Animated.View>
 
@@ -510,6 +535,38 @@ const styles = (colors: any, isMobile: boolean, readerTheme?: string) => {
             color: '#fff',
             fontSize: 16,
             fontWeight: '800',
+        },
+        textSizeMenu: {
+            position: 'absolute',
+            top: 44,
+            right: 0,
+            backgroundColor: colors.background.elevated,
+            borderRadius: borderRadius.md,
+            borderWidth: 1,
+            borderColor: colors.border.DEFAULT,
+            flexDirection: 'row',
+            padding: spacing.xs,
+            gap: spacing.xs,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.15,
+            shadowRadius: 8,
+            elevation: 5,
+            zIndex: 100,
+        },
+        textSizeOption: {
+            width: 40,
+            height: 40,
+            justifyContent: 'center',
+            alignItems: 'center',
+            borderRadius: borderRadius.sm,
+        },
+        textSizeOptionActive: {
+            backgroundColor: colors.primary.DEFAULT + '22',
+        },
+        textSizeLabel: {
+            fontWeight: '700',
+            color: colors.text.primary,
         },
     });
 };
