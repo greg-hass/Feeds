@@ -33,6 +33,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     const { activeVideoId, playVideo, setPlaying: setVideoPlaying } = useVideoStore(); // Destructure video store
     const [selectedIndex, setSelectedIndex] = useState(-1);
     const [timeLeft, setTimeLeft] = useState<string | null>(null);
+    const [isScrollRestored, setIsScrollRestored] = useState(false);
     const flatListRef = useRef<FlatList>(null);
     const hasRestoredScroll = useRef(false);
     const articlesRef = useRef(articles);
@@ -138,16 +139,20 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     // Reset scroll restoration flag when filter changes
     useEffect(() => {
         hasRestoredScroll.current = false;
+        setIsScrollRestored(false);
     }, [filter]);
 
     // Restore scroll position when articles are loaded
     useEffect(() => {
         if (!hasRestoredScroll.current && articles.length > 0 && scrollPosition > 0 && flatListRef.current) {
-            // Use a timeout to ensure the list is fully rendered
-            setTimeout(() => {
-                flatListRef.current?.scrollToOffset({ offset: scrollPosition, animated: false });
-                hasRestoredScroll.current = true;
-            }, 100);
+            // Immediately restore scroll without delay to prevent flash
+            flatListRef.current?.scrollToOffset({ offset: scrollPosition, animated: false });
+            hasRestoredScroll.current = true;
+            // Small delay to ensure scroll has taken effect before showing
+            setTimeout(() => setIsScrollRestored(true), 50);
+        } else if (scrollPosition === 0 || articles.length === 0) {
+            // No scroll to restore, show immediately
+            setIsScrollRestored(true);
         }
     }, [articles.length, scrollPosition]);
 
