@@ -1,6 +1,8 @@
 import React from 'react';
 import { View, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Play } from 'lucide-react-native';
+import { WebView } from 'react-native-webview';
+import { getEmbedUrl } from '@/utils/youtube';
 
 interface YouTubePlayerProps {
     videoId: string;
@@ -12,7 +14,7 @@ interface YouTubePlayerProps {
 
 /**
  * YouTubePlayer - Memoized component for YouTube video display
- * Shows thumbnail with play button overlay or WebView placeholder when playing
+ * Shows thumbnail with play button overlay or WebView when playing
  */
 const YouTubePlayer = React.memo<YouTubePlayerProps>(({
     videoId,
@@ -24,8 +26,14 @@ const YouTubePlayer = React.memo<YouTubePlayerProps>(({
     return (
         <View style={styles.videoContainer}>
             {isPlaying ? (
-                <View style={styles.webview}>
-                    {/* WebView placeholder - actual implementation in parent */}
+                <View style={styles.webviewContainer}>
+                    <WebView
+                        source={{ uri: getEmbedUrl(videoId) }}
+                        style={styles.webview}
+                        allowsFullscreenVideo
+                        allowsInlineMediaPlayback
+                        mediaPlaybackRequiresUserAction={false}
+                    />
                 </View>
             ) : (
                 <TouchableOpacity 
@@ -96,8 +104,12 @@ const styles = StyleSheet.create({
         borderWidth: 3,
         borderColor: '#fff',
     },
+    webviewContainer: {
+        flex: 1,
+        backgroundColor: '#000',
+    },
     webview: {
-        width: '100%',
-        height: '100%',
+        flex: 1,
+        backgroundColor: 'transparent',
     },
 });

@@ -94,36 +94,39 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
         const { count: insertedCount, articlesToCache, articlesToEnrich } = refreshTransaction(feedData.articles, currentType);
         newArticles = insertedCount;
 
-        // Process thumbnail caching asynchronously
-        for (const item of articlesToCache) {
-            // ... existing thumbnail logic ...
-            try {
-                const cachedThumbnail = await cacheArticleThumbnail(item.id, item.url);
-                if (cachedThumbnail) {
-                    updateThumbnailStmt.run(cachedThumbnail.fileName, cachedThumbnail.mime, item.id);
-                }
-            } catch (err) {
-                console.error(`Failed to cache thumbnail for article ${item.id}: `, err);
-            }
-        }
-
-        // Fetch full content if enabled
-        if (shouldFetchContent && articlesToEnrich.length > 0) {
-            const updateContentStmt = database.prepare('UPDATE articles SET readability_content = ? WHERE id = ?');
-
-            // Limit concurrency or count to avoid timeouts? 
-            // For now, process sequentially to be safe
-            for (const item of articlesToEnrich) {
-                // Short delay to be nice to servers?
-                // await new Promise(r => setTimeout(r, 500)); 
+        // Process thumbnail caching in parallel batches
+        const THUMBNAIL_BATCH_SIZE = 5;
+        for (let i = 0; i < articlesToCache.length; i += THUMBNAIL_BATCH_SIZE) {
+            const batch = articlesToCache.slice(i, i + THUMBNAIL_BATCH_SIZE);
+            await Promise.all(batch.map(async (item) => {
                 try {
-                    const { content } = await fetchAndExtractReadability(item.url);
-                    if (content) {
-                        updateContentStmt.run(content, item.id);
+                    const cachedThumbnail = await cacheArticleThumbnail(item.id, item.url);
+                    if (cachedThumbnail) {
+                        updateThumbnailStmt.run(cachedThumbnail.fileName, cachedThumbnail.mime, item.id);
                     }
                 } catch (err) {
-                    console.error(`Failed to fetch content for article ${item.id}: `, err);
+                    console.error(`Failed to cache thumbnail for article ${item.id}: `, err);
                 }
+            }));
+        }
+
+        // Fetch full content if enabled, in parallel batches
+        if (shouldFetchContent && articlesToEnrich.length > 0) {
+            const updateContentStmt = database.prepare('UPDATE articles SET readability_content = ? WHERE id = ?');
+            const CONTENT_BATCH_SIZE = 3; // Smaller batch for heavier content fetching
+
+            for (let i = 0; i < articlesToEnrich.length; i += CONTENT_BATCH_SIZE) {
+                const batch = articlesToEnrich.slice(i, i + CONTENT_BATCH_SIZE);
+                await Promise.all(batch.map(async (item) => {
+                    try {
+                        const { content } = await fetchAndExtractReadability(item.url);
+                        if (content) {
+                            updateContentStmt.run(content, item.id);
+                        }
+                    } catch (err) {
+                        console.error(`Failed to fetch content for article ${item.id}: `, err);
+                    }
+                }));
             }
         }
 

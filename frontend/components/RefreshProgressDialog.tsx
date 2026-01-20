@@ -1,7 +1,8 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, useWindowDimensions, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Animated, useWindowDimensions, Platform } from 'react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
 import { RefreshCw } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface RefreshProgressDialogProps {
     visible: boolean;
@@ -12,6 +13,7 @@ interface RefreshProgressDialogProps {
 
 export function RefreshProgressDialog({ visible, total, completed, currentTitle }: RefreshProgressDialogProps) {
     const colors = useColors();
+    const insets = useSafeAreaInsets();
     const { width } = useWindowDimensions();
     const isDesktop = width >= 1024;
     const isMobileWeb = Platform.OS === 'web' && width < 768;
@@ -55,7 +57,7 @@ export function RefreshProgressDialog({ visible, total, completed, currentTitle 
 
     if (!visible && (fadeAnim as any)._value === 0) return null;
 
-    const s = styles(colors, isDesktop, isMobileWeb);
+    const s = styles(colors, isDesktop, isMobileWeb, insets);
 
     return (
         <Animated.View
@@ -92,12 +94,12 @@ export function RefreshProgressDialog({ visible, total, completed, currentTitle 
     );
 }
 
-const styles = (colors: any, isDesktop: boolean, isMobileWeb?: boolean) => StyleSheet.create({
+const styles = (colors: any, isDesktop: boolean, isMobileWeb: boolean, insets: any) => StyleSheet.create({
     floatingContainer: {
         position: 'absolute',
         zIndex: 9999,
         // Responsive positioning
-        bottom: isDesktop ? 40 : (isMobileWeb ? 90 : 100), // Above nav on mobile
+        bottom: isDesktop ? 40 : (insets.bottom + 80), // Sit above the mobile nav bar
         right: isDesktop ? 40 : spacing.lg,
         left: isDesktop ? undefined : spacing.lg,
         // Sizing
