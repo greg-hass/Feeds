@@ -43,10 +43,14 @@ export default function MobileNav() {
                         key={item.path}
                         style={s.navItem}
                         onPress={() => router.push(item.path as any)}
+                        accessibilityRole="button"
+                        accessibilityLabel={item.label}
+                        accessibilityState={{ selected: active }}
                     >
                         <IconComponent
                             size={22}
                             color={active ? colors.primary.DEFAULT : colors.text.tertiary}
+                            fill={active ? colors.primary.DEFAULT : 'transparent'}
                         />
                         <Text style={[s.label, active && s.labelActive]}>
                             {item.label}
