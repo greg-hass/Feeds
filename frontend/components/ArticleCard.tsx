@@ -212,7 +212,7 @@ const ArticleCard = React.memo<ArticleCardProps>(({
                             <Image 
                                 source={{ uri: thumbnail || `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` }} 
                                 style={s.thumbnail} 
-                                resizeMode="cover" 
+                                resizeMode="contain"
                             />
                             <View style={s.playButtonOverlay}>
                                 <View style={s.playButtonCircle}>
@@ -417,7 +417,7 @@ const styles = (colors: any, isMobile: boolean) => ({
         borderRadius: borderRadius.lg,
         overflow: 'hidden' as const,
         marginTop: spacing.md,
-        backgroundColor: colors.background.tertiary,
+        backgroundColor: '#000', // Black background for letterboxing
     },
     videoThumbnailWrapper: {
         width: '100%' as const,
