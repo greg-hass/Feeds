@@ -26,10 +26,19 @@ export default function MobileNav() {
     const s = styles(colors);
 
     const isActive = (path: string) => {
+        // Normalize the path by removing the (app) group prefix
+        const normalizedPath = path.replace('/(app)', '');
+        const normalizedPathname = pathname.replace('/(app)', '');
+        
         if (path === '/(app)') {
-            return pathname === '/' || pathname === '/(app)' || pathname.startsWith('/(app)/article');
+            // Home is active for root, /(app), and article pages
+            return normalizedPathname === '/' || 
+                   normalizedPathname === '' || 
+                   normalizedPathname.startsWith('/article');
         }
-        return pathname.startsWith(path);
+        
+        // For other paths, check if pathname starts with the normalized path
+        return normalizedPathname.startsWith(normalizedPath);
     };
 
     return (
@@ -52,6 +61,7 @@ export default function MobileNav() {
                             size={24}
                             color={active ? colors.primary.DEFAULT : colors.text.tertiary}
                             fill={active ? colors.primary.DEFAULT : 'transparent'}
+                            strokeWidth={active ? 4 : 1.5}
                         />
                         <Text style={[s.label, active && s.labelActive]}>
                             {item.label}

@@ -53,10 +53,6 @@ export default function ArticleScreen() {
 
     useEffect(() => {
         if (id) {
-            if (!isMobile && activeVideoId && !isMinimized) {
-                minimize();
-            }
-
             setIsLoading(true);
             fadeAnim.setValue(0);
             setReadingProgress(0);
@@ -72,6 +68,21 @@ export default function ArticleScreen() {
                 .finally(() => setIsLoading(false));
         }
     }, [id]);
+
+    // Handle video state when article changes
+    useEffect(() => {
+        if (currentArticle && activeVideoId) {
+            const articleVideoId = extractVideoId(currentArticle.url || currentArticle.thumbnail_url || '');
+            
+            // If opening a non-YouTube article or different YouTube video, close the current video
+            if (!isYouTube || (articleVideoId && articleVideoId !== activeVideoId)) {
+                closeVideo();
+            } else if (!isMobile && !isMinimized) {
+                // On desktop, minimize video when opening the same YouTube article
+                minimize();
+            }
+        }
+    }, [currentArticle?.id, activeVideoId]);
 
     const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
         const offset = event.nativeEvent.contentOffset.y;
