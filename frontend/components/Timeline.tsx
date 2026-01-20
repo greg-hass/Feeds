@@ -167,7 +167,14 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
         const feed = feeds.find(f => f.id === filter.feed_id);
         if (feed) headerTitle = feed.title;
     } else if (filter.type) {
-        headerTitle = filter.type.charAt(0).toUpperCase() + filter.type.slice(1) + 's';
+        // Map type to proper smart folder name
+        const typeNames: Record<string, string> = {
+            'youtube': 'YouTube',
+            'podcast': 'Podcasts',
+            'reddit': 'Reddit',
+            'rss': 'RSS',
+        };
+        headerTitle = typeNames[filter.type] || filter.type;
     } else {
         headerTitle = 'All Articles';
     }
