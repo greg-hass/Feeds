@@ -274,171 +274,23 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     };
 
     const renderArticle = ({ item, index }: { item: Article; index: number }) => {
-        const isActive = activeArticleId === item.id;
-        const thumbnail = item.thumbnail_url;
-        const isYouTube = item.feed_type === 'youtube';
-        const videoId = isYouTube ? extractVideoId(item.url || '') : null;
-        const isVideoPlaying = isYouTube && videoId && activeVideoId === videoId;
-
-        // Featured logic needs to be mindful of YouTube videos which are now always "featured" in style
-        const isFeatured = (index % 5 === 0 && !isMobile && thumbnail) || isYouTube;
-        const isHot = item.published_at && (new Date(item.published_at).getTime() > Date.now() - 4 * 60 * 60 * 1000);
-
         const Content = (
-            <TouchableOpacity
-                activeOpacity={0.9}
-                onPress={() => isYouTube ? handleVideoPress(item) : handleArticlePress(item)}
-                style={[
-                    s.articleCard,
-                    item.is_read && s.articleRead,
-                    isActive && s.articleActive,
-                    isFeatured && s.articleFeatured
-                ]}
-            >
-                <View style={isFeatured && !isYouTube ? [s.cardBody, s.featuredBody] : s.cardBody}>
-                        <View style={s.cardInfo}>
-                            <View style={s.feedPill}>
-                                {item.feed_icon_url ? (
-                                    <Image source={{ uri: item.feed_icon_url }} style={s.feedIcon} />
-                                ) : (
-                                    <View style={s.feedInitial}><Text style={s.initialText}>{item.feed_title?.charAt(0)}</Text></View>
-                                )}
-                                <Text style={s.feedName} numberOfLines={1}>{item.feed_title}</Text>
-                            </View>
-
-                            <Text style={[
-                                s.articleTitle,
-                                item.is_read && s.articleTitleRead
-                            ]} numberOfLines={3}>
-                                {item.title}
-                            </Text>
-
-                            {!isYouTube && isFeatured && (
-                                <Text style={s.featuredSummary} numberOfLines={3}>
-                                    {item.summary?.replace(/<[^>]*>?/gm, '')}
-                                </Text>
-                            )}
-                        </View>
-
-                        {/* Thumbnail - positioned consistently */}
-                        {!isYouTube && thumbnail && (
-                            item.has_audio ? (
-                                <TouchableOpacity
-                                    style={[s.thumbnailWrapper, isFeatured && s.featuredThumbnailWrapper]}
-                                    onPress={() => handlePlayPress(item)}
-                                    activeOpacity={0.8}
-                                >
-                                    <Image source={{ uri: thumbnail }} style={s.thumbnail} resizeMode="cover" />
-                                    <View style={s.podcastIndicator}>
-                                        <Headphones size={12} color="#fff" />
-                                    </View>
-                                </TouchableOpacity>
-                            ) : (
-                                <View style={[s.thumbnailWrapper, isFeatured && s.featuredThumbnailWrapper]}>
-                                    <Image source={{ uri: thumbnail }} style={s.thumbnail} resizeMode="cover" />
-                                </View>
-                            )
-                        )}
-                    </View>
-
-                    {/* Footer with metadata and bookmark - always at bottom */}
-                    <View style={s.articleFooter}>
-                            <View style={s.metaRow}>
-                                {isHot && (
-                                    <Animated.View style={{ transform: [{ scale: hotPulseAnim }] }}>
-                                        <LinearGradient
-                                            colors={['#f97316', '#ef4444']}
-                                            start={{ x: 0, y: 0 }}
-                                            end={{ x: 1, y: 0 }}
-                                            style={s.hotBadge}
-                                        >
-                                            <Flame size={10} color="#fff" fill="#fff" />
-                                            <Text style={s.hotText}>HOT</Text>
-                                        </LinearGradient>
-                                    </Animated.View>
-                                )}
-                                <Clock size={12} color={colors.text.tertiary} />
-                                <Text style={s.articleMeta}>
-                                    {item.published_at ? formatDistanceToNow(new Date(item.published_at), { addSuffix: true }) : ''}
-                                </Text>
-                            </View>
-                            <TouchableOpacity
-                                onPress={() => {
-                                    const scale = getBookmarkScale(item.id);
-                                    const rotation = getBookmarkRotation(item.id);
-                                    
-                                    // Animate scale
-                                    Animated.sequence([
-                                        Animated.spring(scale, {
-                                            toValue: 1.3,
-                                            ...animations.spring,
-                                            useNativeDriver: true,
-                                        }),
-                                        Animated.spring(scale, {
-                                            toValue: 1,
-                                            ...animations.spring,
-                                            useNativeDriver: true,
-                                        }),
-                                    ]).start();
-                                    
-                                    // Animate rotation
-                                    Animated.spring(rotation, {
-                                        toValue: item.is_bookmarked ? 0 : 1,
-                                        ...animations.spring,
-                                        useNativeDriver: true,
-                                    }).start();
-                                    
-                                    useArticleStore.getState().toggleBookmark(item.id);
-                                }}
-                                style={s.cardAction}
-                                accessibilityRole="button"
-                                accessibilityLabel={item.is_bookmarked ? "Remove bookmark" : "Bookmark article"}
-                                accessibilityHint="Double tap to save for later"
-                                accessibilityState={{ selected: item.is_bookmarked }}
-                            >
-                                <Animated.View style={{
-                                    transform: [
-                                        { scale: getBookmarkScale(item.id) },
-                                        { rotate: getBookmarkRotation(item.id).interpolate({
-                                            inputRange: [0, 1],
-                                            outputRange: ['0deg', '360deg'],
-                                        })}
-                                    ]
-                                }}>
-                                    <Bookmark
-                                        size={20}
-                                        color={item.is_bookmarked ? colors.primary.DEFAULT : colors.text.tertiary}
-                                        fill={item.is_bookmarked ? colors.primary.DEFAULT : 'transparent'}
-                                    />
-                                </Animated.View>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-
-                    {/* YouTube Video - shown after footer */}
-                    {isYouTube && videoId && (
-                        <View style={s.videoContainer}>
-                            {isVideoPlaying ? (
-                                <WebView
-                                    style={s.webview}
-                                    source={{ uri: `https://www.youtube.com/embed/${videoId}?autoplay=1&playsinline=1` }}
-                                    allowsInlineMediaPlayback={true}
-                                    mediaPlaybackRequiresUserAction={false}
-                                />
-                            ) : (
-                                <View style={s.videoThumbnailWrapper}>
-                                    <Image source={{ uri: thumbnail || `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` }} style={s.thumbnail} resizeMode="cover" />
-                                    <View style={s.playButtonOverlay}>
-                                        <View style={s.playButtonCircle}>
-                                            <Play size={24} color="#fff" fill="#fff" style={{ marginLeft: 4 }} />
-                                        </View>
-                                    </View>
-                                </View>
-                            )}
-                        </View>
-                    )}
-                </TouchableOpacity>
-                {!item.is_read && <View style={s.unreadIndicator} />}
+            <ArticleCard
+                item={item}
+                index={index}
+                isActive={activeArticleId === item.id}
+                isMobile={isMobile}
+                activeVideoId={activeVideoId}
+                playingArticleId={playingArticleId}
+                isPlaying={isPlaying}
+                onArticlePress={handleArticlePress}
+                onVideoPress={handleVideoPress}
+                onPlayPress={handlePlayPress}
+                onBookmarkToggle={(id) => useArticleStore.getState().toggleBookmark(id)}
+                getBookmarkScale={getBookmarkScale}
+                getBookmarkRotation={getBookmarkRotation}
+                hotPulseAnim={hotPulseAnim}
+            />
         );
 
         if (isMobile) {
