@@ -98,8 +98,9 @@ const ArticleCard = React.memo<ArticleCardProps>(({
             accessibilityHint={item.is_read ? "Read article" : "Unread article, double tap to open"}
             accessibilityState={{ selected: isActive }}
         >
+            {/* Header + Info + Thumbnail section */}
             <View style={isFeatured && !isYouTube ? [s.cardBody, s.featuredBody] : s.cardBody}>
-                <View style={s.cardInfo}>
+                <View style={{ flex: 1 }}>
                     {/* Feed Pill */}
                     <View style={s.feedPill}>
                         {item.feed_icon_url ? (
@@ -128,24 +129,21 @@ const ArticleCard = React.memo<ArticleCardProps>(({
                     )}
                 </View>
 
-                {/* Thumbnail - positioned consistently */}
+                {/* Thumbnail */}
                 {!isYouTube && thumbnail && (
-                    item.has_audio ? (
-                        <TouchableOpacity
-                            style={[s.thumbnailWrapper, isFeatured && s.featuredThumbnailWrapper]}
-                            onPress={() => onPlayPress(item)}
-                            activeOpacity={0.8}
-                        >
-                            <Image source={{ uri: thumbnail }} style={s.thumbnail} resizeMode="cover" />
+                    <TouchableOpacity
+                        style={[s.thumbnailWrapper, isFeatured && s.featuredThumbnailWrapper]}
+                        onPress={item.has_audio ? () => onPlayPress(item) : undefined}
+                        activeOpacity={item.has_audio ? 0.8 : 1}
+                        disabled={!item.has_audio}
+                    >
+                        <Image source={{ uri: thumbnail }} style={s.thumbnail} resizeMode="cover" />
+                        {item.has_audio && (
                             <View style={s.podcastIndicator}>
                                 <Headphones size={12} color="#fff" />
                             </View>
-                        </TouchableOpacity>
-                    ) : (
-                        <View style={[s.thumbnailWrapper, isFeatured && s.featuredThumbnailWrapper]}>
-                            <Image source={{ uri: thumbnail }} style={s.thumbnail} resizeMode="cover" />
-                        </View>
-                    )
+                        )}
+                    </TouchableOpacity>
                 )}
             </View>
 
@@ -293,10 +291,12 @@ const styles = (colors: any, isMobile: boolean) => ({
         borderRadius: borderRadius.lg,
         overflow: 'hidden' as const,
         position: 'relative' as const,
+        aspectRatio: 1, // Ensure it stays square
     },
     featuredThumbnailWrapper: {
         width: '100%' as const,
         height: 200,
+        aspectRatio: 16 / 9,
         borderRadius: borderRadius.xl,
     },
     thumbnail: {

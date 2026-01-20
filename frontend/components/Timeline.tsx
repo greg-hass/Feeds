@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, FlatList, RefreshControl, ActivityIndicator, useWindowDimensions } from 'react-native';
+import { View, FlatList, RefreshControl, ActivityIndicator, useWindowDimensions, Platform } from 'react-native';
 import { Article } from '@/services/api';
 import { useColors } from '@/theme';
 import { useTimeline } from '@/hooks/useTimeline';
@@ -101,8 +101,14 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                         ListFooterComponent={isLoading ? <ActivityIndicator style={s.loader} color={colors.primary.DEFAULT} /> : null}
                         onViewableItemsChanged={onViewableItemsChanged}
                         viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
-                        scrollEventThrottle={400}
+                        scrollEventThrottle={16}
                         onScroll={handleScroll}
+                        // Performance props
+                        removeClippedSubviews={Platform.OS === 'android'}
+                        initialNumToRender={10}
+                        maxToRenderPerBatch={5}
+                        windowSize={11}
+                        updateCellsBatchingPeriod={50}
                     />
                 </View>
             )}
