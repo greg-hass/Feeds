@@ -438,7 +438,6 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                     )}
                 </TouchableOpacity>
                 {!item.is_read && <View style={s.unreadIndicator} />}
-            </TouchableOpacity>
         );
 
         if (isMobile) {
