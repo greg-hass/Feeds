@@ -6,7 +6,8 @@ import {
     Folder, Search, Settings,
     Plus, RefreshCw, Bookmark, Sparkles, BookOpen
 } from 'lucide-react-native';
-import { useColors, borderRadius, spacing } from '@/theme';
+import { useColors, borderRadius, spacing, shadows } from '@/theme';
+import { formatCount } from '@/utils/formatters';
 
 const FEED_TYPE_ICONS: Record<string, React.ComponentType<any>> = {
     rss: Rss,
@@ -100,7 +101,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                     <Text style={[s.navItemText, isAllActive && s.navItemTextActive]}>All Articles</Text>
                     {totalUnread > 0 && (
                         <View style={[s.badge, isAllActive && s.badgeActive]}>
-                            <Text style={[s.badgeText, isAllActive && s.badgeTextActive]}>{totalUnread}</Text>
+                            <Text style={[s.badgeText, isAllActive && s.badgeTextActive]}>{formatCount(totalUnread)}</Text>
                         </View>
                     )}
                 </TouchableOpacity>
@@ -157,7 +158,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                             <Text style={[s.navItemText, isActive && s.navItemTextActive]}>{sf.name}</Text>
                             {sf.unread_count > 0 && (
                                 <View style={[s.badge, isActive && s.badgeActive]}>
-                                    <Text style={[s.badgeText, isActive && s.badgeTextActive]}>{sf.unread_count}</Text>
+                                    <Text style={[s.badgeText, isActive && s.badgeTextActive]}>{formatCount(sf.unread_count)}</Text>
                                 </View>
                             )}
                         </TouchableOpacity>
@@ -182,7 +183,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                                     <Text style={[s.navItemText, isActive && s.navItemTextActive]}>{folder.name}</Text>
                                     {folder.unread_count > 0 && (
                                         <View style={[s.badge, isActive && s.badgeActive]}>
-                                            <Text style={[s.badgeText, isActive && s.badgeTextActive]}>{folder.unread_count}</Text>
+                                            <Text style={[s.badgeText, isActive && s.badgeTextActive]}>{formatCount(folder.unread_count)}</Text>
                                         </View>
                                     )}
                                 </TouchableOpacity>
@@ -216,7 +217,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                                 <Text style={[s.navItemText, isActive && s.navItemTextActive]} numberOfLines={1}>{feed.title}</Text>
                                 {feed.unread_count > 0 && (
                                     <View style={[s.badge, isActive && s.badgeActive]}>
-                                        <Text style={[s.badgeText, isActive && s.badgeTextActive]}>{feed.unread_count}</Text>
+                                        <Text style={[s.badgeText, isActive && s.badgeTextActive]}>{formatCount(feed.unread_count)}</Text>
                                     </View>
                                 )}
                             </TouchableOpacity>
@@ -284,9 +285,13 @@ const styles = (colors: any) => StyleSheet.create({
         letterSpacing: -0.5,
     },
     iconButton: {
-        padding: spacing.sm,
+        padding: spacing.md,
         borderRadius: borderRadius.md,
         backgroundColor: colors.background.tertiary,
+        minWidth: 44,
+        minHeight: 44,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     searchBar: {
         flexDirection: 'row',
@@ -329,6 +334,9 @@ const styles = (colors: any) => StyleSheet.create({
     },
     navItemActive: {
         backgroundColor: colors.primary.DEFAULT,
+        borderLeftWidth: 4,
+        borderLeftColor: colors.primary.DEFAULT,
+        ...shadows.colored(colors.primary.DEFAULT),
         // Premium shadow for active state
         ...Platform.select({
             web: {

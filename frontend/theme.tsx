@@ -112,6 +112,9 @@ export const borderRadius = {
     full: 9999,
 };
 
+export { shadows } from './theme/shadows';
+export { animations } from './theme/animations';
+
 export type ThemeColors = typeof colors;
 
 const ThemeContext = createContext<ThemeColors>(colors);

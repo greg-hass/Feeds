@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { useSettingsStore, useToastStore, useFeedStore } from '@/stores';
 import { Settings, api } from '@/services/api';
 import { ArrowLeft, Sun, Moon, Monitor, RefreshCw } from 'lucide-react-native';
-import { useColors, spacing, borderRadius } from '@/theme';
+import { useColors, spacing, borderRadius, shadows } from '@/theme';
 
 export default function SettingsScreen() {
     const router = useRouter();
@@ -339,6 +339,8 @@ const styles = (colors: any) => StyleSheet.create({
     },
     themeOptionActive: {
         backgroundColor: colors.primary.DEFAULT,
+        borderColor: colors.primary.DEFAULT,
+        ...shadows.colored(colors.primary.DEFAULT),
     },
     themeText: {
         fontSize: 14,

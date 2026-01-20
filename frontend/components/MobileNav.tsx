@@ -71,8 +71,9 @@ const styles = (colors: any) => StyleSheet.create({
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: spacing.xs,
+        paddingVertical: spacing.md,
         gap: 2,
+        minHeight: 56, // Ensure adequate touch target
     },
     label: {
         fontSize: 10,

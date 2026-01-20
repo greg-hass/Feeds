@@ -6,13 +6,15 @@ import { formatDistanceToNow } from 'date-fns';
 import { useArticleStore, useFeedStore, useAudioStore, useVideoStore } from '@/stores'; // Import useVideoStore
 import { Article } from '@/services/api';
 import { Circle, CircleCheck, Play, Bookmark, MoreVertical, Filter, RefreshCw, Clock, Headphones, Flame } from 'lucide-react-native';
-import { useColors, borderRadius, spacing } from '@/theme';
+import { useColors, borderRadius, spacing, shadows, animations } from '@/theme';
 import { extractVideoId, getThumbnailUrl } from '@/utils/youtube';
 import { TimelineSkeleton } from './Skeleton';
 import { PlayingWaveform } from './PlayingWaveform';
+import { LinearGradient } from 'expo-linear-gradient';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { Check, Star } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import { useKeyboardShortcuts, SHORTCUTS } from '@/hooks/useKeyboardShortcuts';
 
 interface TimelineProps {
     onArticlePress?: (article: Article) => void;
@@ -35,6 +37,44 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     const hasRestoredScroll = useRef(false);
     const articlesRef = useRef(articles);
     const prefetchRef = useRef(prefetchArticle);
+    
+    // Animation values for bookmark
+    const bookmarkScales = useRef<Map<number, Animated.Value>>(new Map());
+    const bookmarkRotations = useRef<Map<number, Animated.Value>>(new Map());
+    
+    const getBookmarkScale = (id: number) => {
+        if (!bookmarkScales.current.has(id)) {
+            bookmarkScales.current.set(id, new Animated.Value(1));
+        }
+        return bookmarkScales.current.get(id)!;
+    };
+    
+    const getBookmarkRotation = (id: number) => {
+        if (!bookmarkRotations.current.has(id)) {
+            bookmarkRotations.current.set(id, new Animated.Value(0));
+        }
+        return bookmarkRotations.current.get(id)!;
+    };
+    
+    // HOT badge pulse animation
+    const hotPulseAnim = useRef(new Animated.Value(1)).current;
+    
+    useEffect(() => {
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(hotPulseAnim, {
+                    toValue: 1.05,
+                    duration: 1000,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(hotPulseAnim, {
+                    toValue: 1,
+                    duration: 1000,
+                    useNativeDriver: true,
+                }),
+            ])
+        ).start();
+    }, []);
     const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
         if (viewableItems.length > 0) {
             const lastIndex = viewableItems[viewableItems.length - 1].index;
@@ -277,10 +317,17 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                         <View style={s.articleFooter}>
                             <View style={s.metaRow}>
                                 {isHot && (
-                                    <View style={s.hotBadge}>
-                                        <Flame size={10} color="#fff" fill="#fff" />
-                                        <Text style={s.hotText}>HOT</Text>
-                                    </View>
+                                    <Animated.View style={{ transform: [{ scale: hotPulseAnim }] }}>
+                                        <LinearGradient
+                                            colors={['#f97316', '#ef4444']}
+                                            start={{ x: 0, y: 0 }}
+                                            end={{ x: 1, y: 0 }}
+                                            style={s.hotBadge}
+                                        >
+                                            <Flame size={10} color="#fff" fill="#fff" />
+                                            <Text style={s.hotText}>HOT</Text>
+                                        </LinearGradient>
+                                    </Animated.View>
                                 )}
                                 <Clock size={12} color={colors.text.tertiary} />
                                 <Text style={s.articleMeta}>
@@ -288,14 +335,54 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                                 </Text>
                             </View>
                             <TouchableOpacity
-                                onPress={() => useArticleStore.getState().toggleBookmark(item.id)}
+                                onPress={() => {
+                                    const scale = getBookmarkScale(item.id);
+                                    const rotation = getBookmarkRotation(item.id);
+                                    
+                                    // Animate scale
+                                    Animated.sequence([
+                                        Animated.spring(scale, {
+                                            toValue: 1.3,
+                                            ...animations.spring,
+                                            useNativeDriver: true,
+                                        }),
+                                        Animated.spring(scale, {
+                                            toValue: 1,
+                                            ...animations.spring,
+                                            useNativeDriver: true,
+                                        }),
+                                    ]).start();
+                                    
+                                    // Animate rotation
+                                    Animated.spring(rotation, {
+                                        toValue: item.is_bookmarked ? 0 : 1,
+                                        ...animations.spring,
+                                        useNativeDriver: true,
+                                    }).start();
+                                    
+                                    useArticleStore.getState().toggleBookmark(item.id);
+                                }}
                                 style={s.cardAction}
+                                accessibilityRole="button"
+                                accessibilityLabel={item.is_bookmarked ? "Remove bookmark" : "Bookmark article"}
+                                accessibilityHint="Double tap to save for later"
+                                accessibilityState={{ selected: item.is_bookmarked }}
                             >
-                                <Bookmark
-                                    size={16}
-                                    color={item.is_bookmarked ? colors.primary.DEFAULT : colors.text.tertiary}
-                                    fill={item.is_bookmarked ? colors.primary.DEFAULT : 'transparent'}
-                                />
+                                <Animated.View style={{
+                                    transform: [
+                                        { scale: getBookmarkScale(item.id) },
+                                        { rotate: getBookmarkRotation(item.id).interpolate({
+                                            inputRange: [0, 1],
+                                            outputRange: ['0deg', '360deg'],
+                                        })}
+                                    ]
+                                }}>
+                                    <Bookmark
+                                        size={20}
+                                        color={item.is_bookmarked ? colors.primary.DEFAULT : colors.text.tertiary}
+                                        fill={item.is_bookmarked ? colors.primary.DEFAULT : 'transparent'}
+                                    />
+                                </Animated.View>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -535,8 +622,9 @@ const styles = (colors: any, isMobile: boolean) => StyleSheet.create({
         borderColor: colors.border.DEFAULT,
     },
     filterPillActive: {
-        backgroundColor: colors.text.primary,
-        borderColor: colors.text.primary,
+        backgroundColor: colors.primary.DEFAULT,
+        borderColor: colors.primary.DEFAULT,
+        ...shadows.colored(colors.primary.DEFAULT),
     },
     unreadPillActive: {
         backgroundColor: colors.primary.DEFAULT,
@@ -577,9 +665,16 @@ const styles = (colors: any, isMobile: boolean) => StyleSheet.create({
         padding: spacing.lg,
         marginBottom: spacing.md,
         borderWidth: 1,
-        borderColor: 'transparent',
+        borderColor: colors.border.DEFAULT,
         position: 'relative',
         overflow: 'hidden',
+        ...shadows.md,
+        ...Platform.select({
+            web: {
+                cursor: 'pointer',
+                transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+            } as any,
+        }),
     },
     articleActive: {
         backgroundColor: colors.background.elevated,
@@ -769,7 +864,11 @@ const styles = (colors: any, isMobile: boolean) => StyleSheet.create({
         marginVertical: spacing.xl,
     },
     cardAction: {
-        padding: 4,
+        padding: 8,
+        minWidth: 44,
+        minHeight: 44,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     hotBadge: {
         flexDirection: 'row',
