@@ -1,11 +1,11 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { View, Text, TouchableOpacity, Image, Animated, Platform } from 'react-native';
-import { Bookmark, Clock, Headphones, Play, Flame } from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { formatDistanceToNow } from 'date-fns';
+import { Headphones } from 'lucide-react-native';
 import { Article } from '@/services/api';
 import { useColors, spacing, borderRadius, shadows, animations } from '@/theme';
 import { extractVideoId } from '@/utils/youtube';
+import ArticleFooter from './ArticleFooter';
+import YouTubePlayer from './YouTubePlayer';
 
 interface ArticleCardProps {
     item: Article;
@@ -50,9 +50,9 @@ const ArticleCard = React.memo<ArticleCardProps>(({
     const thumbnail = item.thumbnail_url;
     const isYouTube = item.feed_type === 'youtube';
     const videoId = isYouTube ? extractVideoId(item.url || '') : null;
-    const isVideoPlaying = isYouTube && videoId && activeVideoId === videoId;
+    const isVideoPlaying = !!(isYouTube && videoId && activeVideoId === videoId);
     const isFeatured = (index % 5 === 0 && !isMobile && thumbnail) || isYouTube;
-    const isHot = item.published_at && (new Date(item.published_at).getTime() > Date.now() - 4 * 60 * 60 * 1000);
+    const isHot = !!(item.published_at && (new Date(item.published_at).getTime() > Date.now() - 4 * 60 * 60 * 1000));
 
     const handleBookmarkPress = () => {
         const scale = getBookmarkScale(item.id);
@@ -149,79 +149,23 @@ const ArticleCard = React.memo<ArticleCardProps>(({
             </View>
 
             {/* Footer with metadata and bookmark */}
-            <View style={s.articleFooter}>
-                <View style={s.metaRow}>
-                    {/* HOT Badge */}
-                    {isHot && (
-                        <Animated.View style={{ transform: [{ scale: hotPulseAnim }] }}>
-                            <LinearGradient
-                                colors={['#f97316', '#ef4444']}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                                style={s.hotBadge}
-                            >
-                                <Flame size={10} color="#fff" fill="#fff" />
-                                <Text style={s.hotText}>HOT</Text>
-                            </LinearGradient>
-                        </Animated.View>
-                    )}
-                    
-                    {/* Time */}
-                    <Clock size={12} color={colors.text.tertiary} />
-                    <Text style={s.articleMeta}>
-                        {item.published_at ? formatDistanceToNow(new Date(item.published_at), { addSuffix: true }) : ''}
-                    </Text>
-                </View>
-
-                {/* Bookmark Button */}
-                <TouchableOpacity
-                    onPress={handleBookmarkPress}
-                    style={s.cardAction}
-                    accessibilityRole="button"
-                    accessibilityLabel={item.is_bookmarked ? "Remove bookmark" : "Bookmark article"}
-                    accessibilityHint="Double tap to save for later"
-                    accessibilityState={{ selected: item.is_bookmarked }}
-                >
-                    <Animated.View style={{
-                        transform: [
-                            { scale: getBookmarkScale(item.id) },
-                            { rotate: getBookmarkRotation(item.id).interpolate({
-                                inputRange: [0, 1],
-                                outputRange: ['0deg', '360deg'],
-                            })}
-                        ]
-                    }}>
-                        <Bookmark
-                            size={20}
-                            color={item.is_bookmarked ? colors.primary.DEFAULT : colors.text.tertiary}
-                            fill={item.is_bookmarked ? colors.primary.DEFAULT : 'transparent'}
-                        />
-                    </Animated.View>
-                </TouchableOpacity>
-            </View>
+            <ArticleFooter
+                item={item}
+                isHot={isHot}
+                hotPulseAnim={hotPulseAnim}
+                onBookmarkToggle={onBookmarkToggle}
+                getBookmarkScale={getBookmarkScale}
+                getBookmarkRotation={getBookmarkRotation}
+            />
 
             {/* YouTube Video - shown after footer */}
             {isYouTube && videoId && (
-                <View style={s.videoContainer}>
-                    {isVideoPlaying ? (
-                        <View style={s.webview}>
-                            {/* WebView placeholder - actual implementation in parent */}
-                        </View>
-                    ) : (
-                        <View style={s.videoThumbnailWrapper}>
-                            <Image 
-                                source={{ uri: thumbnail || `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` }} 
-                                style={s.thumbnail} 
-                                resizeMode="contain"
-                            />
-                            <View style={s.playButtonOverlay}>
-                                <View style={s.playButtonCircle}>
-                                    <Play size={24} color="#fff" fill="#fff" style={{ marginLeft: 4 }} />
-                                </View>
-                            </View>
-                        </View>
-                    )}
-                </View>
+                <YouTubePlayer
+                    videoId={videoId}
+                    thumbnail={thumbnail ?? null}
+                    isPlaying={isVideoPlaying}
+                    onPress={() => onVideoPress(item)}
+                />
             )}
 
             {/* Unread Indicator */}
@@ -341,43 +285,6 @@ const styles = (colors: any, isMobile: boolean) => ({
         lineHeight: 20,
         marginBottom: spacing.md,
     },
-    articleFooter: {
-        flexDirection: 'row' as const,
-        justifyContent: 'space-between' as const,
-        alignItems: 'center' as const,
-    },
-    metaRow: {
-        flexDirection: 'row' as const,
-        alignItems: 'center' as const,
-        gap: 4,
-    },
-    articleMeta: {
-        fontSize: 11,
-        color: colors.text.tertiary,
-        fontWeight: '600' as const,
-    },
-    hotBadge: {
-        flexDirection: 'row' as const,
-        alignItems: 'center' as const,
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 99,
-        gap: 3,
-        marginRight: 6,
-    },
-    hotText: {
-        color: '#fff',
-        fontSize: 9,
-        fontWeight: '900' as const,
-        letterSpacing: 0.5,
-    },
-    cardAction: {
-        padding: spacing.sm,
-        minWidth: 44,
-        minHeight: 44,
-        justifyContent: 'center' as const,
-        alignItems: 'center' as const,
-    },
     thumbnailWrapper: {
         width: 90,
         height: 90,
@@ -410,46 +317,6 @@ const styles = (colors: any, isMobile: boolean) => ({
         shadowRadius: 4,
         elevation: 3,
         zIndex: 10,
-    },
-    videoContainer: {
-        width: '100%' as const,
-        height: 220,
-        borderRadius: borderRadius.lg,
-        overflow: 'hidden' as const,
-        marginTop: spacing.md,
-        backgroundColor: '#000', // Black background for letterboxing
-    },
-    videoThumbnailWrapper: {
-        width: '100%' as const,
-        height: '100%' as const,
-        position: 'relative' as const,
-    },
-    webview: {
-        flex: 1,
-        backgroundColor: colors.background.tertiary,
-    },
-    playButtonOverlay: {
-        position: 'absolute' as const,
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        justifyContent: 'center' as const,
-        alignItems: 'center' as const,
-        backgroundColor: 'rgba(0,0,0,0.3)',
-    },
-    playButtonCircle: {
-        width: 64,
-        height: 64,
-        borderRadius: 32,
-        backgroundColor: colors.primary.DEFAULT,
-        justifyContent: 'center' as const,
-        alignItems: 'center' as const,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 8,
     },
     unreadIndicator: {
         position: 'absolute' as const,

@@ -38,8 +38,6 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     const [isScrollRestored, setIsScrollRestored] = useState(false);
     const flatListRef = useRef<FlatList>(null);
     const hasRestoredScroll = useRef(false);
-    const articlesRef = useRef(articles);
-    const prefetchRef = useRef(prefetchArticle);
     
     // Animation values for bookmark
     const bookmarkScales = useRef<Map<number, Animated.Value>>(new Map());
@@ -78,13 +76,14 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
             ])
         ).start();
     }, []);
+
+    // Prefetch articles as user scrolls
     const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
         if (viewableItems.length > 0) {
             const lastIndex = viewableItems[viewableItems.length - 1].index;
-            const currentArticles = articlesRef.current;
-            if (currentArticles && currentArticles.length > lastIndex + 1) {
-                const nextArticles = currentArticles.slice(lastIndex + 1, lastIndex + 4);
-                nextArticles.forEach(a => prefetchRef.current(a.id));
+            if (articles && articles.length > lastIndex + 1) {
+                const nextArticles = articles.slice(lastIndex + 1, lastIndex + 4);
+                nextArticles.forEach(a => prefetchArticle(a.id));
             }
         }
     }).current;
@@ -131,12 +130,6 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
         }, 1000);
         return () => clearInterval(timer);
     }, [feeds]);
-    useEffect(() => {
-        articlesRef.current = articles;
-    }, [articles]);
-    useEffect(() => {
-        prefetchRef.current = prefetchArticle;
-    }, [prefetchArticle]);
 
     // Reset scroll restoration flag when filter changes
     useEffect(() => {

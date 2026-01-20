@@ -42,6 +42,7 @@ export interface ParsedFeed {
     favicon: string | null;
     articles: RawArticle[];
     isPodcast: boolean;
+    youtubeChannelId?: string | null;
 }
 
 export interface NormalizedArticle {
@@ -118,17 +119,24 @@ export async function fetchYouTubeIcon(channelId: string): Promise<string | null
         const patterns = [
             /"avatar":\{"thumbnails":\[\{"url":"([^"]+)"/,
             /channelMetadataRenderer":\{"avatar":\{"thumbnails":\[\{"url":"([^"]+)"/,
+            /["']avatar["']:\s*\{["']thumbnails["']:\s*\[\s*\{["']url["']:\s*["']([^"']+)["']/,
             /<meta property="og:image" content="([^"]+)">/,
-            /<link rel="image_src" href="([^"]+)">/
+            /<link rel="image_src" href="([^"]+)">/,
+            /author-thumbnail":\{"thumbnails":\[\{"url":"([^"]+)"/
         ];
 
         for (const pattern of patterns) {
             const match = html.match(pattern);
             if (match && match[1]) {
                 let icon = match[1];
+                // Decode double backslashes if present
+                icon = icon.replace(/\\u0026/g, '&').replace(/\\/g, '');
+                
                 // Normalize size for high res
                 if (icon.includes('=s')) {
                     icon = icon.replace(/=s\d+[^"]*/, '=s176-c-k-c0x00ffffff-no-rj-mo');
+                } else if (icon.includes('-s')) {
+                    icon = icon.replace(/-s\d+[^"]*/, '-s176-c-k-c0x00ffffff-no-rj-mo');
                 }
                 return icon;
             }
@@ -278,6 +286,7 @@ export async function parseFeed(url: string): Promise<ParsedFeed> {
                 favicon: favicon,
                 articles,
                 isPodcast,
+                youtubeChannelId: (extendedMeta as any)['yt:channelid'] || (extendedMeta as any)['yt:channelId'] || null,
             });
         });
 
@@ -288,15 +297,24 @@ export async function parseFeed(url: string): Promise<ParsedFeed> {
         // Post-processing for specific feed types (async icon fetching)
         const type = detectFeedType(url, feed);
 
-        if (type === 'youtube' && !feed.favicon) {
-            // Extract channel ID from feed URL parameter (more reliable than link)
-            // Feed URL format: https://www.youtube.com/feeds/videos.xml?channel_id=UC...
-            const urlObj = new URL(url);
-            const channelId = urlObj.searchParams.get('channel_id');
+        if (type === 'youtube') {
+            // Always fetch YouTube channel icon (don't use generic YouTube favicon)
+            // 1. Try to get channel ID from metadata first (most reliable)
+            let channelId = feed.youtubeChannelId;
+
+            // 2. Fallback: Extract from feed URL parameter
+            if (!channelId) {
+                try {
+                    const urlObj = new URL(url);
+                    channelId = urlObj.searchParams.get('channel_id');
+                } catch { }
+            }
 
             if (channelId) {
                 const icon = await fetchYouTubeIcon(channelId);
-                if (icon) feed.favicon = icon;
+                if (icon) {
+                    feed.favicon = icon;
+                }
             }
         } else if (type === 'reddit') {
             // Link format: https://www.reddit.com/r/subreddit/
