@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Image, Animated, Platform } from 'react-native';
-import { api, Recommendation, Interest } from '@/services/api';
+import { api, Recommendation, Interest, ApiError } from '@/services/api';
 import { Sparkles, X, ChevronRight, Plus, RefreshCw, LayoutGrid, Zap, Newspaper, Youtube } from 'lucide-react-native';
 import { useFeedStore, useToastStore, useSettingsStore } from '@/stores';
 import { useColors, spacing, borderRadius } from '@/theme';
@@ -58,11 +58,17 @@ export const DiscoveryPage = () => {
 
     const handleSubscribe = async (rec: Recommendation) => {
         try {
-            await addFeed(rec.feed_url, undefined, settings?.refresh_interval_minutes);
+            await addFeed(rec.feed_url, undefined, settings?.refresh_interval_minutes, false);
             setRecommendations(prev => prev.filter(r => r.id !== rec.id));
             showToast(`Subscribed to ${rec.title}`, 'success');
         } catch (error) {
-            showToast('Failed to subscribe', 'error');
+            if (error instanceof ApiError && error.status === 409) {
+                setRecommendations(prev => prev.filter(r => r.id !== rec.id));
+                showToast(`Already subscribed to ${rec.title}`, 'info');
+                return;
+            }
+            const message = error instanceof Error ? error.message : 'Failed to subscribe';
+            showToast(message, 'error');
         }
     };
 

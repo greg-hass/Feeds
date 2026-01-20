@@ -39,8 +39,8 @@ export const useFeedStore = create<FeedState>()(
                 }
             },
 
-            addFeed: async (url: string, folderId?: number, refreshInterval?: number) => {
-                const result = await api.addFeed(url, folderId, true, refreshInterval);
+            addFeed: async (url: string, folderId?: number, refreshInterval?: number, discover: boolean = true) => {
+                const result = await api.addFeed(url, folderId, discover, refreshInterval);
                 set((state: FeedState) => ({ feeds: [...state.feeds, result.feed] }));
                 return result.feed;
             },

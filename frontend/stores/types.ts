@@ -11,7 +11,7 @@ export interface FeedState {
 
     fetchFeeds: () => Promise<void>;
     fetchFolders: () => Promise<void>;
-    addFeed: (url: string, folderId?: number, refreshInterval?: number) => Promise<Feed>;
+    addFeed: (url: string, folderId?: number, refreshInterval?: number, discover?: boolean) => Promise<Feed>;
     deleteFeed: (id: number) => Promise<void>;
     deleteFolder: (id: number) => Promise<void>;
     refreshFeed: (id: number) => Promise<number>;
