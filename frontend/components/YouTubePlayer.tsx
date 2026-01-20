@@ -23,17 +23,28 @@ const YouTubePlayer = React.memo<YouTubePlayerProps>(({
     isShort = false,
     onPress,
 }) => {
+    const embedUrl = getEmbedUrl(videoId);
+
     return (
         <View style={styles.videoContainer}>
             {isPlaying ? (
                 <View style={styles.webviewContainer}>
-                    <WebView
-                        source={{ uri: getEmbedUrl(videoId) }}
-                        style={styles.webview}
-                        allowsFullscreenVideo
-                        allowsInlineMediaPlayback
-                        mediaPlaybackRequiresUserAction={false}
-                    />
+                    {Platform.OS === 'web' ? (
+                        <iframe
+                            src={embedUrl}
+                            style={{ border: 'none', width: '100%', height: '100%' }}
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                        />
+                    ) : (
+                        <WebView
+                            source={{ uri: embedUrl }}
+                            style={styles.webview}
+                            allowsFullscreenVideo
+                            allowsInlineMediaPlayback
+                            mediaPlaybackRequiresUserAction={false}
+                        />
+                    )}
                 </View>
             ) : (
                 <TouchableOpacity 
