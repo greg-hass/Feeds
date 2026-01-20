@@ -49,7 +49,7 @@ export default function ToastContainer() {
             {
                 width: isMobile ? width - spacing.xl * 2 : 400,
                 right: isMobile ? spacing.xl : 40,
-                bottom: isMobile ? (Platform.OS === 'ios' ? 100 : (isMobileWeb ? 85 : 80)) : 40,
+                bottom: isMobile ? (Platform.OS === 'ios' ? 150 : (isMobileWeb ? 140 : 130)) : 40,
             }
         ]}>
             {toasts.map((toast) => (
