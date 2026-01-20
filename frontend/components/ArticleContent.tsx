@@ -161,6 +161,48 @@ export default function ArticleContent({ html }: ArticleContentProps) {
             border-bottom: 1px solid ${contentColors.border} !important;
             font-family: ${FONT_STACK} !important;
         }
+
+        /* Reddit-specific cleanup */
+        /* Hide "Go to [subreddit]" navigation links */
+        ${s}a[href*="reddit.com/r/"]:first-child,
+        ${s}p:first-child a[href*="reddit.com/r/"],
+        ${s}div:first-child a[href*="reddit.com/r/"] {
+            display: none !important;
+        }
+
+        /* Hide standalone subreddit links (r/subreddit) */
+        ${s}a[href*="reddit.com/r/"]:only-child {
+            display: none !important;
+        }
+
+        /* Hide username links (u/username) */
+        ${s}a[href*="reddit.com/u/"],
+        ${s}a[href*="reddit.com/user/"] {
+            display: none !important;
+        }
+
+        /* Hide duplicate titles (often the first h1 or h2) */
+        ${s}h1:first-of-type,
+        ${s}h2:first-of-type {
+            display: none !important;
+        }
+
+        /* Hide Reddit metadata (points, comments, etc.) */
+        ${s}p:has(> a[href*="reddit.com"]):empty,
+        ${s}div:has(> a[href*="reddit.com"]):empty {
+            display: none !important;
+        }
+
+        /* Hide empty paragraphs that only contain links */
+        ${s}p:has(> a:only-child) {
+            display: none !important;
+        }
+
+        /* Clean up excessive spacing from hidden elements */
+        ${s}p:empty,
+        ${s}div:empty {
+            display: none !important;
+        }
     `;
     };
 
