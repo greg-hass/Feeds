@@ -58,4 +58,7 @@ export async function feedsRoutes(app: FastifyInstance) {
 
     // Force refresh feed
     app.post('/:id/refresh', FeedsController.refresh);
+
+    // Refetch YouTube channel icons (one-time fix)
+    app.post('/refetch-youtube-icons', FeedsController.refetchYouTubeIcons);
 }

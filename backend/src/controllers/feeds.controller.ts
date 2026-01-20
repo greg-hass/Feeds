@@ -243,4 +243,99 @@ export class FeedsController {
         if (!result.success) return reply.status(500).send({ error: 'Failed to refresh feed', details: result.error });
         return { success: true, new_articles: result.newArticles };
     }
+
+    // One-time fix to refetch YouTube channel icons
+    static async refetchYouTubeIcons(request: FastifyRequest, reply: FastifyReply) {
+        const userId = 1;
+        
+        // Get all YouTube feeds
+        const feeds = queryAll<Feed>(`
+            SELECT * FROM feeds 
+            WHERE user_id = ? AND deleted_at IS NULL 
+            AND (type = 'youtube' OR url LIKE '%youtube.com/feeds%')
+        `, [userId]);
+
+        const results: { updated: number; failed: number; details: string[] } = {
+            updated: 0,
+            failed: 0,
+            details: []
+        };
+
+        for (const feed of feeds) {
+            try {
+                // Extract channel ID from URL
+                const urlObj = new URL(feed.url);
+                const channelId = urlObj.searchParams.get('channel_id');
+                
+                if (!channelId) {
+                    results.failed++;
+                    results.details.push(`[${feed.id}] ${feed.title}: No channel_id in URL`);
+                    continue;
+                }
+
+                // Validate channel ID format
+                if (!channelId.startsWith('UC') || channelId.length !== 24) {
+                    results.failed++;
+                    results.details.push(`[${feed.id}] ${feed.title}: Invalid channel ID format: ${channelId}`);
+                    continue;
+                }
+
+                // Fetch channel icon
+                const response = await fetch(`https://www.youtube.com/channel/${channelId}`, {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                        'Accept-Language': 'en-US,en;q=0.9',
+                    }
+                });
+
+                if (!response.ok) {
+                    results.failed++;
+                    results.details.push(`[${feed.id}] ${feed.title}: HTTP ${response.status}`);
+                    continue;
+                }
+
+                const html = await response.text();
+                const avatarPatterns = [
+                    /"avatar":\{"thumbnails":\[\{"url":"([^"]+)"/,
+                    /"channelMetadataRenderer".*?"avatar".*?"url":"([^"]+)"/,
+                    /yt-img-shadow.*?src="(https:\/\/yt3\.googleusercontent\.com\/[^"]+)"/,
+                    /<meta property="og:image" content="([^"]+)"/
+                ];
+
+                let avatarUrl: string | null = null;
+                for (const pattern of avatarPatterns) {
+                    const match = html.match(pattern);
+                    if (match && match[1]) {
+                        avatarUrl = match[1].replace(/\\u0026/g, '&').replace(/\\/g, '');
+                        if (avatarUrl.includes('=s')) {
+                            avatarUrl = avatarUrl.replace(/=s\d+.*/, '=s176-c-k-c0x00ffffff-no-rj-mo');
+                        }
+                        break;
+                    }
+                }
+
+                if (avatarUrl) {
+                    run(`UPDATE feeds SET icon_url = ?, icon_cached_path = NULL, icon_cached_content_type = NULL WHERE id = ?`, [avatarUrl, feed.id]);
+                    results.updated++;
+                    results.details.push(`[${feed.id}] ${feed.title}: ✓ Updated`);
+                } else {
+                    results.failed++;
+                    results.details.push(`[${feed.id}] ${feed.title}: No avatar pattern matched`);
+                }
+
+                // Rate limit
+                await new Promise(resolve => setTimeout(resolve, 300));
+            } catch (e) {
+                results.failed++;
+                results.details.push(`[${feed.id}] ${feed.title}: Error - ${e}`);
+            }
+        }
+
+        return {
+            total: feeds.length,
+            updated: results.updated,
+            failed: results.failed,
+            details: results.details
+        };
+    }
 }
