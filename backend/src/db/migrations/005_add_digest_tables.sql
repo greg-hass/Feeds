@@ -11,7 +11,10 @@ CREATE TABLE IF NOT EXISTS digest_settings (
 );
 
 -- Create initial settings for default user
-INSERT OR IGNORE INTO digest_settings (user_id, enabled, style) VALUES (1, 1, 'bullets');
+-- Create initial settings for default user ONLY if user exists
+INSERT OR IGNORE INTO digest_settings (user_id, enabled, style) 
+SELECT 1, 1, 'bullets' 
+WHERE EXISTS (SELECT 1 FROM users WHERE id = 1);
 
 -- Create digests table
 CREATE TABLE IF NOT EXISTS digests (

@@ -45,6 +45,7 @@ const sharedColors = {
         DEFAULT: '#10b981',
         light: '#34d399',
         dark: '#059669',
+        soft: '#10b98125', // 15% opacity for backgrounds
     },
     secondary: {
         DEFAULT: '#0d9488', // Teal 600

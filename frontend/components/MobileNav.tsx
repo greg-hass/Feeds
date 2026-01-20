@@ -46,9 +46,10 @@ export default function MobileNav() {
                         accessibilityRole="button"
                         accessibilityLabel={item.label}
                         accessibilityState={{ selected: active }}
+                        activeOpacity={0.7}
                     >
                         <IconComponent
-                            size={22}
+                            size={24}
                             color={active ? colors.primary.DEFAULT : colors.text.tertiary}
                             fill={active ? colors.primary.DEFAULT : 'transparent'}
                         />
@@ -75,9 +76,9 @@ const styles = (colors: any) => StyleSheet.create({
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: spacing.md,
-        gap: 2,
-        minHeight: 56, // Ensure adequate touch target
+        paddingVertical: 12,
+        gap: 4,
+        minHeight: 56,
     },
     label: {
         fontSize: 10,
@@ -86,6 +87,6 @@ const styles = (colors: any) => StyleSheet.create({
     },
     labelActive: {
         color: colors.primary.DEFAULT,
-        fontWeight: '600',
+        fontWeight: '700', // Bolder font
     },
 });

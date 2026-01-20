@@ -47,7 +47,7 @@ export async function fetchAndExtractReadability(url: string): Promise<{
         const article = reader.parse();
 
         // Extract hero image using our robust logic
-        const imageUrl = extractHeroImage(html, article);
+        const imageUrl = extractHeroImage(html, article || {});
 
         return {
             content: article?.content || null,

@@ -61,6 +61,12 @@ export interface NormalizedArticle {
 const USER_AGENT = 'Feeds/1.0 (Feed Reader; +https://github.com/greg-hass/Feeds) Mozilla/5.0 (compatible)';
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 
+if (YOUTUBE_API_KEY) {
+    console.log('[Config] YouTube API Key loaded: ' + YOUTUBE_API_KEY.substring(0, 4) + '...');
+} else {
+    console.warn('[Config] YouTube API Key NOT found. Falling back to scraping.');
+}
+
 export async function fetchYouTubeIcon(channelId: string): Promise<string | null> {
     // 1. Try API first if key is available
     if (YOUTUBE_API_KEY) {
@@ -124,11 +130,9 @@ export async function fetchYouTubeIcon(channelId: string): Promise<string | null
         // 4. Try regex patterns (Fallback)
         const patterns = [
             /"avatar":\{"thumbnails":\[\{"url":"([^"]+)"/,
-            /channelMetadataRenderer":\{"avatar":\{"thumbnails":\[\{"url":"([^"]+)"/,
-            /["']avatar["']:\s*\{["']thumbnails["']:\s*\[\s*\{["']url["']:\s*["']([^"']+)["']/,
-            /<meta property="og:image" content="([^"]+)">/,
-            /<link rel="image_src" href="([^"]+)">/,
-            /author-thumbnail":\{"thumbnails":\[\{"url":"([^"]+)"/
+            /"channelMetadataRenderer".*?"avatar".*?"url":"([^"]+)"/,
+            /yt-img-shadow.*?src="(https:\/\/yt3\.googleusercontent\.com\/[^"]+)"/,
+            /<meta property="og:image" content="([^"]+)"/
         ];
 
         for (const pattern of patterns) {
