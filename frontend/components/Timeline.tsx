@@ -15,6 +15,7 @@ import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { Check, Star } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useKeyboardShortcuts, SHORTCUTS } from '@/hooks/useKeyboardShortcuts';
+import ArticleCard from './ArticleCard';
 
 interface TimelineProps {
     onArticlePress?: (article: Article) => void;
@@ -411,7 +412,6 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                                     />
                                 </Animated.View>
                             </TouchableOpacity>
-                        </View>
                         </View>
                     </View>
 
