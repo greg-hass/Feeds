@@ -33,6 +33,18 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     const [timeLeft, setTimeLeft] = useState<string | null>(null);
     const flatListRef = useRef<FlatList>(null);
     const hasRestoredScroll = useRef(false);
+    const articlesRef = useRef(articles);
+    const prefetchRef = useRef(prefetchArticle);
+    const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
+        if (viewableItems.length > 0) {
+            const lastIndex = viewableItems[viewableItems.length - 1].index;
+            const currentArticles = articlesRef.current;
+            if (currentArticles && currentArticles.length > lastIndex + 1) {
+                const nextArticles = currentArticles.slice(lastIndex + 1, lastIndex + 4);
+                nextArticles.forEach(a => prefetchRef.current(a.id));
+            }
+        }
+    }).current;
 
     const s = styles(colors, isMobile);
 
@@ -76,6 +88,12 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
         }, 1000);
         return () => clearInterval(timer);
     }, [feeds]);
+    useEffect(() => {
+        articlesRef.current = articles;
+    }, [articles]);
+    useEffect(() => {
+        prefetchRef.current = prefetchArticle;
+    }, [prefetchArticle]);
 
     // Reset scroll restoration flag when filter changes
     useEffect(() => {
@@ -441,16 +459,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                     refreshControl={<RefreshControl refreshing={isLoading && articles.length === 0} onRefresh={refreshAllFeeds} tintColor={colors.primary.DEFAULT} />}
                     ListFooterComponent={isLoading ? <ActivityIndicator style={s.loader} color={colors.primary.DEFAULT} /> : null}
                     // Prefetching strategy
-                    onViewableItemsChanged={useRef(({ viewableItems }: any) => {
-                        if (viewableItems.length > 0) {
-                            const lastIndex = viewableItems[viewableItems.length - 1].index;
-                            // Prefetch next 3 items
-                            if (articles && articles.length > lastIndex + 1) {
-                                const nextArticles = articles.slice(lastIndex + 1, lastIndex + 4);
-                                nextArticles.forEach(a => prefetchArticle(a.id));
-                            }
-                        }
-                    }).current}
+                    onViewableItemsChanged={onViewableItemsChanged}
                     viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
                     scrollEventThrottle={400}
                     onScroll={(e) => {
