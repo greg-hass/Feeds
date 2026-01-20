@@ -16,6 +16,7 @@ import { Check, Star } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useKeyboardShortcuts, SHORTCUTS } from '@/hooks/useKeyboardShortcuts';
 import ArticleCard from './ArticleCard';
+import FilterPills from './FilterPills';
 
 interface TimelineProps {
     onArticlePress?: (article: Article) => void;
@@ -340,53 +341,18 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                 </View>
             </View>
 
-            <View style={s.filterWrapper}>
-                <FlatList
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={s.filterScroll}
-                    data={[
-                        { id: 'unread', label: 'Unread Only', type: 'toggle', active: filter.unread_only },
-                        { id: 'sep', type: 'separator' },
-                        { id: 'all', label: 'All', active: !filter.type },
-                        { id: 'youtube', label: 'Videos', active: filter.type === 'youtube' },
-                        { id: 'podcast', label: 'Podcasts', active: filter.type === 'podcast' },
-                        { id: 'reddit', label: 'Reddit', active: filter.type === 'reddit' },
-                        { id: 'rss', label: 'Articles', active: filter.type === 'rss' },
-                    ]}
-                    keyExtractor={item => item.id}
-                    renderItem={({ item }) => {
-                        if (item.type === 'separator') return <View style={s.filterDivider} />;
 
-                        return (
-                            <TouchableOpacity
-                                style={[
-                                    s.filterPill,
-                                    item.active ? s.filterPillActive : null,
-                                    item.id === 'unread' && item.active ? s.unreadPillActive : null
-                                ]}
-                                onPress={() => {
-                                    if (item.id === 'unread') {
-                                        setFilter({ unread_only: !filter.unread_only });
-                                    } else {
-                                        setFilter({ type: item.id === 'all' ? undefined : item.id });
-                                    }
-                                }}
-                            >
-                                {item.id === 'unread' && (
-                                    <View style={[s.unreadDot, item.active ? s.unreadDotActive : null]} />
-                                )}
-                                <Text style={[
-                                    s.filterText,
-                                    item.active ? s.filterTextActive : null
-                                ]}>
-                                    {item.label}
-                                </Text>
-                            </TouchableOpacity>
-                        );
-                    }}
-                />
-            </View>
+            <FilterPills
+                unreadOnly={filter.unread_only || false}
+                activeType={filter.type}
+                onFilterChange={(filterId) => {
+                    if (filterId === 'unread') {
+                        setFilter({ unread_only: !filter.unread_only });
+                    } else {
+                        setFilter({ type: filterId === 'all' ? undefined : filterId });
+                    }
+                }}
+            />
 
             {isLoading && articles.length === 0 ? (
                 <TimelineSkeleton />
