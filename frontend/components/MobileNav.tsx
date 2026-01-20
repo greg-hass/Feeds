@@ -60,8 +60,7 @@ export default function MobileNav() {
                         <IconComponent
                             size={24}
                             color={active ? colors.primary.DEFAULT : colors.text.tertiary}
-                            fill={active ? colors.primary.DEFAULT : 'transparent'}
-                            strokeWidth={active ? 4 : 1.5}
+                            strokeWidth={active ? 2.5 : 1.5}
                         />
                         <Text style={[s.label, active && s.labelActive]}>
                             {item.label}

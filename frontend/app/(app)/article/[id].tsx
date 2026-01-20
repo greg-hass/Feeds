@@ -7,13 +7,13 @@ import { Article, api } from '@/services/api';
 import {
     ArrowLeft, ExternalLink, Circle, CircleCheck,
     Headphones, BookOpen, Play, Bookmark,
-    ChevronLeft, ChevronRight, Maximize2, Pause
+    ChevronLeft, ChevronRight, Maximize2, Pause, Type
 } from 'lucide-react-native';
 import { useColors, borderRadius, spacing, typography } from '@/theme';
 import { extractVideoId, getEmbedUrl, isYouTubeUrl } from '@/utils/youtube';
 import ArticleContent from '@/components/ArticleContent';
 import { VideoModal } from '@/components/VideoModal';
-import { ReaderControls } from '@/components/ReaderControls';
+// Text size controls moved to header
 import { PodcastPlayer } from '@/components/PodcastPlayer';
 
 export default function ArticleScreen() {
@@ -68,6 +68,19 @@ export default function ArticleScreen() {
                 .finally(() => setIsLoading(false));
         }
     }, [id]);
+
+    // Populate adjacent articles from store
+    useEffect(() => {
+        if (id && articles.length > 0) {
+            const currentIndex = articles.findIndex(a => a.id === Number(id));
+            if (currentIndex !== -1) {
+                setAdjacentArticles({
+                    prev: currentIndex > 0 ? articles[currentIndex - 1].id : null,
+                    next: currentIndex < articles.length - 1 ? articles[currentIndex + 1].id : null
+                });
+            }
+        }
+    }, [id, articles]);
 
     // Handle video state when article changes
     useEffect(() => {
@@ -221,6 +234,9 @@ export default function ArticleScreen() {
                         <TouchableOpacity onPress={handleOpenExternal} style={s.actionButton}>
                             <ExternalLink size={22} color={colors.text.secondary} />
                         </TouchableOpacity>
+                        <TouchableOpacity onPress={() => router.push('/(app)/settings')} style={s.actionButton}>
+                            <Type size={22} color={colors.text.secondary} />
+                        </TouchableOpacity>
                     </View>
                 </Animated.View>
 
@@ -272,7 +288,7 @@ export default function ArticleScreen() {
                     </Animated.View>
                 </ScrollView>
 
-                <ReaderControls />
+
             </View>
         );
     };
