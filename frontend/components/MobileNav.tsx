@@ -73,13 +73,26 @@ export default function MobileNav() {
     );
 }
 
-const styles = (colors: any) => StyleSheet.create({
+const styles = (colors: any) => {
+    // Detect if running as PWA (standalone mode) - only in browser
+    const isStandalone = Platform.OS === 'web' && typeof window !== 'undefined' && 
+        (window.matchMedia?.('(display-mode: standalone)').matches || 
+         (window.navigator as any).standalone === true);
+    
+    // In Safari browser (not PWA), add extra padding to clear Safari's toolbar
+    const bottomPadding = Platform.OS === 'web' 
+        ? (isStandalone 
+            ? 'env(safe-area-inset-bottom)' 
+            : 'calc(env(safe-area-inset-bottom) + 60px)') as any
+        : 20;
+    
+    return StyleSheet.create({
     container: {
         flexDirection: 'row',
         backgroundColor: colors.background.secondary,
         borderTopWidth: 1,
         borderTopColor: colors.border.DEFAULT,
-        paddingBottom: Platform.OS === 'web' ? 'env(safe-area-inset-bottom)' as any : 20,
+        paddingBottom: bottomPadding,
         paddingTop: spacing.sm,
     },
     navItem: {
@@ -100,3 +113,4 @@ const styles = (colors: any) => StyleSheet.create({
         fontWeight: '700', // Bolder font
     },
 });
+};
