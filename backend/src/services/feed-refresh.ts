@@ -27,6 +27,7 @@ export interface RefreshResult {
  * @returns RefreshResult with success status and new article count
  */
 export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
+    let refreshIntervalMinutes = feed.refresh_interval_minutes;
     try {
         const feedData = await parseFeed(feed.url);
         let newArticles = 0;
@@ -36,7 +37,7 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
         const userId = feedUser?.user_id || 1; // Default to 1 if not found
         const settings = getUserSettings(userId);
         const shouldFetchContent = settings.fetch_full_content;
-        const refreshIntervalMinutes = settings.refresh_interval_minutes ?? feed.refresh_interval_minutes;
+        refreshIntervalMinutes = settings.refresh_interval_minutes ?? feed.refresh_interval_minutes;
 
         const insertArticle = `
             INSERT OR IGNORE INTO articles
