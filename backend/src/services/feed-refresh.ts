@@ -21,7 +21,11 @@ export interface RefreshResult {
 
 function isGenericIconUrl(url: string | null): boolean {
     if (!url) return true;
-    return url.includes('google.com/s2/favicons') || url.endsWith('/favicon.ico');
+    // Generic favicon patterns that should be replaced with actual feed icons
+    return url.includes('google.com/s2/favicons') || 
+           url.endsWith('/favicon.ico') ||
+           url.includes('youtube.com/favicon') ||
+           url.includes('yt3.ggpht.com/favicon'); // YouTube default avatar
 }
 
 function categorizeRefreshError(err: unknown): { category: string; message: string } {
