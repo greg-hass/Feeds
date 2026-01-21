@@ -37,6 +37,11 @@ export async function feedsStreamRoutes(app: FastifyInstance) {
 
     // Bulk refresh feeds with SSE progress
     app.get('/refresh-multiple', async (request: FastifyRequest<{ Querystring: { ids?: string } }>, reply: FastifyReply) => {
+        let isCancelled = false;
+        request.raw.on('close', () => {
+            isCancelled = true;
+        });
+
         const idsParam = request.query.ids;
 
         let feedIds: number[] = [];
@@ -83,6 +88,7 @@ export async function feedsStreamRoutes(app: FastifyInstance) {
         });
 
         const sendEvent = (event: RefreshProgressEvent) => {
+            if (isCancelled) return;
             reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
         };
 
@@ -119,12 +125,14 @@ export async function feedsStreamRoutes(app: FastifyInstance) {
             };
 
             // Refresh feeds in batches to avoid overwhelming the server/DB
-            const BATCH_SIZE = 5;
+            const BATCH_SIZE = 12;
 
             for (let i = 0; i < feeds.length; i += BATCH_SIZE) {
+                if (isCancelled) break;
                 const batch = feeds.slice(i, i + BATCH_SIZE);
 
                 await Promise.all(batch.map(async (feed) => {
+                    if (isCancelled) return;
                     sendEvent({
                         type: 'feed_refreshing',
                         id: feed.id,

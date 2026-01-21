@@ -50,6 +50,21 @@ export async function settingsRoutes(app: FastifyInstance): Promise<void> {
             [JSON.stringify(newSettings), userId]
         );
 
+        if (body.refresh_interval_minutes !== undefined) {
+            const interval = body.refresh_interval_minutes;
+            run(
+                `UPDATE feeds SET
+                    refresh_interval_minutes = ?,
+                    next_fetch_at = CASE
+                        WHEN last_fetched_at IS NULL THEN datetime('now', '+' || ? || ' minutes')
+                        ELSE datetime(last_fetched_at, '+' || ? || ' minutes')
+                    END,
+                    updated_at = datetime('now')
+                 WHERE user_id = ? AND deleted_at IS NULL`,
+                [interval, interval, interval, userId]
+            );
+        }
+
         return { settings: newSettings };
     });
 }

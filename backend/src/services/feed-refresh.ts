@@ -36,6 +36,7 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
         const userId = feedUser?.user_id || 1; // Default to 1 if not found
         const settings = getUserSettings(userId);
         const shouldFetchContent = settings.fetch_full_content;
+        const refreshIntervalMinutes = settings.refresh_interval_minutes ?? feed.refresh_interval_minutes;
 
         const insertArticle = `
             INSERT OR IGNORE INTO articles
@@ -95,7 +96,7 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
         newArticles = insertedCount;
 
         // Process thumbnail caching in parallel batches
-        const THUMBNAIL_BATCH_SIZE = 5;
+        const THUMBNAIL_BATCH_SIZE = 10;
         for (let i = 0; i < articlesToCache.length; i += THUMBNAIL_BATCH_SIZE) {
             const batch = articlesToCache.slice(i, i + THUMBNAIL_BATCH_SIZE);
             await Promise.all(batch.map(async (item) => {
@@ -113,7 +114,7 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
         // Fetch full content if enabled, in parallel batches
         if (shouldFetchContent && articlesToEnrich.length > 0) {
             const updateContentStmt = database.prepare('UPDATE articles SET readability_content = ? WHERE id = ?');
-            const CONTENT_BATCH_SIZE = 3; // Smaller batch for heavier content fetching
+            const CONTENT_BATCH_SIZE = 5; // Smaller batch for heavier content fetching
 
             for (let i = 0; i < articlesToEnrich.length; i += CONTENT_BATCH_SIZE) {
                 const batch = articlesToEnrich.slice(i, i + CONTENT_BATCH_SIZE);
@@ -153,6 +154,9 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
 
         params.push(feed.id);
 
+        const updateParams = [...params];
+        updateParams.splice(updateParams.length - 1, 0, refreshIntervalMinutes, refreshIntervalMinutes);
+
         run(
             `UPDATE feeds SET
         title = CASE 
@@ -165,14 +169,15 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
             icon_cached_content_type = COALESCE(?, icon_cached_content_type),
             description = COALESCE(description, ?),
             last_fetched_at = datetime('now'),
-            next_fetch_at = datetime('now', '+' || refresh_interval_minutes || ' minutes'),
+            next_fetch_at = datetime('now', '+' || ? || ' minutes'),
+            refresh_interval_minutes = ?,
             error_count = 0,
             last_error = NULL,
             last_error_at = NULL,
             updated_at = datetime('now')
                 ${typeUpdate}
              WHERE id = ? `,
-            params
+            updateParams
         );
 
         const updatedFeed = queryOne<{ next_fetch_at: string }>(
@@ -185,15 +190,17 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
 
         // Update feed with error information
+        const backoffMinutes = refreshIntervalMinutes * 2;
         run(
             `UPDATE feeds SET
         error_count = error_count + 1,
             last_error = ?,
             last_error_at = datetime('now'),
-            next_fetch_at = datetime('now', '+' || (refresh_interval_minutes * 2) || ' minutes'),
+            next_fetch_at = datetime('now', '+' || ? || ' minutes'),
+            refresh_interval_minutes = ?,
             updated_at = datetime('now')
              WHERE id = ? `,
-            [errorMessage, feed.id]
+            [errorMessage, backoffMinutes, refreshIntervalMinutes, feed.id]
         );
 
         return { success: false, newArticles: 0, error: errorMessage };

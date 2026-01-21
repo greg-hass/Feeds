@@ -19,7 +19,7 @@ export default function AppLayout() {
     useEffect(() => setMounted(true), []);
     const { width } = useWindowDimensions();
     const isDesktop = width >= 1024;
-    const { fetchFeeds, fetchFolders, refreshProgress } = useFeedStore();
+    const { fetchFeeds, fetchFolders, refreshProgress, cancelRefresh } = useFeedStore();
     const { showPlayer } = useAudioStore();
 
     useEffect(() => {
@@ -77,6 +77,7 @@ export default function AppLayout() {
                     total={refreshProgress?.total || 0}
                     completed={refreshProgress?.completed || 0}
                     currentTitle={refreshProgress?.currentTitle || ''}
+                    onCancel={cancelRefresh}
                 />
             </View >
         </ErrorBoundary>

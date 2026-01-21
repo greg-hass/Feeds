@@ -369,13 +369,15 @@ class ApiClient {
     async refreshFeedsWithProgress(
         feedIds: number[] | undefined,
         onEvent: (event: RefreshProgressEvent) => void,
-        onError?: (error: Error) => void
+        onError?: (error: Error) => void,
+        signal?: AbortSignal
     ): Promise<void> {
         const idsParam = feedIds?.length ? `?ids=${feedIds.join(',')}` : '';
 
         try {
             const response = await fetch(`${API_URL}/feeds-stream/refresh-multiple${idsParam}`, {
                 method: 'GET',
+                signal,
             });
 
             if (!response.ok) {
@@ -412,7 +414,11 @@ class ApiClient {
                 }
             }
         } catch (err) {
-            onError?.(err instanceof Error ? err : new Error('Unknown error'));
+            const error = err instanceof Error ? err : new Error('Unknown error');
+            if (error.name === 'AbortError') {
+                return;
+            }
+            onError?.(error);
         }
     }
 }
@@ -616,4 +622,3 @@ export interface Interest {
 }
 
 export const api = new ApiClient();
-

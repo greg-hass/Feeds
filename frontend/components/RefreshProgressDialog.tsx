@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, useWindowDimensions, Platform } from 'react-native';
+import { View, Text, StyleSheet, Animated, useWindowDimensions, Platform, TouchableOpacity } from 'react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
-import { RefreshCw } from 'lucide-react-native';
+import { RefreshCw, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface RefreshProgressDialogProps {
@@ -9,9 +9,10 @@ interface RefreshProgressDialogProps {
     total: number;
     completed: number;
     currentTitle: string;
+    onCancel?: () => void;
 }
 
-export function RefreshProgressDialog({ visible, total, completed, currentTitle }: RefreshProgressDialogProps) {
+export function RefreshProgressDialog({ visible, total, completed, currentTitle, onCancel }: RefreshProgressDialogProps) {
     const colors = useColors();
     const insets = useSafeAreaInsets();
     const { width } = useWindowDimensions();
@@ -75,7 +76,19 @@ export function RefreshProgressDialog({ visible, total, completed, currentTitle 
                         <RefreshCw size={14} color={colors.primary.DEFAULT} style={s.spinIcon} />
                         <Text style={s.title}>Refreshing Feeds</Text>
                     </View>
-                    <Text style={s.countText}>{completed} / {total}</Text>
+                    <View style={s.headerRight}>
+                        <Text style={s.countText}>{completed} / {total}</Text>
+                        {onCancel ? (
+                            <TouchableOpacity
+                                onPress={onCancel}
+                                style={s.cancelButton}
+                                accessibilityLabel="Cancel refresh"
+                                accessibilityRole="button"
+                            >
+                                <X size={12} color={colors.text.secondary} />
+                            </TouchableOpacity>
+                        ) : null}
+                    </View>
                 </View>
 
                 <View style={s.progressBarContainer}>
@@ -132,6 +145,11 @@ const styles = (colors: any, isDesktop: boolean, isMobileWeb: boolean, insets: a
         alignItems: 'center',
         marginBottom: spacing.sm,
     },
+    headerRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
     titleRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -151,6 +169,14 @@ const styles = (colors: any, isDesktop: boolean, isMobileWeb: boolean, insets: a
         paddingHorizontal: 6,
         paddingVertical: 2,
         borderRadius: 4,
+    },
+    cancelButton: {
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: colors.background.tertiary,
     },
     progressBarContainer: {
         height: 4,

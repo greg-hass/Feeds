@@ -2,10 +2,15 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api, Feed, Folder } from '@/services/api';
-import { applySyncChanges, SyncChanges } from '@/lib/sync';
+import { applySyncChanges, SyncChanges, fetchChanges } from '@/lib/sync';
 import { handleError } from '@/services/errorHandler';
 import { useArticleStore } from './articleStore';
 import { FeedState } from './types';
+
+let refreshAbortController: AbortController | null = null;
+
+const isAbortError = (error: unknown) =>
+    error instanceof Error && error.name === 'AbortError';
 
 export const useFeedStore = create<FeedState>()(
     persist(
@@ -67,6 +72,11 @@ export const useFeedStore = create<FeedState>()(
                 try {
                     const result = await api.refreshFeed(id);
                     get().fetchFeeds();
+                    const syncResult = await fetchChanges();
+                    if (syncResult) {
+                        get().applySyncChanges(syncResult.changes);
+                        useArticleStore.getState().applySyncChanges(syncResult.changes);
+                    }
                     return result.new_articles;
                 } catch (error) {
                     handleError(error, { context: 'refreshFeed', fallbackMessage: 'Failed to refresh feed' });
@@ -76,6 +86,8 @@ export const useFeedStore = create<FeedState>()(
 
             refreshAllFeeds: async (ids) => {
                 set({ isLoading: true });
+                const controller = new AbortController();
+                refreshAbortController = controller;
                 let hasNewArticles = false;
                 const articleStore = useArticleStore.getState();
 
@@ -132,9 +144,16 @@ export const useFeedStore = create<FeedState>()(
                             }
                         },
                         (error) => {
-                            handleError(error, { context: 'refreshFeedsProgress', showToast: true });
-                        }
+                            if (!isAbortError(error)) {
+                                handleError(error, { context: 'refreshFeedsProgress', showToast: true });
+                            }
+                        },
+                        controller.signal
                     );
+
+                    if (controller.signal.aborted) {
+                        return;
+                    }
 
                     // Final fetch to ensure everything is in sync
                     if (refreshTimeout) clearTimeout(refreshTimeout);
@@ -143,11 +162,30 @@ export const useFeedStore = create<FeedState>()(
                         get().fetchFolders(),
                         articleStore.fetchArticles(true)
                     ]);
+
+                    const syncResult = await fetchChanges();
+                    if (syncResult) {
+                        get().applySyncChanges(syncResult.changes);
+                        articleStore.applySyncChanges(syncResult.changes);
+                    }
                 } catch (error) {
-                    handleError(error, { context: 'refreshAllFeeds' });
+                    if (!isAbortError(error)) {
+                        handleError(error, { context: 'refreshAllFeeds' });
+                    }
                 } finally {
+                    if (refreshAbortController === controller) {
+                        refreshAbortController = null;
+                    }
                     set({ isLoading: false, refreshProgress: null });
                 }
+            },
+
+            cancelRefresh: () => {
+                if (refreshAbortController) {
+                    refreshAbortController.abort();
+                    refreshAbortController = null;
+                }
+                set({ isLoading: false, refreshProgress: null });
             },
 
             updateLocalFeed: (id, updates) => {

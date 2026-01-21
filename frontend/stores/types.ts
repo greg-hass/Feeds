@@ -16,6 +16,7 @@ export interface FeedState {
     deleteFolder: (id: number) => Promise<void>;
     refreshFeed: (id: number) => Promise<number>;
     refreshAllFeeds: (ids?: number[]) => Promise<void>;
+    cancelRefresh: () => void;
     updateLocalFeed: (id: number, updates: Partial<Feed>) => void;
     applySyncChanges: (changes: SyncChanges) => void;
 }

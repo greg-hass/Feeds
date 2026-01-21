@@ -7,7 +7,8 @@ interface Feed extends FeedToRefresh {
 }
 
 const CHECK_INTERVAL = 60 * 1000; // Check every minute
-const FEED_DELAY = 3000; // 3 seconds delay between feeds
+const FEED_DELAY = 500; // 0.5 second delay between batches
+const BATCH_SIZE = 5;
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -59,22 +60,25 @@ async function checkFeeds() {
 
         console.log(`[Scheduler] Found ${feeds.length} feeds due for refresh`);
 
-        // Process sequentially to be gentle on resources in background
-        for (const feed of feeds) {
-            try {
-                const result = await refreshFeed(feed);
-                if (result.success) {
-                    if (result.newArticles > 0) {
-                        console.log(`[Scheduler] Refreshed ${feed.title}: ${result.newArticles} new articles`);
-                    }
-                } else {
-                    console.error(`[Scheduler] Failed to refresh ${feed.title}: ${result.error}`);
-                }
-            } catch (err) {
-                console.error(`[Scheduler] Error refreshing ${feed.title}:`, err);
-            }
+        for (let i = 0; i < feeds.length; i += BATCH_SIZE) {
+            const batch = feeds.slice(i, i + BATCH_SIZE);
 
-            // Stagger requests to avoid 429 errors
+            await Promise.all(batch.map(async (feed) => {
+                try {
+                    const result = await refreshFeed(feed);
+                    if (result.success) {
+                        if (result.newArticles > 0) {
+                            console.log(`[Scheduler] Refreshed ${feed.title}: ${result.newArticles} new articles`);
+                        }
+                    } else {
+                        console.error(`[Scheduler] Failed to refresh ${feed.title}: ${result.error}`);
+                    }
+                } catch (err) {
+                    console.error(`[Scheduler] Error refreshing ${feed.title}:`, err);
+                }
+            }));
+
+            // Stagger batches to avoid 429 errors
             await sleep(FEED_DELAY);
         }
     } catch (err) {
