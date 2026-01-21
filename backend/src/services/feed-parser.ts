@@ -103,12 +103,16 @@ export async function fetchYouTubeIcon(channelId: string | null | undefined): Pr
         
         const html = await response.text();
 
-        // Try 4 regex patterns in order (proven working)
+        // Try multiple regex patterns in order (updated for current YouTube)
         const avatarPatterns = [
             /"avatar":\{"thumbnails":\[\{"url":"([^"]+)"/,      // JSON data
+            /"channelMetadataRenderer"\s*:\s*\{[^}]*"avatar":\s*\{"thumbnails":\s*\[\{"url":\s*"([^"]+)"/,  // Extended metadata v2
             /"channelMetadataRenderer".*?"avatar".*?"url":"([^"]+)"/,  // Extended metadata
+            /yt3\.googleusercontent\.com\/[^"]*width=\d+[^"]*height=\d+[^"]*url=([^&"\s]+)/,  // yt3 with dimensions
             /yt-img-shadow.*?src="(https:\/\/yt3\.googleusercontent\.com\/[^"]+)"/,  // HTML img tag
-            /<meta property="og:image" content="([^"]+)"/       // OpenGraph fallback
+            /<img[^>]+class="yt-channel-icon"[^>]+src="([^"]+)"/,  // Channel icon img tag
+            /<meta property="og:image" content="([^"]+)"/,       // OpenGraph fallback
+            /profile\?uid=\d+[^>]+src="([^"]+)"/,  // Alternative profile pattern
         ];
 
         for (const pattern of avatarPatterns) {
