@@ -1,7 +1,7 @@
 import { run, queryOne } from '../db/index.js';
 import { parseFeed, normalizeArticle, FeedType } from './feed-parser.js';
 import { cacheFeedIcon } from './icon-cache.js';
-import { cacheArticleThumbnail, cacheArticleThumbnailSync } from './thumbnail-cache.js';
+import { cacheArticleThumbnail } from './thumbnail-cache.js';
 import { getUserSettings } from './settings.js';
 import { fetchAndExtractReadability } from './readability.js';
 

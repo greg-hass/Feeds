@@ -223,7 +223,8 @@ export async function parseFeed(url: string): Promise<ParsedFeed> {
                     }
                 });
             } catch (youtubeErr) {
-                throw new Error(`YouTube fetch failed with both user agents: ${youtubeErr.message}`);
+                const errorMessage = youtubeErr instanceof Error ? youtubeErr.message : String(youtubeErr);
+                throw new Error(`YouTube fetch failed with both user agents: ${errorMessage}`);
             }
         } else {
             throw err;
@@ -575,19 +576,12 @@ async function fetchWithRetry(
     url: string,
     options: RequestInit & { retryOptions?: RetryOptions } = {}
 ): Promise<Response> {
-    const {
-        maxRetries = MAX_RETRIES,
-        baseDelay = BASE_RETRY_DELAY,
-        maxDelay = MAX_RETRY_DELAY,
-        retryCondition = (response) => response.status >= 500 || response.status === 429,
-        retryOptions,
-        ...fetchOptions
-    } = options;
-
-    const effectiveMaxRetries = retryOptions?.maxRetries ?? maxRetries;
-    const effectiveBaseDelay = retryOptions?.baseDelay ?? baseDelay;
-    const effectiveMaxDelay = retryOptions?.maxDelay ?? maxDelay;
-    const effectiveRetryCondition = retryOptions?.retryCondition ?? retryCondition;
+    const { retryOptions, ...fetchOptions } = options;
+    const effectiveMaxRetries = retryOptions?.maxRetries ?? MAX_RETRIES;
+    const effectiveBaseDelay = retryOptions?.baseDelay ?? BASE_RETRY_DELAY;
+    const effectiveMaxDelay = retryOptions?.maxDelay ?? MAX_RETRY_DELAY;
+    const effectiveRetryCondition =
+        retryOptions?.retryCondition ?? ((response: Response) => response.status >= 500 || response.status === 429);
 
     let lastError: Error | null = null;
 
