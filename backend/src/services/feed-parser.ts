@@ -144,68 +144,6 @@ export async function fetchYouTubeIcon(channelId: string | null | undefined): Pr
     // Fallback - return null so the frontend can show default icon
     return null;
 }
-    
-    console.log(`[YouTube Icon] Fetching icon for channel: ${channelId}`);
-    
-    // Scrape the channel page (proven working approach)
-    try {
-        const response = await fetchWithRetry(`https://www.youtube.com/channel/${channelId}`, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept-Language': 'en-US,en;q=0.9',
-            },
-            signal: AbortSignal.timeout(10000),
-            retryOptions: {
-                maxRetries: 2, // Fewer retries for icons
-                retryCondition: (resp) => resp.status >= 500 || resp.status === 429,
-            }
-        });
-        
-        if (!response.ok) {
-            console.log(`[YouTube Icon] Failed to fetch channel page: ${response.status}`);
-            return null;
-        }
-        
-        const html = await response.text();
-
-        // Try multiple regex patterns in order (updated for current YouTube)
-        const avatarPatterns = [
-            /"avatar":\{"thumbnails":\[\{"url":"([^"]+)"/,      // JSON data
-            /"channelMetadataRenderer"\s*:\s*\{[^}]*"avatar":\s*\{"thumbnails":\s*\[\{"url":\s*"([^"]+)"/,  // Extended metadata v2
-            /"channelMetadataRenderer".*?"avatar".*?"url":"([^"]+)"/,  // Extended metadata
-            /yt3\.googleusercontent\.com\/[^"]*width=\d+[^"]*height=\d+[^"]*url=([^&"\s]+)/,  // yt3 with dimensions
-            /yt-img-shadow.*?src="(https:\/\/yt3\.googleusercontent\.com\/[^"]+)"/,  // HTML img tag
-            /<img[^>]+class="yt-channel-icon"[^>]+src="([^"]+)"/,  // Channel icon img tag
-            /<meta property="og:image" content="([^"]+)"/,       // OpenGraph fallback
-            /profile\?uid=\d+[^>]+src="([^"]+)"/,  // Alternative profile pattern
-        ];
-
-        for (const pattern of avatarPatterns) {
-            const match = html.match(pattern);
-            if (match && match[1]) {
-                let avatarUrl = match[1];
-                
-                // Decode escaped characters
-                avatarUrl = avatarUrl.replace(/\\u0026/g, '&').replace(/\\/g, '');
-                
-                // Force high-res avatar (s176 is standard)
-                if (avatarUrl.includes('=s')) {
-                    avatarUrl = avatarUrl.replace(/=s\d+.*/, '=s176-c-k-c0x00ffffff-no-rj-mo');
-                }
-                
-                console.log(`[YouTube Icon] Found icon for ${channelId}`);
-                return avatarUrl;
-            }
-        }
-        
-        console.log(`[YouTube Icon] No patterns matched for ${channelId}`);
-    } catch (e) {
-        console.error(`[YouTube Icon] Error fetching: ${e}`);
-    }
-
-    // Fallback - return null so the frontend can show default icon
-    return null;
-}
 
 export function extractHeroImage(content: string, meta: any = {}): string | null {
     // 1. Check meta tags

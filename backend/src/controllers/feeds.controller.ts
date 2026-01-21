@@ -368,7 +368,8 @@ export class FeedsController {
             
         } catch (err) {
             console.error(`Failed to refresh icon for feed ${feedId}:`, err);
-            return reply.status(500).send({ error: 'Failed to refresh icon', details: err.message });
+            const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+            return reply.status(500).send({ error: 'Failed to refresh icon', details: errorMessage });
         }
     }
 
