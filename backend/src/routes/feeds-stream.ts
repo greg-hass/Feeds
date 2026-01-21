@@ -112,7 +112,7 @@ export async function feedsStreamRoutes(app: FastifyInstance) {
             };
 
             // Refresh feeds in batches to avoid overwhelming the server/DB
-            const BATCH_SIZE = 12;
+            const BATCH_SIZE = 20;
 
             for (let i = 0; i < feeds.length; i += BATCH_SIZE) {
                 if (isCancelled) break;

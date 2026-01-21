@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Animated, Alert, AppState } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useArticleStore, useFeedStore, useAudioStore, useVideoStore } from '@/stores';
-import { useSettingsStore } from '@/stores/settingsStore';
 import { extractVideoId } from '@/utils/youtube';
 import { Article } from '@/services/api';
 
@@ -10,14 +9,12 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
     const router = useRouter();
     const { articles, isLoading, hasMore, filter, fetchArticles, setFilter, markAllRead, prefetchArticle } = useArticleStore();
     const { feeds, folders, refreshAllFeeds, isLoading: isFeedLoading, refreshProgress } = useFeedStore();
-    const { settings } = useSettingsStore();
     const { currentArticleId: playingArticleId, isPlaying, play, pause, resume } = useAudioStore();
     const { activeVideoId, playVideo } = useVideoStore();
 
     const [timeLeft, setTimeLeft] = useState<string | null>(null);
     const appStateRef = useRef(AppState.currentState);
     const lastTriggeredDueRef = useRef<number | null>(null);
-    const nextOverrideRef = useRef<number | null>(null);
     const isRefreshing = !!refreshProgress;
     const hotPulseAnim = useRef(new Animated.Value(1)).current;
     const bookmarkScales = useRef<Map<number, Animated.Value>>(new Map());
@@ -42,6 +39,9 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
         });
 
         const timer = setInterval(() => {
+            if (refreshProgress) {
+                return;
+            }
             if (!feeds?.length) {
                 setTimeLeft(null);
                 return;
@@ -70,21 +70,9 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
                 }
             }
             if (earliestTimestamp) {
-                const intervalMs = (settings?.refresh_interval_minutes ?? 30) * 60 * 1000;
-                let effectiveNext = earliestTimestamp;
-                if (nextOverrideRef.current && (!effectiveNext || effectiveNext <= now)) {
-                    effectiveNext = nextOverrideRef.current;
-                }
-
-                if (effectiveNext && effectiveNext > now + 1000) {
-                    nextOverrideRef.current = null;
-                }
-
-                const diff = effectiveNext - now;
+                const diff = earliestTimestamp - now;
                 if (diff <= 0) {
-                    const optimisticNext = now + intervalMs;
-                    nextOverrideRef.current = optimisticNext;
-                    setTimeLeft(`${Math.floor(intervalMs / 60000)}m 0s`);
+                    setTimeLeft('0s');
                     const shouldAutoRefresh = appStateRef.current === 'active'
                         && !isFeedLoading
                         && lastTriggeredDueRef.current !== earliestTimestamp;
