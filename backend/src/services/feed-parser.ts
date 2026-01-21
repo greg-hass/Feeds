@@ -68,9 +68,9 @@ if (YOUTUBE_API_KEY) {
     console.warn('[Config] YouTube API Key NOT found. Falling back to scraping.');
 }
 
-export async function fetchYouTubeIcon(channelId: string): Promise<string | null> {
+export async function fetchYouTubeIcon(channelId: string | null | undefined): Promise<string | null> {
     // Validate channel ID format (should start with UC and be 24 chars)
-    if (!channelId || !channelId.startsWith('UC') || channelId.length !== 24) {
+    if (!channelId || typeof channelId !== 'string' || !channelId.startsWith('UC') || channelId.length !== 24) {
         console.log(`[YouTube Icon] Invalid channel ID format: "${channelId}" (expected UC + 22 chars)`);
         return null;
     }
@@ -279,7 +279,7 @@ export async function parseFeed(url: string): Promise<ParsedFeed> {
                 favicon: favicon,
                 articles,
                 isPodcast,
-                youtubeChannelId: (extendedMeta as any)['yt:channelid'] || (extendedMeta as any)['yt:channelId'] || null,
+                youtubeChannelId: extractYouTubeChannelId(extendedMeta),
             });
         });
 
@@ -292,15 +292,21 @@ export async function parseFeed(url: string): Promise<ParsedFeed> {
 
         if (type === 'youtube') {
             // Always fetch YouTube channel icon (don't use generic YouTube favicon)
-            // 1. Try to get channel ID from metadata first (most reliable)
-            let channelId = feed.youtubeChannelId;
+            // 1. Try to get channel ID from feed URL parameter (most reliable)
+            let channelId = null;
+            try {
+                const urlObj = new URL(url);
+                channelId = urlObj.searchParams.get('channel_id');
+            } catch { }
 
-            // 2. Fallback: Extract from feed URL parameter
-            if (!channelId) {
-                try {
-                    const urlObj = new URL(url);
-                    channelId = urlObj.searchParams.get('channel_id');
-                } catch { }
+            // 2. Fallback: Use metadata channel ID (may need UC prefix added)
+            if (!channelId && feed.youtubeChannelId) {
+                // If metadata doesn't have UC prefix, add it
+                if (!feed.youtubeChannelId.startsWith('UC')) {
+                    channelId = 'UC' + feed.youtubeChannelId;
+                } else {
+                    channelId = feed.youtubeChannelId;
+                }
             }
 
             if (channelId) {
@@ -490,6 +496,23 @@ function decodeHtmlEntities(text: string | null): string {
         const lowerEntity = entity.toLowerCase();
         return entities[lowerEntity] || match;
     });
+}
+
+function extractYouTubeChannelId(extendedMeta: any): string | null {
+    const channelId = (extendedMeta as any)['yt:channelid'] || (extendedMeta as any)['yt:channelId'];
+    if (!channelId) return null;
+    
+    // Handle XML-parsed objects where the actual value is in the '#' property
+    if (typeof channelId === 'object' && channelId && typeof channelId['#'] === 'string') {
+        return channelId['#'];
+    }
+    
+    // Handle string values
+    if (typeof channelId === 'string') {
+        return channelId;
+    }
+    
+    return null;
 }
 
 function extractFavicon(siteUrl: string | null): string | null {
