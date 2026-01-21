@@ -90,6 +90,14 @@ export const useFeedStore = create<FeedState>()(
                 refreshAbortController = controller;
                 let hasNewArticles = false;
                 const articleStore = useArticleStore.getState();
+                const estimatedTotal = ids?.length ?? get().feeds.length;
+                set({
+                    refreshProgress: {
+                        total: estimatedTotal,
+                        completed: 0,
+                        currentTitle: '',
+                    }
+                });
 
                 // Debounced article fetch to avoid hammering the server during rapid updates
                 let refreshTimeout: ReturnType<typeof setTimeout> | null = null;

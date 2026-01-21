@@ -8,7 +8,7 @@ import { Article } from '@/services/api';
 export const useTimeline = (onArticlePress?: (article: Article) => void) => {
     const router = useRouter();
     const { articles, isLoading, hasMore, filter, fetchArticles, setFilter, markAllRead, prefetchArticle } = useArticleStore();
-    const { feeds, folders, refreshAllFeeds, isLoading: isFeedLoading } = useFeedStore();
+    const { feeds, folders, refreshAllFeeds, isLoading: isFeedLoading, refreshProgress } = useFeedStore();
     const { currentArticleId: playingArticleId, isPlaying, play, pause, resume } = useAudioStore();
     const { activeVideoId, playVideo } = useVideoStore();
 
@@ -32,6 +32,10 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
     // Refresh timer logic
     useEffect(() => {
         const timer = setInterval(() => {
+            if (refreshProgress) {
+                setTimeLeft('Refreshing');
+                return;
+            }
             if (!feeds?.length) {
                 setTimeLeft(null);
                 return;
@@ -39,23 +43,35 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
             const now = Date.now();
             let earliestTimestamp: number | null = null;
             for (const f of feeds) {
-                if (f.next_fetch_at) {
-                    const next = new Date(f.next_fetch_at).getTime();
-                    if (!isNaN(next) && (!earliestTimestamp || next < earliestTimestamp)) {
-                        earliestTimestamp = next;
+                const nextFromField = f.next_fetch_at ? new Date(f.next_fetch_at).getTime() : NaN;
+                const lastFetched = f.last_fetched_at ? new Date(f.last_fetched_at).getTime() : NaN;
+                const intervalMs = (f.refresh_interval_minutes || 0) * 60 * 1000;
+                let next = Number.isFinite(nextFromField) ? nextFromField : NaN;
+
+                if (!Number.isFinite(next) && Number.isFinite(lastFetched) && intervalMs > 0) {
+                    next = lastFetched + intervalMs;
+                }
+
+                if (!Number.isFinite(next) && intervalMs > 0) {
+                    next = now + intervalMs;
+                }
+
+                if (Number.isFinite(next)) {
+                    const normalizedNext = Math.max(now, next);
+                    if (!earliestTimestamp || normalizedNext < earliestTimestamp) {
+                        earliestTimestamp = normalizedNext;
                     }
                 }
             }
             if (earliestTimestamp) {
                 const diff = earliestTimestamp - now;
-                if (diff <= 0) setTimeLeft('Refreshing');
-                else if (diff < 60000) setTimeLeft(`${Math.floor(diff / 1000)}s`);
+                if (diff < 60000) setTimeLeft(`${Math.floor(diff / 1000)}s`);
                 else if (diff < 3600000) setTimeLeft(`${Math.floor(diff / 60000)}m ${Math.floor((diff % 60000) / 1000)}s`);
                 else setTimeLeft(`${Math.floor(diff / 3600000)}h ${Math.floor((diff % 3600000) / 60000)}m`);
             } else setTimeLeft(null);
         }, 1000);
         return () => clearInterval(timer);
-    }, [feeds]);
+    }, [feeds, refreshProgress]);
 
     const getBookmarkScale = (id: number) => {
         if (!bookmarkScales.current.has(id)) bookmarkScales.current.set(id, new Animated.Value(1));
