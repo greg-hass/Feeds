@@ -87,6 +87,12 @@ class ApiClient {
         });
     }
 
+    async refreshFeedIcon(id: number) {
+        return this.request<{ feed: Feed; icon_refreshed: boolean; message?: string }>(`/feeds/${id}/refresh-icon`, {
+            method: 'POST',
+        });
+    }
+
     async getFeedInfo(id: number) {
         return this.request<FeedInfo>(`/feeds/${id}/info`);
     }

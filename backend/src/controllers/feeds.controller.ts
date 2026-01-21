@@ -314,6 +314,64 @@ export class FeedsController {
         };
     }
 
+    static async refreshIcon(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+        const userId = 1;
+        const feedId = parseInt(request.params.id, 10);
+        
+        const feed = queryOne<Feed>('SELECT * FROM feeds WHERE id = ? AND user_id = ? AND deleted_at IS NULL', [feedId, userId]);
+        if (!feed) return reply.status(404).send({ error: 'Feed not found' });
+        
+        // Only refresh icon for YouTube feeds
+        if (feed.type !== 'youtube' && !feed.url.includes('youtube.com/feeds')) {
+            return reply.status(400).send({ error: 'Only YouTube feeds support icon refresh' });
+        }
+        
+        try {
+            // Parse feed to get fresh favicon
+            const feedData = await parseFeed(feed.url);
+            
+            // Extract channel ID and fetch icon
+            const urlObj = new URL(feed.url);
+            let channelId = urlObj.searchParams.get('channel_id');
+            
+            if (!channelId) {
+                // Try to get from metadata
+                const { detectFeedType } = await import('../services/feed-parser.js');
+                const detectedType = detectFeedType(feed.url, feedData);
+                if (detectedType === 'youtube' && feedData.youtubeChannelId) {
+                    channelId = feedData.youtubeChannelId.startsWith('UC') ? feedData.youtubeChannelId : 'UC' + feedData.youtubeChannelId;
+                }
+            }
+            
+            let newIconUrl: string | null = null;
+            if (channelId) {
+                const { fetchYouTubeIcon } = await import('../services/feed-parser.js');
+                newIconUrl = await fetchYouTubeIcon(channelId);
+            }
+            
+            // If no channel-specific icon, use the feed's favicon
+            if (!newIconUrl) {
+                newIconUrl = feedData.favicon;
+            }
+            
+            if (newIconUrl && newIconUrl !== feed.icon_url) {
+                // Clear cached icon and update with new URL
+                const cachedIcon = await cacheFeedIcon(feed.id, newIconUrl);
+                run(`UPDATE feeds SET icon_url = ?, icon_cached_path = ?, icon_cached_content_type = ?, updated_at = datetime('now') WHERE id = ?`,
+                    [newIconUrl, cachedIcon?.fileName ?? null, cachedIcon?.mime ?? null, feedId]);
+                
+                const updatedFeed = queryOne<Feed>('SELECT * FROM feeds WHERE id = ?', [feedId]);
+                return { feed: toApiFeed(updatedFeed!), icon_refreshed: true };
+            }
+            
+            return { feed: toApiFeed(feed), icon_refreshed: false, message: 'Icon already up to date' };
+            
+        } catch (err) {
+            console.error(`Failed to refresh icon for feed ${feedId}:`, err);
+            return reply.status(500).send({ error: 'Failed to refresh icon', details: err.message });
+        }
+    }
+
     // One-time fix to refetch YouTube channel icons
     static async refetchYouTubeIcons(request: FastifyRequest, reply: FastifyReply) {
         const userId = 1;
