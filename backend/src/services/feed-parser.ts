@@ -84,6 +84,71 @@ export async function fetchYouTubeIcon(channelId: string | null | undefined): Pr
     
     // Scrape the channel page (proven working approach)
     try {
+        console.log(`[YouTube Icon] Making request to YouTube...`);
+        const response = await fetchWithRetry(`https://www.youtube.com/channel/${channelId}`, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept-Language': 'en-US,en;q=0.9',
+            },
+            retryOptions: {
+                maxRetries: 2,
+                retryCondition: (resp) => resp.status >= 500 || resp.status === 429,
+            }
+        });
+        
+        console.log(`[YouTube Icon] Response status: ${response.status}`);
+        
+        if (!response.ok) {
+            console.log(`[YouTube Icon] Failed to fetch channel page: ${response.status}`);
+            return null;
+        }
+        
+        const html = await response.text();
+        console.log(`[YouTube Icon] Got HTML (${html.length} chars), searching for avatar...`);
+
+        // Try multiple regex patterns in order (updated for current YouTube)
+        const avatarPatterns = [
+            { name: 'JSON avatar', regex: /"avatar":\{"thumbnails":\[\{"url":"([^"]+)"/ },
+            { name: 'Metadata v2', regex: /"channelMetadataRenderer"\s*:\s*\{[^}]*"avatar":\s*\{"thumbnails":\s*\[\{"url":\s*"([^"]+)"/ },
+            { name: 'Metadata', regex: /"channelMetadataRenderer".*?"avatar".*?"url":"([^"]+)"/ },
+            { name: 'yt3 dims', regex: /yt3\.googleusercontent\.com\/[^"]*width=\d+[^"]*height=\d+[^"]*url=([^&"\s]+)/ },
+            { name: 'yt-img-shadow', regex: /yt-img-shadow.*?src="(https:\/\/yt3\.googleusercontent\.com\/[^"]+)"/ },
+            { name: 'channel-icon img', regex: /<img[^>]+class="yt-channel-icon"[^>]+src="([^"]+)"/ },
+            { name: 'og:image', regex: /<meta property="og:image" content="([^"]+)"/ },
+            { name: 'profile', regex: /profile\?uid=\d+[^>]+src="([^"]+)"/ },
+        ];
+
+        for (const pattern of avatarPatterns) {
+            const match = html.match(pattern.regex);
+            if (match && match[1]) {
+                let avatarUrl = match[1];
+                
+                // Decode escaped characters
+                avatarUrl = avatarUrl.replace(/\\u0026/g, '&').replace(/\\/g, '');
+                
+                // Force high-res avatar (s176 is standard)
+                if (avatarUrl.includes('=s')) {
+                    avatarUrl = avatarUrl.replace(/=s\d+.*/, '=s176-c-k-c0x00ffffff-no-rj-mo');
+                }
+                
+                console.log(`[YouTube Icon] ✓ Found icon using "${pattern.name}": ${avatarUrl.substring(0, 50)}...`);
+                return avatarUrl;
+            }
+        }
+        
+        console.log(`[YouTube Icon] No patterns matched for ${channelId}`);
+    } catch (e) {
+        console.error(`[YouTube Icon] Error fetching: ${e}`);
+    }
+
+    // Fallback - return null so the frontend can show default icon
+    return null;
+}
+    
+    console.log(`[YouTube Icon] Fetching icon for channel: ${channelId}`);
+    
+    // Scrape the channel page (proven working approach)
+    try {
         const response = await fetchWithRetry(`https://www.youtube.com/channel/${channelId}`, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -351,10 +416,16 @@ export async function parseFeed(url: string): Promise<ParsedFeed> {
             }
 
             if (channelId) {
+                console.log(`[YouTube Icon] Fetching icon for channel: ${channelId}`);
                 const icon = await fetchYouTubeIcon(channelId);
                 if (icon) {
+                    console.log(`[YouTube Icon] ✓ Found icon for ${channelId}: ${icon.substring(0, 50)}...`);
                     feed.favicon = icon;
+                } else {
+                    console.log(`[YouTube Icon] ✗ No icon found for ${channelId}, using fallback`);
                 }
+            } else {
+                console.log(`[YouTube Icon] ✗ No channel ID found for feed`);
             }
         } else if (type === 'reddit') {
             // Link format: https://www.reddit.com/r/subreddit/
