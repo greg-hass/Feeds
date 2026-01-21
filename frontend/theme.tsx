@@ -47,6 +47,9 @@ const sharedColors = {
         dark: '#059669',
         soft: '#10b98125', // 15% opacity for backgrounds
     },
+    accent: {
+        primary: '#10b981',
+    },
     secondary: {
         DEFAULT: '#0d9488', // Teal 600
         light: '#2dd4bf',   // Teal 400
@@ -55,6 +58,11 @@ const sharedColors = {
     success: '#10b981',
     error: '#ef4444',
     warning: '#f59e0b',
+    status: {
+        success: '#10b981',
+        warning: '#f59e0b',
+        error: '#ef4444',
+    },
     feedTypes: {
         rss: '#10b981',
         youtube: '#ef4444',
@@ -144,4 +152,3 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 export function useColors() {
     return useContext(ThemeContext);
 }
-

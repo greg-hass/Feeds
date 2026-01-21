@@ -176,11 +176,11 @@ export const FeedInfoSheet = ({ feedId, visible, onClose, onEdit, onDelete }: Fe
     const getStatusColor = () => {
         switch (feedInfo?.status) {
             case 'healthy':
-                return colors.status.success;
+                return colors.success;
             case 'paused':
-                return colors.status.warning;
+                return colors.warning;
             case 'error':
-                return colors.status.error;
+                return colors.error;
             default:
                 return colors.text.tertiary;
         }
@@ -213,14 +213,14 @@ export const FeedInfoSheet = ({ feedId, visible, onClose, onEdit, onDelete }: Fe
 
                     {loading ? (
                         <View style={s.loadingContainer}>
-                            <ActivityIndicator size="large" color={colors.accent.primary} />
+                            <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
                         </View>
                     ) : feedInfo && feed ? (
                         <ScrollView style={s.content} showsVerticalScrollIndicator={false}>
                             {/* Feed Title & Type */}
                             <View style={s.titleSection}>
                                 <View style={s.iconContainer}>
-                                    <TypeIcon size={32} color={colors.accent.primary} />
+                                    <TypeIcon size={32} color={colors.primary.DEFAULT} />
                                 </View>
                                 <View style={s.titleInfo}>
                                     <Text style={s.feedTitle} numberOfLines={2}>
@@ -253,7 +253,7 @@ export const FeedInfoSheet = ({ feedId, visible, onClose, onEdit, onDelete }: Fe
 
                                 {feedInfo.status === 'error' && feed.last_error && (
                                     <View style={s.errorBox}>
-                                        <AlertCircle size={16} color={colors.status.error} />
+                                        <AlertCircle size={16} color={colors.error} />
                                         <Text style={s.errorText}>{feed.last_error}</Text>
                                     </View>
                                 )}
@@ -290,7 +290,7 @@ export const FeedInfoSheet = ({ feedId, visible, onClose, onEdit, onDelete }: Fe
                                         <Text style={s.statLabel}>Total</Text>
                                     </View>
                                     <View style={s.statBox}>
-                                        <Text style={[s.statValue, { color: colors.accent.primary }]}>
+                                        <Text style={[s.statValue, { color: colors.primary.DEFAULT }]}>
                                             {feedInfo.unread_count}
                                         </Text>
                                         <Text style={s.statLabel}>Unread</Text>
@@ -364,8 +364,8 @@ export const FeedInfoSheet = ({ feedId, visible, onClose, onEdit, onDelete }: Fe
                                         style={[s.actionButton, s.actionButtonDanger]}
                                         onPress={handleDelete}
                                     >
-                                        <Trash2 size={18} color={colors.status.error} />
-                                        <Text style={[s.actionButtonText, { color: colors.status.error }]}>
+                                        <Trash2 size={18} color={colors.error} />
+                                        <Text style={[s.actionButtonText, { color: colors.error }]}>
                                             Delete
                                         </Text>
                                     </TouchableOpacity>
@@ -496,14 +496,14 @@ const styles = (colors: any) =>
         errorBox: {
             flexDirection: 'row',
             alignItems: 'flex-start',
-            backgroundColor: colors.status.error + '10',
+            backgroundColor: colors.error + '10',
             padding: spacing.sm,
             borderRadius: borderRadius.md,
             marginTop: spacing.sm,
         },
         errorText: {
             fontSize: 13,
-            color: colors.status.error,
+            color: colors.error,
             marginLeft: spacing.xs,
             flex: 1,
         },
@@ -587,10 +587,10 @@ const styles = (colors: any) =>
             gap: spacing.sm,
         },
         actionButtonPrimary: {
-            backgroundColor: colors.accent.primary,
+            backgroundColor: colors.primary.DEFAULT,
         },
         actionButtonDanger: {
-            backgroundColor: colors.status.error + '10',
+            backgroundColor: colors.error + '10',
         },
         actionButtonText: {
             fontSize: 14,
