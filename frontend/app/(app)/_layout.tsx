@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, StyleSheet, useWindowDimensions, Platform } from 'react-native';
+import { View, StyleSheet, useWindowDimensions, Platform, AppState } from 'react-native';
 import { Slot } from 'expo-router';
 import { useFeedStore } from '@/stores';
 import { useColors } from '@/theme';
@@ -20,11 +20,13 @@ export default function AppLayout() {
     const { width } = useWindowDimensions();
     const isDesktop = width >= 1024;
     const { fetchFeeds, fetchFolders, refreshProgress, cancelRefresh } = useFeedStore();
+    const { fetchArticles } = useArticleStore();
     const { showPlayer } = useAudioStore();
 
     useEffect(() => {
         fetchFeeds();
         fetchFolders();
+        fetchArticles(true);
 
         if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -34,6 +36,53 @@ export default function AppLayout() {
             });
         }
     }, []);
+
+    useEffect(() => {
+        let lastRefreshAt = 0;
+        const STALE_MS = 30 * 1000;
+
+        const refreshNow = () => {
+            const now = Date.now();
+            if (now - lastRefreshAt < STALE_MS) return;
+            lastRefreshAt = now;
+            fetchFeeds();
+            fetchFolders();
+            fetchArticles(true);
+        };
+
+        const appStateSub = AppState.addEventListener('change', (state) => {
+            if (state === 'active') {
+                refreshNow();
+            }
+        });
+
+        const onVisibility = () => {
+            if (document.visibilityState === 'visible') {
+                refreshNow();
+            }
+        };
+
+        const onFocus = () => {
+            refreshNow();
+        };
+
+        if (typeof document !== 'undefined') {
+            document.addEventListener('visibilitychange', onVisibility);
+        }
+        if (typeof window !== 'undefined') {
+            window.addEventListener('focus', onFocus);
+        }
+
+        return () => {
+            appStateSub.remove();
+            if (typeof document !== 'undefined') {
+                document.removeEventListener('visibilitychange', onVisibility);
+            }
+            if (typeof window !== 'undefined') {
+                window.removeEventListener('focus', onFocus);
+            }
+        };
+    }, [fetchArticles, fetchFeeds, fetchFolders]);
 
     const pathname = usePathname() || '';
     const colors = useColors();
