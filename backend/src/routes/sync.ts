@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { queryAll, run } from '../db/index.js';
+import { queryAll, queryOne, run } from '../db/index.js';
 
 const syncQuerySchema = z.object({
     cursor: z.string().optional(),
@@ -14,14 +14,24 @@ const pushChangesSchema = z.object({
     })).optional(),
 });
 
+function toSqliteTimestamp(value: string): string {
+    if (value.includes('T')) {
+        const parsed = new Date(value);
+        if (!isNaN(parsed.getTime())) {
+            return parsed.toISOString().replace('T', ' ').replace('Z', '').slice(0, 19);
+        }
+    }
+    return value;
+}
+
 function decodeCursor(cursor: string | undefined): string {
-    if (!cursor) return '1970-01-01T00:00:00Z';
+    if (!cursor) return '1970-01-01 00:00:00';
 
     try {
         const decoded = JSON.parse(Buffer.from(cursor, 'base64').toString());
-        return decoded.last_sync_at;
+        return toSqliteTimestamp(decoded.last_sync_at);
     } catch {
-        return '1970-01-01T00:00:00Z';
+        return '1970-01-01 00:00:00';
     }
 }
 
@@ -90,7 +100,8 @@ export async function syncRoutes(app: FastifyInstance): Promise<void> {
             };
         }
 
-        const serverTime = new Date().toISOString();
+        const serverTimeRow = queryOne<{ now: string }>("SELECT datetime('now') AS now");
+        const serverTime = serverTimeRow?.now || new Date().toISOString().replace('T', ' ').replace('Z', '').slice(0, 19);
         return {
             changes,
             next_cursor: encodeCursor(serverTime),

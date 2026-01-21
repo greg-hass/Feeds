@@ -59,6 +59,7 @@ export interface NormalizedArticle {
 }
 
 const USER_AGENT = 'Feeds/1.0 (Feed Reader; +https://github.com/greg-hass/Feeds) Mozilla/5.0 (compatible)';
+const YOUTUBE_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 
 if (YOUTUBE_API_KEY) {
@@ -171,13 +172,27 @@ export async function fetchRedditIcon(subreddit: string): Promise<string | null>
 }
 
 export async function parseFeed(url: string): Promise<ParsedFeed> {
-    const response = await fetch(url, {
-        headers: {
-            'User-Agent': USER_AGENT,
-            'Accept': 'application/rss+xml, application/atom+xml, application/xml, text/xml, */*',
-        },
+    const baseHeaders = {
+        'User-Agent': USER_AGENT,
+        'Accept': 'application/rss+xml, application/atom+xml, application/xml, text/xml, */*',
+    };
+    const isYouTubeFeed = url.toLowerCase().includes('youtube.com/feeds');
+
+    let response = await fetch(url, {
+        headers: baseHeaders,
         signal: AbortSignal.timeout(HTTP.REQUEST_TIMEOUT),
     });
+
+    if (!response.ok && isYouTubeFeed) {
+        response = await fetch(url, {
+            headers: {
+                ...baseHeaders,
+                'User-Agent': YOUTUBE_USER_AGENT,
+                'Accept-Language': 'en-US,en;q=0.9',
+            },
+            signal: AbortSignal.timeout(HTTP.REQUEST_TIMEOUT),
+        });
+    }
 
     if (!response.ok) {
         throw new Error(`Failed to fetch feed: ${response.status} ${response.statusText}`);
