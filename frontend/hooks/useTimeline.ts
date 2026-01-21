@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Animated, Alert } from 'react-native';
+import { Animated, Alert, AppState } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useArticleStore, useFeedStore, useAudioStore, useVideoStore } from '@/stores';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { extractVideoId } from '@/utils/youtube';
 import { Article } from '@/services/api';
 
@@ -9,10 +10,15 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
     const router = useRouter();
     const { articles, isLoading, hasMore, filter, fetchArticles, setFilter, markAllRead, prefetchArticle } = useArticleStore();
     const { feeds, folders, refreshAllFeeds, isLoading: isFeedLoading, refreshProgress } = useFeedStore();
+    const { settings } = useSettingsStore();
     const { currentArticleId: playingArticleId, isPlaying, play, pause, resume } = useAudioStore();
     const { activeVideoId, playVideo } = useVideoStore();
 
     const [timeLeft, setTimeLeft] = useState<string | null>(null);
+    const appStateRef = useRef(AppState.currentState);
+    const lastTriggeredDueRef = useRef<number | null>(null);
+    const nextOverrideRef = useRef<number | null>(null);
+    const isRefreshing = !!refreshProgress;
     const hotPulseAnim = useRef(new Animated.Value(1)).current;
     const bookmarkScales = useRef<Map<number, Animated.Value>>(new Map());
     const bookmarkRotations = useRef<Map<number, Animated.Value>>(new Map());
@@ -31,11 +37,11 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
 
     // Refresh timer logic
     useEffect(() => {
+        const subscription = AppState.addEventListener('change', (nextState) => {
+            appStateRef.current = nextState;
+        });
+
         const timer = setInterval(() => {
-            if (refreshProgress) {
-                setTimeLeft('Refreshing');
-                return;
-            }
             if (!feeds?.length) {
                 setTimeLeft(null);
                 return;
@@ -64,14 +70,42 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
                 }
             }
             if (earliestTimestamp) {
-                const diff = earliestTimestamp - now;
-                if (diff < 60000) setTimeLeft(`${Math.floor(diff / 1000)}s`);
-                else if (diff < 3600000) setTimeLeft(`${Math.floor(diff / 60000)}m ${Math.floor((diff % 60000) / 1000)}s`);
-                else setTimeLeft(`${Math.floor(diff / 3600000)}h ${Math.floor((diff % 3600000) / 60000)}m`);
+                const intervalMs = (settings?.refresh_interval_minutes ?? 30) * 60 * 1000;
+                let effectiveNext = earliestTimestamp;
+                if (nextOverrideRef.current && (!effectiveNext || effectiveNext <= now)) {
+                    effectiveNext = nextOverrideRef.current;
+                }
+
+                if (effectiveNext && effectiveNext > now + 1000) {
+                    nextOverrideRef.current = null;
+                }
+
+                const diff = effectiveNext - now;
+                if (diff <= 0) {
+                    const optimisticNext = now + intervalMs;
+                    nextOverrideRef.current = optimisticNext;
+                    setTimeLeft(`${Math.floor(intervalMs / 60000)}m 0s`);
+                    const shouldAutoRefresh = appStateRef.current === 'active'
+                        && !isFeedLoading
+                        && lastTriggeredDueRef.current !== earliestTimestamp;
+                    if (shouldAutoRefresh) {
+                        lastTriggeredDueRef.current = earliestTimestamp;
+                        refreshAllFeeds();
+                    }
+                } else if (diff < 60000) {
+                    setTimeLeft(`${Math.floor(diff / 1000)}s`);
+                } else if (diff < 3600000) {
+                    setTimeLeft(`${Math.floor(diff / 60000)}m ${Math.floor((diff % 60000) / 1000)}s`);
+                } else {
+                    setTimeLeft(`${Math.floor(diff / 3600000)}h ${Math.floor((diff % 3600000) / 60000)}m`);
+                }
             } else setTimeLeft(null);
         }, 1000);
-        return () => clearInterval(timer);
-    }, [feeds, refreshProgress]);
+        return () => {
+            subscription.remove();
+            clearInterval(timer);
+        };
+    }, [feeds, refreshProgress, isFeedLoading, refreshAllFeeds]);
 
     const getBookmarkScale = (id: number) => {
         if (!bookmarkScales.current.has(id)) bookmarkScales.current.set(id, new Animated.Value(1));
@@ -134,7 +168,7 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
     })();
 
     return {
-        articles, isLoading, hasMore, filter, feeds, isFeedLoading, headerTitle, timeLeft,
+        articles, isLoading, hasMore, filter, feeds, isFeedLoading, headerTitle, timeLeft, isRefreshing,
         playingArticleId, isPlaying, activeVideoId, hotPulseAnim,
         fetchArticles, setFilter, refreshAllFeeds, handleMarkAllRead, handleArticlePress,
         handlePlayPress, handleVideoPress, getBookmarkScale, getBookmarkRotation,

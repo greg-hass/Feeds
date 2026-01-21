@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, FlatList, RefreshControl, ActivityIndicator, useWindowDimensions, Platform } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, FlatList, RefreshControl, ActivityIndicator, useWindowDimensions, Platform, LayoutAnimation, UIManager } from 'react-native';
 import { Article } from '@/services/api';
 import { useColors } from '@/theme';
 import { useTimeline } from '@/hooks/useTimeline';
@@ -26,12 +26,27 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     const s = timelineStyles(colors, isMobile);
 
     const {
-        articles, isLoading, hasMore, filter, isFeedLoading, headerTitle, timeLeft,
+        articles, isLoading, hasMore, filter, isFeedLoading, headerTitle, timeLeft, isRefreshing,
         playingArticleId, isPlaying, activeVideoId, hotPulseAnim,
         fetchArticles, setFilter, refreshAllFeeds, handleMarkAllRead,
         handleArticlePress, handlePlayPress, handleVideoPress,
         getBookmarkScale, getBookmarkRotation,
     } = useTimeline(onArticlePress);
+
+    const prevArticleCount = useRef(articles.length);
+
+    useEffect(() => {
+        if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+            UIManager.setLayoutAnimationEnabledExperimental(true);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (articles.length > prevArticleCount.current) {
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        }
+        prevArticleCount.current = articles.length;
+    }, [articles.length]);
 
     const {
         flatListRef, isScrollRestored, onViewableItemsChanged, handleScroll
@@ -62,6 +77,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                 title={headerTitle}
                 timeLeft={timeLeft}
                 isFeedLoading={isFeedLoading}
+                isRefreshing={isRefreshing}
                 isMobile={isMobile}
                 onRefresh={refreshAllFeeds}
                 onMarkAllRead={handleMarkAllRead}

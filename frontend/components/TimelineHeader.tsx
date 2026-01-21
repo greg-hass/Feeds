@@ -8,6 +8,7 @@ interface TimelineHeaderProps {
     title: string;
     timeLeft: string | null;
     isFeedLoading: boolean;
+    isRefreshing: boolean;
     isMobile: boolean;
     onRefresh: () => void;
     onMarkAllRead: () => void;
@@ -17,6 +18,7 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
     title,
     timeLeft,
     isFeedLoading,
+    isRefreshing,
     isMobile,
     onRefresh,
     onMarkAllRead,
@@ -30,6 +32,7 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
                 <Text style={s.headerTitle} numberOfLines={1}>{title}</Text>
                 {timeLeft && (
                     <View style={s.timerPill}>
+                        {isRefreshing && <ActivityIndicator size={12} color={colors.primary.DEFAULT} />}
                         <Text style={s.timerText}>{timeLeft}</Text>
                     </View>
                 )}
