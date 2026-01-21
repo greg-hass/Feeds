@@ -6,6 +6,7 @@ import { getCachedIconPath, resolveIconMime } from '../services/icon-cache.js';
 interface IconFeedRow {
     icon_cached_path: string | null;
     icon_cached_content_type: string | null;
+    icon_url: string | null;
     user_id: number;
     deleted_at: string | null;
 }
@@ -18,7 +19,7 @@ export async function iconsRoutes(app: FastifyInstance) {
         }
 
         const feed = queryOne<IconFeedRow>(
-            'SELECT icon_cached_path, icon_cached_content_type, user_id, deleted_at FROM feeds WHERE id = ?',
+            'SELECT icon_cached_path, icon_cached_content_type, icon_url, user_id, deleted_at FROM feeds WHERE id = ?',
             [feedId]
         );
 
@@ -27,11 +28,17 @@ export async function iconsRoutes(app: FastifyInstance) {
         }
 
         if (!feed.icon_cached_path) {
+            if (feed.icon_url) {
+                return reply.redirect(302, feed.icon_url);
+            }
             return reply.status(404).send({ error: 'Icon not cached yet' });
         }
 
         const filePath = getCachedIconPath(feed.icon_cached_path);
         if (!existsSync(filePath)) {
+            if (feed.icon_url) {
+                return reply.redirect(302, feed.icon_url);
+            }
             return reply.status(404).send({ error: 'Icon missing' });
         }
 

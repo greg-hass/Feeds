@@ -1,7 +1,8 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { queryAll } from '../db/index.js';
+import { queryAll, run } from '../db/index.js';
 import { refreshFeed, FeedToRefresh } from '../services/feed-refresh.js';
 import { FeedType } from '../services/feed-parser.js';
+import { getUserSettings, updateUserSettingsRaw } from '../services/settings.js';
 
 // SSE Event Types
 type RefreshProgressEvent =
@@ -27,7 +28,6 @@ interface Feed {
 
 // Timeout configuration
 const FEED_REFRESH_TIMEOUT = 30_000; // 30 seconds
-const OPERATION_TIMEOUT = 300_000; // 5 minutes
 const KEEPALIVE_INTERVAL = 15_000; // 15 seconds
 const DELAY_BETWEEN_FEEDS = 1_000; // 1 second delay between feeds
 
@@ -48,6 +48,7 @@ export async function feedsStreamRoutes(app: FastifyInstance) {
         if (idsParam) {
             feedIds = idsParam.split(',').map((id: string) => parseInt(id.trim(), 10)).filter((id: number) => !isNaN(id));
         }
+        const refreshAll = feedIds.length === 0;
 
         // Get feeds to refresh
         let feeds: Feed[];
@@ -96,20 +97,6 @@ export async function feedsStreamRoutes(app: FastifyInstance) {
         const keepaliveTimer = setInterval(() => {
             reply.raw.write(`: keepalive\n\n`);
         }, KEEPALIVE_INTERVAL);
-
-        // Operation timeout
-        const timeoutTimer = setTimeout(() => {
-            clearInterval(keepaliveTimer);
-            sendEvent({
-                type: 'complete',
-                stats: {
-                    success: 0,
-                    errors: 1,
-                    failed_feeds: [{ id: 0, title: 'Operation', error: 'Timeout after 5 minutes' }],
-                },
-            });
-            reply.raw.end();
-        }, OPERATION_TIMEOUT);
 
         try {
             // Send start event
@@ -199,6 +186,25 @@ export async function feedsStreamRoutes(app: FastifyInstance) {
 
             // Send completion
             sendEvent({ type: 'complete', stats });
+
+            if (!isCancelled && refreshAll) {
+                const settings = getUserSettings(userId);
+                const intervalMinutes = settings.refresh_interval_minutes;
+                const now = new Date();
+                updateUserSettingsRaw(userId, {
+                    global_last_refresh_at: now.toISOString(),
+                    global_next_refresh_at: new Date(now.getTime() + intervalMinutes * 60 * 1000).toISOString(),
+                });
+
+                run(
+                    `UPDATE feeds SET
+                        refresh_interval_minutes = ?,
+                        next_fetch_at = datetime('now', '+' || ? || ' minutes'),
+                        updated_at = datetime('now')
+                     WHERE user_id = ? AND deleted_at IS NULL`,
+                    [intervalMinutes, intervalMinutes, userId]
+                );
+            }
         } catch (err) {
             sendEvent({
                 type: 'complete',
@@ -216,7 +222,6 @@ export async function feedsStreamRoutes(app: FastifyInstance) {
             });
         } finally {
             clearInterval(keepaliveTimer);
-            clearTimeout(timeoutTimer);
             reply.raw.end();
         }
     });

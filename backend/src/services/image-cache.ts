@@ -2,6 +2,7 @@ import { mkdirSync, existsSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import { dirname, join, extname } from 'node:path';
 import { HTTP } from '../config/constants.js';
+import { fetchWithRetry } from './http.js';
 
 const ALLOWED_EXTENSIONS = new Set([
     '.png',
@@ -106,10 +107,14 @@ export async function cacheRemoteImage(
     ensureCacheDir(subdir);
 
     try {
-        const response = await fetch(url, {
-            headers: options.headers,
-            signal: AbortSignal.timeout(HTTP.REQUEST_TIMEOUT),
-        });
+        const response = await fetchWithRetry(
+            url,
+            () => ({
+                headers: options.headers,
+                signal: AbortSignal.timeout(HTTP.REQUEST_TIMEOUT),
+            }),
+            { retries: 2, baseDelayMs: 400, maxDelayMs: 2000 }
+        );
 
         if (!response.ok) {
             console.warn(`Cache fetch failed (${response.status}) for key ${key}: ${url}`);

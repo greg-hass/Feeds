@@ -171,7 +171,7 @@ class ApiClient {
 
     // Discovery
     async discover(q: string, type?: string) {
-        let url = `/discover?q=${encodeURIComponent(q)}`;
+        let url = `/discovery?q=${encodeURIComponent(q)}`;
         if (type) {
             url += `&type=${encodeURIComponent(type)}`;
         }
@@ -212,7 +212,7 @@ class ApiClient {
     }
 
     async discoverFromUrl(url: string) {
-        return this.request<{ discoveries: DiscoveredFeed[]; error?: string }>('/discover/url', {
+        return this.request<{ discoveries: DiscoveredFeed[]; error?: string }>('/discovery/url', {
             method: 'POST',
             body: { url },
         });

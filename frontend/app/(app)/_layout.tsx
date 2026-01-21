@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { View, StyleSheet, useWindowDimensions, Platform } from 'react-native';
 import { Slot } from 'expo-router';
-import { useArticleStore, useFeedStore } from '@/stores';
+import { useFeedStore } from '@/stores';
 import { useColors } from '@/theme';
 import Sidebar from '@/components/Sidebar';
 import MobileNav from '@/components/MobileNav';
@@ -13,15 +13,13 @@ import { PodcastPlayer } from '@/components/PodcastPlayer';
 import { FloatingAudioPlayer } from '@/components/FloatingAudioPlayer';
 import { useAudioStore } from '@/stores/audioStore';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { enableSync } from '@/lib/sync';
 
 export default function AppLayout() {
     const [mounted, setMounted] = useState(false);
     useEffect(() => setMounted(true), []);
     const { width } = useWindowDimensions();
     const isDesktop = width >= 1024;
-    const { fetchFeeds, fetchFolders, refreshProgress, cancelRefresh, applySyncChanges: applyFeedChanges } = useFeedStore();
-    const { applySyncChanges: applyArticleChanges } = useArticleStore();
+    const { fetchFeeds, fetchFolders, refreshProgress, cancelRefresh } = useFeedStore();
     const { showPlayer } = useAudioStore();
 
     useEffect(() => {
@@ -36,15 +34,6 @@ export default function AppLayout() {
             });
         }
     }, []);
-
-    useEffect(() => {
-        const stopSync = enableSync((changes) => {
-            applyFeedChanges(changes);
-            applyArticleChanges(changes);
-        });
-
-        return stopSync;
-    }, [applyFeedChanges, applyArticleChanges]);
 
     const pathname = usePathname() || '';
     const colors = useColors();

@@ -62,6 +62,11 @@ const USER_AGENT = 'Feeds/1.0 (Feed Reader; +https://github.com/greg-hass/Feeds)
 const YOUTUBE_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 
+// Retry configuration
+const MAX_RETRIES = 3;
+const BASE_RETRY_DELAY = 1000; // 1 second
+const MAX_RETRY_DELAY = 30000; // 30 seconds
+
 if (YOUTUBE_API_KEY) {
     console.log('[Config] YouTube API Key loaded: ' + YOUTUBE_API_KEY.substring(0, 4) + '...');
 } else {
@@ -79,10 +84,15 @@ export async function fetchYouTubeIcon(channelId: string | null | undefined): Pr
     
     // Scrape the channel page (proven working approach)
     try {
-        const response = await fetch(`https://www.youtube.com/channel/${channelId}`, {
+        const response = await fetchWithRetry(`https://www.youtube.com/channel/${channelId}`, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept-Language': 'en-US,en;q=0.9',
+            },
+            signal: AbortSignal.timeout(10000),
+            retryOptions: {
+                maxRetries: 2, // Fewer retries for icons
+                retryCondition: (resp) => resp.status >= 500 || resp.status === 429,
             }
         });
         
@@ -154,8 +164,13 @@ export function extractHeroImage(content: string, meta: any = {}): string | null
 
 export async function fetchRedditIcon(subreddit: string): Promise<string | null> {
     try {
-        const response = await fetch(`https://www.reddit.com/r/${subreddit}/about.json`, {
-            headers: { 'User-Agent': USER_AGENT }
+        const response = await fetchWithRetry(`https://www.reddit.com/r/${subreddit}/about.json`, {
+            headers: { 'User-Agent': USER_AGENT },
+            signal: AbortSignal.timeout(8000),
+            retryOptions: {
+                maxRetries: 1,
+                retryCondition: (resp) => resp.status >= 500 || resp.status === 429,
+            },
         });
         if (!response.ok) return null;
         const data = await response.json();
@@ -172,26 +187,47 @@ export async function fetchRedditIcon(subreddit: string): Promise<string | null>
 }
 
 export async function parseFeed(url: string): Promise<ParsedFeed> {
+    // Validate URL first
+    validateUrl(url);
+    
     const baseHeaders = {
         'User-Agent': USER_AGENT,
         'Accept': 'application/rss+xml, application/atom+xml, application/xml, text/xml, */*',
     };
     const isYouTubeFeed = url.toLowerCase().includes('youtube.com/feeds');
 
-    let response = await fetch(url, {
-        headers: baseHeaders,
-        signal: AbortSignal.timeout(HTTP.REQUEST_TIMEOUT),
-    });
-
-    if (!response.ok && isYouTubeFeed) {
-        response = await fetch(url, {
-            headers: {
-                ...baseHeaders,
-                'User-Agent': YOUTUBE_USER_AGENT,
-                'Accept-Language': 'en-US,en;q=0.9',
-            },
-            signal: AbortSignal.timeout(HTTP.REQUEST_TIMEOUT),
+    // Try with default user agent first, with retry
+    let response: Response;
+    try {
+        response = await fetchWithRetry(url, {
+            method: 'GET',
+            headers: baseHeaders,
+            retryOptions: {
+                retryCondition: (resp) => resp.status >= 500 || resp.status === 429,
+            }
         });
+    } catch (err) {
+        // If default user agent failed and it's a YouTube feed, try with YouTube user agent
+        if (isYouTubeFeed) {
+            console.log(`[YouTube] Retrying with YouTube user agent for: ${url}`);
+            try {
+                response = await fetchWithRetry(url, {
+                    method: 'GET',
+                    headers: {
+                        ...baseHeaders,
+                        'User-Agent': YOUTUBE_USER_AGENT,
+                        'Accept-Language': 'en-US,en;q=0.9',
+                    },
+                    retryOptions: {
+                        retryCondition: (resp) => resp.status >= 500 || resp.status === 429,
+                    }
+                });
+            } catch (youtubeErr) {
+                throw new Error(`YouTube fetch failed with both user agents: ${youtubeErr.message}`);
+            }
+        } else {
+            throw err;
+        }
     }
 
     if (!response.ok) {
@@ -410,13 +446,15 @@ function cleanRedditContent(html: string): string {
 function upgradeRedditImageUrl(url: string): string {
     try {
         const urlObj = new URL(url);
+        if (urlObj.searchParams.has('s') && urlObj.searchParams.get('s')) {
+            return url;
+        }
 
         // For preview.redd.it, optimize for thumbnails (640px width)
         if (urlObj.hostname === 'preview.redd.it') {
             urlObj.searchParams.set('width', '640');
             urlObj.searchParams.set('crop', 'smart');
             urlObj.searchParams.set('auto', 'webp');
-            urlObj.searchParams.set('s', ''); // Keep the signature if present
             return urlObj.toString();
         }
 
@@ -522,5 +560,95 @@ function extractFavicon(siteUrl: string | null): string | null {
         return `${url.origin}/favicon.ico`;
     } catch {
         return null;
+    }
+}
+
+// Retry configuration
+interface RetryOptions {
+    maxRetries?: number;
+    baseDelay?: number;
+    maxDelay?: number;
+    retryCondition?: (response: Response) => boolean;
+}
+
+async function fetchWithRetry(
+    url: string,
+    options: RequestInit & { retryOptions?: RetryOptions } = {}
+): Promise<Response> {
+    const {
+        maxRetries = MAX_RETRIES,
+        baseDelay = BASE_RETRY_DELAY,
+        maxDelay = MAX_RETRY_DELAY,
+        retryCondition = (response) => response.status >= 500 || response.status === 429,
+        retryOptions,
+        ...fetchOptions
+    } = options;
+
+    const effectiveMaxRetries = retryOptions?.maxRetries ?? maxRetries;
+    const effectiveBaseDelay = retryOptions?.baseDelay ?? baseDelay;
+    const effectiveMaxDelay = retryOptions?.maxDelay ?? maxDelay;
+    const effectiveRetryCondition = retryOptions?.retryCondition ?? retryCondition;
+
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt <= effectiveMaxRetries; attempt++) {
+        try {
+            const response = await fetch(url, {
+                ...fetchOptions,
+                signal: fetchOptions.signal ?? AbortSignal.timeout(HTTP.REQUEST_TIMEOUT),
+            });
+
+            if (response.ok || !effectiveRetryCondition(response)) {
+                return response;
+            }
+
+            // Don't retry client errors (except 429)
+            if (response.status >= 400 && response.status !== 429) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            lastError = new Error(`HTTP ${response.status}: ${response.statusText}`);
+            console.warn(`[Retry] Attempt ${attempt + 1} failed for ${url}: ${lastError.message}`);
+
+        } catch (err) {
+            lastError = err as Error;
+            if (attempt < effectiveMaxRetries) {
+                console.warn(`[Retry] Attempt ${attempt + 1} failed for ${url}:`, lastError.message);
+            }
+        }
+
+        // If this was the last attempt, throw the error
+        if (attempt === effectiveMaxRetries) {
+            throw lastError || new Error('Max retries exceeded');
+        }
+
+        // Calculate delay with exponential backoff and jitter
+        const delay = Math.min(effectiveBaseDelay * Math.pow(2, attempt), effectiveMaxDelay);
+        const jitter = Math.random() * 0.1 * delay; // Add 10% jitter
+        const totalDelay = delay + jitter;
+
+        console.log(`[Retry] Waiting ${Math.round(totalDelay / 1000)}s before retry ${attempt + 2}...`);
+        await new Promise(resolve => setTimeout(resolve, totalDelay));
+    }
+
+    throw lastError || new Error('Max retries exceeded');
+}
+
+// Validate URL before attempting fetch
+function validateUrl(url: string): void {
+    if (!url || typeof url !== 'string') {
+        throw new Error('URL must be a non-empty string');
+    }
+    
+    try {
+        const parsed = new URL(url);
+        if (!['http:', 'https:'].includes(parsed.protocol)) {
+            throw new Error(`Invalid protocol: ${parsed.protocol}`);
+        }
+        if (parsed.hostname.length > 253) {
+            throw new Error('Hostname too long');
+        }
+    } catch (err) {
+        throw new Error(`Invalid URL: ${url} - ${err}`);
     }
 }

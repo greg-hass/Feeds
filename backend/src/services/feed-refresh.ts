@@ -1,7 +1,7 @@
 import { run, queryOne } from '../db/index.js';
 import { parseFeed, normalizeArticle, FeedType } from './feed-parser.js';
 import { cacheFeedIcon } from './icon-cache.js';
-import { cacheArticleThumbnail } from './thumbnail-cache.js';
+import { cacheArticleThumbnail, cacheArticleThumbnailSync } from './thumbnail-cache.js';
 import { getUserSettings } from './settings.js';
 import { fetchAndExtractReadability } from './readability.js';
 
@@ -17,6 +17,31 @@ export interface RefreshResult {
     newArticles: number;
     next_fetch_at?: string;
     error?: string;
+}
+
+function isGenericIconUrl(url: string | null): boolean {
+    if (!url) return true;
+    return url.includes('google.com/s2/favicons') || url.endsWith('/favicon.ico');
+}
+
+function categorizeRefreshError(err: unknown): { category: string; message: string } {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    if (err instanceof Error && err.name === 'AbortError') {
+        return { category: 'timeout', message };
+    }
+    if (err instanceof TypeError) {
+        return { category: 'network', message };
+    }
+    if (/could not parse feed/i.test(message)) {
+        return { category: 'parse', message };
+    }
+    if (/failed to fetch feed/i.test(message)) {
+        return { category: 'fetch', message };
+    }
+    if (/readability/i.test(message)) {
+        return { category: 'readability', message };
+    }
+    return { category: 'unknown', message };
 }
 
 /**
@@ -58,10 +83,12 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
             `UPDATE articles SET thumbnail_cached_path = ?, thumbnail_cached_content_type = ? WHERE id = ?`
         );
 
+        const shouldCacheThumbnails = true;
+
         const refreshTransaction = database.transaction((articles: any[], type: FeedType) => {
             let count = 0;
-            const articlesToCache: { id: number; url: string }[] = [];
-            const articlesToEnrich: { id: number; url: string }[] = [];
+            const thumbnailUpdates: Array<{ id: number; url: string }> = [];
+            const contentUpdates: Array<{ id: number; url: string }> = [];
 
             for (const article of articles) {
                 const normalized = normalizeArticle(article, type);
@@ -82,48 +109,55 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
                 if (insertResult.changes > 0) {
                     count++;
                     const articleId = Number(insertResult.lastInsertRowid);
-                    if (normalized.thumbnail_url) {
-                        articlesToCache.push({ id: articleId, url: normalized.thumbnail_url });
+
+                    if (normalized.thumbnail_url && shouldCacheThumbnails) {
+                        thumbnailUpdates.push({ id: articleId, url: normalized.thumbnail_url });
                     }
-                    if (normalized.url) {
-                        articlesToEnrich.push({ id: articleId, url: normalized.url });
+
+                    if (normalized.url && shouldFetchContent) {
+                        contentUpdates.push({ id: articleId, url: normalized.url });
                     }
                 }
             }
-            return { count, articlesToCache, articlesToEnrich };
+
+            return { count, contentUpdates, thumbnailUpdates };
         });
 
-        const { count: insertedCount, articlesToCache, articlesToEnrich } = refreshTransaction(feedData.articles, currentType);
+        const { count: insertedCount, contentUpdates, thumbnailUpdates } = refreshTransaction(feedData.articles, currentType);
         newArticles = insertedCount;
 
-        // Process thumbnail caching in parallel batches
-        const THUMBNAIL_BATCH_SIZE = 10;
-        for (let i = 0; i < articlesToCache.length; i += THUMBNAIL_BATCH_SIZE) {
-            const batch = articlesToCache.slice(i, i + THUMBNAIL_BATCH_SIZE);
-            await Promise.all(batch.map(async (item) => {
-                try {
-                    const cachedThumbnail = await cacheArticleThumbnail(item.id, item.url);
-                    if (cachedThumbnail) {
-                        updateThumbnailStmt.run(cachedThumbnail.fileName, cachedThumbnail.mime, item.id);
+        if (thumbnailUpdates.length > 0) {
+            const THUMBNAIL_BATCH_SIZE = 8;
+            for (let i = 0; i < thumbnailUpdates.length; i += THUMBNAIL_BATCH_SIZE) {
+                const batch = thumbnailUpdates.slice(i, i + THUMBNAIL_BATCH_SIZE);
+                await Promise.all(batch.map(async (item) => {
+                    try {
+                        const cachedThumbnail = await cacheArticleThumbnail(item.id, item.url);
+                        if (cachedThumbnail) {
+                            updateThumbnailStmt.run(cachedThumbnail.fileName, cachedThumbnail.mime, item.id);
+                        }
+                    } catch (err) {
+                        console.warn(`Failed to cache thumbnail for article ${item.id}:`, err);
                     }
-                } catch (err) {
-                    console.error(`Failed to cache thumbnail for article ${item.id}: `, err);
-                }
-            }));
+                }));
+            }
         }
 
-        // Fetch full content if enabled, in parallel batches
-        if (shouldFetchContent && articlesToEnrich.length > 0) {
+        // Fetch full content if enabled (outside of main transaction)
+        if (shouldFetchContent && contentUpdates.length > 0) {
             const updateContentStmt = database.prepare('UPDATE articles SET readability_content = ? WHERE id = ?');
             const CONTENT_BATCH_SIZE = 5; // Smaller batch for heavier content fetching
 
-            for (let i = 0; i < articlesToEnrich.length; i += CONTENT_BATCH_SIZE) {
-                const batch = articlesToEnrich.slice(i, i + CONTENT_BATCH_SIZE);
+            for (let i = 0; i < contentUpdates.length; i += CONTENT_BATCH_SIZE) {
+                const batch = contentUpdates.slice(i, i + CONTENT_BATCH_SIZE);
                 await Promise.all(batch.map(async (item) => {
                     try {
                         const { content } = await fetchAndExtractReadability(item.url);
                         if (content) {
-                            updateContentStmt.run(content, item.id);
+                            // Use a separate transaction for content updates
+                            database.transaction(() => {
+                                updateContentStmt.run(content, item.id);
+                            })();
                         }
                     } catch (err) {
                         console.error(`Failed to fetch content for article ${item.id}: `, err);
@@ -134,15 +168,22 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
 
 
         // Update feed metadata on success
-        // ...
-        const iconUrl = feedData.favicon;
-        const cachedIcon = iconUrl ? await cacheFeedIcon(feed.id, iconUrl) : null;
+        const existingIcon = queryOne<{
+            icon_url: string | null;
+            icon_cached_path: string | null;
+            icon_cached_content_type: string | null;
+        }>('SELECT icon_url, icon_cached_path, icon_cached_content_type FROM feeds WHERE id = ?', [feed.id]);
+
+        const iconCandidate = feedData.favicon;
+        const shouldUpdateIconUrl = !!iconCandidate && (!existingIcon?.icon_url || isGenericIconUrl(existingIcon.icon_url));
+        const iconForCache = iconCandidate && (shouldUpdateIconUrl || !existingIcon?.icon_cached_path) ? iconCandidate : null;
+        const cachedIcon = iconForCache ? await cacheFeedIcon(feed.id, iconForCache) : null;
 
         let typeUpdate = '';
         const params: any[] = [
             feedData.title,
             feedData.link,
-            feedData.favicon,
+            shouldUpdateIconUrl ? iconCandidate : null,
             cachedIcon?.fileName ?? null,
             cachedIcon?.mime ?? null,
             feedData.description,
@@ -188,7 +229,8 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
 
         return { success: true, newArticles, next_fetch_at: updatedFeed?.next_fetch_at };
     } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        const { category, message } = categorizeRefreshError(err);
+        const errorMessage = `[${category}] ${message}`;
 
         // Update feed with error information
         const backoffMinutes = refreshIntervalMinutes * 2;

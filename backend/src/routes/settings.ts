@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { run, db } from '../db/index.js';
-import { getUserSettings } from '../services/settings.js';
+import { getUserSettings, updateUserSettingsRaw } from '../services/settings.js';
 
 const updateSettingsSchema = z.object({
     refresh_interval_minutes: z.number().min(5).max(1440).optional(),
@@ -55,14 +55,15 @@ export async function settingsRoutes(app: FastifyInstance): Promise<void> {
             run(
                 `UPDATE feeds SET
                     refresh_interval_minutes = ?,
-                    next_fetch_at = CASE
-                        WHEN last_fetched_at IS NULL THEN datetime('now', '+' || ? || ' minutes')
-                        ELSE datetime(last_fetched_at, '+' || ? || ' minutes')
-                    END,
+                    next_fetch_at = datetime('now', '+' || ? || ' minutes'),
                     updated_at = datetime('now')
                  WHERE user_id = ? AND deleted_at IS NULL`,
-                [interval, interval, interval, userId]
+                [interval, interval, userId]
             );
+
+            updateUserSettingsRaw(userId, {
+                global_next_refresh_at: new Date(Date.now() + interval * 60 * 1000).toISOString(),
+            });
         }
 
         return { settings: newSettings };
