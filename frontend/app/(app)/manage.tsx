@@ -7,8 +7,10 @@ import { api, DiscoveredFeed, Feed, Folder, ProgressEvent, RefreshProgressEvent 
 import {
     ArrowLeft, Plus, Search, Rss, Youtube, Headphones, MessageSquare,
     Folder as FolderIcon, Trash2, Edit2, FolderInput, Download, Upload,
-    ChevronDown, X, Check, FileUp, FileDown, AlertTriangle, RefreshCw, RefreshCcw
+    ChevronDown, X, Check, FileUp, FileDown, AlertTriangle, RefreshCw, RefreshCcw,
+    Info, Pause
 } from 'lucide-react-native';
+import { FeedInfoSheet } from '@/components/FeedInfoSheet';
 import { useColors, borderRadius, spacing } from '@/theme';
 import { ProgressDialog, ProgressState, ProgressStats, FailedFeed } from '@/components/ProgressDialog';
 import { ProgressItemData, ItemStatus } from '@/components/ProgressItem';
@@ -57,6 +59,10 @@ export default function ManageScreen() {
         failedFeeds: [],
     });
     const [selectedFeedIds, setSelectedFeedIds] = useState<Set<number>>(new Set());
+
+    // Feed Info Sheet state
+    const [feedInfoId, setFeedInfoId] = useState<number | null>(null);
+    const [feedInfoVisible, setFeedInfoVisible] = useState(false);
 
     const s = styles(colors);
 
@@ -813,6 +819,7 @@ export default function ManageScreen() {
                             style={[
                                 s.feedItem,
                                 feed.error_count > 0 && s.feedItemError,
+                                feed.paused_at && s.feedItemPaused,
                                 isBulkMode && selectedFeedIds.has(feed.id) && { backgroundColor: colors.primary.DEFAULT + '11', borderColor: colors.primary.DEFAULT + '44' }
                             ]}
                         >
@@ -826,6 +833,12 @@ export default function ManageScreen() {
                                         router.push('/(app)');
                                     }
                                 }}
+                                onLongPress={() => {
+                                    if (!isBulkMode) {
+                                        setFeedInfoId(feed.id);
+                                        setFeedInfoVisible(true);
+                                    }
+                                }}
                                 activeOpacity={0.7}
                             >
                                 {isBulkMode ? (
@@ -836,24 +849,40 @@ export default function ManageScreen() {
                                         {selectedFeedIds.has(feed.id) && <Check size={12} color={colors.text.inverse} />}
                                     </View>
                                 ) : (
-                                    feed.icon_url ? (
-                                        <Image source={{ uri: feed.icon_url }} style={s.feedIcon} />
-                                    ) : (
-                                        getTypeIcon(feed.type)
-                                    )
+                                    <View style={s.feedIconContainer}>
+                                        {feed.icon_url ? (
+                                            <Image source={{ uri: feed.icon_url }} style={[s.feedIcon, feed.paused_at && s.feedIconPaused]} />
+                                        ) : (
+                                            getTypeIcon(feed.type)
+                                        )}
+                                        {feed.paused_at && (
+                                            <View style={s.pausedOverlay}>
+                                                <Pause size={10} color={colors.text.inverse} />
+                                            </View>
+                                        )}
+                                    </View>
                                 )}
 
                                 <View style={s.feedInfo}>
                                     <View style={s.feedTitleRow}>
-                                        <Text style={s.feedTitle} numberOfLines={1}>{feed.title}</Text>
-                                        {feed.error_count > 0 && (
-                                            <AlertTriangle size={14} color={colors.error} style={s.errorIcon} />
+                                        <Text style={[s.feedTitle, feed.paused_at && s.feedTitlePaused]} numberOfLines={1}>{feed.title}</Text>
+                                        {feed.paused_at && (
+                                            <Pause size={14} color={colors.warning} style={s.statusIcon} />
+                                        )}
+                                        {feed.error_count > 0 && !feed.paused_at && (
+                                            <AlertTriangle size={14} color={colors.error} style={s.statusIcon} />
                                         )}
                                     </View>
                                     <Text style={s.feedUrl} numberOfLines={1}>
                                         {folders.find((f: Folder) => f.id === feed.folder_id)?.name || 'No folder'}
                                     </Text>
-                                    {feed.error_count > 0 && (
+                                    {feed.paused_at && (
+                                        <View style={s.pausedBadge}>
+                                            <Pause size={10} color={colors.warning} />
+                                            <Text style={s.pausedBadgeText}>Paused</Text>
+                                        </View>
+                                    )}
+                                    {feed.error_count > 0 && !feed.paused_at && (
                                         <View style={s.errorBadge}>
                                             <AlertTriangle size={10} color={colors.error} />
                                             <Text style={s.errorBadgeText}>Connection Issue</Text>
@@ -864,6 +893,15 @@ export default function ManageScreen() {
 
                             {!isBulkMode && (
                                 <View style={s.feedActions}>
+                                    <TouchableOpacity
+                                        onPress={() => {
+                                            setFeedInfoId(feed.id);
+                                            setFeedInfoVisible(true);
+                                        }}
+                                        style={s.actionButton}
+                                    >
+                                        <Info size={16} color={colors.text.tertiary} />
+                                    </TouchableOpacity>
                                     {feed.error_count > 0 ? (
                                         <TouchableOpacity
                                             onPress={() => handleRetryFeed(feed.id, feed.title)}
@@ -1106,6 +1144,22 @@ export default function ManageScreen() {
                 onRetryFailed={handleRetryFailed}
             />
 
+            {/* Feed Info Sheet */}
+            <FeedInfoSheet
+                feedId={feedInfoId}
+                visible={feedInfoVisible}
+                onClose={() => {
+                    setFeedInfoVisible(false);
+                    setFeedInfoId(null);
+                }}
+                onEdit={(feed) => {
+                    handleEditFeed(feed);
+                }}
+                onDelete={(feed) => {
+                    handleDeleteFeed(feed.id, feed.title);
+                }}
+            />
+
         </View>
     );
 }
@@ -1319,6 +1373,47 @@ const styles = (colors: any) => StyleSheet.create({
     feedItemError: {
         borderLeftWidth: 3,
         borderLeftColor: colors.error,
+    },
+    feedItemPaused: {
+        borderLeftWidth: 3,
+        borderLeftColor: colors.warning,
+        opacity: 0.8,
+    },
+    feedIconContainer: {
+        position: 'relative',
+    },
+    feedIconPaused: {
+        opacity: 0.5,
+    },
+    pausedOverlay: {
+        position: 'absolute',
+        bottom: -2,
+        right: -2,
+        backgroundColor: colors.warning,
+        borderRadius: 8,
+        padding: 2,
+    },
+    feedTitlePaused: {
+        color: colors.text.tertiary,
+    },
+    statusIcon: {
+        flexShrink: 0,
+    },
+    pausedBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        marginTop: 4,
+        alignSelf: 'flex-start',
+        backgroundColor: colors.warning + '22',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: borderRadius.sm,
+    },
+    pausedBadgeText: {
+        fontSize: 11,
+        color: colors.warning,
+        fontWeight: '600',
     },
     actionButton: {
         padding: spacing.sm,

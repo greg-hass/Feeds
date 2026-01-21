@@ -4,7 +4,7 @@ import { useFeedStore, useArticleStore } from '@/stores';
 import {
     Rss, Youtube, MessageSquare, Headphones,
     Folder, Search, Settings,
-    Plus, RefreshCw, Bookmark, Sparkles, BookOpen
+    Plus, RefreshCw, Bookmark, Sparkles, BookOpen, Pause
 } from 'lucide-react-native';
 import { useColors, borderRadius, spacing, shadows } from '@/theme';
 import { formatCount } from '@/utils/formatters';
@@ -199,23 +199,40 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                     .map((feed) => {
                         const Icon = FEED_TYPE_ICONS[feed.type] || Rss;
                         const isActive = filter.feed_id === feed.id;
+                        const isPaused = !!feed.paused_at;
                         return (
                             <TouchableOpacity
                                 key={feed.id}
-                                style={[s.navItem, isActive && s.navItemActive]}
+                                style={[s.navItem, isActive && s.navItemActive, isPaused && s.navItemPaused]}
                                 onPress={() => handleFeedPress(feed.id)}
-                                accessibilityLabel={`View feed ${feed.title}`}
+                                accessibilityLabel={`View feed ${feed.title}${isPaused ? ' (paused)' : ''}`}
                                 accessibilityRole="link"
                             >
                                 {feed.icon_url ? (
                                     <View style={s.feedIconWrapper}>
-                                        <Image source={{ uri: feed.icon_url }} style={s.feedIcon} />
+                                        <Image source={{ uri: feed.icon_url }} style={[s.feedIcon, isPaused && s.feedIconPaused]} />
+                                        {isPaused && (
+                                            <View style={s.pausedIndicator}>
+                                                <Pause size={8} color={colors.text.inverse} />
+                                            </View>
+                                        )}
                                     </View>
                                 ) : (
-                                    <Icon size={18} color={isActive ? colors.text.inverse : colors.text.tertiary} />
+                                    <View style={s.feedIconWrapper}>
+                                        <Icon size={18} color={isActive ? colors.text.inverse : (isPaused ? colors.text.tertiary : colors.text.tertiary)} />
+                                        {isPaused && (
+                                            <View style={s.pausedIndicator}>
+                                                <Pause size={8} color={colors.text.inverse} />
+                                            </View>
+                                        )}
+                                    </View>
                                 )}
-                                <Text style={[s.navItemText, isActive && s.navItemTextActive]} numberOfLines={1}>{feed.title}</Text>
-                                {feed.unread_count > 0 && (
+                                <Text style={[s.navItemText, isActive && s.navItemTextActive, isPaused && s.navItemTextPaused]} numberOfLines={1}>{feed.title}</Text>
+                                {isPaused ? (
+                                    <View style={s.pausedBadge}>
+                                        <Pause size={10} color={colors.warning} />
+                                    </View>
+                                ) : feed.unread_count > 0 && (
                                     <View style={[s.badge, isActive && s.badgeActive]}>
                                         <Text style={[s.badgeText, isActive && s.badgeTextActive]}>{formatCount(feed.unread_count)}</Text>
                                     </View>
@@ -379,10 +396,34 @@ const styles = (colors: any) => StyleSheet.create({
         borderRadius: 4,
         overflow: 'hidden',
         backgroundColor: colors.background.tertiary,
+        position: 'relative',
     },
     feedIcon: {
         width: '100%',
         height: '100%',
+    },
+    feedIconPaused: {
+        opacity: 0.6,
+    },
+    pausedIndicator: {
+        position: 'absolute',
+        bottom: -3,
+        right: -3,
+        backgroundColor: colors.warning,
+        borderRadius: 6,
+        padding: 1.5,
+    },
+    navItemPaused: {
+        opacity: 0.7,
+    },
+    navItemTextPaused: {
+        color: colors.text.tertiary,
+    },
+    pausedBadge: {
+        backgroundColor: colors.warning + '22',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: borderRadius.sm,
     },
     footer: {
         flexDirection: 'row',

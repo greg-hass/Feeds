@@ -116,11 +116,12 @@ async function checkFeeds() {
             return;
         }
 
-        // Refresh all feeds together on the global schedule.
+        // Refresh all feeds together on the global schedule (excluding paused feeds)
         const feeds = queryAll<Feed>(
             `SELECT id, title, url, type, refresh_interval_minutes 
              FROM feeds 
              WHERE deleted_at IS NULL 
+             AND paused_at IS NULL
              AND user_id = ?`,
             [userId]
         );

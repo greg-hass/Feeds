@@ -75,6 +75,22 @@ class ApiClient {
         });
     }
 
+    async pauseFeed(id: number) {
+        return this.request<{ feed: Feed; paused: boolean }>(`/feeds/${id}/pause`, {
+            method: 'POST',
+        });
+    }
+
+    async resumeFeed(id: number) {
+        return this.request<{ feed: Feed; resumed: boolean }>(`/feeds/${id}/resume`, {
+            method: 'POST',
+        });
+    }
+
+    async getFeedInfo(id: number) {
+        return this.request<FeedInfo>(`/feeds/${id}/info`);
+    }
+
     async bulkFeedAction(action: 'move' | 'delete' | 'mark_read' | 'update_refresh_interval', feedIds: number[], folderId?: number | null, refreshInterval?: number) {
         return this.request<{ affected: number }>('/feeds/bulk', {
             method: 'POST',
@@ -440,12 +456,24 @@ export interface Feed {
     url: string;
     site_url: string | null;
     icon_url: string | null;
+    description: string | null;
     unread_count: number;
     refresh_interval_minutes: number;
     last_fetched_at: string | null;
     next_fetch_at: string | null;
     error_count: number;
     last_error: string | null;
+    last_error_at: string | null;
+    paused_at: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface FeedInfo {
+    feed: Feed;
+    status: 'healthy' | 'paused' | 'error';
+    total_articles: number;
+    unread_count: number;
 }
 
 export interface Folder {

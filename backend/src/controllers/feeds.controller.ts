@@ -22,6 +22,8 @@ export interface Feed {
     next_fetch_at: string | null;
     error_count: number;
     last_error: string | null;
+    last_error_at: string | null;
+    paused_at: string | null;
     deleted_at: string | null;
     created_at: string;
     updated_at: string;
@@ -242,6 +244,74 @@ export class FeedsController {
         const result = await refreshFeed({ id: feed.id, url: feed.url, type: feed.type, refresh_interval_minutes: feed.refresh_interval_minutes });
         if (!result.success) return reply.status(500).send({ error: 'Failed to refresh feed', details: result.error });
         return { success: true, new_articles: result.newArticles };
+    }
+
+    static async pause(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+        const userId = 1;
+        const feedId = parseInt(request.params.id, 10);
+        
+        const feed = queryOne<Feed>('SELECT * FROM feeds WHERE id = ? AND user_id = ? AND deleted_at IS NULL', [feedId, userId]);
+        if (!feed) return reply.status(404).send({ error: 'Feed not found' });
+        
+        if (feed.paused_at) {
+            return reply.status(400).send({ error: 'Feed is already paused' });
+        }
+        
+        run(`UPDATE feeds SET paused_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`, [feedId]);
+        
+        const updatedFeed = queryOne<Feed>('SELECT * FROM feeds WHERE id = ?', [feedId]);
+        return { feed: toApiFeed(updatedFeed!), paused: true };
+    }
+
+    static async resume(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+        const userId = 1;
+        const feedId = parseInt(request.params.id, 10);
+        
+        const feed = queryOne<Feed>('SELECT * FROM feeds WHERE id = ? AND user_id = ? AND deleted_at IS NULL', [feedId, userId]);
+        if (!feed) return reply.status(404).send({ error: 'Feed not found' });
+        
+        if (!feed.paused_at) {
+            return reply.status(400).send({ error: 'Feed is not paused' });
+        }
+        
+        run(`UPDATE feeds SET paused_at = NULL, updated_at = datetime('now') WHERE id = ?`, [feedId]);
+        
+        const updatedFeed = queryOne<Feed>('SELECT * FROM feeds WHERE id = ?', [feedId]);
+        return { feed: toApiFeed(updatedFeed!), resumed: true };
+    }
+
+    static async getInfo(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+        const userId = 1;
+        const feedId = parseInt(request.params.id, 10);
+        
+        // Get feed with article counts
+        const feed = queryOne<Feed & { total_articles: number; unread_count: number }>(`
+            SELECT f.*,
+                COUNT(a.id) as total_articles,
+                COALESCE(COUNT(a.id) FILTER (WHERE rs.is_read IS NULL OR rs.is_read = 0), 0) as unread_count
+            FROM feeds f
+            LEFT JOIN articles a ON a.feed_id = f.id
+            LEFT JOIN read_state rs ON rs.article_id = a.id AND rs.user_id = ?
+            WHERE f.id = ? AND f.user_id = ? AND f.deleted_at IS NULL
+            GROUP BY f.id
+        `, [userId, feedId, userId]);
+        
+        if (!feed) return reply.status(404).send({ error: 'Feed not found' });
+        
+        // Determine feed status
+        let status: 'healthy' | 'paused' | 'error' = 'healthy';
+        if (feed.paused_at) {
+            status = 'paused';
+        } else if (feed.error_count > 0) {
+            status = 'error';
+        }
+        
+        return {
+            feed: toApiFeed(feed),
+            status,
+            total_articles: feed.total_articles,
+            unread_count: feed.unread_count,
+        };
     }
 
     // One-time fix to refetch YouTube channel icons

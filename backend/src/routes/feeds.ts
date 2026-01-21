@@ -59,6 +59,15 @@ export async function feedsRoutes(app: FastifyInstance) {
     // Force refresh feed
     app.post('/:id/refresh', FeedsController.refresh);
 
+    // Pause feed (skip from scheduler)
+    app.post('/:id/pause', FeedsController.pause);
+
+    // Resume feed (re-enable in scheduler)
+    app.post('/:id/resume', FeedsController.resume);
+
+    // Get feed info (detailed view)
+    app.get('/:id/info', FeedsController.getInfo);
+
     // Refetch YouTube channel icons (one-time fix)
     app.post('/refetch-youtube-icons', FeedsController.refetchYouTubeIcons);
 }
