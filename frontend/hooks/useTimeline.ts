@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Animated, Alert, AppState } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useArticleStore, useFeedStore, useAudioStore, useVideoStore } from '@/stores';
+import { useArticleStore, useFeedStore, useAudioStore, useVideoStore, useDigestStore } from '@/stores';
 import { extractVideoId } from '@/utils/youtube';
 import { Article } from '@/services/api';
 
@@ -11,9 +11,15 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
     const { feeds, folders, refreshAllFeeds, isLoading: isFeedLoading, refreshProgress } = useFeedStore();
     const { currentArticleId: playingArticleId, isPlaying, play, pause, resume } = useAudioStore();
     const { activeVideoId, playVideo } = useVideoStore();
+    const { fetchPendingDigest } = useDigestStore();
 
     const [timeLeft, setTimeLeft] = useState<string | null>(null);
     const appStateRef = useRef(AppState.currentState);
+
+    useEffect(() => {
+        fetchPendingDigest();
+    }, []);
+
     const lastTriggeredDueRef = useRef<number | null>(null);
     const isRefreshing = !!refreshProgress;
     const hotPulseAnim = useRef(new Animated.Value(1)).current;

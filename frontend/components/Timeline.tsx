@@ -9,6 +9,7 @@ import FilterPills from './FilterPills';
 import TimelineHeader from './TimelineHeader';
 import TimelineArticle from './TimelineArticle';
 import NewArticlesPill from './NewArticlesPill';
+import { DigestCard } from './DigestCard';
 import { timelineStyles } from './Timeline.styles';
 
 interface TimelineProps {
@@ -96,6 +97,8 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                     }
                 }}
             />
+            
+            <DigestCard />
 
             {isLoading && articles.length === 0 ? (
                 <TimelineSkeleton />

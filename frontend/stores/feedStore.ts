@@ -153,8 +153,10 @@ export const useFeedStore = create<FeedState>()(
                             }
                         },
                         (error) => {
+                            // Don't show error toast for SSE stream interruptions (e.g., phone lock, app background)
+                            // The final fetches will still get the updated data
                             if (!isAbortError(error)) {
-                                handleError(error, { context: 'refreshFeedsProgress', showToast: true });
+                                console.error('[RefreshFeeds] SSE stream error:', error);
                             }
                         },
                         controller.signal

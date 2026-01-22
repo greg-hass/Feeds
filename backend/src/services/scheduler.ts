@@ -1,7 +1,8 @@
-import { queryAll, run } from '../db/index.js';
+import { queryAll, queryOne, run } from '../db/index.js';
 import { refreshFeed, FeedToRefresh } from './feed-refresh.js';
 import { FeedType } from './feed-parser.js';
 import { getUserSettings, getUserSettingsRaw, updateUserSettingsRaw } from './settings.js';
+import { generateDailyDigest, getCurrentEdition, DigestEdition } from './digest.js';
 
 interface Feed extends FeedToRefresh {
     title: string;
@@ -11,6 +12,7 @@ const CHECK_INTERVAL = 60 * 1000; // Check every minute
 const FEED_DELAY = 500; // 0.5 second delay between batches
 const BATCH_SIZE = 5;
 const CLEANUP_INTERVAL = 24 * 60 * 60 * 1000; // Run cleanup once per day
+const DIGEST_CHECK_INTERVAL = 5 * 60 * 1000; // Check digest schedule every 5 minutes
 
 // Circuit breaker configuration
 const FAILURE_THRESHOLD = 3;
@@ -25,8 +27,10 @@ interface SchedulerState {
     lastFailureTime: number;
     timeoutHandle: NodeJS.Timeout | null;
     cleanupTimeoutHandle: NodeJS.Timeout | null;
+    digestTimeoutHandle: NodeJS.Timeout | null;
     isPaused: boolean;
     lastCleanupAt: number;
+    lastDigestCheck: number;
 }
 
 let state: SchedulerState = {
@@ -35,8 +39,10 @@ let state: SchedulerState = {
     lastFailureTime: 0,
     timeoutHandle: null,
     cleanupTimeoutHandle: null,
+    digestTimeoutHandle: null,
     isPaused: false,
-    lastCleanupAt: 0
+    lastCleanupAt: 0,
+    lastDigestCheck: 0
 };
 
 export function startScheduler() {
@@ -50,7 +56,10 @@ export function startScheduler() {
     state.timeoutHandle = setTimeout(runSchedulerCycle, 5000);
 
     // Schedule cleanup to run shortly after startup, then daily
-    state.cleanupTimeoutHandle = setTimeout(runCleanupCycle, 60000); // Run cleanup 1 minute after startup
+    state.cleanupTimeoutHandle = setTimeout(runCleanupCycle, 60000);
+
+    // Schedule digest check to run after startup, then every 5 minutes
+    state.digestTimeoutHandle = setTimeout(runDigestCycle, 30000);
 }
 
 export function stopScheduler() {
@@ -62,6 +71,10 @@ export function stopScheduler() {
     if (state.cleanupTimeoutHandle) {
         clearTimeout(state.cleanupTimeoutHandle);
         state.cleanupTimeoutHandle = null;
+    }
+    if (state.digestTimeoutHandle) {
+        clearTimeout(state.digestTimeoutHandle);
+        state.digestTimeoutHandle = null;
     }
     state.isPaused = false;
     console.log('Stopped background feed scheduler');
@@ -277,5 +290,81 @@ async function runCleanupCycle() {
     // Schedule next cleanup cycle
     if (state.isRunning) {
         state.cleanupTimeoutHandle = setTimeout(runCleanupCycle, CLEANUP_INTERVAL);
+    }
+}
+
+/**
+ * Digest cycle - checks if it's time to generate morning or evening digest
+ * Morning: 08:00 (or user-configured)
+ * Evening: 20:00 (or user-configured)
+ */
+async function runDigestCycle() {
+    if (!state.isRunning) return;
+
+    try {
+        const userId = 1;
+        
+        // Get digest settings
+        const settings = queryOne<{
+            enabled: number;
+            schedule_morning: string | null;
+            schedule_evening: string | null;
+        }>('SELECT enabled, schedule_morning, schedule_evening FROM digest_settings WHERE user_id = ?', [userId]);
+
+        if (!settings || !settings.enabled) {
+            // Reschedule and return
+            if (state.isRunning) {
+                state.digestTimeoutHandle = setTimeout(runDigestCycle, DIGEST_CHECK_INTERVAL);
+            }
+            return;
+        }
+
+        const now = new Date();
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+        const currentTimeStr = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
+
+        // Parse schedule times (default to 08:00 and 20:00)
+        const morningTime = settings.schedule_morning || '08:00';
+        const eveningTime = settings.schedule_evening || '20:00';
+
+        // Check if we're within 5 minutes of a scheduled time
+        const isNearSchedule = (scheduleTime: string): boolean => {
+            const [schedHour, schedMin] = scheduleTime.split(':').map(Number);
+            const schedMinutes = schedHour * 60 + schedMin;
+            const currentMinutes = currentHour * 60 + currentMinute;
+            const diff = Math.abs(currentMinutes - schedMinutes);
+            return diff <= 5; // Within 5 minutes
+        };
+
+        let edition: DigestEdition | null = null;
+        
+        if (isNearSchedule(morningTime)) {
+            edition = 'morning';
+        } else if (isNearSchedule(eveningTime)) {
+            edition = 'evening';
+        }
+
+        if (edition) {
+            console.log(`[Digest] Scheduled ${edition} digest generation at ${currentTimeStr}`);
+            const result = await generateDailyDigest(userId, edition);
+            
+            if (result.success) {
+                console.log(`[Digest] ${edition} digest generated successfully (ID: ${result.digestId})`);
+            } else if (result.error !== 'No new articles to summarize') {
+                console.error(`[Digest] Failed to generate ${edition} digest: ${result.error}`);
+            }
+        }
+
+        state.lastDigestCheck = Date.now();
+
+    } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        console.error(`[Digest] Error during digest cycle: ${errorMessage}`);
+    }
+
+    // Schedule next digest check
+    if (state.isRunning) {
+        state.digestTimeoutHandle = setTimeout(runDigestCycle, DIGEST_CHECK_INTERVAL);
     }
 }

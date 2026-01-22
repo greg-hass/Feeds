@@ -75,9 +75,11 @@ export const DigestView = () => {
 
                 <View style={s.headerBadge}>
                     <Sparkles size={12} color={colors.primary.DEFAULT} />
-                    <Text style={s.badgeText}>AI INSIGHTS</Text>
+                    <Text style={s.badgeText}>
+                        {latestDigest.edition ? `${latestDigest.edition.toUpperCase()} INSIGHTS` : 'AI INSIGHTS'}
+                    </Text>
                 </View>
-                <Text style={s.title}>Intelligence Briefing</Text>
+                <Text style={s.title}>{latestDigest.title || 'Intelligence Briefing'}</Text>
                 <View style={s.headerMeta}>
                     <Calendar size={14} color={colors.text.tertiary} />
                     <Text style={s.date}>

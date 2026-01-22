@@ -270,6 +270,16 @@ class ApiClient {
         return this.request<{ digest: Digest | null }>('/digest');
     }
 
+    async getPendingDigest() {
+        return this.request<{ digest: Digest | null }>('/digest/pending');
+    }
+
+    async dismissDigest(id: number) {
+        return this.request<{ success: boolean }>(`/digest/dismiss/${id}`, {
+            method: 'POST',
+        });
+    }
+
     async generateDigest() {
         return this.request<{ success: boolean; digest: Digest }>('/digest/generate', {
             method: 'POST',
@@ -627,11 +637,16 @@ export interface Digest {
     content: string;
     article_count: number;
     feed_count: number;
+    edition?: 'morning' | 'evening';
+    title?: string;
+    topics?: string[];
 }
 
 export interface DigestSettings {
     enabled: boolean;
     schedule: string;
+    schedule_morning: string;
+    schedule_evening: string;
     included_feeds: number[] | null;
     style: 'bullets' | 'paragraphs';
 }
