@@ -80,30 +80,53 @@ async function cacheThumbnailsInBackground(
 }
 
 /**
+ * Extended feed info with cached icon status for batch optimization
+ */
+export interface FeedToRefreshWithCache extends FeedToRefresh {
+    hasValidIcon?: boolean;
+    userId?: number;
+}
+
+/**
  * Refreshes a single feed and inserts new articles.
  * Used by both manual refresh (API endpoint) and scheduled refresh.
  *
- * @param feed - The feed to refresh
+ * @param feed - The feed to refresh (can include pre-fetched cache status)
  * @returns RefreshResult with success status and new article count
  */
-export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
+export async function refreshFeed(feed: FeedToRefreshWithCache): Promise<RefreshResult> {
     let refreshIntervalMinutes = feed.refresh_interval_minutes;
     try {
-        // Check if we already have a valid icon to avoid expensive re-fetching
-        const existingIcon = queryOne<{
-            icon_url: string | null;
-            icon_cached_path: string | null;
-            icon_cached_content_type: string | null;
-        }>('SELECT icon_url, icon_cached_path, icon_cached_content_type FROM feeds WHERE id = ?', [feed.id]);
+        // Use pre-fetched icon status if available (batch optimization)
+        // Otherwise fall back to individual query (single feed refresh)
+        let hasValidIcon = feed.hasValidIcon;
+        let existingIcon: { icon_url: string | null; icon_cached_path: string | null; icon_cached_content_type: string | null } | undefined;
 
-        const hasValidIcon = existingIcon?.icon_url && !isGenericIconUrl(existingIcon.icon_url);
+        if (hasValidIcon === undefined) {
+            existingIcon = queryOne<{
+                icon_url: string | null;
+                icon_cached_path: string | null;
+                icon_cached_content_type: string | null;
+            }>('SELECT icon_url, icon_cached_path, icon_cached_content_type FROM feeds WHERE id = ?', [feed.id]);
+            hasValidIcon = existingIcon?.icon_url ? !isGenericIconUrl(existingIcon.icon_url) : false;
+        } else {
+            // When using batch optimization, we may need icon info later for caching decisions
+            // Only fetch if we need it (when hasValidIcon is false - meaning we might cache a new icon)
+            if (!hasValidIcon) {
+                existingIcon = queryOne<{
+                    icon_url: string | null;
+                    icon_cached_path: string | null;
+                    icon_cached_content_type: string | null;
+                }>('SELECT icon_url, icon_cached_path, icon_cached_content_type FROM feeds WHERE id = ?', [feed.id]);
+            }
+        }
+
         const feedData = await parseFeed(feed.url, { skipIconFetch: !!hasValidIcon });
-        
+
         let newArticles = 0;
 
-        // Get user settings for this feed
-        const feedUser = queryOne<{ user_id: number }>('SELECT user_id FROM feeds WHERE id = ?', [feed.id]);
-        const userId = feedUser?.user_id || 1; // Default to 1 if not found
+        // Use pre-fetched userId if available (batch optimization)
+        const userId = feed.userId ?? (queryOne<{ user_id: number }>('SELECT user_id FROM feeds WHERE id = ?', [feed.id])?.user_id || 1);
         const settings = getUserSettings(userId);
         // Note: fetch_full_content setting now controls lazy loading when article is opened
         // Content is no longer fetched during refresh for speed
