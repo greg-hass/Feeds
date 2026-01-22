@@ -10,6 +10,7 @@ export const DiscoveryPage = () => {
     const [interests, setInterests] = useState<Interest[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [subscribingIds, setSubscribingIds] = useState<Set<number>>(new Set());
     const colors = useColors();
     const { addFeed } = useFeedStore();
     const { show: showToast } = useToastStore();
@@ -57,18 +58,32 @@ export const DiscoveryPage = () => {
     };
 
     const handleSubscribe = async (rec: Recommendation) => {
+        // Prevent double-tap
+        if (subscribingIds.has(rec.id)) return;
+
+        // Optimistic UI: Show immediate feedback
+        setSubscribingIds(prev => new Set(prev).add(rec.id));
+        showToast(`Subscribing to ${rec.title}...`, 'success');
+
         try {
             await addFeed(rec.feed_url, undefined, settings?.refresh_interval_minutes, false);
+            // Remove from list after successful subscription
             setRecommendations(prev => prev.filter(r => r.id !== rec.id));
-            showToast(`Subscribed to ${rec.title}`, 'success');
         } catch (error) {
             if (error instanceof ApiError && error.status === 409) {
+                // Already subscribed - just remove from list
                 setRecommendations(prev => prev.filter(r => r.id !== rec.id));
                 showToast(`Already subscribed to ${rec.title}`, 'info');
-                return;
+            } else {
+                const message = error instanceof Error ? error.message : 'Failed to subscribe';
+                showToast(message, 'error');
             }
-            const message = error instanceof Error ? error.message : 'Failed to subscribe';
-            showToast(message, 'error');
+        } finally {
+            setSubscribingIds(prev => {
+                const next = new Set(prev);
+                next.delete(rec.id);
+                return next;
+            });
         }
     };
 
@@ -183,9 +198,18 @@ export const DiscoveryPage = () => {
                                     <TouchableOpacity
                                         style={s.subscribeButton}
                                         onPress={() => handleSubscribe(rec)}
+                                        disabled={subscribingIds.has(rec.id)}
                                     >
-                                        <Plus size={18} color="#fff" strokeWidth={3} />
-                                        <Text style={s.subscribeText}>Subscribe</Text>
+                                        {subscribingIds.has(rec.id) ? (
+                                            <View style={s.loadingContent}>
+                                                <ActivityIndicator size="small" color="#fff" />
+                                            </View>
+                                        ) : (
+                                            <>
+                                                <Plus size={18} color="#fff" strokeWidth={3} />
+                                                <Text style={s.subscribeText}>Subscribe</Text>
+                                            </>
+                                        )}
                                     </TouchableOpacity>
                                 </View>
                             </View>
@@ -411,6 +435,13 @@ const styles = (colors: any) => StyleSheet.create({
         shadowOpacity: 0.3,
         shadowRadius: 10,
         elevation: 6,
+        minHeight: 46,
+    },
+    loadingContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flex: 1,
     },
     subscribeText: {
         color: '#fff',
