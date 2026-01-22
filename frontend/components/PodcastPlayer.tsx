@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAudioStore } from '@/stores/audioStore';
 import { useColors, borderRadius, spacing } from '@/theme';
 import {
-    Play, Pause, SkipBack, SkipForward,
+    Play, Pause, RotateCcw, RotateCw,
     X, ChevronDown, Timer, Gauge,
     Volume2, VolumeX, MoreVertical
 } from 'lucide-react-native';
@@ -94,8 +94,8 @@ export const PodcastPlayer = () => {
                 {/* Controls */}
                 <View style={s.controlsSection}>
                     <TouchableOpacity onPress={skipBackward} style={s.skipButton}>
-                        <SkipBack size={32} color={colors.text.primary} fill={colors.text.primary} />
-                        <Text style={s.skipText}>15</Text>
+                        <RotateCcw size={32} color={colors.text.primary} />
+                        <Text style={s.skipText}>15s</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -110,8 +110,8 @@ export const PodcastPlayer = () => {
                     </TouchableOpacity>
 
                     <TouchableOpacity onPress={skipForward} style={s.skipButton}>
-                        <SkipForward size={32} color={colors.text.primary} fill={colors.text.primary} />
-                        <Text style={s.skipText}>30</Text>
+                        <RotateCw size={32} color={colors.text.primary} />
+                        <Text style={s.skipText}>30s</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -144,7 +144,7 @@ const styles = (colors: any, isMobile: boolean, width: number, height: number, i
     container: {
         flex: 1,
         backgroundColor: colors.background.primary,
-        paddingTop: Platform.OS === 'ios' ? Math.max(insets.top, 50) + 10 : 20,
+        paddingTop: Platform.OS === 'ios' ? insets.top + spacing.xl : spacing.lg,
     },
     header: {
         flexDirection: 'row',
@@ -243,12 +243,12 @@ const styles = (colors: any, isMobile: boolean, width: number, height: number, i
     skipButton: {
         alignItems: 'center',
         justifyContent: 'center',
+        gap: 4,
     },
     skipText: {
-        position: 'absolute',
-        fontSize: 10,
-        fontWeight: '900',
-        color: colors.background.primary,
+        fontSize: 11,
+        fontWeight: '800',
+        color: colors.text.secondary,
     },
     footerActions: {
         flexDirection: 'row',
