@@ -34,20 +34,42 @@ export async function foldersRoutes(app: FastifyInstance) {
     // List folders with smart folders
     app.get('/', async (request: FastifyRequest) => {
 
-        // User folders
-        const folders = queryAll<Folder & { feed_count: number; unread_count: number }>(
-            `SELECT f.*, 
-        (SELECT COUNT(*) FROM feeds WHERE folder_id = f.id AND deleted_at IS NULL) as feed_count,
-        (SELECT COUNT(*) FROM articles a 
-         JOIN feeds fe ON fe.id = a.feed_id
-         LEFT JOIN read_state rs ON rs.article_id = a.id AND rs.user_id = ?
-         WHERE fe.folder_id = f.id AND fe.deleted_at IS NULL AND (rs.is_read IS NULL OR rs.is_read = 0)
-        ) as unread_count
-       FROM folders f
-       WHERE f.user_id = ? AND f.deleted_at IS NULL
-       ORDER BY f.position, f.name`,
+        // Pre-aggregate feed counts and unread counts in single query (O(1) instead of O(N) subqueries)
+        const folderFeedCounts = queryAll<{ folder_id: number; feed_count: number }>(
+            `SELECT folder_id, COUNT(*) as feed_count
+             FROM feeds
+             WHERE user_id = ? AND deleted_at IS NULL AND folder_id IS NOT NULL
+             GROUP BY folder_id`,
+            [userId]
+        );
+
+        const folderUnreadCounts = queryAll<{ folder_id: number; unread_count: number }>(
+            `SELECT fe.folder_id, COUNT(*) as unread_count
+             FROM articles a
+             JOIN feeds fe ON fe.id = a.feed_id
+             LEFT JOIN read_state rs ON rs.article_id = a.id AND rs.user_id = ?
+             WHERE fe.user_id = ? AND fe.deleted_at IS NULL AND fe.folder_id IS NOT NULL
+             AND (rs.is_read IS NULL OR rs.is_read = 0)
+             GROUP BY fe.folder_id`,
             [userId, userId]
         );
+
+        // Create lookup maps for O(1) access
+        const feedCountMap = new Map(folderFeedCounts.map(fc => [fc.folder_id, fc.feed_count]));
+        const unreadCountMap = new Map(folderUnreadCounts.map(uc => [uc.folder_id, uc.unread_count]));
+
+        // Fetch folders without expensive subqueries
+        const folders = queryAll<Folder>(
+            `SELECT f.*
+             FROM folders f
+             WHERE f.user_id = ? AND f.deleted_at IS NULL
+             ORDER BY f.position, f.name`,
+            [userId]
+        ).map(folder => ({
+            ...folder,
+            feed_count: feedCountMap.get(folder.id) || 0,
+            unread_count: unreadCountMap.get(folder.id) || 0
+        }));
 
         // Smart folders (by feed type)
         const smartFolders: SmartFolder[] = [];
