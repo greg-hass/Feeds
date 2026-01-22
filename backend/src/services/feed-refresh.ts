@@ -50,6 +50,36 @@ function categorizeRefreshError(err: unknown): { category: string; message: stri
 }
 
 /**
+ * Cache thumbnails in the background without blocking feed refresh.
+ * Uses smaller batches and no retries for speed.
+ */
+async function cacheThumbnailsInBackground(
+    thumbnailUpdates: Array<{ id: number; url: string }>,
+    updateThumbnailStmt: any
+): Promise<void> {
+    const BATCH_SIZE = 50; // Larger batches since we're not blocking
+
+    for (let i = 0; i < thumbnailUpdates.length; i += BATCH_SIZE) {
+        const batch = thumbnailUpdates.slice(i, i + BATCH_SIZE);
+        const results = await Promise.allSettled(batch.map(async (item) => {
+            const cachedThumbnail = await cacheArticleThumbnail(item.id, item.url);
+            return { id: item.id, cached: cachedThumbnail };
+        }));
+
+        // Batch database updates
+        for (const result of results) {
+            if (result.status === 'fulfilled' && result.value.cached) {
+                updateThumbnailStmt.run(
+                    result.value.cached.fileName,
+                    result.value.cached.mime,
+                    result.value.id
+                );
+            }
+        }
+    }
+}
+
+/**
  * Refreshes a single feed and inserts new articles.
  * Used by both manual refresh (API endpoint) and scheduled refresh.
  *
@@ -137,27 +167,13 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
         const { count: insertedCount, thumbnailUpdates } = refreshTransaction(feedData.articles, currentType);
         newArticles = insertedCount;
 
+        // Thumbnail caching is now FIRE-AND-FORGET (non-blocking)
+        // This allows feed refresh to complete immediately while thumbnails cache in background
         if (thumbnailUpdates.length > 0) {
-            // Thumbnails are small images - can process many in parallel
-            const THUMBNAIL_BATCH_SIZE = 30;
-            for (let i = 0; i < thumbnailUpdates.length; i += THUMBNAIL_BATCH_SIZE) {
-                const batch = thumbnailUpdates.slice(i, i + THUMBNAIL_BATCH_SIZE);
-                const results = await Promise.allSettled(batch.map(async (item) => {
-                    const cachedThumbnail = await cacheArticleThumbnail(item.id, item.url);
-                    return { id: item.id, cached: cachedThumbnail };
-                }));
-
-                // Batch database updates
-                for (const result of results) {
-                    if (result.status === 'fulfilled' && result.value.cached) {
-                        updateThumbnailStmt.run(
-                            result.value.cached.fileName,
-                            result.value.cached.mime,
-                            result.value.id
-                        );
-                    }
-                }
-            }
+            // Don't await - let it run in background
+            cacheThumbnailsInBackground(thumbnailUpdates, updateThumbnailStmt).catch(err => {
+                console.warn(`[Thumbnails] Background caching failed:`, err);
+            });
         }
 
         // Content fetching is now LAZY - it happens when the user opens an article
@@ -168,12 +184,12 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
 
 
         // Update feed metadata on success
-        // Use the existingIcon from the top of the function
-
+        // Skip icon caching entirely if we already have a cached icon (speeds up refresh)
         const iconCandidate = feedData.favicon;
         const shouldUpdateIconUrl = !!iconCandidate && (!existingIcon?.icon_url || isGenericIconUrl(existingIcon.icon_url));
-        const iconForCache = iconCandidate && (shouldUpdateIconUrl || !existingIcon?.icon_cached_path) ? iconCandidate : null;
-        const cachedIcon = iconForCache ? await cacheFeedIcon(feed.id, iconForCache) : null;
+        // Only cache icon if we don't have one cached yet - this is a significant time saver
+        const needsIconCache = !existingIcon?.icon_cached_path && iconCandidate;
+        const cachedIcon = needsIconCache ? await cacheFeedIcon(feed.id, iconCandidate) : null;
 
         let typeUpdate = '';
         const params: any[] = [

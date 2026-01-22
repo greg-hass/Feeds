@@ -9,8 +9,8 @@ interface Feed extends FeedToRefresh {
 }
 
 const CHECK_INTERVAL = 60 * 1000; // Check every minute
-const FEED_DELAY = 50; // 50ms delay between batches (reduced from 100ms)
-const BATCH_SIZE = 20; // Increased from 15 for better parallelism
+const FEED_DELAY = 25; // 25ms delay between batches (reduced from 50ms)
+const BATCH_SIZE = 30; // Increased from 20 - feeds are lighter now without blocking thumbnail/content
 const CLEANUP_INTERVAL = 24 * 60 * 60 * 1000; // Run cleanup once per day
 const DIGEST_CHECK_INTERVAL = 5 * 60 * 1000; // Check digest schedule every 5 minutes
 
@@ -174,11 +174,11 @@ async function checkFeeds() {
                     
                     try {
                         // Add individual timeout for feed refresh
-                        // Reduced from 2 min to 90s since we reduced content fetch timeout
+                        // Reduced to 30s - feeds are now lightweight (no content/thumbnail blocking)
                         const result = await Promise.race([
                             refreshFeed(feed),
                             new Promise<never>((_, reject) =>
-                                setTimeout(() => reject(new Error('Feed refresh timeout')), 90000) // 90s timeout
+                                setTimeout(() => reject(new Error('Feed refresh timeout')), 30000) // 30s timeout
                             )
                         ]);
                         
