@@ -11,7 +11,7 @@ import {
     Info, Pause
 } from 'lucide-react-native';
 import { FeedInfoSheet } from '@/components/FeedInfoSheet';
-import { useColors, borderRadius, spacing } from '@/theme';
+import { useColors, borderRadius, spacing, shadows } from '@/theme';
 import { ProgressDialog, ProgressState, ProgressStats, FailedFeed } from '@/components/ProgressDialog';
 import { ProgressItemData, ItemStatus } from '@/components/ProgressItem';
 
@@ -677,11 +677,18 @@ export default function ManageScreen() {
                     </TouchableOpacity>
                 </View>
             </View>
+            {/* Gradient Accent Line */}
+            <View style={s.headerGradientLine} />
 
             <ScrollView style={s.scrollView} contentContainerStyle={s.content}>
                 {/* Add Feed */}
                 <View style={s.section}>
-                    <Text style={s.sectionTitle}>Add Feed</Text>
+                    <View style={s.sectionHeader}>
+                        <View style={[s.sectionIconBg, { backgroundColor: colors.primary.soft }]}>
+                            <Plus size={14} color={colors.primary.DEFAULT} />
+                        </View>
+                        <Text style={s.sectionTitle}>Add Feed</Text>
+                    </View>
 
                     <ScrollView
                         horizontal
@@ -760,7 +767,12 @@ export default function ManageScreen() {
 
                 {/* Create Folder */}
                 <View style={s.section}>
-                    <Text style={s.sectionTitle}>Create Folder</Text>
+                    <View style={s.sectionHeader}>
+                        <View style={[s.sectionIconBg, { backgroundColor: colors.secondary.DEFAULT + '25' }]}>
+                            <FolderIcon size={14} color={colors.secondary.DEFAULT} />
+                        </View>
+                        <Text style={s.sectionTitle}>Create Folder</Text>
+                    </View>
                     <View style={s.inputRow}>
                         <TextInput
                             style={s.input}
@@ -781,11 +793,18 @@ export default function ManageScreen() {
                 {/* Folders */}
                 {folders.length > 0 && (
                     <View style={s.section}>
-                        <Text style={s.sectionTitle}>Folders ({folders.length})</Text>
+                        <View style={s.sectionHeader}>
+                            <View style={[s.sectionIconBg, { backgroundColor: colors.secondary.DEFAULT + '25' }]}>
+                                <FolderIcon size={14} color={colors.secondary.DEFAULT} />
+                            </View>
+                            <Text style={s.sectionTitle}>Folders ({folders.length})</Text>
+                        </View>
                         {folders.map((folder: Folder) => (
                             <View key={folder.id} style={s.feedItem}>
                                 <View style={s.folderContent}>
-                                    <FolderIcon size={18} color={colors.secondary.DEFAULT} />
+                                    <View style={[s.feedIconWrapper, { backgroundColor: colors.secondary.DEFAULT + '20' }]}>
+                                        <FolderIcon size={16} color={colors.secondary.DEFAULT} />
+                                    </View>
                                     <View style={s.feedInfo}>
                                         <Text style={s.feedTitle}>{folder.name}</Text>
                                         <Text style={s.feedUrl}>
@@ -797,13 +816,13 @@ export default function ManageScreen() {
                                     onPress={() => handleRenameFolder(folder)}
                                     style={s.actionButton}
                                 >
-                                    <Edit2 size={16} color={colors.text.tertiary} />
+                                    <Edit2 size={16} color={colors.secondary.light} />
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     onPress={() => handleDeleteFolder(folder.id, folder.name)}
                                     style={s.actionButton}
                                 >
-                                    <Trash2 size={16} color={colors.text.tertiary} />
+                                    <Trash2 size={16} color={colors.error} />
                                 </TouchableOpacity>
                             </View>
                         ))}
@@ -812,7 +831,12 @@ export default function ManageScreen() {
 
                 {/* Feeds */}
                 <View style={s.section}>
-                    <Text style={s.sectionTitle}>Feeds ({feeds.length})</Text>
+                    <View style={s.sectionHeader}>
+                        <View style={[s.sectionIconBg, { backgroundColor: colors.primary.soft }]}>
+                            <Rss size={14} color={colors.primary.DEFAULT} />
+                        </View>
+                        <Text style={s.sectionTitle}>Feeds ({feeds.length})</Text>
+                    </View>
                     {feeds.map((feed: Feed) => (
                         <View
                             key={feed.id}
@@ -900,7 +924,7 @@ export default function ManageScreen() {
                                         }}
                                         style={s.actionButton}
                                     >
-                                        <Info size={16} color={colors.text.tertiary} />
+                                        <Info size={16} color={colors.primary.DEFAULT} />
                                     </TouchableOpacity>
                                     {feed.error_count > 0 ? (
                                         <TouchableOpacity
@@ -914,20 +938,20 @@ export default function ManageScreen() {
                                             onPress={() => handleMoveFeed(feed)}
                                             style={s.actionButton}
                                         >
-                                            <FolderInput size={16} color={colors.text.tertiary} />
+                                            <FolderInput size={16} color={colors.secondary.DEFAULT} />
                                         </TouchableOpacity>
                                     )}
                                     <TouchableOpacity
                                         onPress={() => handleEditFeed(feed)}
                                         style={s.actionButton}
                                     >
-                                        <Edit2 size={16} color={colors.text.tertiary} />
+                                        <Edit2 size={16} color={colors.secondary.light} />
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         onPress={() => handleDeleteFeed(feed.id, feed.title)}
                                         style={s.actionButton}
                                     >
-                                        <Trash2 size={16} color={colors.text.tertiary} />
+                                        <Trash2 size={16} color={colors.error} />
                                     </TouchableOpacity>
                                 </View>
                             )}
@@ -937,7 +961,12 @@ export default function ManageScreen() {
 
                 {/* Data Management */}
                 <View style={s.section}>
-                    <Text style={s.sectionTitle}>Data Management</Text>
+                    <View style={s.sectionHeader}>
+                        <View style={[s.sectionIconBg, { backgroundColor: colors.primary.soft }]}>
+                            <Download size={14} color={colors.primary.DEFAULT} />
+                        </View>
+                        <Text style={s.sectionTitle}>Data Management</Text>
+                    </View>
                     <View style={s.dataActions}>
                         <TouchableOpacity
                             style={s.dataButton}
@@ -1205,13 +1234,41 @@ const styles = (colors: any) => StyleSheet.create({
     section: {
         marginBottom: spacing.xxl,
     },
+    sectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+        marginBottom: spacing.md,
+    },
+    sectionIconBg: {
+        width: 28,
+        height: 28,
+        borderRadius: borderRadius.md,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     sectionTitle: {
         fontSize: 14,
         fontWeight: '600',
-        color: colors.text.secondary,
-        marginBottom: spacing.md,
+        color: colors.text.primary,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
+    },
+    headerGradientLine: {
+        height: 2,
+        backgroundColor: colors.primary.DEFAULT,
+        ...Platform.select({
+            web: {
+                background: `linear-gradient(90deg, ${colors.primary.DEFAULT}, ${colors.secondary.DEFAULT})`,
+            },
+        }),
+    },
+    feedIconWrapper: {
+        width: 32,
+        height: 32,
+        borderRadius: borderRadius.md,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     inputRow: {
         flexDirection: 'row',
@@ -1233,6 +1290,7 @@ const styles = (colors: any) => StyleSheet.create({
         padding: spacing.lg,
         alignItems: 'center',
         justifyContent: 'center',
+        ...shadows.colored(colors.primary.DEFAULT),
     },
     discoveries: {
         marginTop: spacing.lg,
@@ -1250,6 +1308,8 @@ const styles = (colors: any) => StyleSheet.create({
         padding: spacing.md,
         gap: spacing.md,
         marginBottom: spacing.sm,
+        borderLeftWidth: 3,
+        borderLeftColor: colors.primary.DEFAULT,
     },
     discoveryInfo: {
         flex: 1,
@@ -1326,6 +1386,7 @@ const styles = (colors: any) => StyleSheet.create({
         padding: spacing.lg,
         borderRadius: borderRadius.md,
         gap: spacing.sm,
+        ...shadows.colored(colors.primary.DEFAULT),
     },
     dataButtonText: {
         color: colors.text.inverse,
@@ -1606,6 +1667,7 @@ const styles = (colors: any) => StyleSheet.create({
     filterPillActive: {
         backgroundColor: colors.primary.DEFAULT,
         borderColor: colors.primary.DEFAULT,
+        ...shadows.colored(colors.primary.DEFAULT),
     },
     filterPillText: {
         fontSize: 13,
