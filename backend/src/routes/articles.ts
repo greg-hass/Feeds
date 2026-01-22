@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { queryOne, queryAll, run } from '../db/index.js';
 import { extractReadability, fetchAndExtractReadability } from '../services/readability.js';
+import { getUserSettings } from '../services/settings.js';
 
 const listArticlesSchema = z.object({
     feed_id: z.coerce.number().optional(),
@@ -228,8 +229,10 @@ export async function articlesRoutes(app: FastifyInstance) {
             }
         }
 
-        // If no readability content, try to extract it from the URL
-        if (!article.readability_content && article.url) {
+        // Lazy content fetching: if no readability content, fetch it now (when article is opened)
+        // This happens on-demand rather than during feed refresh for much faster refreshes
+        const settings = getUserSettings(userId);
+        if (!article.readability_content && article.url && settings.fetch_full_content) {
             try {
                 const readable = await fetchAndExtractReadability(article.url);
                 if (readable.content) {
@@ -257,7 +260,7 @@ export async function articlesRoutes(app: FastifyInstance) {
                     };
                 }
             } catch {
-                // Ignore readability errors
+                // Ignore readability errors - user can still read the summary/original content
             }
         }
 

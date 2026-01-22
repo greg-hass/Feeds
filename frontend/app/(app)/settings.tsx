@@ -150,7 +150,7 @@ export default function SettingsScreen() {
                         <View style={s.row}>
                             <View>
                                 <Text style={s.label}>Fetch Full Content</Text>
-                                <Text style={s.hint}>Download full articles</Text>
+                                <Text style={s.hint}>Load full articles when opened</Text>
                             </View>
                             <Switch
                                 value={settings.fetch_full_content}

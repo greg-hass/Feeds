@@ -3,7 +3,8 @@ import { parseFeed, normalizeArticle, FeedType } from './feed-parser.js';
 import { cacheFeedIcon } from './icon-cache.js';
 import { cacheArticleThumbnail } from './thumbnail-cache.js';
 import { getUserSettings } from './settings.js';
-import { fetchAndExtractReadability } from './readability.js';
+// Note: fetchAndExtractReadability is no longer used during refresh
+// Content is now fetched lazily when articles are opened (see routes/articles.ts)
 
 export interface FeedToRefresh {
     id: number;
@@ -74,7 +75,8 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
         const feedUser = queryOne<{ user_id: number }>('SELECT user_id FROM feeds WHERE id = ?', [feed.id]);
         const userId = feedUser?.user_id || 1; // Default to 1 if not found
         const settings = getUserSettings(userId);
-        const shouldFetchContent = settings.fetch_full_content;
+        // Note: fetch_full_content setting now controls lazy loading when article is opened
+        // Content is no longer fetched during refresh for speed
         refreshIntervalMinutes = settings.refresh_interval_minutes ?? feed.refresh_interval_minutes;
 
         const insertArticle = `
@@ -101,7 +103,6 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
         const refreshTransaction = database.transaction((articles: any[], type: FeedType) => {
             let count = 0;
             const thumbnailUpdates: Array<{ id: number; url: string }> = [];
-            const contentUpdates: Array<{ id: number; url: string }> = [];
 
             for (const article of articles) {
                 const normalized = normalizeArticle(article, type);
@@ -126,58 +127,44 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
                     if (normalized.thumbnail_url && shouldCacheThumbnails) {
                         thumbnailUpdates.push({ id: articleId, url: normalized.thumbnail_url });
                     }
-
-                    if (normalized.url && shouldFetchContent) {
-                        contentUpdates.push({ id: articleId, url: normalized.url });
-                    }
+                    // Content is now fetched lazily when article is opened (see routes/articles.ts)
                 }
             }
 
-            return { count, contentUpdates, thumbnailUpdates };
+            return { count, thumbnailUpdates };
         });
 
-        const { count: insertedCount, contentUpdates, thumbnailUpdates } = refreshTransaction(feedData.articles, currentType);
+        const { count: insertedCount, thumbnailUpdates } = refreshTransaction(feedData.articles, currentType);
         newArticles = insertedCount;
 
         if (thumbnailUpdates.length > 0) {
-            const THUMBNAIL_BATCH_SIZE = 25;
+            // Thumbnails are small images - can process many in parallel
+            const THUMBNAIL_BATCH_SIZE = 30;
             for (let i = 0; i < thumbnailUpdates.length; i += THUMBNAIL_BATCH_SIZE) {
                 const batch = thumbnailUpdates.slice(i, i + THUMBNAIL_BATCH_SIZE);
-                await Promise.all(batch.map(async (item) => {
-                    try {
-                        const cachedThumbnail = await cacheArticleThumbnail(item.id, item.url);
-                        if (cachedThumbnail) {
-                            updateThumbnailStmt.run(cachedThumbnail.fileName, cachedThumbnail.mime, item.id);
-                        }
-                    } catch (err) {
-                        console.warn(`Failed to cache thumbnail for article ${item.id}:`, err);
-                    }
+                const results = await Promise.allSettled(batch.map(async (item) => {
+                    const cachedThumbnail = await cacheArticleThumbnail(item.id, item.url);
+                    return { id: item.id, cached: cachedThumbnail };
                 }));
+
+                // Batch database updates
+                for (const result of results) {
+                    if (result.status === 'fulfilled' && result.value.cached) {
+                        updateThumbnailStmt.run(
+                            result.value.cached.fileName,
+                            result.value.cached.mime,
+                            result.value.id
+                        );
+                    }
+                }
             }
         }
 
-        // Fetch full content if enabled (outside of main transaction)
-        if (shouldFetchContent && contentUpdates.length > 0) {
-            const updateContentStmt = database.prepare('UPDATE articles SET readability_content = ? WHERE id = ?');
-            const CONTENT_BATCH_SIZE = 10; // Increased batch size for faster content fetching
-
-            for (let i = 0; i < contentUpdates.length; i += CONTENT_BATCH_SIZE) {
-                const batch = contentUpdates.slice(i, i + CONTENT_BATCH_SIZE);
-                await Promise.all(batch.map(async (item) => {
-                    try {
-                        const { content } = await fetchAndExtractReadability(item.url);
-                        if (content) {
-                            // Use a separate transaction for content updates
-                            database.transaction(() => {
-                                updateContentStmt.run(content, item.id);
-                            })();
-                        }
-                    } catch (err) {
-                        console.error(`Failed to fetch content for article ${item.id}: `, err);
-                    }
-                }));
-            }
-        }
+        // Content fetching is now LAZY - it happens when the user opens an article
+        // This dramatically speeds up feed refresh (was the main bottleneck)
+        // See: backend/src/routes/articles.ts GET /:id - fetches content on-demand
+        // The shouldFetchContent setting now controls whether lazy fetching is enabled,
+        // not whether we fetch during refresh
 
 
         // Update feed metadata on success
