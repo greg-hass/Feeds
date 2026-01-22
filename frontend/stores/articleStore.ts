@@ -50,19 +50,41 @@ export const useArticleStore = create<ArticleState>()(
                         limit: 50,
                     });
 
-                    const newArticles = reset ? articles : [...state.articles, ...articles];
+                        // Optimized: Incremental merge instead of full sort on every fetch
+                    let finalArticles: Article[];
 
-                    // Deduplicate and sort
-                    const uniqueArticles = Array.from(new Map(newArticles.map(a => [a.id, a])).values());
-                    uniqueArticles.sort((a, b) => {
-                        const dateA = new Date(a.published_at || 0).getTime();
-                        const dateB = new Date(b.published_at || 0).getTime();
-                        if (dateA !== dateB) return dateB - dateA;
-                        return b.id - a.id; // Secondary sort by ID desc
-                    });
+                    if (reset) {
+                        // On reset, just use new articles (already sorted from backend)
+                        finalArticles = articles;
+                    } else {
+                        // Merge new articles into existing sorted list
+                        // Backend returns sorted articles, so we can do efficient merge
+                        const existingMap = new Map(state.articles.map(a => [a.id, a]));
+                        const newMap = new Map(articles.map(a => [a.id, a]));
+
+                        // Deduplicate: prefer new data over existing
+                        for (const [id, article] of newMap) {
+                            existingMap.set(id, article);
+                        }
+
+                        // Only sort if we actually have duplicates (rare case)
+                        if (newMap.size < articles.length || existingMap.size !== state.articles.length + articles.length) {
+                            // Had duplicates, need to sort
+                            finalArticles = Array.from(existingMap.values());
+                            finalArticles.sort((a, b) => {
+                                const dateA = new Date(a.published_at || 0).getTime();
+                                const dateB = new Date(b.published_at || 0).getTime();
+                                if (dateA !== dateB) return dateB - dateA;
+                                return b.id - a.id;
+                            });
+                        } else {
+                            // No duplicates, just concatenate (backend already sorted)
+                            finalArticles = [...state.articles, ...articles];
+                        }
+                    }
 
                     set({
-                        articles: uniqueArticles,
+                        articles: finalArticles,
                         cursor: next_cursor,
                         hasMore: next_cursor !== null,
                         isLoading: false,

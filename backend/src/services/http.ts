@@ -1,3 +1,6 @@
+import { Agent as HttpAgent } from 'node:http';
+import { Agent as HttpsAgent } from 'node:https';
+
 export interface RetryOptions {
     retries?: number;
     baseDelayMs?: number;
@@ -8,6 +11,22 @@ export interface RetryOptions {
 
 const DEFAULT_RETRY_STATUS = [408, 429, 500, 502, 503, 504];
 const DEFAULT_RETRY_ERRORS = ['ECONNRESET', 'ETIMEDOUT', 'EAI_AGAIN', 'ENOTFOUND'];
+
+// HTTP/2 connection pooling with keep-alive
+// Reuses connections to the same domains for 60s, significantly faster for bulk feed refresh
+const httpAgent = new HttpAgent({
+    keepAlive: true,
+    keepAliveMsecs: 60000, // 60 seconds
+    maxSockets: 50, // Max concurrent connections per host
+    maxFreeSockets: 10, // Keep 10 idle connections ready
+});
+
+const httpsAgent = new HttpsAgent({
+    keepAlive: true,
+    keepAliveMsecs: 60000,
+    maxSockets: 50,
+    maxFreeSockets: 10,
+});
 
 function sleep(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -47,7 +66,17 @@ export async function fetchWithRetry(
 
     for (let attempt = 0; attempt <= retries; attempt++) {
         try {
-            const response = await fetch(url, optionsFactory());
+            // Use connection pooling agents for HTTP/HTTPS
+            const options = optionsFactory();
+            const isHttps = url.startsWith('https:');
+            const agent = isHttps ? httpsAgent : httpAgent;
+
+            const response = await fetch(url, {
+                ...options,
+                // @ts-ignore - Node.js fetch supports agent parameter
+                agent,
+            });
+
             if (!shouldRetryStatus(response.status, retryStatusCodes) || attempt === retries) {
                 return response;
             }

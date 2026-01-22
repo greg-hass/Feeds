@@ -100,13 +100,21 @@ export const useFeedStore = create<FeedState>()(
                     }
                 });
 
-                // Debounced article fetch to avoid hammering the server during rapid updates
+                // Optimized debounce: fetch immediately on first new article, then debounce subsequent
                 let refreshTimeout: ReturnType<typeof setTimeout> | null = null;
+                let hasRefreshedOnce = false;
                 const debouncedRefresh = () => {
-                    if (refreshTimeout) clearTimeout(refreshTimeout);
-                    refreshTimeout = setTimeout(() => {
+                    if (!hasRefreshedOnce) {
+                        // First new article: refresh immediately for instant feedback
+                        hasRefreshedOnce = true;
                         articleStore.fetchArticles(true);
-                    }, 1000); // Wait at least 1s between refreshes
+                    } else {
+                        // Subsequent updates: debounce to avoid hammering the server
+                        if (refreshTimeout) clearTimeout(refreshTimeout);
+                        refreshTimeout = setTimeout(() => {
+                            articleStore.fetchArticles(true);
+                        }, 1000);
+                    }
                 };
 
                 let lastProgressUpdate = 0;

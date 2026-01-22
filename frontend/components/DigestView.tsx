@@ -1,10 +1,12 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, lazy, Suspense } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Platform } from 'react-native';
 import { useDigestStore } from '@/stores';
 import { Sparkles, BarChart3, BookOpen, RefreshCw, AlertCircle, Calendar } from 'lucide-react-native';
-import Markdown from 'react-native-markdown-display';
 import { format } from 'date-fns';
 import { useColors, spacing, borderRadius } from '@/theme';
+
+// Lazy load markdown renderer (heavy dependency ~100KB) - only loads when digest is viewed
+const Markdown = lazy(() => import('react-native-markdown-display').then(m => ({ default: m.default })));
 
 export const DigestView = () => {
     const { latestDigest, isLoading, error, fetchLatestDigest, generateDigest } = useDigestStore();
@@ -106,18 +108,20 @@ export const DigestView = () => {
             </View>
 
             <View style={s.card}>
-                <Markdown
-                    style={{
-                        body: { color: colors.text.primary, fontSize: 17, lineHeight: 28, fontWeight: '400' },
-                        heading2: { color: colors.text.primary, fontSize: 22, fontWeight: '800', marginTop: 32, marginBottom: 16, letterSpacing: -0.5 },
-                        bullet_list: { marginBottom: 16 },
-                        list_item: { marginBottom: 8 },
-                        link: { color: colors.primary.DEFAULT, fontWeight: '700', textDecorationLine: 'none' },
-                        paragraph: { marginBottom: 16 }
-                    }}
-                >
-                    {latestDigest.content}
-                </Markdown>
+                <Suspense fallback={<ActivityIndicator size="small" color={colors.primary.DEFAULT} />}>
+                    <Markdown
+                        style={{
+                            body: { color: colors.text.primary, fontSize: 17, lineHeight: 28, fontWeight: '400' },
+                            heading2: { color: colors.text.primary, fontSize: 22, fontWeight: '800', marginTop: 32, marginBottom: 16, letterSpacing: -0.5 },
+                            bullet_list: { marginBottom: 16 },
+                            list_item: { marginBottom: 8 },
+                            link: { color: colors.primary.DEFAULT, fontWeight: '700', textDecorationLine: 'none' },
+                            paragraph: { marginBottom: 16 }
+                        }}
+                    >
+                        {latestDigest.content}
+                    </Markdown>
+                </Suspense>
             </View>
 
             <TouchableOpacity
