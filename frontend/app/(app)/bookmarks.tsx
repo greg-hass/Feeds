@@ -1,26 +1,53 @@
-import { useEffect, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Image, useWindowDimensions } from 'react-native';
+import { useEffect, useState } from 'react';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Image, useWindowDimensions, Animated, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { formatDistanceToNow } from 'date-fns';
 import { useArticleStore } from '@/stores';
 import { Article, api } from '@/services/api';
-import { Circle, Bookmark, Headphones, Play } from 'lucide-react-native';
+import { Circle, Bookmark, Headphones, Play, RefreshCw, CircleCheck, Menu, X } from 'lucide-react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
 import { extractVideoId, getThumbnailUrl } from '@/utils/youtube';
-import { useState } from 'react';
+import Sidebar from '@/components/Sidebar';
 
 export default function BookmarksScreen() {
     const router = useRouter();
     const colors = useColors();
     const { width } = useWindowDimensions();
     const isMobile = width < 1024;
-    const { bookmarkedArticles, fetchBookmarks, isLoading } = useArticleStore();
+    const { bookmarkedArticles, fetchBookmarks, isLoading, markArticleRead } = useArticleStore();
+
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [showMenu, setShowMenu] = useState(false);
+    const [sidebarAnim] = useState(new Animated.Value(-300));
 
     const s = styles(colors, isMobile);
 
     useEffect(() => {
         fetchBookmarks();
     }, []);
+
+    const toggleMenu = () => {
+        setShowMenu(!showMenu);
+        Animated.timing(sidebarAnim, {
+            toValue: showMenu ? -300 : 0,
+            duration: 250,
+            useNativeDriver: true,
+        }).start();
+    };
+
+    const handleRefresh = async () => {
+        setIsRefreshing(true);
+        await fetchBookmarks();
+        setIsRefreshing(false);
+    };
+
+    const handleMarkAllRead = async () => {
+        for (const article of bookmarkedArticles) {
+            if (!article.is_read) {
+                await markArticleRead(article.id);
+            }
+        }
+    };
 
     const handleArticlePress = (id: number) => {
         router.push(`/(app)/article/${id}`);
@@ -29,7 +56,6 @@ export default function BookmarksScreen() {
     const getArticleThumbnail = (item: Article): string | null => {
         if (item.feed_type === 'youtube') {
             const videoId = extractVideoId(item.url || item.thumbnail_url || '');
-            // Use maxres for desktop, hq for mobile
             if (videoId) return getThumbnailUrl(videoId, isMobile ? 'hq' : 'maxres');
         }
         return item.thumbnail_url || null;
@@ -103,7 +129,7 @@ export default function BookmarksScreen() {
         );
     };
 
-    if (isLoading) {
+    if (isLoading && bookmarkedArticles.length === 0) {
         return (
             <View style={s.loading}>
                 <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
@@ -113,8 +139,34 @@ export default function BookmarksScreen() {
 
     return (
         <View style={s.container}>
+            {/* Header matching Timeline style */}
             <View style={s.header}>
-                <Text style={s.headerTitle}>Bookmarks</Text>
+                <View style={s.headerLeft}>
+                    <Text style={s.headerTitle}>Bookmarks</Text>
+                </View>
+                <View style={s.headerActions}>
+                    <TouchableOpacity
+                        onPress={handleRefresh}
+                        style={s.iconButton}
+                        disabled={isRefreshing}
+                        accessibilityLabel="Refresh bookmarks"
+                        accessibilityRole="button"
+                    >
+                        {isRefreshing ? (
+                            <ActivityIndicator size={18} color={colors.primary.DEFAULT} />
+                        ) : (
+                            <RefreshCw size={20} color={colors.text.secondary} />
+                        )}
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={handleMarkAllRead}
+                        style={s.iconButton}
+                        accessibilityLabel="Mark all as read"
+                        accessibilityRole="button"
+                    >
+                        <CircleCheck size={20} color={colors.text.secondary} />
+                    </TouchableOpacity>
+                </View>
             </View>
 
             <FlatList
@@ -131,6 +183,41 @@ export default function BookmarksScreen() {
                     </View>
                 }
             />
+
+            {/* Mobile menu button */}
+            {isMobile && (
+                <>
+                    <TouchableOpacity onPress={toggleMenu} style={s.mobileMenuButton}>
+                        <Menu size={24} color={colors.text.primary} />
+                    </TouchableOpacity>
+
+                    {/* Backdrop */}
+                    {showMenu && (
+                        <TouchableOpacity
+                            style={s.sidebarBackdrop}
+                            activeOpacity={1}
+                            onPress={toggleMenu}
+                        />
+                    )}
+                    {/* Sidebar */}
+                    <Animated.View
+                        style={[
+                            s.sidebarContainer,
+                            {
+                                transform: [{ translateX: sidebarAnim }],
+                                width: 280,
+                            },
+                        ]}
+                    >
+                        <View style={{ alignItems: 'flex-end', padding: spacing.md }}>
+                            <TouchableOpacity onPress={toggleMenu} style={{ padding: spacing.sm }}>
+                                <X size={24} color={colors.text.primary} />
+                            </TouchableOpacity>
+                        </View>
+                        <Sidebar onNavigate={toggleMenu} />
+                    </Animated.View>
+                </>
+            )}
         </View>
     );
 }
@@ -147,14 +234,31 @@ const styles = (colors: any, isMobile: boolean = false) => StyleSheet.create({
         backgroundColor: colors.background.primary,
     },
     header: {
-        padding: spacing.lg,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border.DEFAULT,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: spacing.lg,
+        paddingTop: spacing.lg,
+        paddingBottom: spacing.md,
+    },
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+        marginLeft: isMobile ? 40 : 0,
     },
     headerTitle: {
-        fontSize: 24,
-        fontWeight: '700',
+        fontSize: 22,
+        fontWeight: '900',
         color: colors.text.primary,
+        letterSpacing: -0.5,
+    },
+    headerActions: {
+        flexDirection: 'row',
+        gap: spacing.sm,
+    },
+    iconButton: {
+        padding: spacing.sm,
     },
     list: {
         padding: spacing.lg,
@@ -270,5 +374,42 @@ const styles = (colors: any, isMobile: boolean = false) => StyleSheet.create({
         fontSize: 14,
         color: colors.text.secondary,
         marginTop: spacing.sm,
+    },
+    mobileMenuButton: {
+        position: 'absolute',
+        top: spacing.md,
+        left: spacing.md,
+        zIndex: 100,
+        padding: 8,
+        backgroundColor: colors.background.elevated,
+        borderRadius: borderRadius.full,
+        shadowColor: '#000',
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    sidebarBackdrop: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        zIndex: 900,
+    },
+    sidebarContainer: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        bottom: 0,
+        backgroundColor: colors.background.elevated,
+        borderRightWidth: 1,
+        borderRightColor: colors.border.DEFAULT,
+        zIndex: 1000,
+        shadowColor: '#000',
+        shadowOffset: { width: 2, height: 0 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+        elevation: 5,
     },
 });

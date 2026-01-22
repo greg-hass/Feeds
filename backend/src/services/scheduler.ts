@@ -10,6 +10,7 @@ interface Feed extends FeedToRefresh {
 const CHECK_INTERVAL = 60 * 1000; // Check every minute
 const FEED_DELAY = 500; // 0.5 second delay between batches
 const BATCH_SIZE = 5;
+const CLEANUP_INTERVAL = 24 * 60 * 60 * 1000; // Run cleanup once per day
 
 // Circuit breaker configuration
 const FAILURE_THRESHOLD = 3;
@@ -23,7 +24,9 @@ interface SchedulerState {
     consecutiveFailures: number;
     lastFailureTime: number;
     timeoutHandle: NodeJS.Timeout | null;
+    cleanupTimeoutHandle: NodeJS.Timeout | null;
     isPaused: boolean;
+    lastCleanupAt: number;
 }
 
 let state: SchedulerState = {
@@ -31,7 +34,9 @@ let state: SchedulerState = {
     consecutiveFailures: 0,
     lastFailureTime: 0,
     timeoutHandle: null,
-    isPaused: false
+    cleanupTimeoutHandle: null,
+    isPaused: false,
+    lastCleanupAt: 0
 };
 
 export function startScheduler() {
@@ -43,6 +48,9 @@ export function startScheduler() {
 
     // Schedule first run
     state.timeoutHandle = setTimeout(runSchedulerCycle, 5000);
+
+    // Schedule cleanup to run shortly after startup, then daily
+    state.cleanupTimeoutHandle = setTimeout(runCleanupCycle, 60000); // Run cleanup 1 minute after startup
 }
 
 export function stopScheduler() {
@@ -50,6 +58,10 @@ export function stopScheduler() {
     if (state.timeoutHandle) {
         clearTimeout(state.timeoutHandle);
         state.timeoutHandle = null;
+    }
+    if (state.cleanupTimeoutHandle) {
+        clearTimeout(state.cleanupTimeoutHandle);
+        state.cleanupTimeoutHandle = null;
     }
     state.isPaused = false;
     console.log('Stopped background feed scheduler');
@@ -215,5 +227,55 @@ async function checkFeeds() {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
         console.error(`[Scheduler] Critical error in checkFeeds: ${errorMessage}`);
         throw err; // Re-throw to trigger circuit breaker
+    }
+}
+
+/**
+ * Cleanup cycle - runs daily to delete old articles based on retention_days setting.
+ * IMPORTANT: Bookmarked articles are NEVER deleted, regardless of age.
+ */
+async function runCleanupCycle() {
+    if (!state.isRunning) return;
+
+    try {
+        const userId = 1;
+        const settings = getUserSettings(userId);
+        const retentionDays = settings.retention_days;
+
+        console.log(`[Cleanup] Starting cleanup cycle (retention: ${retentionDays} days)`);
+
+        // Delete old articles that are:
+        // 1. Older than retention_days
+        // 2. NOT bookmarked (is_bookmarked = 0 or NULL)
+        // 3. Associated with feeds that belong to this user
+        const result = run(
+            `DELETE FROM articles
+             WHERE id IN (
+                 SELECT a.id FROM articles a
+                 JOIN feeds f ON a.feed_id = f.id
+                 WHERE f.user_id = ?
+                 AND a.published_at < datetime('now', '-' || ? || ' days')
+                 AND (a.is_bookmarked = 0 OR a.is_bookmarked IS NULL)
+             )`,
+            [userId, retentionDays]
+        );
+
+        const deletedCount = result.changes;
+        if (deletedCount > 0) {
+            console.log(`[Cleanup] Deleted ${deletedCount} old articles (older than ${retentionDays} days)`);
+        } else {
+            console.log(`[Cleanup] No articles to clean up`);
+        }
+
+        state.lastCleanupAt = Date.now();
+
+    } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        console.error(`[Cleanup] Error during cleanup: ${errorMessage}`);
+    }
+
+    // Schedule next cleanup cycle
+    if (state.isRunning) {
+        state.cleanupTimeoutHandle = setTimeout(runCleanupCycle, CLEANUP_INTERVAL);
     }
 }

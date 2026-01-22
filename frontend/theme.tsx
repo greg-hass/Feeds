@@ -4,20 +4,20 @@ import { useSettingsStore } from './stores';
 
 export const darkColors = {
     background: {
-        primary: '#1a1a1a',
-        secondary: '#252525',
-        tertiary: '#2f2f2f',
-        elevated: '#0f0f0f',
+        primary: '#0d0d0d',    // Darker main background
+        secondary: '#161616',   // Darker cards/surfaces
+        tertiary: '#1f1f1f',    // Darker tertiary
+        elevated: '#0a0a0a',    // Near-black for elevated containers
     },
     text: {
         primary: '#f5f5f5',
         secondary: '#a3a3a3',
         tertiary: '#737373',
-        inverse: '#1a1a1a',
+        inverse: '#0d0d0d',
     },
     border: {
-        DEFAULT: '#3f3f3f',
-        light: '#525252',
+        DEFAULT: '#2a2a2a',     // Subtler borders
+        light: '#3a3a3a',
     },
 };
 

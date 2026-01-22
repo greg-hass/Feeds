@@ -8,6 +8,7 @@ export interface FeedState {
     totalUnread: number;
     isLoading: boolean;
     refreshProgress: { total: number; completed: number; currentTitle: string } | null;
+    lastRefreshNewArticles: number | null;
 
     fetchFeeds: () => Promise<void>;
     fetchFolders: () => Promise<void>;

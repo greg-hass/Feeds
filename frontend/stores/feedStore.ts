@@ -21,6 +21,7 @@ export const useFeedStore = create<FeedState>()(
             totalUnread: 0,
             isLoading: false,
             refreshProgress: null,
+            lastRefreshNewArticles: null,
 
             fetchFeeds: async () => {
                 set({ isLoading: true });
@@ -85,10 +86,10 @@ export const useFeedStore = create<FeedState>()(
             },
 
             refreshAllFeeds: async (ids) => {
-                set({ isLoading: true });
+                set({ isLoading: true, lastRefreshNewArticles: null });
                 const controller = new AbortController();
                 refreshAbortController = controller;
-                let hasNewArticles = false;
+                let totalNewArticles = 0;
                 const articleStore = useArticleStore.getState();
                 const estimatedTotal = ids?.length ?? get().feeds.length;
                 set({
@@ -128,7 +129,7 @@ export const useFeedStore = create<FeedState>()(
                                 }
                             } else if (event.type === 'feed_complete' || event.type === 'feed_error') {
                                 if (event.type === 'feed_complete' && event.new_articles > 0) {
-                                    hasNewArticles = true;
+                                    totalNewArticles += event.new_articles;
                                     debouncedRefresh();
                                 }
 
@@ -184,7 +185,11 @@ export const useFeedStore = create<FeedState>()(
                     if (refreshAbortController === controller) {
                         refreshAbortController = null;
                     }
-                    set({ isLoading: false, refreshProgress: null });
+                    set({
+                        isLoading: false,
+                        refreshProgress: null,
+                        lastRefreshNewArticles: totalNewArticles > 0 ? totalNewArticles : null
+                    });
                 }
             },
 

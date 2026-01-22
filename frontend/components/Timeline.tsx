@@ -8,6 +8,7 @@ import { TimelineSkeleton } from './Skeleton';
 import FilterPills from './FilterPills';
 import TimelineHeader from './TimelineHeader';
 import TimelineArticle from './TimelineArticle';
+import NewArticlesPill from './NewArticlesPill';
 import { timelineStyles } from './Timeline.styles';
 
 interface TimelineProps {
@@ -73,6 +74,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
 
     return (
         <View style={s.container}>
+            <NewArticlesPill />
             <TimelineHeader
                 title={headerTitle}
                 timeLeft={timeLeft}
