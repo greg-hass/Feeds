@@ -58,7 +58,16 @@ function categorizeRefreshError(err: unknown): { category: string; message: stri
 export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
     let refreshIntervalMinutes = feed.refresh_interval_minutes;
     try {
-        const feedData = await parseFeed(feed.url);
+        // Check if we already have a valid icon to avoid expensive re-fetching
+        const existingIcon = queryOne<{
+            icon_url: string | null;
+            icon_cached_path: string | null;
+            icon_cached_content_type: string | null;
+        }>('SELECT icon_url, icon_cached_path, icon_cached_content_type FROM feeds WHERE id = ?', [feed.id]);
+
+        const hasValidIcon = existingIcon?.icon_url && !isGenericIconUrl(existingIcon.icon_url);
+        const feedData = await parseFeed(feed.url, { skipIconFetch: !!hasValidIcon });
+        
         let newArticles = 0;
 
         // Get user settings for this feed
@@ -131,7 +140,7 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
         newArticles = insertedCount;
 
         if (thumbnailUpdates.length > 0) {
-            const THUMBNAIL_BATCH_SIZE = 8;
+            const THUMBNAIL_BATCH_SIZE = 25;
             for (let i = 0; i < thumbnailUpdates.length; i += THUMBNAIL_BATCH_SIZE) {
                 const batch = thumbnailUpdates.slice(i, i + THUMBNAIL_BATCH_SIZE);
                 await Promise.all(batch.map(async (item) => {
@@ -150,7 +159,7 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
         // Fetch full content if enabled (outside of main transaction)
         if (shouldFetchContent && contentUpdates.length > 0) {
             const updateContentStmt = database.prepare('UPDATE articles SET readability_content = ? WHERE id = ?');
-            const CONTENT_BATCH_SIZE = 5; // Smaller batch for heavier content fetching
+            const CONTENT_BATCH_SIZE = 10; // Increased batch size for faster content fetching
 
             for (let i = 0; i < contentUpdates.length; i += CONTENT_BATCH_SIZE) {
                 const batch = contentUpdates.slice(i, i + CONTENT_BATCH_SIZE);
@@ -172,11 +181,7 @@ export async function refreshFeed(feed: FeedToRefresh): Promise<RefreshResult> {
 
 
         // Update feed metadata on success
-        const existingIcon = queryOne<{
-            icon_url: string | null;
-            icon_cached_path: string | null;
-            icon_cached_content_type: string | null;
-        }>('SELECT icon_url, icon_cached_path, icon_cached_content_type FROM feeds WHERE id = ?', [feed.id]);
+        // Use the existingIcon from the top of the function
 
         const iconCandidate = feedData.favicon;
         const shouldUpdateIconUrl = !!iconCandidate && (!existingIcon?.icon_url || isGenericIconUrl(existingIcon.icon_url));

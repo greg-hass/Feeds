@@ -193,7 +193,7 @@ export async function fetchRedditIcon(subreddit: string): Promise<string | null>
     }
 }
 
-export async function parseFeed(url: string): Promise<ParsedFeed> {
+export async function parseFeed(url: string, options?: { skipIconFetch?: boolean }): Promise<ParsedFeed> {
     // Validate URL first
     validateUrl(url);
     
@@ -334,39 +334,27 @@ export async function parseFeed(url: string): Promise<ParsedFeed> {
         // Post-processing for specific feed types (async icon fetching)
         const type = detectFeedType(url, feed);
 
+        if (options?.skipIconFetch) {
+            return feed;
+        }
+
         if (type === 'youtube') {
-            // Always fetch YouTube channel icon (don't use generic YouTube favicon)
-            // 1. Try to get channel ID from feed URL parameter (most reliable)
+            // ... fetch youtube icon ...
             let channelId = null;
             try {
                 const urlObj = new URL(url);
                 channelId = urlObj.searchParams.get('channel_id');
             } catch { }
 
-            // 2. Fallback: Use metadata channel ID (may need UC prefix added)
             if (!channelId && feed.youtubeChannelId) {
-                // If metadata doesn't have UC prefix, add it
-                if (!feed.youtubeChannelId.startsWith('UC')) {
-                    channelId = 'UC' + feed.youtubeChannelId;
-                } else {
-                    channelId = feed.youtubeChannelId;
-                }
+                channelId = feed.youtubeChannelId.startsWith('UC') ? feed.youtubeChannelId : 'UC' + feed.youtubeChannelId;
             }
 
             if (channelId) {
-                console.log(`[YouTube Icon] Fetching icon for channel: ${channelId}`);
                 const icon = await fetchYouTubeIcon(channelId);
-                if (icon) {
-                    console.log(`[YouTube Icon] ✓ Found icon for ${channelId}: ${icon.substring(0, 50)}...`);
-                    feed.favicon = icon;
-                } else {
-                    console.log(`[YouTube Icon] ✗ No icon found for ${channelId}, using fallback`);
-                }
-            } else {
-                console.log(`[YouTube Icon] ✗ No channel ID found for feed`);
+                if (icon) feed.favicon = icon;
             }
         } else if (type === 'reddit') {
-            // Link format: https://www.reddit.com/r/subreddit/
             const subredditMatch = feed.link?.match(/\/r\/([^\/]+)/);
             if (subredditMatch) {
                 const icon = await fetchRedditIcon(subredditMatch[1]);
