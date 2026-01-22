@@ -142,7 +142,9 @@ const styles = (isDesktop: boolean, isReaderRoute: boolean, colors: any) => Styl
             height: '100dvh' as any,
             minHeight: '100dvh' as any,
             paddingTop: 'env(safe-area-inset-top)' as any,
-            paddingBottom: 'env(safe-area-inset-bottom)' as any,
+            // Only add bottom padding on desktop (no mobile nav)
+            // Mobile nav handles its own safe area padding
+            ...(isDesktop && { paddingBottom: 'env(safe-area-inset-bottom)' as any }),
         }),
     },
     timelinePane: {

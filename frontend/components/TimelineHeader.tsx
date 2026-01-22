@@ -32,7 +32,6 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
                 <Text style={s.headerTitle} numberOfLines={1}>{title}</Text>
                 {timeLeft && (
                     <View style={s.timerPill}>
-                        {isRefreshing && <ActivityIndicator size={12} color={colors.primary.DEFAULT} />}
                         <Text style={s.timerText}>{timeLeft}</Text>
                     </View>
                 )}

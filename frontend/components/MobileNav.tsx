@@ -88,7 +88,7 @@ const styles = (colors: any) => {
     return StyleSheet.create({
     container: {
         flexDirection: 'row',
-        backgroundColor: colors.background.secondary,
+        backgroundColor: colors.background.elevated,
         borderTopWidth: 1,
         borderTopColor: colors.border.DEFAULT,
         paddingBottom: bottomPadding,

@@ -94,25 +94,25 @@ export const DiscoveryPage = () => {
     return (
         <ScrollView style={s.container} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
             <View style={s.header}>
-                <View>
-                    <View style={s.headerBadge}>
-                        <Zap size={12} color={colors.primary.DEFAULT} fill={colors.primary.DEFAULT} />
-                        <Text style={s.badgeText}>SMART RECOMMENDATIONS</Text>
-                    </View>
-                    <Text style={s.title}>Discovery</Text>
-                    <Text style={s.subtitle}>AI-curated feeds matching your reading habits</Text>
+                <View style={s.headerBadge}>
+                    <Zap size={12} color={colors.primary.DEFAULT} fill={colors.primary.DEFAULT} />
+                    <Text style={s.badgeText}>SMART RECOMMENDATIONS</Text>
                 </View>
-                <TouchableOpacity
-                    onPress={handleRefresh}
-                    disabled={isRefreshing}
-                    style={s.refreshButton}
-                >
-                    {isRefreshing ? (
-                        <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
-                    ) : (
-                        <RefreshCw size={24} color={colors.primary.DEFAULT} />
-                    )}
-                </TouchableOpacity>
+                <View style={s.titleRow}>
+                    <Text style={s.title}>Discovery</Text>
+                    <TouchableOpacity
+                        onPress={handleRefresh}
+                        disabled={isRefreshing}
+                        style={s.refreshButton}
+                    >
+                        {isRefreshing ? (
+                            <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
+                        ) : (
+                            <RefreshCw size={20} color={colors.primary.DEFAULT} />
+                        )}
+                    </TouchableOpacity>
+                </View>
+                <Text style={s.subtitle}>AI-curated feeds matching your reading habits</Text>
             </View>
 
             {interests.length > 0 && (
@@ -216,20 +216,23 @@ const styles = (colors: any) => StyleSheet.create({
         padding: spacing.xl,
     },
     header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
         marginBottom: spacing.xxl,
     },
     headerBadge: {
         flexDirection: 'row',
         alignItems: 'center',
+        alignSelf: 'flex-start',
         gap: 6,
         backgroundColor: colors.primary.DEFAULT + '15',
         paddingHorizontal: 10,
         paddingVertical: 4,
         borderRadius: borderRadius.sm,
         marginBottom: spacing.sm,
+    },
+    titleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.md,
     },
     badgeText: {
         fontSize: 10,
@@ -250,16 +253,11 @@ const styles = (colors: any) => StyleSheet.create({
         fontWeight: '600',
     },
     refreshButton: {
-        padding: spacing.md,
-        borderRadius: borderRadius.xl,
+        padding: spacing.sm,
+        borderRadius: borderRadius.full,
         backgroundColor: colors.background.elevated,
         borderWidth: 1,
         borderColor: colors.border.DEFAULT,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 2,
     },
     sectionHeader: {
         fontSize: 12,
