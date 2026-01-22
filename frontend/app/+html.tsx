@@ -29,7 +29,7 @@ export default function Root({ children }: PropsWithChildren) {
         />
 
         {/* iOS PWA icons and naming */}
-        <link rel="apple-touch-icon" href="/assets/icon.png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <meta name="apple-mobile-web-app-title" content="Feeds" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta
