@@ -22,12 +22,23 @@ export function RefreshProgressDialog({ visible, total, completed, currentTitle,
     // Animation
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(20)).current;
+    const spinAnim = useRef(new Animated.Value(0)).current;
 
     const progress = total > 0 ? completed / total : 0;
     const percentage = Math.round(progress * 100);
 
     useEffect(() => {
         if (visible) {
+            // Reset and start spinning
+            spinAnim.setValue(0);
+            Animated.loop(
+                Animated.timing(spinAnim, {
+                    toValue: 1,
+                    duration: 1500,
+                    useNativeDriver: true,
+                })
+            ).start();
+
             Animated.parallel([
                 Animated.timing(fadeAnim, {
                     toValue: 1,
@@ -41,6 +52,7 @@ export function RefreshProgressDialog({ visible, total, completed, currentTitle,
                 })
             ]).start();
         } else {
+            spinAnim.stopAnimation();
             Animated.parallel([
                 Animated.timing(fadeAnim, {
                     toValue: 0,
@@ -56,6 +68,11 @@ export function RefreshProgressDialog({ visible, total, completed, currentTitle,
         }
     }, [visible]);
 
+    const spin = spinAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['0deg', '360deg']
+    });
+
     if (!visible && (fadeAnim as any)._value === 0) return null;
 
     const s = styles(colors, isDesktop, isMobileWeb, insets);
@@ -70,10 +87,15 @@ export function RefreshProgressDialog({ visible, total, completed, currentTitle,
                 }
             ]}
         >
+            {/* Top Accent Bar */}
+            <View style={s.accentBar} />
+            
             <View style={s.content}>
                 <View style={s.header}>
                     <View style={s.titleRow}>
-                        <RefreshCw size={14} color={colors.primary.DEFAULT} style={s.spinIcon} />
+                        <Animated.View style={{ transform: [{ rotate: spin }] }}>
+                            <RefreshCw size={14} color={colors.primary.DEFAULT} />
+                        </Animated.View>
                         <Text style={s.title}>Refreshing Feeds</Text>
                     </View>
                     <View style={s.headerRight}>
@@ -116,28 +138,36 @@ const styles = (colors: any, isDesktop: boolean, isMobileWeb: boolean, insets: a
         right: isDesktop ? 40 : spacing.lg,
         left: isDesktop ? undefined : spacing.lg,
         // Sizing
-        width: isDesktop ? 320 : 'auto',
+        width: isDesktop ? 340 : 'auto',
         // Aesthetics
-        backgroundColor: colors.background.elevated,
+        backgroundColor: colors.background.secondary, // Use secondary for better contrast
         borderRadius: borderRadius.lg,
-        borderWidth: 1,
-        borderColor: colors.border.DEFAULT,
+        borderWidth: 1.5,
+        borderColor: colors.primary.DEFAULT + '60', // Emerald glow border
+        overflow: 'hidden',
         // Solid depth shadow
         ...Platform.select({
             web: {
-                boxShadow: '0 8px 30px rgba(0,0,0,0.15)',
+                boxShadow: `0 12px 40px rgba(0,0,0,0.4), 0 0 15px ${colors.primary.DEFAULT}10`,
             },
             default: {
-                shadowColor: '#000',
+                shadowColor: colors.primary.DEFAULT,
                 shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: 0.2,
-                shadowRadius: 16,
-                elevation: 10,
+                shadowOpacity: 0.3,
+                shadowRadius: 20,
+                elevation: 15,
             }
         }),
     },
+    accentBar: {
+        height: 3,
+        width: '100%',
+        backgroundColor: colors.primary.DEFAULT,
+        opacity: 0.8,
+    },
     content: {
         padding: spacing.md,
+        paddingTop: spacing.sm,
     },
     header: {
         flexDirection: 'row',
@@ -159,32 +189,32 @@ const styles = (colors: any, isDesktop: boolean, isMobileWeb: boolean, insets: a
         fontSize: 13,
         fontWeight: '800',
         color: colors.text.primary,
-        letterSpacing: -0.2,
+        letterSpacing: -0.1,
     },
     countText: {
         fontSize: 11,
-        fontWeight: '700',
+        fontWeight: '800',
         color: colors.primary.DEFAULT,
-        backgroundColor: colors.primary.DEFAULT + '15',
-        paddingHorizontal: 6,
+        backgroundColor: colors.primary.DEFAULT + '20',
+        paddingHorizontal: 8,
         paddingVertical: 2,
-        borderRadius: 4,
+        borderRadius: 6,
     },
     cancelButton: {
-        width: 20,
-        height: 20,
-        borderRadius: 10,
+        width: 22,
+        height: 22,
+        borderRadius: 11,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: colors.background.tertiary,
     },
     progressBarContainer: {
-        height: 4,
+        height: 6,
         width: '100%',
         backgroundColor: colors.background.tertiary,
-        borderRadius: 2,
+        borderRadius: 3,
         overflow: 'hidden',
-        marginBottom: spacing.xs,
+        marginBottom: spacing.sm,
     },
     progressBar: {
         flex: 1,
@@ -195,11 +225,8 @@ const styles = (colors: any, isDesktop: boolean, isMobileWeb: boolean, insets: a
     },
     currentFeed: {
         fontSize: 11,
-        color: colors.text.tertiary,
-        fontWeight: '500',
+        color: colors.text.secondary,
+        fontWeight: '600',
+        opacity: 0.9,
     },
-    spinIcon: {
-        // We can't easily rotate with CSS properties in react-native styles without extra logic, 
-        // but the ActivityIndicator is a fallback if needed.
-    }
 });
