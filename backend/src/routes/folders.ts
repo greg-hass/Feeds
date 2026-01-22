@@ -59,32 +59,32 @@ export async function foldersRoutes(app: FastifyInstance) {
             podcast: 'Podcasts',
         };
 
-        for (const type of types) {
-            const result = queryOne<{ unread_count: number }>(
-                `SELECT COUNT(*) as unread_count FROM articles a
-         JOIN feeds f ON f.id = a.feed_id
-         LEFT JOIN read_state rs ON rs.article_id = a.id AND rs.user_id = ?
-         WHERE f.user_id = ? AND f.type = ? AND f.deleted_at IS NULL 
-         AND (rs.is_read IS NULL OR rs.is_read = 0)`,
-                [userId, userId, type]
-            );
+        // Single query with GROUP BY to get all counts at once (was 5 separate queries)
+        const typeCounts = queryAll<{ type: string; unread_count: number }>(
+            `SELECT f.type, COUNT(*) as unread_count
+             FROM articles a
+             JOIN feeds f ON f.id = a.feed_id
+             LEFT JOIN read_state rs ON rs.article_id = a.id AND rs.user_id = ?
+             WHERE f.user_id = ? AND f.deleted_at IS NULL
+             AND (rs.is_read IS NULL OR rs.is_read = 0)
+             GROUP BY f.type`,
+            [userId, userId]
+        );
 
+        // Create a map for O(1) lookups
+        const typeCountMap = new Map(typeCounts.map(tc => [tc.type, tc.unread_count]));
+
+        // Build smart folders with counts
+        for (const type of types) {
             smartFolders.push({
                 type,
                 name: displayNames[type] || type,
-                unread_count: result?.unread_count || 0,
+                unread_count: typeCountMap.get(type) || 0,
             });
         }
 
-        // Also include "All" totals
-        const allUnread = queryOne<{ unread_count: number }>(
-            `SELECT COUNT(*) as unread_count FROM articles a
-       JOIN feeds f ON f.id = a.feed_id
-       LEFT JOIN read_state rs ON rs.article_id = a.id AND rs.user_id = ?
-       WHERE f.user_id = ? AND f.deleted_at IS NULL 
-       AND (rs.is_read IS NULL OR rs.is_read = 0)`,
-            [userId, userId]
-        );
+        // Calculate "All" total from the counts we already have
+        const allUnread = { unread_count: typeCounts.reduce((sum, tc) => sum + tc.unread_count, 0) };
 
         return {
             folders,

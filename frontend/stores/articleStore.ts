@@ -108,10 +108,26 @@ export const useArticleStore = create<ArticleState>()(
 
                 try {
                     const { article } = await api.getArticle(id);
-                    set((state) => ({
-                        currentArticle: article,
-                        contentCache: { ...state.contentCache, [id]: article }
-                    }));
+
+                    // LRU cache eviction: limit cache to 50 most recent articles
+                    set((state) => {
+                        const newCache = { ...state.contentCache, [id]: article };
+                        const cacheKeys = Object.keys(newCache);
+
+                        // Evict oldest entries if cache exceeds limit
+                        const MAX_CACHE_SIZE = 50;
+                        if (cacheKeys.length > MAX_CACHE_SIZE) {
+                            // Remove oldest entries (keep most recent 50)
+                            // In a true LRU, we'd track access time, but for simplicity we just limit size
+                            const keysToRemove = cacheKeys.slice(0, cacheKeys.length - MAX_CACHE_SIZE);
+                            keysToRemove.forEach(key => delete newCache[parseInt(key)]);
+                        }
+
+                        return {
+                            currentArticle: article,
+                            contentCache: newCache
+                        };
+                    });
                 } catch (error) {
                     handleError(error, { context: 'fetchArticle', showToast: false });
                     // Try to find in existing articles list

@@ -110,7 +110,7 @@ export const useFeedStore = create<FeedState>()(
                 };
 
                 let lastProgressUpdate = 0;
-                const PROGRESS_THROTTLE_MS = 100;
+                const PROGRESS_THROTTLE_MS = 300; // Reduced from 100ms to reduce UI re-renders
 
                 try {
                     await api.refreshFeedsWithProgress(
