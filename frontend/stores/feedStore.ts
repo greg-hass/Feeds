@@ -118,8 +118,6 @@ export const useFeedStore = create<FeedState>()(
                     }
                 };
 
-                let lastProgressUpdate = 0;
-                const PROGRESS_THROTTLE_MS = 10; // Extremely frequent for ultra-smooth title flickering
 
                 try {
                     await api.refreshFeedsWithProgress(
@@ -130,12 +128,10 @@ export const useFeedStore = create<FeedState>()(
                                 set({ refreshProgress: { total: event.total_feeds, completed: 0, currentTitle: '' } });
                             } else if (event.type === 'feed_refreshing') {
                                 // Show every feed name as it starts
-                                if (now - lastProgressUpdate > PROGRESS_THROTTLE_MS) {
-                                    set((state) => ({
-                                        refreshProgress: state.refreshProgress ? { ...state.refreshProgress, currentTitle: event.title } : null
-                                    }));
-                                    lastProgressUpdate = now;
-                                }
+                                // Show every feed name as it starts
+                                set((state) => ({
+                                    refreshProgress: state.refreshProgress ? { ...state.refreshProgress, currentTitle: event.title } : null
+                                }));
                             } else if (event.type === 'feed_complete' || event.type === 'feed_error') {
                                 if (event.type === 'feed_complete' && event.new_articles > 0) {
                                     totalNewArticles += event.new_articles;
@@ -160,7 +156,6 @@ export const useFeedStore = create<FeedState>()(
                                             : f
                                     )
                                 }));
-                                lastProgressUpdate = now;
                             }
                         },
                         (error) => {
