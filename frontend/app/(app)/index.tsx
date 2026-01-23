@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, startTransition } from 'react';
 import { View, TouchableOpacity, StyleSheet, useWindowDimensions, Animated, AppState, AppStateStatus } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useArticleStore, useFeedStore } from '@/stores';
@@ -42,9 +42,12 @@ export default function ArticleListScreen() {
                 console.log('Skipping foreground refresh, data is still fresh');
                 return;
             }
-            fetchFeeds();
-            fetchFolders();
-            fetchArticles(true);
+            // Wrap state updates in startTransition to avoid hydration errors
+            startTransition(() => {
+                fetchFeeds();
+                fetchFolders();
+                fetchArticles(true);
+            });
             lastRefreshRef.current = now;
         };
 
