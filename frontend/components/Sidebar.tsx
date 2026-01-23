@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, ActivityIndicator, Platform, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFeedStore, useArticleStore } from '@/stores';
 import {
@@ -25,7 +25,9 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     } = useFeedStore();
     const { filter, setFilter } = useArticleStore();
 
-    const s = styles(colors);
+    const { width } = useWindowDimensions();
+    const isDesktop = width >= 1024;
+    const s = styles(colors, isDesktop);
 
     const handleSmartFolderPress = (type: string) => {
         setFilter({ type, feed_id: undefined, folder_id: undefined });
@@ -66,8 +68,9 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                     <Rss size={24} color={colors.primary.DEFAULT} />
                     <Text style={s.logoText}>Feeds</Text>
                     {isBackgroundSyncing && (
-                        <View style={s.syncIndicator}>
-                            <View style={s.syncDot} />
+                        <View style={s.refreshIndicator}>
+                            <View style={s.refreshDot} />
+                            {isDesktop && <Text style={s.refreshText}>Refreshing...</Text>}
                         </View>
                     )}
                 </View>
@@ -286,7 +289,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     );
 }
 
-const styles = (colors: any) => StyleSheet.create({
+const styles = (colors: any, isDesktop: boolean) => StyleSheet.create({
     container: {
         width: 280,
         minWidth: 280,
@@ -470,15 +473,22 @@ const styles = (colors: any) => StyleSheet.create({
         fontWeight: '600',
         color: colors.text.primary,
     },
-    syncIndicator: {
+    refreshIndicator: {
         marginLeft: 8,
-        justifyContent: 'center',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
     },
-    syncDot: {
+    refreshDot: {
         width: 8,
         height: 8,
         borderRadius: 4,
         backgroundColor: colors.primary.DEFAULT,
         opacity: 0.8,
+    },
+    refreshText: {
+        fontSize: 12,
+        color: colors.text.tertiary,
+        fontStyle: 'italic',
     },
 });

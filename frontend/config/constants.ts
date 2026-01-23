@@ -44,8 +44,8 @@ export const FETCH = {
 // ============================================================================
 
 export const SYNC = {
-    /** Background sync interval in milliseconds (5 minutes) */
-    SYNC_INTERVAL: 5 * 60 * 1000,
+    /** Background sync interval in milliseconds (30 seconds) */
+    SYNC_INTERVAL: 30 * 1000,
 
     /** Sync cursor storage key */
     CURSOR_KEY: 'sync_cursor',

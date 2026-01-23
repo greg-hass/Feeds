@@ -119,7 +119,7 @@ export const useFeedStore = create<FeedState>()(
                 };
 
                 let lastProgressUpdate = 0;
-                const PROGRESS_THROTTLE_MS = 50; // High frequency for smooth updates
+                const PROGRESS_THROTTLE_MS = 10; // Extremely frequent for ultra-smooth title flickering
 
                 try {
                     await api.refreshFeedsWithProgress(

@@ -129,7 +129,7 @@ export async function feedsStreamRoutes(app: FastifyInstance) {
 
             // Refresh feeds in larger batches for speed (optimizations allow higher concurrency)
             // Icon lookups are pre-fetched, content is lazy-loaded, thumbnails are fire-and-forget
-            const BATCH_SIZE = 50; // Increased from 20
+            const BATCH_SIZE = 10; // Reduced from 50 for smoother UI updates
 
             for (let i = 0; i < feeds.length; i += BATCH_SIZE) {
                 if (isCancelled) break;
