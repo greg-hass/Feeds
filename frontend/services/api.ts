@@ -45,6 +45,25 @@ class ApiClient {
 
         return response.json();
     }
+    async get<T>(endpoint: string, options: Omit<RequestOptions, 'method'> = {}): Promise<T> {
+        return this.request<T>(endpoint, { ...options, method: 'GET' });
+    }
+
+    async post<T>(endpoint: string, body?: unknown, options: Omit<RequestOptions, 'method' | 'body'> = {}): Promise<T> {
+        return this.request<T>(endpoint, { ...options, method: 'POST', body });
+    }
+
+    async patch<T>(endpoint: string, body?: unknown, options: Omit<RequestOptions, 'method' | 'body'> = {}): Promise<T> {
+        return this.request<T>(endpoint, { ...options, method: 'PATCH', body });
+    }
+
+    async put<T>(endpoint: string, body?: unknown, options: Omit<RequestOptions, 'method' | 'body'> = {}): Promise<T> {
+        return this.request<T>(endpoint, { ...options, method: 'PUT', body });
+    }
+
+    async delete<T>(endpoint: string, options: Omit<RequestOptions, 'method'> = {}): Promise<T> {
+        return this.request<T>(endpoint, { ...options, method: 'DELETE' });
+    }
 
     // Feeds
     async getFeeds() {

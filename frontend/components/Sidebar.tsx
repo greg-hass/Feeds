@@ -4,7 +4,7 @@ import { useFeedStore, useArticleStore } from '@/stores';
 import {
     Rss, Youtube, MessageSquare, Headphones,
     Folder, Search, Settings,
-    Plus, RefreshCw, Bookmark, Sparkles, BookOpen, Pause
+    Plus, RefreshCw, Bookmark, Sparkles, BookOpen, Pause, BarChart3
 } from 'lucide-react-native';
 import { useColors, borderRadius, spacing, shadows } from '@/theme';
 import { formatCount } from '@/utils/formatters';
@@ -137,6 +137,17 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 >
                     <BookOpen size={18} color={colors.secondary.DEFAULT} />
                     <Text style={s.navItemText}>Daily Digest</Text>
+                </TouchableOpacity>
+
+                {/* Analytics */}
+                <TouchableOpacity
+                    style={s.navItem}
+                    onPress={() => { onNavigate?.(); router.push('/(app)/analytics'); }}
+                    accessibilityLabel="View analytics dashboard"
+                    accessibilityRole="link"
+                >
+                    <BarChart3 size={18} color={colors.primary.DEFAULT} />
+                    <Text style={s.navItemText}>Analytics</Text>
                 </TouchableOpacity>
 
                 {/* Smart Folders */}

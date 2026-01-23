@@ -14,6 +14,8 @@ import { settingsRoutes } from './routes/settings.js';
 import { digestRoutes } from './routes/digest.js';
 import { iconsRoutes } from './routes/icons.js';
 import { thumbnailsRoutes } from './routes/thumbnails.js';
+import { analyticsRoutes } from './routes/analytics.js';
+import { rulesRoutes } from './routes/rules.js';
 import { startScheduler, stopScheduler } from './services/scheduler.js';
 import { ensureIconCacheDir } from './services/icon-cache.js';
 import { ensureThumbnailCacheDir } from './services/thumbnail-cache.js';
@@ -87,6 +89,8 @@ export async function buildApp() {
     await app.register(digestRoutes, { prefix: '/api/v1/digest' });
     await app.register(iconsRoutes, { prefix: '/api/v1/icons' });
     await app.register(thumbnailsRoutes, { prefix: '/api/v1/thumbnails' });
+    await app.register(analyticsRoutes, { prefix: '/api/v1/analytics' });
+    await app.register(rulesRoutes, { prefix: '/api/v1/rules' });
 
     return app;
 }
