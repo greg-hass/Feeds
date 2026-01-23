@@ -20,7 +20,7 @@ export const useFeedStore = create<FeedState>()(
             smartFolders: [],
             totalUnread: 0,
             isLoading: false,
-            isBackgroundSyncing: false,
+            isBackgroundRefreshing: false,
             refreshProgress: null,
             lastRefreshNewArticles: null,
 
@@ -291,7 +291,7 @@ export const useFeedStore = create<FeedState>()(
                     return {
                         feeds: newFeeds,
                         folders: newFolders,
-                        isBackgroundSyncing: isRefreshing ?? state.isBackgroundSyncing
+                        isBackgroundRefreshing: isRefreshing ?? state.isBackgroundRefreshing
                     };
                 });
             },

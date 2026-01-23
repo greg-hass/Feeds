@@ -4,7 +4,7 @@ import { useFeedStore, useArticleStore } from '@/stores';
 import {
     Rss, Youtube, MessageSquare, Headphones,
     Folder, Search, Settings,
-    Plus, RefreshCw, Bookmark, Sparkles, BookOpen, Pause, BarChart3
+    Plus, RefreshCw, Bookmark, Sparkles, BookOpen, Pause, BarChart3, Zap
 } from 'lucide-react-native';
 import { useColors, borderRadius, spacing, shadows } from '@/theme';
 import { formatCount } from '@/utils/formatters';
@@ -21,7 +21,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     const colors = useColors();
     const {
         feeds, folders, smartFolders, totalUnread, fetchFeeds, fetchFolders,
-        isLoading, isBackgroundSyncing, refreshAllFeeds
+        isLoading, isBackgroundRefreshing, refreshAllFeeds
     } = useFeedStore();
     const { filter, setFilter } = useArticleStore();
 
@@ -67,7 +67,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 <View style={s.logoRow}>
                     <Rss size={24} color={colors.primary.DEFAULT} />
                     <Text style={s.logoText}>Feeds</Text>
-                    {isBackgroundSyncing && (
+                    {isBackgroundRefreshing && (
                         <View style={s.refreshIndicator}>
                             <View style={s.refreshDot} />
                             {isDesktop && <Text style={s.refreshText}>Refreshing...</Text>}
@@ -159,6 +159,17 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 >
                     <BarChart3 size={18} color={colors.primary.DEFAULT} />
                     <Text style={s.navItemText}>Analytics</Text>
+                </TouchableOpacity>
+
+                {/* Automation Rules */}
+                <TouchableOpacity
+                    style={s.navItem}
+                    onPress={() => { onNavigate?.(); router.push('/(app)/rules' as any); }}
+                    accessibilityLabel="Manage automation rules"
+                    accessibilityRole="link"
+                >
+                    <Zap size={18} color={colors.warning.DEFAULT} />
+                    <Text style={s.navItemText}>Automation</Text>
                 </TouchableOpacity>
 
                 {/* Smart Folders */}

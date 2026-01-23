@@ -2,6 +2,22 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { queryAll } from '../db/index.js';
 import { rateLimiters } from '../middleware/rate-limit.js';
+import {
+    searchArticles,
+    countSearchResults,
+    getSavedSearches,
+    createSavedSearch,
+    updateSavedSearch,
+    deleteSavedSearch,
+    incrementSavedSearchUseCount,
+    getSearchHistory,
+    addSearchHistory,
+    clearSearchHistory,
+    getPopularSearches,
+    getAllTags,
+    getAllAuthors,
+    SearchFilters,
+} from '../services/search.js';
 
 const searchSchema = z.object({
     q: z.string().min(1),
@@ -11,6 +27,42 @@ const searchSchema = z.object({
     folder_id: z.coerce.number().optional(),
     limit: z.coerce.number().min(1).max(100).default(50),
     cursor: z.string().optional(),
+});
+
+const advancedSearchSchema = z.object({
+    query: z.string().optional(),
+    feed_ids: z.array(z.number()).optional(),
+    folder_ids: z.array(z.number()).optional(),
+    author: z.string().optional(),
+    tags: z.array(z.string()).optional(),
+    is_read: z.boolean().optional(),
+    is_bookmarked: z.boolean().optional(),
+    has_video: z.boolean().optional(),
+    has_audio: z.boolean().optional(),
+    date_from: z.string().optional(),
+    date_to: z.string().optional(),
+    type: z.string().optional(),
+    limit: z.number().int().min(1).max(100).default(50),
+    offset: z.number().int().min(0).default(0),
+});
+
+const savedSearchSchema = z.object({
+    name: z.string().min(1).max(100),
+    query: z.string(),
+    filters: z.object({
+        query: z.string().optional(),
+        feed_ids: z.array(z.number()).optional(),
+        folder_ids: z.array(z.number()).optional(),
+        author: z.string().optional(),
+        tags: z.array(z.string()).optional(),
+        is_read: z.boolean().optional(),
+        is_bookmarked: z.boolean().optional(),
+        has_video: z.boolean().optional(),
+        has_audio: z.boolean().optional(),
+        date_from: z.string().optional(),
+        date_to: z.string().optional(),
+        type: z.string().optional(),
+    }),
 });
 
 export async function searchRoutes(app: FastifyInstance) {
@@ -140,5 +192,195 @@ export async function searchRoutes(app: FastifyInstance) {
             total: countResult[0]?.count || 0,
             next_cursor: nextCursor,
         };
+    });
+
+    // ========================================================================
+    // ADVANCED SEARCH
+    // ========================================================================
+
+    /**
+     * Advanced search with multiple filters
+     * POST /search/advanced
+     */
+    app.post('/advanced', async (request: FastifyRequest) => {
+        const body = advancedSearchSchema.parse(request.body);
+
+        const { limit, offset, ...filters } = body;
+        const results = searchArticles(userId, filters as SearchFilters, limit, offset);
+        const total = countSearchResults(userId, filters as SearchFilters);
+
+        // Add to search history
+        if (filters.query || Object.keys(filters).length > 0) {
+            addSearchHistory(userId, filters.query || '', filters as SearchFilters, total);
+        }
+
+        return {
+            results,
+            pagination: {
+                total,
+                limit,
+                offset,
+                has_more: offset + results.length < total,
+            },
+        };
+    });
+
+    // ========================================================================
+    // SAVED SEARCHES
+    // ========================================================================
+
+    /**
+     * Get all saved searches
+     * GET /search/saved
+     */
+    app.get('/saved', async () => {
+        const searches = getSavedSearches(userId);
+        return { searches };
+    });
+
+    /**
+     * Create a saved search
+     * POST /search/saved
+     */
+    app.post('/saved', async (request: FastifyRequest) => {
+        const body = savedSearchSchema.parse(request.body);
+        const searchId = createSavedSearch(userId, body.name, body.query, body.filters as SearchFilters);
+
+        return {
+            id: searchId,
+            name: body.name,
+            query: body.query,
+            filters: body.filters,
+        };
+    });
+
+    /**
+     * Update a saved search
+     * PATCH /search/saved/:id
+     */
+    app.patch('/saved/:id', async (request: FastifyRequest<{ Params: { id: string } }>) => {
+        const searchId = parseInt(request.params.id);
+        if (isNaN(searchId)) {
+            return { error: 'Invalid search ID' };
+        }
+
+        const body = z.object({
+            name: z.string().min(1).max(100).optional(),
+            query: z.string().optional(),
+            filters: savedSearchSchema.shape.filters.optional(),
+        }).parse(request.body);
+
+        updateSavedSearch(searchId, userId, body as any);
+        return { success: true };
+    });
+
+    /**
+     * Delete a saved search
+     * DELETE /search/saved/:id
+     */
+    app.delete('/saved/:id', async (request: FastifyRequest<{ Params: { id: string } }>) => {
+        const searchId = parseInt(request.params.id);
+        if (isNaN(searchId)) {
+            return { error: 'Invalid search ID' };
+        }
+
+        deleteSavedSearch(searchId, userId);
+        return { success: true };
+    });
+
+    /**
+     * Execute a saved search
+     * GET /search/saved/:id/execute?limit=50&offset=0
+     */
+    app.get('/saved/:id/execute', async (request: FastifyRequest<{
+        Params: { id: string };
+        Querystring: { limit?: string; offset?: string };
+    }>) => {
+        const searchId = parseInt(request.params.id);
+        const limit = parseInt(request.query.limit || '50');
+        const offset = parseInt(request.query.offset || '0');
+
+        if (isNaN(searchId)) {
+            return { error: 'Invalid search ID' };
+        }
+
+        const searches = getSavedSearches(userId);
+        const savedSearch = searches.find(s => s.id === searchId);
+
+        if (!savedSearch) {
+            return { error: 'Saved search not found' };
+        }
+
+        // Increment use count
+        incrementSavedSearchUseCount(searchId, userId);
+
+        const results = searchArticles(userId, savedSearch.filters, limit, offset);
+        const total = countSearchResults(userId, savedSearch.filters);
+
+        return {
+            search: savedSearch,
+            results,
+            pagination: {
+                total,
+                limit,
+                offset,
+                has_more: offset + results.length < total,
+            },
+        };
+    });
+
+    // ========================================================================
+    // SEARCH HISTORY
+    // ========================================================================
+
+    /**
+     * Get search history
+     * GET /search/history?limit=50
+     */
+    app.get('/history', async (request: FastifyRequest<{ Querystring: { limit?: string } }>) => {
+        const limit = parseInt(request.query.limit || '50');
+        const history = getSearchHistory(userId, limit);
+        return { history };
+    });
+
+    /**
+     * Clear search history
+     * DELETE /search/history
+     */
+    app.delete('/history', async () => {
+        clearSearchHistory(userId);
+        return { success: true };
+    });
+
+    /**
+     * Get popular searches
+     * GET /search/popular?limit=10
+     */
+    app.get('/popular', async (request: FastifyRequest<{ Querystring: { limit?: string } }>) => {
+        const limit = parseInt(request.query.limit || '10');
+        const popular = getPopularSearches(userId, limit);
+        return { searches: popular };
+    });
+
+    // ========================================================================
+    // AUTOCOMPLETE
+    // ========================================================================
+
+    /**
+     * Get all tags for autocomplete
+     * GET /search/autocomplete/tags
+     */
+    app.get('/autocomplete/tags', async () => {
+        const tags = getAllTags(userId);
+        return { tags };
+    });
+
+    /**
+     * Get all authors for autocomplete
+     * GET /search/autocomplete/authors
+     */
+    app.get('/autocomplete/authors', async () => {
+        const authors = getAllAuthors(userId);
+        return { authors };
     });
 }

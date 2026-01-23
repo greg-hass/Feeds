@@ -7,7 +7,7 @@ export interface FeedState {
     smartFolders: SmartFolder[];
     totalUnread: number;
     isLoading: boolean;
-    isBackgroundSyncing: boolean;
+    isBackgroundRefreshing: boolean;
     refreshProgress: { total: number; completed: number; currentTitle: string } | null;
     lastRefreshNewArticles: number | null;
 
