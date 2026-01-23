@@ -163,9 +163,9 @@ export default function SettingsScreen() {
                     </View>
                 </View>
 
-                {/* Sync & Cleanup */}
+                {/* Refresh & Storage */}
                 <View style={s.section}>
-                    <Text style={s.sectionTitle}>Sync & Cleanup</Text>
+                    <Text style={s.sectionTitle}>Refresh & Storage</Text>
                     <View style={s.card}>
                         <View style={s.row}>
                             <View style={{ flex: 1 }}>
