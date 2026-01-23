@@ -2,6 +2,7 @@ import FeedParser, { Item } from 'feedparser';
 import { Readable } from 'stream';
 import type { FeedItemExtensions, FeedMetaExtensions } from '../types/rss-extensions.js';
 import { HTTP, CONTENT, STRINGS, MISC } from '../config/constants.js';
+import { fetchWithRetry } from './http.js';
 
 export type FeedType = 'rss' | 'youtube' | 'reddit' | 'podcast';
 
@@ -85,15 +86,14 @@ export async function fetchYouTubeIcon(channelId: string | null | undefined): Pr
     // Scrape the channel page (proven working approach)
     try {
         console.log(`[YouTube Icon] Making request to YouTube...`);
-        const response = await fetchWithRetry(`https://www.youtube.com/channel/${channelId}`, {
+        const response = await fetchWithRetry(`https://www.youtube.com/channel/${channelId}`, () => ({
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept-Language': 'en-US,en;q=0.9',
             },
-            retryOptions: {
-                maxRetries: 2,
-                retryCondition: (resp) => resp.status >= 500 || resp.status === 429,
-            }
+            signal: AbortSignal.timeout(HTTP.REQUEST_TIMEOUT),
+        }), {
+            retries: 2,
         });
         
         console.log(`[YouTube Icon] Response status: ${response.status}`);
@@ -171,13 +171,11 @@ export function extractHeroImage(content: string, meta: any = {}): string | null
 
 export async function fetchRedditIcon(subreddit: string): Promise<string | null> {
     try {
-        const response = await fetchWithRetry(`https://www.reddit.com/r/${subreddit}/about.json`, {
+        const response = await fetchWithRetry(`https://www.reddit.com/r/${subreddit}/about.json`, () => ({
             headers: { 'User-Agent': USER_AGENT },
             signal: AbortSignal.timeout(8000),
-            retryOptions: {
-                maxRetries: 1,
-                retryCondition: (resp) => resp.status >= 500 || resp.status === 429,
-            },
+        }), {
+            retries: 1,
         });
         if (!response.ok) return null;
         const data = await response.json();
@@ -206,28 +204,32 @@ export async function parseFeed(url: string, options?: { skipIconFetch?: boolean
     // Try with default user agent first, with retry
     let response: Response;
     try {
-        response = await fetchWithRetry(url, {
+        response = await fetchWithRetry(url, () => ({
             method: 'GET',
             headers: baseHeaders,
-            retryOptions: {
-                retryCondition: (resp) => resp.status >= 500 || resp.status === 429,
-            }
+            signal: AbortSignal.timeout(HTTP.REQUEST_TIMEOUT),
+        }), {
+            retries: MAX_RETRIES,
+            baseDelayMs: BASE_RETRY_DELAY,
+            maxDelayMs: MAX_RETRY_DELAY,
         });
     } catch (err) {
         // If default user agent failed and it's a YouTube feed, try with YouTube user agent
         if (isYouTubeFeed) {
             console.log(`[YouTube] Retrying with YouTube user agent for: ${url}`);
             try {
-                response = await fetchWithRetry(url, {
+                response = await fetchWithRetry(url, () => ({
                     method: 'GET',
                     headers: {
                         ...baseHeaders,
                         'User-Agent': YOUTUBE_USER_AGENT,
                         'Accept-Language': 'en-US,en;q=0.9',
                     },
-                    retryOptions: {
-                        retryCondition: (resp) => resp.status >= 500 || resp.status === 429,
-                    }
+                    signal: AbortSignal.timeout(HTTP.REQUEST_TIMEOUT),
+                }), {
+                    retries: MAX_RETRIES,
+                    baseDelayMs: BASE_RETRY_DELAY,
+                    maxDelayMs: MAX_RETRY_DELAY,
                 });
             } catch (youtubeErr) {
                 const errorMessage = youtubeErr instanceof Error ? youtubeErr.message : String(youtubeErr);
@@ -565,69 +567,6 @@ function extractFavicon(siteUrl: string | null): string | null {
     }
 }
 
-// Retry configuration
-interface RetryOptions {
-    maxRetries?: number;
-    baseDelay?: number;
-    maxDelay?: number;
-    retryCondition?: (response: Response) => boolean;
-}
-
-async function fetchWithRetry(
-    url: string,
-    options: RequestInit & { retryOptions?: RetryOptions } = {}
-): Promise<Response> {
-    const { retryOptions, ...fetchOptions } = options;
-    const effectiveMaxRetries = retryOptions?.maxRetries ?? MAX_RETRIES;
-    const effectiveBaseDelay = retryOptions?.baseDelay ?? BASE_RETRY_DELAY;
-    const effectiveMaxDelay = retryOptions?.maxDelay ?? MAX_RETRY_DELAY;
-    const effectiveRetryCondition =
-        retryOptions?.retryCondition ?? ((response: Response) => response.status >= 500 || response.status === 429);
-
-    let lastError: Error | null = null;
-
-    for (let attempt = 0; attempt <= effectiveMaxRetries; attempt++) {
-        try {
-            const response = await fetch(url, {
-                ...fetchOptions,
-                signal: fetchOptions.signal ?? AbortSignal.timeout(HTTP.REQUEST_TIMEOUT),
-            });
-
-            if (response.ok || !effectiveRetryCondition(response)) {
-                return response;
-            }
-
-            // Don't retry client errors (except 429)
-            if (response.status >= 400 && response.status !== 429) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-
-            lastError = new Error(`HTTP ${response.status}: ${response.statusText}`);
-            console.warn(`[Retry] Attempt ${attempt + 1} failed for ${url}: ${lastError.message}`);
-
-        } catch (err) {
-            lastError = err as Error;
-            if (attempt < effectiveMaxRetries) {
-                console.warn(`[Retry] Attempt ${attempt + 1} failed for ${url}:`, lastError.message);
-            }
-        }
-
-        // If this was the last attempt, throw the error
-        if (attempt === effectiveMaxRetries) {
-            throw lastError || new Error('Max retries exceeded');
-        }
-
-        // Calculate delay with exponential backoff and jitter
-        const delay = Math.min(effectiveBaseDelay * Math.pow(2, attempt), effectiveMaxDelay);
-        const jitter = Math.random() * 0.1 * delay; // Add 10% jitter
-        const totalDelay = delay + jitter;
-
-        console.log(`[Retry] Waiting ${Math.round(totalDelay / 1000)}s before retry ${attempt + 2}...`);
-        await new Promise(resolve => setTimeout(resolve, totalDelay));
-    }
-
-    throw lastError || new Error('Max retries exceeded');
-}
 
 // Validate URL before attempting fetch
 function validateUrl(url: string): void {

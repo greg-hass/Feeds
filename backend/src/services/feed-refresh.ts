@@ -50,6 +50,52 @@ function categorizeRefreshError(err: unknown): { category: string; message: stri
 }
 
 /**
+ * Simple concurrency-limited queue for background tasks
+ */
+class TaskQueue {
+    private running = 0;
+    private queue: (() => Promise<void>)[] = [];
+    private maxConcurrency: number;
+
+    constructor(maxConcurrency: number) {
+        this.maxConcurrency = maxConcurrency;
+    }
+
+    async add(task: () => Promise<void>) {
+        if (this.running >= this.maxConcurrency) {
+            this.queue.push(task);
+            return;
+        }
+
+        this.running++;
+        try {
+            await task();
+        } finally {
+            this.running--;
+            this.next();
+        }
+    }
+
+    private async next() {
+        if (this.queue.length > 0 && this.running < this.maxConcurrency) {
+            const task = this.queue.shift();
+            if (task) {
+                this.running++;
+                try {
+                    await task();
+                } finally {
+                    this.running--;
+                    this.next();
+                }
+            }
+        }
+    }
+}
+
+// Global queue for image caching to prevent saturating the connection pool
+const imageCacheQueue = new TaskQueue(15);
+
+/**
  * Cache thumbnails in the background without blocking feed refresh.
  * Uses smaller batches and no retries for speed.
  */
@@ -57,26 +103,23 @@ async function cacheThumbnailsInBackground(
     thumbnailUpdates: Array<{ id: number; url: string }>,
     updateThumbnailStmt: any
 ): Promise<void> {
-    const BATCH_SIZE = 50; // Larger batches since we're not blocking
-
-    for (let i = 0; i < thumbnailUpdates.length; i += BATCH_SIZE) {
-        const batch = thumbnailUpdates.slice(i, i + BATCH_SIZE);
-        const results = await Promise.allSettled(batch.map(async (item) => {
-            const cachedThumbnail = await cacheArticleThumbnail(item.id, item.url);
-            return { id: item.id, cached: cachedThumbnail };
-        }));
-
-        // Batch database updates
-        for (const result of results) {
-            if (result.status === 'fulfilled' && result.value.cached) {
-                updateThumbnailStmt.run(
-                    result.value.cached.fileName,
-                    result.value.cached.mime,
-                    result.value.id
-                );
+    // Process thumbnails through the global concurrency-limited queue
+    thumbnailUpdates.forEach(item => {
+        imageCacheQueue.add(async () => {
+            try {
+                const cachedThumbnail = await cacheArticleThumbnail(item.id, item.url);
+                if (cachedThumbnail) {
+                    updateThumbnailStmt.run(
+                        cachedThumbnail.fileName,
+                        cachedThumbnail.mime,
+                        item.id
+                    );
+                }
+            } catch (err) {
+                // Silent fail for background caching, it's not critical
             }
-        }
-    }
+        });
+    });
 }
 
 /**

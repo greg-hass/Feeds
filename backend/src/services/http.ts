@@ -1,5 +1,4 @@
-import { Agent as HttpAgent } from 'node:http';
-import { Agent as HttpsAgent } from 'node:https';
+import { Agent, setGlobalDispatcher } from 'undici';
 
 export interface RetryOptions {
     retries?: number;
@@ -10,23 +9,22 @@ export interface RetryOptions {
 }
 
 const DEFAULT_RETRY_STATUS = [408, 429, 500, 502, 503, 504];
-const DEFAULT_RETRY_ERRORS = ['ECONNRESET', 'ETIMEDOUT', 'EAI_AGAIN', 'ENOTFOUND'];
+const DEFAULT_RETRY_ERRORS = ['ECONNRESET', 'ETIMEDOUT', 'EAI_AGAIN', 'ENOTFOUND', 'UND_ERR_CONNECT_TIMEOUT'];
 
-// HTTP/2 connection pooling with keep-alive
+// Undici connection pooling with keep-alive
 // Reuses connections to the same domains for 60s, significantly faster for bulk feed refresh
-const httpAgent = new HttpAgent({
-    keepAlive: true,
-    keepAliveMsecs: 60000, // 60 seconds
-    maxSockets: 50, // Max concurrent connections per host
-    maxFreeSockets: 10, // Keep 10 idle connections ready
+const dispatcher = new Agent({
+    keepAliveTimeout: 60000,
+    keepAliveMaxTimeout: 60000,
+    connect: {
+        timeout: 20000, // 20s connection timeout (matches HTTP.REQUEST_TIMEOUT)
+    },
+    pipelining: 1, // Disable for stability with YouTube
+    connections: 50, // Max concurrent connections per host
 });
 
-const httpsAgent = new HttpsAgent({
-    keepAlive: true,
-    keepAliveMsecs: 60000,
-    maxSockets: 50,
-    maxFreeSockets: 10,
-});
+// Set as global dispatcher for all fetch calls
+setGlobalDispatcher(dispatcher);
 
 function sleep(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -44,9 +42,15 @@ function shouldRetryStatus(status: number, retryStatusCodes: number[]) {
 
 function shouldRetryError(err: unknown, retryErrorCodes: string[]) {
     if (!err || typeof err !== 'object') return false;
-    const error = err as { name?: string; code?: string; message?: string };
-    if (error.name === 'AbortError') return true;
+    const error = err as { name?: string; code?: string; message?: string; cause?: { code?: string } };
+    
+    // Check main error code
     if (error.code && retryErrorCodes.includes(error.code)) return true;
+    
+    // Check nested undici cause code
+    if (error.cause?.code && retryErrorCodes.includes(error.cause.code)) return true;
+    
+    if (error.name === 'AbortError') return true;
     if (error.message && error.message.toLowerCase().includes('fetch failed')) return true;
     return false;
 }
@@ -66,16 +70,10 @@ export async function fetchWithRetry(
 
     for (let attempt = 0; attempt <= retries; attempt++) {
         try {
-            // Use connection pooling agents for HTTP/HTTPS
             const options = optionsFactory();
-            const isHttps = url.startsWith('https:');
-            const agent = isHttps ? httpsAgent : httpAgent;
 
-            const response = await fetch(url, {
-                ...options,
-                // @ts-ignore - Node.js fetch supports agent parameter
-                agent,
-            });
+            // Native fetch in Node.js uses undici and respects the global dispatcher
+            const response = await fetch(url, options);
 
             if (!shouldRetryStatus(response.status, retryStatusCodes) || attempt === retries) {
                 return response;
