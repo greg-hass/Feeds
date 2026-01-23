@@ -9,7 +9,7 @@
 
 export const HTTP = {
     /** Default timeout for HTTP requests in milliseconds */
-    REQUEST_TIMEOUT: 10000, // Reduced from 30s for faster refresh
+    REQUEST_TIMEOUT: 20000, // Increased from 10s to handle slow YouTube/RSS feeds
 
     /** Status codes */
     STATUS: {

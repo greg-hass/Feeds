@@ -9,8 +9,8 @@ interface Feed extends FeedToRefresh {
 }
 
 const CHECK_INTERVAL = 60 * 1000; // Check every minute
-const FEED_DELAY = 25; // 25ms delay between batches (reduced from 50ms)
-const BATCH_SIZE = 30; // Increased from 20 - feeds are lighter now without blocking thumbnail/content
+const FEED_DELAY = 100; // 100ms delay between batches (increased from 25ms to reduce network spikes)
+const BATCH_SIZE = 20; // Reduced from 30 to stay within common API rate limits and reduce parallel connection overhead
 const CLEANUP_INTERVAL = 24 * 60 * 60 * 1000; // Run cleanup once per day
 const DIGEST_CHECK_INTERVAL = 5 * 60 * 1000; // Check digest schedule every 5 minutes
 

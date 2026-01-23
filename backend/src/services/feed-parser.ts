@@ -62,8 +62,8 @@ const USER_AGENT = 'Feeds/1.0 (Feed Reader; +https://github.com/greg-hass/Feeds)
 const YOUTUBE_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 
-// Retry configuration - reduced for faster refresh
-const MAX_RETRIES = 1; // Reduced from 3 - fail fast, will retry next cycle
+// Retry configuration - balanced for reliability and speed
+const MAX_RETRIES = 2; // Increased from 1 back to 2 to handle transient YouTube timeouts
 const BASE_RETRY_DELAY = 500; // Reduced from 1000ms
 const MAX_RETRY_DELAY = 2000; // Reduced from 30000ms
 
