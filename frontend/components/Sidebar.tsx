@@ -168,7 +168,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                     accessibilityLabel="Manage automation rules"
                     accessibilityRole="link"
                 >
-                    <Zap size={18} color={colors.warning.DEFAULT} />
+                    <Zap size={18} color={colors.warning} />
                     <Text style={s.navItemText}>Automation</Text>
                 </TouchableOpacity>
 
