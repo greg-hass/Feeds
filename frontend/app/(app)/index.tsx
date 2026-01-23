@@ -1,9 +1,9 @@
-import { useEffect, useState, useRef, startTransition } from 'react';
-import { View, TouchableOpacity, StyleSheet, useWindowDimensions, Animated, AppState, AppStateStatus } from 'react-native';
+import { useEffect, useState, startTransition } from 'react';
+import { View, TouchableOpacity, StyleSheet, useWindowDimensions, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useArticleStore, useFeedStore } from '@/stores';
 import { Menu, X } from 'lucide-react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
+import { useRefresh } from '@/hooks/useRefresh';
 
 import Sidebar from '@/components/Sidebar';
 import Timeline from '@/components/Timeline';
@@ -16,9 +16,14 @@ export default function ArticleListScreen() {
     const colors = useColors();
     const { width } = useWindowDimensions();
     const isMobile = width < 1024;
-    const { fetchArticles } = useArticleStore();
-    const { fetchFeeds, fetchFolders } = useFeedStore();
     const [showMenu, setShowMenu] = useState(false);
+
+    // Centralized refresh hook handles all data fetching and syncing
+    useRefresh({
+        staleThreshold: 5 * 60 * 1000, // 5 minutes
+        enableForegroundRefresh: true,
+        fetchOnMount: true,
+    });
 
     // Animated value for sidebar slide-in from left
     const [sidebarAnim] = useState(new Animated.Value(-300));
@@ -31,41 +36,6 @@ export default function ArticleListScreen() {
             useNativeDriver: true,
         }).start();
     };
-
-    const lastRefreshRef = useRef<number>(0);
-    const STALE_THRESHOLD = 5 * 60 * 1000; // 5 minutes
-
-    useEffect(() => {
-        const refreshData = (isSilent = false) => {
-            const now = Date.now();
-            if (now - lastRefreshRef.current < STALE_THRESHOLD && isSilent) {
-                console.log('Skipping foreground refresh, data is still fresh');
-                return;
-            }
-            // Wrap state updates in startTransition to avoid hydration errors
-            startTransition(() => {
-                fetchFeeds();
-                fetchFolders();
-                fetchArticles(true);
-            });
-            lastRefreshRef.current = now;
-        };
-
-        // initial load
-        refreshData();
-
-        // Listen for app state changes to refresh when returning to foreground
-        const subscription = AppState.addEventListener('change', (nextAppState) => {
-            if (nextAppState === 'active') {
-                console.log('App returned to foreground, checking for refresh...');
-                refreshData(true);
-            }
-        });
-
-        return () => {
-            subscription.remove();
-        };
-    }, []);
 
     const s = styles(colors, isMobile);
 
