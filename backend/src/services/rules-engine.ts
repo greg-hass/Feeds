@@ -1,9 +1,29 @@
-import { query, queryOne, run } from '../db/index.js';
-import { Article } from './api.js';
+import { queryAll, queryOne, run } from '../db/index.js';
+
+// Alias for convenience
+const query = queryAll;
 
 // ============================================================================
 // TYPES
 // ============================================================================
+
+// Article type used for rule evaluation
+export interface Article {
+    id: number;
+    user_id: number;
+    feed_id: number;
+    guid: string;
+    title: string;
+    url: string | null;
+    author: string | null;
+    summary: string | null;
+    content: string | null;
+    type?: string;
+    folder_id?: number | null;
+    is_bookmarked?: boolean;
+    published_at: string | null;
+    fetched_at: string;
+}
 
 export interface AutomationRule {
     id: number;
@@ -58,6 +78,23 @@ export interface RuleEvaluationResult {
 // RULE CRUD
 // ============================================================================
 
+// DB row type for rules (JSON fields are strings)
+interface AutomationRuleRow {
+    id: number;
+    user_id: number;
+    name: string;
+    description: string | null;
+    enabled: boolean;
+    trigger_type: 'new_article' | 'keyword_match' | 'feed_match' | 'author_match';
+    conditions: string; // JSON string in DB
+    actions: string; // JSON string in DB
+    priority: number;
+    match_count: number;
+    last_matched_at: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
 /**
  * Get all rules for a user
  */
@@ -66,12 +103,12 @@ export function getRules(userId: number, enabledOnly: boolean = false): Automati
         ? 'SELECT * FROM automation_rules WHERE user_id = ? AND enabled = 1 ORDER BY priority DESC, id ASC'
         : 'SELECT * FROM automation_rules WHERE user_id = ? ORDER BY priority DESC, id ASC';
 
-    const rules = query<Omit<AutomationRule, 'conditions' | 'actions'>>(sql, [userId]);
+    const rules = query<AutomationRuleRow>(sql, [userId]);
 
-    return rules.map(rule => ({
+    return rules.map((rule: AutomationRuleRow) => ({
         ...rule,
-        conditions: JSON.parse(rule.conditions as unknown as string),
-        actions: JSON.parse(rule.actions as unknown as string),
+        conditions: JSON.parse(rule.conditions) as RuleCondition[],
+        actions: JSON.parse(rule.actions) as RuleAction[],
     }));
 }
 
@@ -79,7 +116,7 @@ export function getRules(userId: number, enabledOnly: boolean = false): Automati
  * Get a single rule by ID
  */
 export function getRule(ruleId: number, userId: number): AutomationRule | null {
-    const rule = queryOne<Omit<AutomationRule, 'conditions' | 'actions'>>(
+    const rule = queryOne<AutomationRuleRow>(
         'SELECT * FROM automation_rules WHERE id = ? AND user_id = ?',
         [ruleId, userId]
     );
@@ -88,8 +125,8 @@ export function getRule(ruleId: number, userId: number): AutomationRule | null {
 
     return {
         ...rule,
-        conditions: JSON.parse(rule.conditions as unknown as string),
-        actions: JSON.parse(rule.actions as unknown as string),
+        conditions: JSON.parse(rule.conditions) as RuleCondition[],
+        actions: JSON.parse(rule.actions) as RuleAction[],
     };
 }
 
@@ -212,7 +249,7 @@ function evaluateCondition(condition: RuleCondition, article: Article): boolean 
                 'SELECT tag FROM article_tags WHERE article_id = ?',
                 [article.id]
             );
-            fieldValue = tags.map(t => t.tag);
+            fieldValue = tags.map((t: { tag: string }) => t.tag);
             break;
         default:
             return false;
@@ -264,9 +301,9 @@ function evaluateCondition(condition: RuleCondition, article: Article): boolean 
         case 'in':
             if (!Array.isArray(condition.value)) return false;
             if (caseSensitive) {
-                return condition.value.includes(fieldValue);
+                return (condition.value as (string | number)[]).includes(fieldValue as string | number);
             } else {
-                const lowerValues = condition.value.map(v => typeof v === 'string' ? v.toLowerCase() : v);
+                const lowerValues = (condition.value as (string | number)[]).map((v: string | number) => typeof v === 'string' ? v.toLowerCase() : v);
                 const lowerField = typeof fieldValue === 'string' ? fieldValue.toLowerCase() : fieldValue;
                 return lowerValues.includes(lowerField);
             }
@@ -274,9 +311,9 @@ function evaluateCondition(condition: RuleCondition, article: Article): boolean 
         case 'not_in':
             if (!Array.isArray(condition.value)) return false;
             if (caseSensitive) {
-                return !condition.value.includes(fieldValue);
+                return !(condition.value as (string | number)[]).includes(fieldValue as string | number);
             } else {
-                const lowerValues = condition.value.map(v => typeof v === 'string' ? v.toLowerCase() : v);
+                const lowerValues = (condition.value as (string | number)[]).map((v: string | number) => typeof v === 'string' ? v.toLowerCase() : v);
                 const lowerField = typeof fieldValue === 'string' ? fieldValue.toLowerCase() : fieldValue;
                 return !lowerValues.includes(lowerField);
             }
@@ -452,7 +489,7 @@ export function testRule(
         updated_at: new Date().toISOString(),
     };
 
-    return articles.map(article => {
+    return articles.map((article: Article) => {
         const matched = evaluateRuleConditions(testRule, article);
         return {
             article,
@@ -462,11 +499,22 @@ export function testRule(
     });
 }
 
+// DB row type for execution (JSON field is string)
+interface RuleExecutionRow {
+    id: number;
+    rule_id: number;
+    article_id: number;
+    executed_at: string;
+    success: boolean;
+    actions_taken: string | null; // JSON string in DB
+    error_message: string | null;
+}
+
 /**
  * Get rule execution history
  */
 export function getRuleExecutions(ruleId: number, limit: number = 50): RuleExecution[] {
-    const executions = query<Omit<RuleExecution, 'actions_taken'>>(
+    const executions = query<RuleExecutionRow>(
         `SELECT * FROM rule_executions
          WHERE rule_id = ?
          ORDER BY executed_at DESC
@@ -474,9 +522,9 @@ export function getRuleExecutions(ruleId: number, limit: number = 50): RuleExecu
         [ruleId, limit]
     );
 
-    return executions.map(exec => ({
+    return executions.map((exec: RuleExecutionRow) => ({
         ...exec,
-        actions_taken: exec.actions_taken ? JSON.parse(exec.actions_taken as unknown as string) : [],
+        actions_taken: exec.actions_taken ? JSON.parse(exec.actions_taken) as RuleAction[] : [],
     }));
 }
 

@@ -1,4 +1,7 @@
-import { query, queryOne, run } from '../db/index.js';
+import { queryAll, queryOne, run } from '../db/index.js';
+
+// Alias for convenience
+const query = queryAll;
 
 // ============================================================================
 // TYPES
@@ -108,7 +111,7 @@ export function getActiveSession(userId: number, articleId: number): ReadingSess
          WHERE user_id = ? AND article_id = ? AND ended_at IS NULL
          ORDER BY started_at DESC LIMIT 1`,
         [userId, articleId]
-    );
+    ) ?? null;
 }
 
 // ============================================================================
@@ -122,7 +125,7 @@ export function getArticleStats(articleId: number): ArticleStats | null {
     return queryOne<ArticleStats>(
         `SELECT * FROM article_stats WHERE article_id = ?`,
         [articleId]
-    );
+    ) ?? null;
 }
 
 /**
@@ -199,7 +202,7 @@ export function getFeedStats(feedId: number): FeedStats | null {
     return queryOne<FeedStats>(
         `SELECT * FROM feed_stats WHERE feed_id = ?`,
         [feedId]
-    );
+    ) ?? null;
 }
 
 /**
@@ -355,7 +358,7 @@ export function getAnalyticsOverview(userId: number): AnalyticsOverview {
          LIMIT 3`,
         [userId]
     );
-    const topReadingHours = hourStats.map(h => h.hour);
+    const topReadingHours = hourStats.map((h: { hour: number; count: number }) => h.hour);
 
     return {
         total_articles_read: totalArticles,
