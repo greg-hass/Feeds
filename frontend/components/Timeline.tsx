@@ -28,7 +28,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     const s = timelineStyles(colors, isMobile);
 
     const {
-        articles, isLoading, hasMore, filter, isFeedLoading, headerTitle, timeLeft, isRefreshing,
+        articles, isLoading, hasMore, filter, isFeedLoading, headerTitle, isRefreshing,
         playingArticleId, isPlaying, activeVideoId, hotPulseAnim,
         fetchArticles, setFilter, refreshAllFeeds, handleMarkAllRead,
         handleArticlePress, handlePlayPress, handleVideoPress,
@@ -78,7 +78,6 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
             <NewArticlesPill />
             <TimelineHeader
                 title={headerTitle}
-                timeLeft={timeLeft}
                 isFeedLoading={isFeedLoading}
                 isRefreshing={isRefreshing}
                 isMobile={isMobile}

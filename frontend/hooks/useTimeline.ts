@@ -13,14 +13,10 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
     const { activeVideoId, playVideo } = useVideoStore();
     const { fetchPendingDigest } = useDigestStore();
 
-    const [timeLeft, setTimeLeft] = useState<string | null>(null);
-    const appStateRef = useRef(AppState.currentState);
-
     useEffect(() => {
         fetchPendingDigest();
     }, []);
 
-    const lastTriggeredDueRef = useRef<number | null>(null);
     const isRefreshing = !!refreshProgress;
     const hotPulseAnim = useRef(new Animated.Value(1)).current;
     const bookmarkScales = useRef<Map<number, Animated.Value>>(new Map());
@@ -37,69 +33,6 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
         pulse.start();
         return () => pulse.stop();
     }, []);
-
-    // Refresh timer logic
-    useEffect(() => {
-        const subscription = AppState.addEventListener('change', (nextState) => {
-            appStateRef.current = nextState;
-        });
-
-        const timer = setInterval(() => {
-            if (refreshProgress) {
-                return;
-            }
-            if (!feeds?.length) {
-                setTimeLeft(null);
-                return;
-            }
-            const now = Date.now();
-            let earliestTimestamp: number | null = null;
-            for (const f of feeds) {
-                const nextFromField = f.next_fetch_at ? new Date(f.next_fetch_at).getTime() : NaN;
-                const lastFetched = f.last_fetched_at ? new Date(f.last_fetched_at).getTime() : NaN;
-                const intervalMs = (f.refresh_interval_minutes || 0) * 60 * 1000;
-                let next = Number.isFinite(nextFromField) ? nextFromField : NaN;
-
-                if (!Number.isFinite(next) && Number.isFinite(lastFetched) && intervalMs > 0) {
-                    next = lastFetched + intervalMs;
-                }
-
-                if (!Number.isFinite(next) && intervalMs > 0) {
-                    next = now + intervalMs;
-                }
-
-                if (Number.isFinite(next)) {
-                    const normalizedNext = Math.max(now, next);
-                    if (!earliestTimestamp || normalizedNext < earliestTimestamp) {
-                        earliestTimestamp = normalizedNext;
-                    }
-                }
-            }
-            if (earliestTimestamp) {
-                const diff = earliestTimestamp - now;
-                if (diff <= 0) {
-                    setTimeLeft('0s');
-                    const shouldAutoRefresh = appStateRef.current === 'active'
-                        && !isFeedLoading
-                        && lastTriggeredDueRef.current !== earliestTimestamp;
-                    if (shouldAutoRefresh) {
-                        lastTriggeredDueRef.current = earliestTimestamp;
-                        refreshAllFeeds();
-                    }
-                } else if (diff < 60000) {
-                    setTimeLeft(`${Math.floor(diff / 1000)}s`);
-                } else if (diff < 3600000) {
-                    setTimeLeft(`${Math.floor(diff / 60000)}m ${Math.floor((diff % 60000) / 1000)}s`);
-                } else {
-                    setTimeLeft(`${Math.floor(diff / 3600000)}h ${Math.floor((diff % 3600000) / 60000)}m`);
-                }
-            } else setTimeLeft(null);
-        }, 1000);
-        return () => {
-            subscription.remove();
-            clearInterval(timer);
-        };
-    }, [feeds, refreshProgress, isFeedLoading, refreshAllFeeds]);
 
     const getBookmarkScale = (id: number) => {
         if (!bookmarkScales.current.has(id)) bookmarkScales.current.set(id, new Animated.Value(1));
@@ -162,7 +95,7 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
     })();
 
     return {
-        articles, isLoading, hasMore, filter, feeds, isFeedLoading, headerTitle, timeLeft, isRefreshing,
+        articles, isLoading, hasMore, filter, feeds, isFeedLoading, headerTitle, isRefreshing,
         playingArticleId, isPlaying, activeVideoId, hotPulseAnim,
         fetchArticles, setFilter, refreshAllFeeds, handleMarkAllRead, handleArticlePress,
         handlePlayPress, handleVideoPress, getBookmarkScale, getBookmarkRotation,

@@ -1,9 +1,10 @@
-import { useEffect, useState, startTransition } from 'react';
+import { useEffect, useState } from 'react';
 import { View, TouchableOpacity, StyleSheet, useWindowDimensions, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Menu, X } from 'lucide-react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
-import { useRefresh } from '@/hooks/useRefresh';
+import { useArticleStore, useFeedStore } from '@/stores';
+import { fetchChanges } from '@/lib/sync';
 
 import Sidebar from '@/components/Sidebar';
 import Timeline from '@/components/Timeline';
@@ -18,12 +19,30 @@ export default function ArticleListScreen() {
     const isMobile = width < 1024;
     const [showMenu, setShowMenu] = useState(false);
 
-    // Centralized refresh hook handles all data fetching and syncing
-    useRefresh({
-        staleThreshold: 5 * 60 * 1000, // 5 minutes
-        enableForegroundRefresh: true,
-        fetchOnMount: true,
-    });
+    const { fetchFeeds, fetchFolders, applySyncChanges: applyFeedSync } = useFeedStore();
+    const { fetchArticles, applySyncChanges: applyArticleSync } = useArticleStore();
+
+    // Initial data load only - server handles scheduled refreshes
+    useEffect(() => {
+        const loadInitialData = async () => {
+            console.log('[App] Loading initial data...');
+            await Promise.all([
+                fetchFeeds(),
+                fetchFolders(),
+                fetchArticles(true),
+            ]);
+
+            // Sync any cross-device changes
+            const syncResult = await fetchChanges();
+            if (syncResult) {
+                applyFeedSync(syncResult.changes);
+                applyArticleSync(syncResult.changes);
+            }
+            console.log('[App] Initial data loaded');
+        };
+
+        loadInitialData();
+    }, []); // Run once on mount
 
     // Animated value for sidebar slide-in from left
     const [sidebarAnim] = useState(new Animated.Value(-300));
