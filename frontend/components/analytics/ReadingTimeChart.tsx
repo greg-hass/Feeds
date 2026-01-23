@@ -1,36 +1,17 @@
 import React from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
-import { LineChart } from 'react-native-chart-kit';
 import { useColors, spacing, typography, borderRadius } from '@/theme';
 import { useAnalyticsStore, formatReadingTime } from '@/stores/analyticsStore';
 
 /**
- * Line chart showing daily reading time over last 30 days
+ * Custom bar chart showing daily reading time over last 30 days
+ * Uses pure React Native views for web compatibility (no external chart library)
  */
 export function ReadingTimeChart() {
     const colors = useColors();
     const { dailyStats } = useAnalyticsStore();
 
     const s = styles(colors);
-
-    // Prepare chart data
-    const chartData = {
-        labels: dailyStats.length > 0
-            ? dailyStats
-                .filter((_, idx) => idx % 5 === 0) // Show every 5th label to avoid crowding
-                .map(day => {
-                    const date = new Date(day.date);
-                    return `${date.getMonth() + 1}/${date.getDate()}`;
-                })
-            : ['No data'],
-        datasets: [{
-            data: dailyStats.length > 0
-                ? dailyStats.map(day => day.total_read_time_seconds / 60) // Convert to minutes
-                : [0],
-            color: (opacity = 1) => colors.primary.DEFAULT + Math.round(opacity * 255).toString(16),
-            strokeWidth: 2,
-        }],
-    };
 
     // Calculate stats
     const totalTime = dailyStats.reduce((sum, day) => sum + day.total_read_time_seconds, 0);
@@ -40,22 +21,12 @@ export function ReadingTimeChart() {
         dailyStats[0] || { total_read_time_seconds: 0, date: '' }
     );
 
-    const chartConfig = {
-        backgroundColor: colors.background.elevated,
-        backgroundGradientFrom: colors.background.elevated,
-        backgroundGradientTo: colors.background.elevated,
-        decimalPlaces: 0,
-        color: (opacity = 1) => colors.primary.DEFAULT + Math.round(opacity * 255).toString(16),
-        labelColor: (opacity = 1) => colors.text.secondary + Math.round(opacity * 255).toString(16),
-        style: {
-            borderRadius: borderRadius.md,
-        },
-        propsForDots: {
-            r: '4',
-            strokeWidth: '2',
-            stroke: colors.primary.DEFAULT,
-        },
-    };
+    // Find max value for scaling
+    const maxValue = Math.max(...dailyStats.map(d => d.total_read_time_seconds), 1);
+
+    // Get chart width
+    const chartWidth = Math.min(Dimensions.get('window').width - 64, 500);
+    const barWidth = dailyStats.length > 0 ? Math.max((chartWidth - 20) / dailyStats.length - 2, 4) : 10;
 
     return (
         <View style={s.container}>
@@ -63,14 +34,54 @@ export function ReadingTimeChart() {
             <Text style={s.subtitle}>Last 30 days (minutes per day)</Text>
 
             {dailyStats.length > 0 ? (
-                <LineChart
-                    data={chartData}
-                    width={Dimensions.get('window').width > 1024 ? 500 : Dimensions.get('window').width - 64}
-                    height={220}
-                    chartConfig={chartConfig}
-                    bezier
-                    style={s.chart}
-                />
+                <View style={s.chartContainer}>
+                    {/* Y-axis labels */}
+                    <View style={s.yAxis}>
+                        <Text style={s.axisLabel}>{Math.round(maxValue / 60)}m</Text>
+                        <Text style={s.axisLabel}>{Math.round(maxValue / 120)}m</Text>
+                        <Text style={s.axisLabel}>0</Text>
+                    </View>
+                    
+                    {/* Bars */}
+                    <View style={s.barsContainer}>
+                        <View style={s.bars}>
+                            {dailyStats.map((day, index) => {
+                                const height = (day.total_read_time_seconds / maxValue) * 180;
+                                return (
+                                    <View
+                                        key={day.date}
+                                        style={[
+                                            s.bar,
+                                            {
+                                                height: Math.max(height, 2),
+                                                width: barWidth,
+                                                backgroundColor: colors.primary.DEFAULT,
+                                                opacity: 0.6 + (day.total_read_time_seconds / maxValue) * 0.4,
+                                            }
+                                        ]}
+                                    />
+                                );
+                            })}
+                        </View>
+                        
+                        {/* X-axis labels */}
+                        <View style={s.xAxis}>
+                            {dailyStats.length > 0 && (
+                                <>
+                                    <Text style={s.axisLabel}>
+                                        {formatDate(dailyStats[0].date)}
+                                    </Text>
+                                    <Text style={s.axisLabel}>
+                                        {formatDate(dailyStats[Math.floor(dailyStats.length / 2)]?.date)}
+                                    </Text>
+                                    <Text style={s.axisLabel}>
+                                        {formatDate(dailyStats[dailyStats.length - 1].date)}
+                                    </Text>
+                                </>
+                            )}
+                        </View>
+                    </View>
+                </View>
             ) : (
                 <View style={s.noData}>
                     <Text style={s.noDataText}>No reading data yet</Text>
@@ -99,6 +110,13 @@ export function ReadingTimeChart() {
     );
 }
 
+/** Format date to short form like "1/23" */
+function formatDate(dateStr?: string): string {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return `${date.getMonth() + 1}/${date.getDate()}`;
+}
+
 const styles = (colors: any) => StyleSheet.create({
     container: {
         backgroundColor: colors.background.elevated,
@@ -117,9 +135,42 @@ const styles = (colors: any) => StyleSheet.create({
         color: colors.text.secondary,
         marginBottom: spacing.md,
     },
-    chart: {
+    chartContainer: {
+        flexDirection: 'row',
+        height: 220,
         marginVertical: spacing.sm,
-        borderRadius: borderRadius.md,
+    },
+    yAxis: {
+        width: 30,
+        justifyContent: 'space-between',
+        alignItems: 'flex-end',
+        paddingRight: spacing.xs,
+        paddingBottom: 20,
+    },
+    barsContainer: {
+        flex: 1,
+    },
+    bars: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+        justifyContent: 'space-between',
+        paddingHorizontal: spacing.xs,
+        gap: 2,
+    },
+    bar: {
+        borderRadius: 2,
+    },
+    xAxis: {
+        height: 20,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingHorizontal: spacing.xs,
+    },
+    axisLabel: {
+        ...typography.caption,
+        fontSize: 10,
+        color: colors.text.tertiary,
     },
     noData: {
         height: 220,
