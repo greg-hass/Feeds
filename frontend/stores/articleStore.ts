@@ -276,26 +276,53 @@ export const useArticleStore = create<ArticleState>()(
             applySyncChanges: (changes: SyncChanges) => {
                 const syncData = applySyncChanges(changes);
                 set((state) => {
-                    const newArticles = [...state.articles];
+                    let newArticles = [...state.articles];
                     const readMap = new Map<number, boolean>();
 
                     // Build read state map from sync changes
                     syncData.readStateRead.forEach((id) => readMap.set(id, true));
                     syncData.readStateUnread.forEach((id) => readMap.set(id, false));
 
-                    // Apply read state changes to existing articles
+                    // Apply read state changes and filter out newly read articles if unread_only is on
                     if (readMap.size > 0) {
-                        return {
-                            articles: newArticles.map((a) =>
-                                readMap.has(a.id) ? { ...a, is_read: readMap.get(a.id) ?? a.is_read } : a
-                            ),
-                        };
+                        newArticles = newArticles.map((a) =>
+                            readMap.has(a.id) ? { ...a, is_read: readMap.get(a.id) ?? a.is_read } : a
+                        );
+
+                        if (state.filter.unread_only) {
+                            newArticles = newArticles.filter(a => !readMap.get(a.id));
+                        }
                     }
 
-                    // Note: New articles from sync are not added to the current list
-                    // to avoid duplicates and maintain pagination integrity.
-                    // They will be fetched on the next refresh.
-                    return state;
+                    // Prepend newly created articles if they match filters
+                    if (syncData.articlesCreated.length > 0) {
+                        const existingIds = new Set(newArticles.map((a) => a.id));
+                        const addedArticles = (syncData.articlesCreated as Article[]).filter((a) => {
+                            if (existingIds.has(a.id)) return false;
+
+                            // Apply filters
+                            if (state.filter.unread_only && a.is_read) return false;
+                            if (state.filter.feed_id && a.feed_id !== state.filter.feed_id) return false;
+                            if (state.filter.type && a.feed_type !== state.filter.type) return false;
+                            // Note: folder filtering is harder check here because folder_id isn't on article
+                            // For simplicity, we skip folder check or let it be handled by next full fetch
+
+                            return true;
+                        });
+
+                        if (addedArticles.length > 0) {
+                            newArticles = [...addedArticles, ...newArticles];
+                            // Sort by date then ID
+                            newArticles.sort((a, b) => {
+                                const dateA = new Date(a.published_at || 0).getTime();
+                                const dateB = new Date(b.published_at || 0).getTime();
+                                if (dateA !== dateB) return dateB - dateA;
+                                return b.id - a.id;
+                            });
+                        }
+                    }
+
+                    return { articles: newArticles };
                 });
             },
         }),

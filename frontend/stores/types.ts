@@ -7,6 +7,7 @@ export interface FeedState {
     smartFolders: SmartFolder[];
     totalUnread: number;
     isLoading: boolean;
+    isBackgroundSyncing: boolean;
     refreshProgress: { total: number; completed: number; currentTitle: string } | null;
     lastRefreshNewArticles: number | null;
 
@@ -22,7 +23,7 @@ export interface FeedState {
     pauseFeed: (id: number) => Promise<void>;
     resumeFeed: (id: number) => Promise<void>;
     updateLocalFeed: (id: number, updates: Partial<Feed>) => void;
-    applySyncChanges: (changes: SyncChanges) => void;
+    applySyncChanges: (changes: SyncChanges, isRefreshing?: boolean) => void;
 }
 
 export interface ArticleState {

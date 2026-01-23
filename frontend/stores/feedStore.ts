@@ -20,6 +20,7 @@ export const useFeedStore = create<FeedState>()(
             smartFolders: [],
             totalUnread: 0,
             isLoading: false,
+            isBackgroundSyncing: false,
             refreshProgress: null,
             lastRefreshNewArticles: null,
 
@@ -253,7 +254,7 @@ export const useFeedStore = create<FeedState>()(
                 }));
             },
 
-            applySyncChanges: (changes: SyncChanges) => {
+            applySyncChanges: (changes: SyncChanges, isRefreshing?: boolean) => {
                 const syncData = applySyncChanges(changes);
                 set((state) => {
                     let newFeeds = [...state.feeds];
@@ -293,7 +294,11 @@ export const useFeedStore = create<FeedState>()(
                         newFolders = newFolders.map((f) => updatedMap.get(f.id) || f);
                     }
 
-                    return { feeds: newFeeds, folders: newFolders };
+                    return {
+                        feeds: newFeeds,
+                        folders: newFolders,
+                        isBackgroundSyncing: isRefreshing ?? state.isBackgroundSyncing
+                    };
                 });
             },
         }),

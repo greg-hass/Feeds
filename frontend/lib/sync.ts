@@ -32,6 +32,7 @@ interface SyncResult {
     changes: SyncChanges;
     next_cursor: string;
     server_time: string;
+    is_refreshing?: boolean;
 }
 
 interface PushSyncBody {
@@ -131,12 +132,12 @@ export function applySyncChanges(changes: SyncChanges): {
 class SyncManager {
     private intervalId: ReturnType<typeof setInterval> | null = null;
     private isSyncing = false;
-    private onSyncCallback?: ((changes: SyncChanges) => void) | null = null;
+    private onSyncCallback?: ((changes: SyncChanges, isRefreshing?: boolean) => void) | null = null;
 
     /**
      * Start the periodic sync interval
      */
-    start(callback?: (changes: SyncChanges) => void): void {
+    start(callback?: (changes: SyncChanges, isRefreshing?: boolean) => void): void {
         if (this.intervalId) {
             return; // Already running
         }
@@ -176,7 +177,7 @@ class SyncManager {
             const result = await fetchChanges();
 
             if (result && this.onSyncCallback) {
-                this.onSyncCallback(result.changes);
+                this.onSyncCallback(result.changes, result.is_refreshing);
             }
 
             return result;
@@ -200,7 +201,7 @@ export const syncManager = new SyncManager();
  * Hook to use sync functionality
  * Call this in your app root or main screen to enable background sync
  */
-export function enableSync(onSyncChanges?: (changes: SyncChanges) => void): () => void {
+export function enableSync(onSyncChanges?: (changes: SyncChanges, isRefreshing?: boolean) => void): () => void {
     syncManager.start(onSyncChanges);
 
     // Return cleanup function

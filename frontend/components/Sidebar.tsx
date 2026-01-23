@@ -19,7 +19,10 @@ const FEED_TYPE_ICONS: Record<string, React.ComponentType<any>> = {
 export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     const router = useRouter();
     const colors = useColors();
-    const { feeds, folders, smartFolders, totalUnread, fetchFeeds, fetchFolders, isLoading, refreshAllFeeds } = useFeedStore();
+    const {
+        feeds, folders, smartFolders, totalUnread, fetchFeeds, fetchFolders,
+        isLoading, isBackgroundSyncing, refreshAllFeeds
+    } = useFeedStore();
     const { filter, setFilter } = useArticleStore();
 
     const s = styles(colors);
@@ -62,6 +65,11 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 <View style={s.logoRow}>
                     <Rss size={24} color={colors.primary.DEFAULT} />
                     <Text style={s.logoText}>Feeds</Text>
+                    {isBackgroundSyncing && (
+                        <View style={s.syncIndicator}>
+                            <View style={s.syncDot} />
+                        </View>
+                    )}
                 </View>
                 <TouchableOpacity
                     onPress={handleRefresh}
@@ -461,5 +469,16 @@ const styles = (colors: any) => StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         color: colors.text.primary,
+    },
+    syncIndicator: {
+        marginLeft: 8,
+        justifyContent: 'center',
+    },
+    syncDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: colors.primary.DEFAULT,
+        opacity: 0.8,
     },
 });

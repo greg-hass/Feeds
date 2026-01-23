@@ -4,6 +4,7 @@ import { Slot } from 'expo-router';
 import { useArticleStore, useFeedStore } from '@/stores';
 import { useColors } from '@/theme';
 import Sidebar from '@/components/Sidebar';
+import { enableSync } from '@/lib/sync';
 import MobileNav from '@/components/MobileNav';
 import Timeline from '@/components/Timeline';
 import { RefreshProgressDialog } from '@/components/RefreshProgressDialog';
@@ -28,6 +29,11 @@ export default function AppLayout() {
         fetchFolders();
         fetchArticles(true);
 
+        const cleanupSync = enableSync((changes, isRefreshing) => {
+            useFeedStore.getState().applySyncChanges(changes, isRefreshing);
+            useArticleStore.getState().applySyncChanges(changes);
+        });
+
         if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js').catch(err => {
@@ -35,6 +41,10 @@ export default function AppLayout() {
                 });
             });
         }
+
+        return () => {
+            cleanupSync();
+        };
     }, []);
 
     useEffect(() => {

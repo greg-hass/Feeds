@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { queryAll, queryOne, run } from '../db/index.js';
+import { isRefreshing } from '../services/scheduler.js';
 
 const syncQuerySchema = z.object({
     cursor: z.string().optional(),
@@ -106,6 +107,7 @@ export async function syncRoutes(app: FastifyInstance): Promise<void> {
             changes,
             next_cursor: encodeCursor(serverTime),
             server_time: serverTime,
+            is_refreshing: isRefreshing(),
         };
     });
 

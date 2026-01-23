@@ -29,6 +29,7 @@ interface SchedulerState {
     cleanupTimeoutHandle: NodeJS.Timeout | null;
     digestTimeoutHandle: NodeJS.Timeout | null;
     isPaused: boolean;
+    isProcessing: boolean;
     lastCleanupAt: number;
     lastDigestCheck: number;
 }
@@ -41,9 +42,14 @@ let state: SchedulerState = {
     cleanupTimeoutHandle: null,
     digestTimeoutHandle: null,
     isPaused: false,
+    isProcessing: false,
     lastCleanupAt: 0,
     lastDigestCheck: 0
 };
+
+export function isRefreshing() {
+    return state.isProcessing;
+}
 
 export function startScheduler() {
     if (state.isRunning) return;
@@ -127,6 +133,7 @@ async function checkFeeds() {
     let totalNewArticles = 0;
 
     try {
+        state.isProcessing = true;
         const userId = 1;
         const settings = getUserSettings(userId);
         const rawSettings = getUserSettingsRaw(userId);
@@ -241,6 +248,8 @@ async function checkFeeds() {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
         console.error(`[Scheduler] Critical error in checkFeeds: ${errorMessage}`);
         throw err; // Re-throw to trigger circuit breaker
+    } finally {
+        state.isProcessing = false;
     }
 }
 
