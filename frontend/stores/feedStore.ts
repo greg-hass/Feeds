@@ -107,18 +107,18 @@ export const useFeedStore = create<FeedState>()(
                     if (!hasRefreshedOnce) {
                         // First new article: refresh immediately for instant feedback
                         hasRefreshedOnce = true;
-                        articleStore.fetchArticles(true);
+                        articleStore.fetchArticles(true, true);
                     } else {
                         // Subsequent updates: debounce to avoid hammering the server
                         if (refreshTimeout) clearTimeout(refreshTimeout);
                         refreshTimeout = setTimeout(() => {
-                            articleStore.fetchArticles(true);
-                        }, 1000);
+                            articleStore.fetchArticles(true, true);
+                        }, 800);
                     }
                 };
 
                 let lastProgressUpdate = 0;
-                const PROGRESS_THROTTLE_MS = 300; // Reduced from 100ms to reduce UI re-renders
+                const PROGRESS_THROTTLE_MS = 50; // High frequency for smooth updates
 
                 try {
                     await api.refreshFeedsWithProgress(
@@ -128,7 +128,7 @@ export const useFeedStore = create<FeedState>()(
                             if (event.type === 'start') {
                                 set({ refreshProgress: { total: event.total_feeds, completed: 0, currentTitle: '' } });
                             } else if (event.type === 'feed_refreshing') {
-                                // Only update title if throttled or it's the first update
+                                // Show every feed name as it starts
                                 if (now - lastProgressUpdate > PROGRESS_THROTTLE_MS) {
                                     set((state) => ({
                                         refreshProgress: state.refreshProgress ? { ...state.refreshProgress, currentTitle: event.title } : null
@@ -141,11 +141,12 @@ export const useFeedStore = create<FeedState>()(
                                     debouncedRefresh();
                                 }
 
-                                // For completion, we always update but maybe still throttle the state set if many feeds complete rapidly
+                                // Update progress and feed list
                                 set((state) => ({
                                     refreshProgress: state.refreshProgress ? {
                                         ...state.refreshProgress,
-                                        completed: state.refreshProgress.completed + 1
+                                        completed: state.refreshProgress.completed + 1,
+                                        currentTitle: event.title // Show name on completion too
                                     } : null,
                                     feeds: state.feeds.map(f =>
                                         f.id === (event as any).id
@@ -158,6 +159,7 @@ export const useFeedStore = create<FeedState>()(
                                             : f
                                     )
                                 }));
+                                lastProgressUpdate = now;
                             }
                         },
                         (error) => {
@@ -209,6 +211,40 @@ export const useFeedStore = create<FeedState>()(
                     refreshAbortController = null;
                 }
                 set({ isLoading: false, refreshProgress: null });
+            },
+
+            updateFeed: async (id, updates) => {
+                try {
+                    const result = await api.updateFeed(id, updates as any);
+                    set((state) => ({
+                        feeds: state.feeds.map((f) => (f.id === id ? result.feed : f)),
+                    }));
+                } catch (error) {
+                    handleError(error, { context: 'updateFeed' });
+                    throw error;
+                }
+            },
+
+            pauseFeed: async (id) => {
+                try {
+                    const result = await api.pauseFeed(id);
+                    set((state) => ({
+                        feeds: state.feeds.map((f) => (f.id === id ? { ...f, paused_at: result.paused ? new Date().toISOString() : null } : f)),
+                    }));
+                } catch (error) {
+                    handleError(error, { context: 'pauseFeed' });
+                }
+            },
+
+            resumeFeed: async (id) => {
+                try {
+                    const result = await api.resumeFeed(id);
+                    set((state) => ({
+                        feeds: state.feeds.map((f) => (f.id === id ? { ...f, paused_at: null } : f)),
+                    }));
+                } catch (error) {
+                    handleError(error, { context: 'resumeFeed' });
+                }
             },
 
             updateLocalFeed: (id, updates) => {

@@ -18,6 +18,9 @@ export interface FeedState {
     refreshFeed: (id: number) => Promise<number>;
     refreshAllFeeds: (ids?: number[]) => Promise<void>;
     cancelRefresh: () => void;
+    updateFeed: (id: number, updates: Partial<Feed>) => Promise<void>;
+    pauseFeed: (id: number) => Promise<void>;
+    resumeFeed: (id: number) => Promise<void>;
     updateLocalFeed: (id: number, updates: Partial<Feed>) => void;
     applySyncChanges: (changes: SyncChanges) => void;
 }
@@ -41,7 +44,7 @@ export interface ArticleState {
 
     setFilter: (filter: Partial<ArticleState['filter']>) => void;
     setScrollPosition: (position: number) => void;
-    fetchArticles: (reset?: boolean) => Promise<void>;
+    fetchArticles: (reset?: boolean, isLiveUpdate?: boolean) => Promise<void>;
     fetchBookmarks: () => Promise<void>;
     fetchArticle: (id: number) => Promise<void>;
     prefetchArticle: (id: number) => Promise<void>;

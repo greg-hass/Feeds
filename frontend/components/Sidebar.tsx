@@ -142,7 +142,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 {/* Analytics */}
                 <TouchableOpacity
                     style={s.navItem}
-                    onPress={() => { onNavigate?.(); router.push('/(app)/analytics'); }}
+                    onPress={() => { onNavigate?.(); router.push('/(app)/analytics' as any); }}
                     accessibilityLabel="View analytics dashboard"
                     accessibilityRole="link"
                 >

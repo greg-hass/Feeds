@@ -38,11 +38,14 @@ export const useArticleStore = create<ArticleState>()(
                 set({ scrollPosition: position });
             },
 
-            fetchArticles: async (reset = false) => {
+            fetchArticles: async (reset = false, isLiveUpdate = false) => {
                 const state = get();
-                if (state.isLoading || (!reset && !state.hasMore)) return;
+                if (state.isLoading && !isLiveUpdate) return;
+                if (!reset && !state.hasMore && !isLiveUpdate) return;
 
-                set({ isLoading: true, error: null });
+                if (!isLiveUpdate) {
+                    set({ isLoading: true, error: null });
+                }
                 try {
                     const { articles, next_cursor } = await api.getArticles({
                         ...state.filter,
@@ -53,9 +56,28 @@ export const useArticleStore = create<ArticleState>()(
                         // Optimized: Incremental merge instead of full sort on every fetch
                     let finalArticles: Article[];
 
-                    if (reset) {
+                    if (reset && !isLiveUpdate) {
                         // On reset, just use new articles (already sorted from backend)
                         finalArticles = articles;
+                    } else if (isLiveUpdate) {
+                        // Live update: Prepend ONLY truly new articles (those with higher IDs or newer dates than our top one)
+                        // This prevents duplicating articles the user is already looking at
+                        const existingIds = new Set(state.articles.map(a => a.id));
+                        const trulyNew = articles.filter(a => !existingIds.has(a.id));
+
+                        if (trulyNew.length === 0) {
+                            set({ isLoading: false });
+                            return;
+                        }
+
+                        // Combine and re-sort just in case, though backend usually handles it
+                        finalArticles = [...trulyNew, ...state.articles];
+                        finalArticles.sort((a, b) => {
+                            const dateA = new Date(a.published_at || 0).getTime();
+                            const dateB = new Date(b.published_at || 0).getTime();
+                            if (dateA !== dateB) return dateB - dateA;
+                            return b.id - a.id;
+                        });
                     } else {
                         // Merge new articles into existing sorted list
                         // Backend returns sorted articles, so we can do efficient merge
