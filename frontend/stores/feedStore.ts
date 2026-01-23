@@ -136,12 +136,8 @@ export const useFeedStore = create<FeedState>()(
                                     lastProgressUpdate = now;
                                 }
                             } else if (event.type === 'feed_complete' || event.type === 'feed_error') {
-                                if (event.type === 'feed_complete') {
-                                    if (event.new_articles > 0) {
-                                        totalNewArticles += event.new_articles;
-                                    }
-                                    // Always refresh timeline when feeds complete, even if no new articles
-                                    // This ensures UI stays in sync after manual refresh
+                                if (event.type === 'feed_complete' && event.new_articles > 0) {
+                                    totalNewArticles += event.new_articles;
                                     debouncedRefresh();
                                 }
 
