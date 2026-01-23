@@ -2,20 +2,37 @@
 
 This document explains how data refreshing works in the Feeds application.
 
+## Quick Summary
+
+The app has **THREE independent refresh mechanisms**:
+
+1. **⭐ Automatic Scheduled Refresh** (DEFAULT BEHAVIOR)
+   - Timer in `useTimeline` checks feed intervals every second
+   - Auto-refreshes feeds when countdown reaches 0
+   - **This is what you want!** Feeds refresh automatically at their configured intervals
+
+2. **Bootstrap & Foreground Refresh** (useRefresh hook)
+   - Initial data load when app starts
+   - Refresh when app comes to foreground (respects staleness)
+
+3. **Manual User Refresh** (Timeline/Sidebar)
+   - User clicks refresh button or pulls-to-refresh
+   - Always triggers regardless of intervals
+
 ## Overview
 
-The app uses a **centralized refresh system** via the `useRefresh` hook to ensure consistent data fetching across all screens and scenarios.
+The app uses a **multi-layered refresh system** with `useRefresh` for bootstrap/foreground and `useTimeline` for automatic scheduled refreshes.
 
 ## Architecture Components
 
-### 1. `useRefresh` Hook (Primary Coordinator)
+### 1. `useRefresh` Hook (Bootstrap & Foreground Coordinator)
 
 **Location:** `frontend/hooks/useRefresh.ts`
 
 **Responsibilities:**
-- Coordinates all data fetching (feeds, folders, articles)
+- Initial data load on app start
+- Foreground refresh when app becomes active
 - Handles sync changes for cross-device consistency
-- Manages foreground/background refresh logic
 - Prevents duplicate refreshes
 - Tracks staleness to avoid unnecessary API calls
 
@@ -29,10 +46,14 @@ useRefresh({
 });
 ```
 
-**Refresh Types:**
+**Refresh Types Handled by useRefresh:**
 - **Initial Load:** Runs once on mount, always fetches data
 - **Foreground Refresh:** Runs when app becomes active, respects staleness
-- **Manual Refresh:** User-triggered (pull-to-refresh, refresh button), always runs
+
+**⚠️ Important: useRefresh does NOT handle:**
+- Scheduled automatic refreshes (handled by `useTimeline` timer)
+- Manual refresh button clicks (handled by `refreshAllFeeds()`)
+- Pull-to-refresh gestures (handled by Timeline component)
 
 ### 2. Store-Level Refresh Functions
 
@@ -51,12 +72,34 @@ useRefresh({
 - `fetchChanges()` - Get server changes since last sync
 - `applySyncChanges()` - Apply changes to local stores
 
-### 3. Component-Level Usage
+### 3. Automatic Scheduled Refresh (useTimeline)
+
+**Location:** `frontend/hooks/useTimeline.ts` (lines 41-102)
+
+**How It Works:**
+1. Every 1 second, timer checks all feeds for earliest `next_fetch_at`
+2. Calculates time remaining and displays countdown (e.g., "2m 30s")
+3. When countdown reaches 0 and app is active:
+   - Calls `refreshAllFeeds()` automatically
+   - Shows progress dialog with real-time updates
+   - Fetches new articles incrementally
+   - Timeline updates as new content arrives
+
+**Key Features:**
+- Respects per-feed `refresh_interval_minutes` setting
+- Only triggers if app is in foreground (`appState === 'active'`)
+- Prevents duplicate triggers with `lastTriggeredDueRef`
+- Skips if refresh already in progress (`refreshProgress` check)
+
+**This is the DEFAULT behavior you want!** Feeds automatically refresh in the background according to their configured intervals.
+
+### 4. Component-Level Usage
 
 **Timeline/useTimeline:**
-- Uses `refreshAllFeeds()` from feedStore for manual feed refresh
+- **Automatic Scheduled Refresh:** Timer-based auto-refresh (see above)
+- **Manual Refresh:** `refreshAllFeeds()` when user clicks refresh button
+- **Pull-to-Refresh:** RefreshControl triggers `refreshAllFeeds()`
 - Displays progress via `refreshProgress` state
-- Auto-refreshes when scheduled time arrives
 - Shows loading indicators during refresh
 
 **Sidebar:**
@@ -71,6 +114,22 @@ useRefresh({
 1. useRefresh (index.tsx)
    └─> fetchFeeds(), fetchFolders(), fetchArticles(true) [parallel]
    └─> fetchChanges() → applySyncChanges()
+```
+
+### Automatic Scheduled Refresh (Timer-Based) ⭐ DEFAULT BEHAVIOR
+
+```
+1. useTimeline timer ticks every 1s
+2. Checks feeds for earliest next_fetch_at
+3. When timer expires (countdown reaches 0):
+   └─> refreshAllFeeds() [from feedStore]
+   └─> SSE stream to backend /feeds-stream/refresh-multiple
+   └─> Progress dialog appears
+   └─> Progress updates (feed_refreshing, feed_complete)
+   └─> Incremental article fetches as new articles arrive
+   └─> Final fetch: fetchFeeds(), fetchFolders(), fetchArticles(true)
+   └─> fetchChanges() → applySyncChanges()
+   └─> Timeline updates with new articles
 ```
 
 ### Foreground Refresh (App Becomes Active)
