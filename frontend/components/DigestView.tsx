@@ -102,7 +102,7 @@ export const DigestView = () => {
                     <BarChart3 size={20} color={colors.primary.DEFAULT} />
                     <View>
                         <Text style={s.statValue}>{latestDigest.feed_count}</Text>
-                        <Text style={s.statLabel}>Sources Synced</Text>
+                        <Text style={s.statLabel}>Sources Refreshed</Text>
                     </View>
                 </View>
             </View>
