@@ -3,6 +3,7 @@ import { refreshFeed, FeedToRefresh } from './feed-refresh.js';
 import { FeedType } from './feed-parser.js';
 import { getUserSettings, getUserSettingsRaw, updateUserSettingsRaw } from './settings.js';
 import { generateDailyDigest, getCurrentEdition, DigestEdition } from './digest.js';
+import { emitRefreshEvent, RefreshStats } from './refresh-events.js';
 
 interface Feed extends FeedToRefresh {
     title: string;
@@ -131,6 +132,11 @@ async function checkFeeds() {
     let feedsRefreshed = 0;
     let feedsFailed = 0;
     let totalNewArticles = 0;
+    const stats: RefreshStats = {
+        success: 0,
+        errors: 0,
+        failed_feeds: [],
+    };
 
     try {
         state.isProcessing = true;
@@ -168,6 +174,7 @@ async function checkFeeds() {
         }
 
         console.log(`[Scheduler] Processing ${feeds.length} feeds on global refresh`);
+        emitRefreshEvent({ type: 'start', total_feeds: feeds.length });
 
         // Process in batches with timeout per batch
         for (let i = 0; i < feeds.length; i += BATCH_SIZE) {
@@ -178,6 +185,7 @@ async function checkFeeds() {
                 batch.map(async (feed) => {
                     const feedStart = Date.now();
                     feedsChecked++;
+                    emitRefreshEvent({ type: 'feed_refreshing', id: feed.id, title: feed.title });
                     
                     try {
                         // Add individual timeout for feed refresh
@@ -197,9 +205,29 @@ async function checkFeeds() {
                                 totalNewArticles += result.newArticles;
                                 console.log(`[Scheduler] ✓ ${feed.title}: ${result.newArticles} new (${Math.round(feedTime/1000)}s)`);
                             }
+                            stats.success++;
+                            emitRefreshEvent({
+                                type: 'feed_complete',
+                                id: feed.id,
+                                title: feed.title,
+                                new_articles: result.newArticles,
+                                next_fetch_at: result.next_fetch_at,
+                            });
                         } else {
                             feedsFailed++;
                             console.error(`[Scheduler] ✗ ${feed.title}: ${result.error}`);
+                            stats.errors++;
+                            stats.failed_feeds.push({
+                                id: feed.id,
+                                title: feed.title,
+                                error: result.error || 'Unknown error',
+                            });
+                            emitRefreshEvent({
+                                type: 'feed_error',
+                                id: feed.id,
+                                title: feed.title,
+                                error: result.error || 'Unknown error',
+                            });
                         }
                         
                         return result;
@@ -209,6 +237,18 @@ async function checkFeeds() {
                         const feedTime = Date.now() - feedStart;
                         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
                         console.error(`[Scheduler] ✗ ${feed.title}: ${errorMessage} (${Math.round(feedTime/1000)}s)`);
+                        stats.errors++;
+                        stats.failed_feeds.push({
+                            id: feed.id,
+                            title: feed.title,
+                            error: errorMessage,
+                        });
+                        emitRefreshEvent({
+                            type: 'feed_error',
+                            id: feed.id,
+                            title: feed.title,
+                            error: errorMessage,
+                        });
                         throw err;
                     }
                 })
@@ -228,6 +268,7 @@ async function checkFeeds() {
         
         // Log summary
         console.log(`[Scheduler] Batch complete: ${feedsRefreshed}/${feedsChecked} refreshed, ${totalNewArticles} new articles, ${feedsFailed} failed`);
+        emitRefreshEvent({ type: 'complete', stats });
 
         const nextGlobalIso = new Date(Date.now() + intervalMs).toISOString();
         updateUserSettingsRaw(userId, {

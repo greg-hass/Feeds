@@ -5,7 +5,7 @@ interface UserSettings {
 }
 
 const defaultSettings = {
-    refresh_interval_minutes: 30,
+    refresh_interval_minutes: 15,
     retention_days: 90,
     fetch_full_content: true,
     readability_enabled: true,

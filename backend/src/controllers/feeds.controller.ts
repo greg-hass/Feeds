@@ -1,11 +1,9 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { queryOne, queryAll, run, runMany } from '../db/index.js';
 import { discoverFeedsFromUrl } from '../services/discovery.js';
-import { parseFeed, normalizeArticle, detectFeedType, FeedType } from '../services/feed-parser.js';
+import { parseFeed, normalizeArticle, detectFeedType, FeedType, fetchYouTubeIcon } from '../services/feed-parser.js';
 import { refreshFeed } from '../services/feed-refresh.js';
 import { cacheFeedIcon } from '../services/icon-cache.js';
-import { z } from 'zod';
-
 // Re-using interfaces and constants from original feeds.ts
 export interface Feed {
     id: number;
@@ -91,7 +89,7 @@ export class FeedsController {
             if (existing.deleted_at) {
                 run('UPDATE feeds SET deleted_at = NULL, folder_id = ? WHERE id = ?', [body.folder_id || null, existing.id]);
                 const restoredFeed = queryOne<Feed>('SELECT * FROM feeds WHERE id = ?', [existing.id]);
-                return reply.status(200).send({ feed: restoredFeed, restored: true });
+                return reply.status(200).send({ feed: toApiFeed(restoredFeed!), restored: true });
             }
             return reply.status(409).send({ error: 'Feed already exists', feed_id: existing.id });
         }
@@ -229,9 +227,13 @@ export class FeedsController {
                 affected = run(`UPDATE feeds SET deleted_at = datetime('now'), updated_at = datetime('now') WHERE id IN (${body.feed_ids.map(() => '?').join(',')}) AND user_id = ? AND deleted_at IS NULL`, [...body.feed_ids, userId]).changes;
                 break;
             case 'mark_read':
-                for (const feedId of body.feed_ids) {
-                    run(`INSERT OR REPLACE INTO read_state (user_id, article_id, is_read, read_at, updated_at) SELECT ?, id, 1, datetime('now'), datetime('now') FROM articles WHERE feed_id = ?`, [userId, feedId]);
-                }
+                run(
+                    `INSERT OR REPLACE INTO read_state (user_id, article_id, is_read, read_at, updated_at)
+                    SELECT ?, id, 1, datetime('now'), datetime('now')
+                    FROM articles
+                    WHERE feed_id IN (${body.feed_ids.map(() => '?').join(',')})`,
+                    [userId, ...body.feed_ids]
+                );
                 affected = body.feed_ids.length;
                 break;
             case 'update_refresh_interval':
@@ -343,7 +345,6 @@ export class FeedsController {
             
             if (!channelId) {
                 // Try to get from metadata
-                const { detectFeedType } = await import('../services/feed-parser.js');
                 const detectedType = detectFeedType(feed.url, feedData);
                 if (detectedType === 'youtube' && feedData.youtubeChannelId) {
                     channelId = feedData.youtubeChannelId.startsWith('UC') ? feedData.youtubeChannelId : 'UC' + feedData.youtubeChannelId;
@@ -352,7 +353,6 @@ export class FeedsController {
             
             let newIconUrl: string | null = null;
             if (channelId) {
-                const { fetchYouTubeIcon } = await import('../services/feed-parser.js');
                 newIconUrl = await fetchYouTubeIcon(channelId);
             }
             
