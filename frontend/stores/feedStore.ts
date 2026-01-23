@@ -128,7 +128,6 @@ export const useFeedStore = create<FeedState>()(
                                 set({ refreshProgress: { total: event.total_feeds, completed: 0, currentTitle: '' } });
                             } else if (event.type === 'feed_refreshing') {
                                 // Show every feed name as it starts
-                                // Show every feed name as it starts
                                 set((state) => ({
                                     refreshProgress: state.refreshProgress ? { ...state.refreshProgress, currentTitle: event.title } : null
                                 }));
