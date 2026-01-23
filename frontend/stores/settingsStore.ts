@@ -6,6 +6,7 @@ import { handleError } from '@/services/errorHandler';
 
 interface SettingsState {
     settings: Settings | null;
+    globalNextRefreshAt: string | null;
     isLoading: boolean;
 
     fetchSettings: () => Promise<void>;
@@ -16,13 +17,18 @@ export const useSettingsStore = create<SettingsState>()(
     persist(
         (set, get) => ({
             settings: null,
+            globalNextRefreshAt: null,
             isLoading: false,
 
             fetchSettings: async () => {
                 set({ isLoading: true });
                 try {
-                    const { settings } = await api.getSettings();
-                    set({ settings, isLoading: false });
+                    const response = await api.getSettings();
+                    set({
+                        settings: response.settings,
+                        globalNextRefreshAt: response.global_next_refresh_at || null,
+                        isLoading: false
+                    });
                 } catch (error) {
                     // For mobile PWA: network issues are common, use fallback settings
                     // but show error so user knows sync failed

@@ -5,6 +5,7 @@ export * from './digestStore';
 export * from './toastStore';
 export * from './videoStore';
 export * from './audioStore';
+export * from './analyticsStore';
 
 /**
  * Initialize sync on app start.

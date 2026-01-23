@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { run, db } from '../db/index.js';
-import { getUserSettings, updateUserSettingsRaw } from '../services/settings.js';
+import { getUserSettings, updateUserSettingsRaw, getUserSettingsRaw } from '../services/settings.js';
 
 const updateSettingsSchema = z.object({
     refresh_interval_minutes: z.number().min(5).max(1440).optional(),
@@ -35,7 +35,12 @@ export async function settingsRoutes(app: FastifyInstance): Promise<void> {
 
     app.get('/', async () => {
         ensureSettingsColumn();
-        return { settings: getUserSettings(userId) };
+        const settings = getUserSettings(userId);
+        const rawSettings = getUserSettingsRaw(userId);
+        return {
+            settings,
+            global_next_refresh_at: rawSettings.global_next_refresh_at || null
+        };
     });
 
     app.patch('/', async (request: FastifyRequest) => {

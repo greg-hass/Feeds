@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Animated, Alert, AppState } from 'react-native';
+import { Animated, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useArticleStore, useFeedStore, useAudioStore, useVideoStore, useDigestStore } from '@/stores';
+import { useArticleStore, useFeedStore, useAudioStore, useVideoStore, useDigestStore, useSettingsStore } from '@/stores';
 import { extractVideoId } from '@/utils/youtube';
 import { Article } from '@/services/api';
 
@@ -12,10 +12,39 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
     const { currentArticleId: playingArticleId, isPlaying, play, pause, resume } = useAudioStore();
     const { activeVideoId, playVideo } = useVideoStore();
     const { fetchPendingDigest } = useDigestStore();
+    const { settings, globalNextRefreshAt } = useSettingsStore();
+
+    const [timeLeft, setTimeLeft] = useState<string | null>(null);
 
     useEffect(() => {
         fetchPendingDigest();
     }, []);
+
+    // Global refresh timer
+    useEffect(() => {
+        const timer = setInterval(() => {
+            if (!globalNextRefreshAt) {
+                setTimeLeft(null);
+                return;
+            }
+
+            const now = Date.now();
+            const nextRefresh = new Date(globalNextRefreshAt).getTime();
+            const diff = nextRefresh - now;
+
+            if (diff <= 0) {
+                setTimeLeft('0s');
+            } else if (diff < 60000) {
+                setTimeLeft(`${Math.floor(diff / 1000)}s`);
+            } else if (diff < 3600000) {
+                setTimeLeft(`${Math.floor(diff / 60000)}m ${Math.floor((diff % 60000) / 1000)}s`);
+            } else {
+                setTimeLeft(`${Math.floor(diff / 3600000)}h ${Math.floor((diff % 3600000) / 60000)}m`);
+            }
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [globalNextRefreshAt]);
 
     const isRefreshing = !!refreshProgress;
     const hotPulseAnim = useRef(new Animated.Value(1)).current;
@@ -95,7 +124,7 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
     })();
 
     return {
-        articles, isLoading, hasMore, filter, feeds, isFeedLoading, headerTitle, isRefreshing,
+        articles, isLoading, hasMore, filter, feeds, isFeedLoading, headerTitle, timeLeft, isRefreshing,
         playingArticleId, isPlaying, activeVideoId, hotPulseAnim,
         fetchArticles, setFilter, refreshAllFeeds, handleMarkAllRead, handleArticlePress,
         handlePlayPress, handleVideoPress, getBookmarkScale, getBookmarkRotation,
