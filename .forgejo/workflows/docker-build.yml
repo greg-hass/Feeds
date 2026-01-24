@@ -10,7 +10,16 @@ jobs:
     runs-on: docker
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Rewrite Forgejo base URL
+        run: |
+          git config --global url."http://192.168.1.163:3000/".insteadOf "http://forgejo:3000/"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        env:
+          GITHUB_SERVER_URL: http://192.168.1.163:3000
+          GITEA_SERVER_URL: http://192.168.1.163:3000
+          FORGEJO_SERVER_URL: http://192.168.1.163:3000
 
       - name: Log in to Forgejo container registry
         run: |
