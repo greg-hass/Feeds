@@ -7,12 +7,12 @@ import { Article } from '@/services/api';
 
 export const useTimeline = (onArticlePress?: (article: Article) => void) => {
     const router = useRouter();
-    const { articles, isLoading, hasMore, filter, fetchArticles, setFilter, markAllRead } = useArticleStore();
-    const { feeds, folders, refreshAllFeeds, isLoading: isFeedLoading, refreshProgress, isBackgroundRefreshing } = useFeedStore();
+    const { articles, isLoading, hasMore, filter, fetchArticles, setFilter, markAllRead, prefetchArticle } = useArticleStore();
+    const { feeds, folders, isLoading: isFeedLoading, refreshProgress, isBackgroundRefreshing } = useFeedStore();
     const { currentArticleId: playingArticleId, isPlaying, play, pause, resume } = useAudioStore();
     const { activeVideoId, playVideo } = useVideoStore();
     const { fetchPendingDigest } = useDigestStore();
-    const { settings, globalNextRefreshAt } = useSettingsStore();
+    const { settings, globalNextRefreshAt, globalLastRefreshAt } = useSettingsStore();
 
     const [timeLeft, setTimeLeft] = useState<string | null>(null);
 
@@ -20,7 +20,9 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
         fetchPendingDigest();
     }, []);
 
-    // Global refresh timer
+    const isRefreshing = isFeedLoading || !!refreshProgress || isBackgroundRefreshing;
+
+    // Global refresh timer (display only; backend is source of truth)
     useEffect(() => {
         const timer = setInterval(() => {
             if (!globalNextRefreshAt) {
@@ -45,8 +47,6 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
 
         return () => clearInterval(timer);
     }, [globalNextRefreshAt]);
-
-    const isRefreshing = isFeedLoading || !!refreshProgress || isBackgroundRefreshing;
     const hotPulseAnim = useRef(new Animated.Value(1)).current;
     const bookmarkScales = useRef<Map<number, Animated.Value>>(new Map());
     const bookmarkRotations = useRef<Map<number, Animated.Value>>(new Map());
@@ -123,10 +123,28 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
         return 'All Articles';
     })();
 
+    const contextLabel = (() => {
+        const parts: string[] = [];
+        if (filter.unread_only) parts.push('Unread only');
+        if (filter.folder_id) {
+            const name = folders.find(f => f.id === filter.folder_id)?.name || 'Folder';
+            parts.push(`Folder: ${name}`);
+        } else if (filter.feed_id) {
+            const name = feeds.find(f => f.id === filter.feed_id)?.title || 'Feed';
+            parts.push(`Feed: ${name}`);
+        } else if (filter.type) {
+            const label = { youtube: 'YouTube', podcast: 'Podcasts', reddit: 'Reddit', rss: 'RSS' }[filter.type] || filter.type;
+            parts.push(`Type: ${label}`);
+        } else {
+            parts.push('All');
+        }
+        return parts.join(' · ');
+    })();
+
     return {
-        articles, isLoading, hasMore, filter, feeds, isFeedLoading, headerTitle, timeLeft, isRefreshing,
+        articles, isLoading, hasMore, filter, feeds, isFeedLoading, headerTitle, contextLabel, timeLeft: isRefreshing ? 'Refreshing' : timeLeft, isRefreshing, globalLastRefreshAt, refreshProgress,
         playingArticleId, isPlaying, activeVideoId, hotPulseAnim,
         fetchArticles, setFilter, refreshAllFeeds, handleMarkAllRead, handleArticlePress,
-        handlePlayPress, handleVideoPress, getBookmarkScale, getBookmarkRotation,
+        handlePlayPress, handleVideoPress, getBookmarkScale, getBookmarkRotation, prefetchArticle,
     };
 };

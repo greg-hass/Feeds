@@ -24,6 +24,7 @@ export default function AppLayout() {
     const { fetchFeeds, fetchFolders, refreshProgress, cancelRefresh } = useFeedStore();
     const { fetchArticles } = useArticleStore();
     const { showPlayer } = useAudioStore();
+    const { fetchSettings } = useSettingsStore();
     const lastIsRefreshingRef = useRef(false);
 
     useEffect(() => {
@@ -99,28 +100,53 @@ export default function AppLayout() {
         api.listenForRefreshEvents(
             (event) => {
                 if (event.type === 'start') {
-                    useFeedStore.setState({ isBackgroundSyncing: true });
+                    useFeedStore.setState({
+                        isBackgroundRefreshing: true,
+                        refreshProgress: { total: event.total_feeds, completed: 0, currentTitle: '' },
+                    });
+                    return;
+                }
+
+                if (event.type === 'feed_refreshing') {
+                    useFeedStore.setState((state) => ({
+                        refreshProgress: state.refreshProgress
+                            ? { ...state.refreshProgress, currentTitle: event.title }
+                            : { total: 0, completed: 0, currentTitle: event.title },
+                    }));
+                    return;
+                }
+
+                if (event.type === 'feed_complete' || event.type === 'feed_error') {
+                    if (event.type === 'feed_complete' && event.new_articles > 0) {
+                        debouncedSync();
+                    }
+
+                    useFeedStore.setState((state) => ({
+                        refreshProgress: state.refreshProgress
+                            ? {
+                                ...state.refreshProgress,
+                                completed: state.refreshProgress.completed + 1,
+                                currentTitle: event.title || state.refreshProgress.currentTitle,
+                            }
+                            : null,
+                    }));
+
+                    if (event.type === 'feed_complete') {
+                        const feedStore = useFeedStore.getState();
+                        const existing = feedStore.feeds.find((feed) => feed.id === event.id);
+                        const unreadCount = (existing?.unread_count ?? 0) + event.new_articles;
+                        feedStore.updateLocalFeed(event.id, {
+                            unread_count: unreadCount,
+                            last_fetched_at: new Date().toISOString(),
+                            next_fetch_at: event.next_fetch_at ?? existing?.next_fetch_at ?? null,
+                        });
+                    }
                     return;
                 }
 
                 if (event.type === 'complete') {
-                    useFeedStore.setState({ isBackgroundSyncing: false });
+                    useFeedStore.setState({ isBackgroundRefreshing: false, refreshProgress: null });
                     return;
-                }
-
-                if (event.type === 'feed_complete') {
-                    if (event.new_articles > 0) {
-                        debouncedSync();
-                    }
-
-                    const feedStore = useFeedStore.getState();
-                    const existing = feedStore.feeds.find((feed) => feed.id === event.id);
-                    const unreadCount = (existing?.unread_count ?? 0) + event.new_articles;
-                    feedStore.updateLocalFeed(event.id, {
-                        unread_count: unreadCount,
-                        last_fetched_at: new Date().toISOString(),
-                        next_fetch_at: event.next_fetch_at ?? existing?.next_fetch_at ?? null,
-                    });
                 }
             },
             (error) => {
@@ -132,7 +158,7 @@ export default function AppLayout() {
         return () => {
             controller.abort();
             if (refreshTimeout) clearTimeout(refreshTimeout);
-            useFeedStore.setState({ isBackgroundSyncing: false });
+            useFeedStore.setState({ isBackgroundRefreshing: false, refreshProgress: null });
         };
     }, []);
 
@@ -147,6 +173,7 @@ export default function AppLayout() {
             fetchFeeds();
             fetchFolders();
             fetchArticles(true);
+            fetchSettings().catch(() => { });
         };
 
         const appStateSub = AppState.addEventListener('change', (state) => {

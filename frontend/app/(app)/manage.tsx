@@ -41,7 +41,6 @@ export default function ManageScreen() {
     const [selectedFolder, setSelectedFolder] = useState<Folder | null>(null);
     const [renameValue, setRenameValue] = useState('');
     const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
-    const [refreshInterval, setRefreshInterval] = useState(30);
     const isDesktop = Platform.OS === 'web' && width >= 1024;
 
     const [isExporting, setIsExporting] = useState(false);
@@ -145,7 +144,6 @@ export default function ManageScreen() {
     const handleEditFeed = (feed: Feed) => {
         setSelectedFeed(feed);
         setRenameValue(feed.title);
-        setRefreshInterval(feed.refresh_interval_minutes || 30);
         setModalType('edit_feed');
     };
 
@@ -168,7 +166,6 @@ export default function ManageScreen() {
             if (modalType === 'edit_feed' && selectedFeed) {
                 await api.updateFeed(selectedFeed.id, {
                     title: renameValue,
-                    refresh_interval_minutes: refreshInterval
                 });
             } else if (modalType === 'rename_folder' && selectedFolder) {
                 await api.updateFolder(selectedFolder.id, renameValue);
@@ -1050,38 +1047,6 @@ export default function ManageScreen() {
                             accessibilityLabel="Name"
                         />
 
-                        {modalType === 'edit_feed' && (
-                            <>
-                                <Text style={s.modalLabel}>Refresh Interval</Text>
-                                <View style={s.intervalOptions}>
-                                    {[
-                                        { label: '15m', value: 15 },
-                                        { label: '30m', value: 30 },
-                                        { label: '1h', value: 60 },
-                                        { label: '4h', value: 240 },
-                                        { label: '12h', value: 720 },
-                                        { label: '24h', value: 1440 },
-                                    ].map((opt) => (
-                                        <TouchableOpacity
-                                            key={opt.value}
-                                            style={[
-                                                s.intervalOption,
-                                                refreshInterval === opt.value && s.intervalOptionSelected
-                                            ]}
-                                            onPress={() => setRefreshInterval(opt.value)}
-                                        >
-                                            <Text style={[
-                                                s.intervalOptionText,
-                                                refreshInterval === opt.value && s.intervalOptionTextSelected
-                                            ]}>
-                                                {opt.label}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </View>
-                            </>
-                        )}
-
                         <View style={s.modalActions}>
                             <TouchableOpacity
                                 style={s.modalCancel}
@@ -1472,32 +1437,6 @@ const styles = (colors: any) => StyleSheet.create({
         marginBottom: spacing.xs,
         marginTop: spacing.md,
         textTransform: 'uppercase',
-    },
-    intervalOptions: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: spacing.sm,
-        marginBottom: spacing.lg,
-    },
-    intervalOption: {
-        paddingHorizontal: spacing.md,
-        paddingVertical: spacing.sm,
-        borderRadius: borderRadius.md,
-        backgroundColor: colors.background.tertiary,
-        borderWidth: 1,
-        borderColor: colors.border.DEFAULT,
-    },
-    intervalOptionSelected: {
-        backgroundColor: colors.primary.DEFAULT,
-        borderColor: colors.primary.DEFAULT,
-    },
-    intervalOptionText: {
-        fontSize: 13,
-        fontWeight: '500',
-        color: colors.text.secondary,
-    },
-    intervalOptionTextSelected: {
-        color: colors.text.inverse,
     },
     modalActions: {
         flexDirection: 'row',

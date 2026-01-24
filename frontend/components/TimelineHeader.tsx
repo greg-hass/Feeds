@@ -41,11 +41,6 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
                 <View style={s.headerTitleStack}>
                     <View style={s.headerTopRow}>
                         <Text style={s.headerTitle} numberOfLines={1}>{title}</Text>
-                        {timeLeft && (
-                            <View style={s.timerPill}>
-                                <Text style={s.timerText}>{timeLeft}</Text>
-                            </View>
-                        )}
                         {isRefreshing && (
                             <View style={s.refreshPill}>
                                 <ActivityIndicator size={10} color={colors.primary.DEFAULT} />
@@ -57,6 +52,11 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
                 </View>
             </View>
             <View style={s.headerActions}>
+                {timeLeft && (
+                    <View style={s.timerPill}>
+                        <Text style={s.timerText}>{timeLeft}</Text>
+                    </View>
+                )}
                 <TouchableOpacity
                     onPress={onRefresh}
                     style={s.iconButton}
