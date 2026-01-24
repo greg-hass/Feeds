@@ -8,7 +8,7 @@ import { Article } from '@/services/api';
 export const useTimeline = (onArticlePress?: (article: Article) => void) => {
     const router = useRouter();
     const { articles, isLoading, hasMore, filter, fetchArticles, setFilter, markAllRead, prefetchArticle } = useArticleStore();
-    const { feeds, folders, isLoading: isFeedLoading, refreshProgress, isBackgroundRefreshing } = useFeedStore();
+    const { feeds, folders, refreshAllFeeds, isLoading: isFeedLoading, refreshProgress, isBackgroundRefreshing } = useFeedStore();
     const { currentArticleId: playingArticleId, isPlaying, play, pause, resume } = useAudioStore();
     const { activeVideoId, playVideo } = useVideoStore();
     const { fetchPendingDigest } = useDigestStore();
