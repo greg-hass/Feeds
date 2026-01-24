@@ -8,6 +8,7 @@ export * from './audioStore';
 export * from './analyticsStore';
 export * from './rulesStore';
 export * from './searchStore';
+export * from './highlightsStore';
 
 /**
  * Initialize sync on app start.

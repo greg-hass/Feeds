@@ -35,6 +35,12 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
                         <Text style={s.timerText}>{timeLeft}</Text>
                     </View>
                 )}
+                {isRefreshing && (
+                    <View style={s.refreshPill}>
+                        <ActivityIndicator size={10} color={colors.primary.DEFAULT} />
+                        <Text style={s.refreshText}>Refreshing</Text>
+                    </View>
+                )}
             </View>
             <View style={s.headerActions}>
                 <TouchableOpacity

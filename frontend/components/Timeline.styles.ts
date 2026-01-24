@@ -48,6 +48,20 @@ export const timelineStyles = (colors: any, isMobile: boolean) => StyleSheet.cre
         color: colors.primary.DEFAULT,
         fontFamily: Platform.OS === 'web' ? 'monospace' : undefined,
     },
+    refreshPill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: colors.background.secondary,
+        paddingHorizontal: spacing.sm,
+        paddingVertical: 2,
+        borderRadius: borderRadius.sm,
+    },
+    refreshText: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: colors.text.secondary,
+    },
     headerActions: {
         flexDirection: 'row',
         gap: spacing.sm,

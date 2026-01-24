@@ -8,7 +8,7 @@ import { Article } from '@/services/api';
 export const useTimeline = (onArticlePress?: (article: Article) => void) => {
     const router = useRouter();
     const { articles, isLoading, hasMore, filter, fetchArticles, setFilter, markAllRead } = useArticleStore();
-    const { feeds, folders, refreshAllFeeds, isLoading: isFeedLoading, refreshProgress } = useFeedStore();
+    const { feeds, folders, refreshAllFeeds, isLoading: isFeedLoading, refreshProgress, isBackgroundRefreshing } = useFeedStore();
     const { currentArticleId: playingArticleId, isPlaying, play, pause, resume } = useAudioStore();
     const { activeVideoId, playVideo } = useVideoStore();
     const { fetchPendingDigest } = useDigestStore();
@@ -46,7 +46,7 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
         return () => clearInterval(timer);
     }, [globalNextRefreshAt]);
 
-    const isRefreshing = !!refreshProgress;
+    const isRefreshing = isFeedLoading || !!refreshProgress || isBackgroundRefreshing;
     const hotPulseAnim = useRef(new Animated.Value(1)).current;
     const bookmarkScales = useRef<Map<number, Animated.Value>>(new Map());
     const bookmarkRotations = useRef<Map<number, Animated.Value>>(new Map());

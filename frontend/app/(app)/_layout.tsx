@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { View, StyleSheet, useWindowDimensions, Platform, AppState } from 'react-native';
 import { Slot } from 'expo-router';
-import { useArticleStore, useFeedStore } from '@/stores';
+import { useArticleStore, useFeedStore, useSettingsStore } from '@/stores';
 import { useColors } from '@/theme';
 import Sidebar from '@/components/Sidebar';
 import { enableSync } from '@/lib/sync';
@@ -23,6 +23,7 @@ export default function AppLayout() {
     const { fetchFeeds, fetchFolders, refreshProgress, cancelRefresh } = useFeedStore();
     const { fetchArticles } = useArticleStore();
     const { showPlayer } = useAudioStore();
+    const lastIsRefreshingRef = useRef(false);
 
     useEffect(() => {
         fetchFeeds();
@@ -32,6 +33,27 @@ export default function AppLayout() {
         const cleanupSync = enableSync((changes, isRefreshing) => {
             useFeedStore.getState().applySyncChanges(changes, isRefreshing);
             useArticleStore.getState().applySyncChanges(changes);
+
+            const articleStore = useArticleStore.getState();
+            const feedStore = useFeedStore.getState();
+            const settingsStore = useSettingsStore.getState();
+            const createdCount = Array.isArray(changes.articles?.created) ? changes.articles?.created.length : 0;
+            const hasFolderFilter = !!articleStore.filter.folder_id;
+            const wasRefreshing = lastIsRefreshingRef.current;
+            const nowRefreshing = !!isRefreshing;
+
+            if (hasFolderFilter && createdCount > 0) {
+                articleStore.fetchArticles(true, true);
+            }
+
+            if (wasRefreshing && !nowRefreshing) {
+                feedStore.fetchFeeds();
+                feedStore.fetchFolders();
+                articleStore.fetchArticles(true, true);
+                settingsStore.fetchSettings().catch(() => { });
+            }
+
+            lastIsRefreshingRef.current = nowRefreshing;
         });
 
         if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
