@@ -9,34 +9,27 @@ jobs:
   docker:
     runs-on: docker
 
-    # Needs node to run actions/checkout, but we'll add docker CLI ourselves
-    container:
-      image: node:20-alpine
-
     steps:
-      - name: Install required tools (git + docker CLI)
-        run: |
-          apk add --no-cache git docker-cli
-
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Log in to Forgejo container registry
         run: |
-          echo "${{ secrets.REGISTRY_TOKEN }}" | docker login "${{ secrets.REGISTRY_HOST }}" \
-            -u "${{ secrets.REGISTRY_USER }}" --password-stdin
+          echo "${REGISTRY_TOKEN}" | docker login \
+            192.168.1.163:3300 \
+            -u "${REGISTRY_USER}" \
+            --password-stdin
 
-      - name: Build image
+      - name: Build Docker image
         run: |
-          IMAGE="${{ secrets.REGISTRY_HOST }}/greg/feeds"
           docker build \
-            -t "$IMAGE:latest" \
-            -t "$IMAGE:main" \
-            -t "$IMAGE:${{ github.sha }}" \
+            -t 192.168.1.163:3300/greg/feeds:latest \
+            -t 192.168.1.163:3300/greg/feeds:main \
+            -t 192.168.1.163:3300/greg/feeds:${{ github.sha }} \
             .
 
-      - name: Push image
+      - name: Push Docker image
         run: |
-          IMAGE="${{ secrets.REGISTRY_HOST }}/greg/feeds"
-          docker push "$IMAGE:latest"
-          docker push "$IMAGE:main"
-          docker push "$IMAGE:${{ github.sha }}"
+          docker push 192.168.1.163:3300/greg/feeds:latest
+          docker push 192.168.1.163:3300/greg/feeds:main
+          docker push 192.168.1.163:3300/greg/feeds:${{ github.sha }}
