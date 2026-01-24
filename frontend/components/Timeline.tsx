@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, FlatList, RefreshControl, ActivityIndicator, useWindowDimensions, Platform, LayoutAnimation, UIManager } from 'react-native';
+import { View, FlatList, RefreshControl, ActivityIndicator, useWindowDimensions, Platform, LayoutAnimation, UIManager, InteractionManager } from 'react-native';
 import { Article } from '@/services/api';
 import { useColors } from '@/theme';
 import { useTimeline } from '@/hooks/useTimeline';
@@ -28,14 +28,15 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     const s = timelineStyles(colors, isMobile);
 
     const {
-        articles, isLoading, hasMore, filter, isFeedLoading, headerTitle, timeLeft, isRefreshing,
+        articles, isLoading, hasMore, filter, isFeedLoading, headerTitle, timeLeft, isRefreshing, refreshProgress,
         playingArticleId, isPlaying, activeVideoId, hotPulseAnim,
-        fetchArticles, setFilter, refreshAllFeeds, handleMarkAllRead,
+        fetchArticles, setFilter, refreshAllFeeds, handleMarkAllRead, prefetchArticle,
         handleArticlePress, handlePlayPress, handleVideoPress,
         getBookmarkScale, getBookmarkRotation,
     } = useTimeline(onArticlePress);
 
     const prevArticleCount = useRef(articles.length);
+    const prefetchedRef = useRef<Set<number>>(new Set());
 
     useEffect(() => {
         if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -49,6 +50,10 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
         }
         prevArticleCount.current = articles.length;
     }, [articles.length]);
+
+    useEffect(() => {
+        prefetchedRef.current.clear();
+    }, [filter.feed_id, filter.folder_id, filter.type, filter.unread_only]);
 
     const {
         flatListRef, isScrollRestored, onViewableItemsChanged, handleScroll
@@ -73,6 +78,60 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
         />
     );
 
+    const scheduleIdle = (callback: () => void) => {
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+            const requestIdle = (window as any).requestIdleCallback;
+            if (typeof requestIdle === 'function') {
+                requestIdle(callback, { timeout: 1500 });
+                return;
+            }
+        }
+        InteractionManager.runAfterInteractions(callback);
+    };
+
+    const canPrefetch = async () => {
+        if (Platform.OS !== 'web' || typeof navigator === 'undefined') return true;
+        const connection = (navigator as any).connection;
+        if (connection?.saveData) return false;
+        const effectiveType = connection?.effectiveType;
+        if (effectiveType && ['slow-2g', '2g'].includes(effectiveType)) return false;
+
+        if (typeof (navigator as any).getBattery === 'function') {
+            try {
+                const battery = await (navigator as any).getBattery();
+                if (battery && !battery.charging) return false;
+            } catch {
+                // Ignore battery API errors and allow prefetch.
+            }
+        }
+
+        return true;
+    };
+
+    useEffect(() => {
+        if (isLoading || articles.length === 0) return;
+
+        let cancelled = false;
+        const prefetchCount = isMobile ? 8 : 16;
+        const candidates = (filter.unread_only ? articles.filter((a) => !a.is_read) : articles)
+            .slice(0, prefetchCount);
+
+        scheduleIdle(() => {
+            canPrefetch().then((allowed) => {
+                if (!allowed || cancelled) return;
+                candidates.forEach((article) => {
+                    if (prefetchedRef.current.has(article.id)) return;
+                    prefetchedRef.current.add(article.id);
+                    prefetchArticle(article.id);
+                });
+            });
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [articles, filter.unread_only, isLoading, isMobile, prefetchArticle]);
+
     return (
         <View style={s.container}>
             <NewArticlesPill />
@@ -85,6 +144,16 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                 onRefresh={refreshAllFeeds}
                 onMarkAllRead={handleMarkAllRead}
             />
+            {isRefreshing && (
+                <View style={s.refreshBarContainer}>
+                    <View
+                        style={[
+                            s.refreshBar,
+                            { width: refreshProgress?.total ? `${Math.min(100, (refreshProgress.completed / refreshProgress.total) * 100)}%` : '25%' },
+                        ]}
+                    />
+                </View>
+            )}
 
             <FilterPills
                 unreadOnly={filter.unread_only || false}
