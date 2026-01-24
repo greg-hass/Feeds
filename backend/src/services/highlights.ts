@@ -114,7 +114,7 @@ export function getReadingProgress(userId: number, articleId: number): ReadingPr
     return queryOne<ReadingProgress>(
         `SELECT * FROM reading_progress WHERE user_id = ? AND article_id = ?`,
         [userId, articleId]
-    );
+    ) ?? null;
 }
 
 /**
