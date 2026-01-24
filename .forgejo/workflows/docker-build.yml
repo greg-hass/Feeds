@@ -8,6 +8,8 @@ on:
 jobs:
   docker:
     runs-on: docker
+    container:
+      image: catthehacker/ubuntu:act-latest
 
     steps:
       - uses: actions/checkout@v4
