@@ -472,6 +472,61 @@ class ApiClient {
             onError?.(error);
         }
     }
+
+    /**
+     * Listen for background refresh events via SSE
+     */
+    async listenForRefreshEvents(
+        onEvent: (event: RefreshProgressEvent) => void,
+        onError?: (error: Error) => void,
+        signal?: AbortSignal
+    ): Promise<void> {
+        try {
+            const response = await fetch(`${API_URL}/feeds-stream/refresh-events`, {
+                method: 'GET',
+                signal,
+            });
+
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+                throw new Error(error.error || 'Refresh event stream failed');
+            }
+
+            const reader = response.body?.getReader();
+            if (!reader) {
+                throw new Error('No response body');
+            }
+
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        try {
+                            const event = JSON.parse(line.slice(6));
+                            onEvent(event);
+                        } catch {
+                            // Skip invalid JSON
+                        }
+                    }
+                }
+            }
+        } catch (err) {
+            const error = err instanceof Error ? err : new Error('Unknown error');
+            if (error.name === 'AbortError') {
+                return;
+            }
+            onError?.(error);
+        }
+    }
 }
 
 // Error class

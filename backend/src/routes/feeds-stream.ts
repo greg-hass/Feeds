@@ -3,6 +3,7 @@ import { queryAll, run } from '../db/index.js';
 import { refreshFeed, FeedToRefreshWithCache } from '../services/feed-refresh.js';
 import { FeedType } from '../services/feed-parser.js';
 import { getUserSettings, updateUserSettingsRaw } from '../services/settings.js';
+import { onRefreshEvent, RefreshEvent } from '../services/refresh-events.js';
 
 // Helper to check if icon is generic (duplicated from feed-refresh.ts to avoid circular dep)
 function isGenericIconUrl(url: string | null): boolean {
@@ -43,6 +44,40 @@ const DELAY_BETWEEN_FEEDS = 1_000; // 1 second delay between feeds (currently un
 export async function feedsStreamRoutes(app: FastifyInstance) {
     // Single user app - user_id is always 1
     const userId = 1;
+
+    // Subscribe to background refresh events (scheduler-driven)
+    app.get('/refresh-events', async (request: FastifyRequest, reply: FastifyReply) => {
+        let isCancelled = false;
+        request.raw.on('close', () => {
+            isCancelled = true;
+        });
+
+        await reply.hijack();
+
+        reply.raw.writeHead(200, {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+            'Access-Control-Allow-Origin': '*',
+            'X-Accel-Buffering': 'no',
+        });
+
+        const sendEvent = (event: RefreshEvent) => {
+            if (isCancelled) return;
+            reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
+        };
+
+        const keepaliveTimer = setInterval(() => {
+            reply.raw.write(`: keepalive\n\n`);
+        }, KEEPALIVE_INTERVAL);
+
+        const unsubscribe = onRefreshEvent(sendEvent);
+
+        request.raw.on('close', () => {
+            clearInterval(keepaliveTimer);
+            unsubscribe();
+        });
+    });
 
     // Bulk refresh feeds with SSE progress
     app.get('/refresh-multiple', async (request: FastifyRequest<{ Querystring: { ids?: string } }>, reply: FastifyReply) => {
