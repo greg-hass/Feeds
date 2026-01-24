@@ -20,9 +20,9 @@ jobs:
 
       - name: Log in to Forgejo container registry
         run: |
-          echo "${REGISTRY_TOKEN}" | docker login \
+          echo "${{ secrets.REGISTRY_TOKEN }}" | docker login \
             192.168.1.163:3300 \
-            -u "${REGISTRY_USER}" \
+            -u "${{ secrets.REGISTRY_USER }}" \
             --password-stdin
 
       - name: Build Docker image
