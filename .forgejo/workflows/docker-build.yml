@@ -8,6 +8,10 @@ on:
 jobs:
   docker:
     runs-on: docker
+
+    container:
+      image: docker:26-cli
+
     steps:
       - uses: actions/checkout@v4
 
