@@ -38,9 +38,7 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
             </View>
             <View style={s.headerActions}>
                 {timeLeft && (
-                    <View style={s.timerPill}>
-                        <Text style={s.timerText}>{timeLeft}</Text>
-                    </View>
+                    <Text style={s.timerText}>{timeLeft}</Text>
                 )}
                 <TouchableOpacity
                     onPress={onRefresh}

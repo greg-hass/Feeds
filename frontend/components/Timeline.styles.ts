@@ -12,12 +12,11 @@ export const timelineStyles = (colors: any, isMobile: boolean) => StyleSheet.cre
         alignItems: 'center',
         paddingHorizontal: spacing.lg,
         paddingTop: spacing.lg,
-        paddingBottom: 0,
+        paddingBottom: spacing.md,
     },
     filterWrapper: {
         borderBottomWidth: 1,
         borderBottomColor: colors.border.DEFAULT,
-        marginTop: -spacing.sm,
         paddingBottom: spacing.md,
     },
     filterScroll: {
@@ -37,17 +36,14 @@ export const timelineStyles = (colors: any, isMobile: boolean) => StyleSheet.cre
         color: colors.text.primary,
         letterSpacing: -0.5,
     },
-    timerPill: {
-        backgroundColor: colors.background.secondary,
-        paddingHorizontal: spacing.sm,
-        paddingVertical: 2,
-        borderRadius: borderRadius.sm,
-    },
     timerText: {
         fontSize: 10,
         fontWeight: '800',
-        color: colors.primary.DEFAULT,
+        color: '#10B981',
         fontFamily: Platform.OS === 'web' ? 'monospace' : undefined,
+        lineHeight: 12,
+        includeFontPadding: false,
+        alignSelf: 'center',
     },
     refreshPill: {
         flexDirection: 'row',
@@ -75,6 +71,7 @@ export const timelineStyles = (colors: any, isMobile: boolean) => StyleSheet.cre
     },
     headerActions: {
         flexDirection: 'row',
+        alignItems: 'center',
         gap: spacing.sm,
     },
     iconButton: {
