@@ -30,6 +30,14 @@ export const timelineStyles = (colors: any, isMobile: boolean) => StyleSheet.cre
         gap: spacing.sm,
         marginLeft: isMobile ? 40 : 0, // Add space for menu hamburger
     },
+    headerTitleStack: {
+        flexDirection: 'column',
+    },
+    headerTopRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+    },
     headerTitle: {
         fontSize: 22,
         fontWeight: '900',
@@ -61,6 +69,21 @@ export const timelineStyles = (colors: any, isMobile: boolean) => StyleSheet.cre
         fontSize: 10,
         fontWeight: '700',
         color: colors.text.secondary,
+    },
+    lastRefreshText: {
+        fontSize: 11,
+        color: colors.text.tertiary,
+        fontWeight: '600',
+    },
+    refreshBarContainer: {
+        height: 3,
+        backgroundColor: colors.background.secondary,
+    },
+    refreshBar: {
+        height: '100%',
+        backgroundColor: colors.primary.DEFAULT,
+        borderTopRightRadius: borderRadius.sm,
+        borderBottomRightRadius: borderRadius.sm,
     },
     headerActions: {
         flexDirection: 'row',
