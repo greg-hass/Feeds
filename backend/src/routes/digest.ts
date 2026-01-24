@@ -80,6 +80,12 @@ export async function digestRoutes(app: FastifyInstance) {
         }
 
         run(
+            `INSERT OR IGNORE INTO digest_settings (user_id, enabled, style)
+             VALUES (?, 1, 'bullets')`,
+            [userId]
+        );
+
+        run(
             'UPDATE digest_settings SET last_dismissed_digest_id = ? WHERE user_id = ?',
             [digestId, userId]
         );
@@ -208,4 +214,3 @@ export async function digestRoutes(app: FastifyInstance) {
         return { success: true };
     });
 }
-

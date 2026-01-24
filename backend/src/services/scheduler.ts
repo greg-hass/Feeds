@@ -373,38 +373,56 @@ async function runDigestCycle() {
         const now = new Date();
         const currentHour = now.getHours();
         const currentMinute = now.getMinutes();
+        const currentMinutes = currentHour * 60 + currentMinute;
         const currentTimeStr = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
 
         // Parse schedule times (default to 08:00 and 20:00)
         const morningTime = settings.schedule_morning || '08:00';
         const eveningTime = settings.schedule_evening || '20:00';
 
-        // Check if we're within 5 minutes of a scheduled time
-        const isNearSchedule = (scheduleTime: string): boolean => {
+        const parseScheduleMinutes = (scheduleTime: string): number | null => {
             const [schedHour, schedMin] = scheduleTime.split(':').map(Number);
-            const schedMinutes = schedHour * 60 + schedMin;
-            const currentMinutes = currentHour * 60 + currentMinute;
-            const diff = Math.abs(currentMinutes - schedMinutes);
-            return diff <= 5; // Within 5 minutes
+            if (Number.isNaN(schedHour) || Number.isNaN(schedMin)) return null;
+            return schedHour * 60 + schedMin;
         };
 
-        let edition: DigestEdition | null = null;
-        
-        if (isNearSchedule(morningTime)) {
-            edition = 'morning';
-        } else if (isNearSchedule(eveningTime)) {
-            edition = 'evening';
-        }
+        const morningMinutes = parseScheduleMinutes(morningTime);
+        const eveningMinutes = parseScheduleMinutes(eveningTime);
 
-        if (edition) {
+        const shouldRunMorning =
+            morningMinutes !== null &&
+            currentMinutes >= morningMinutes &&
+            (eveningMinutes === null || currentMinutes < eveningMinutes);
+
+        const shouldRunEvening =
+            eveningMinutes !== null &&
+            currentMinutes >= eveningMinutes;
+
+        const tryGenerate = async (edition: DigestEdition) => {
+            const today = new Date().toISOString().split('T')[0];
+            const existingDigest = queryOne<{ id: number }>(
+                `SELECT id FROM digests 
+                 WHERE user_id = ? AND edition = ? AND date(generated_at) = ?`,
+                [userId, edition, today]
+            );
+            if (existingDigest) {
+                return;
+            }
+
             console.log(`[Digest] Scheduled ${edition} digest generation at ${currentTimeStr}`);
             const result = await generateDailyDigest(userId, edition);
-            
+
             if (result.success) {
                 console.log(`[Digest] ${edition} digest generated successfully (ID: ${result.digestId})`);
             } else if (result.error !== 'No new articles to summarize') {
                 console.error(`[Digest] Failed to generate ${edition} digest: ${result.error}`);
             }
+        };
+
+        if (shouldRunMorning) {
+            await tryGenerate('morning');
+        } else if (shouldRunEvening) {
+            await tryGenerate('evening');
         }
 
         state.lastDigestCheck = Date.now();
