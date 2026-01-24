@@ -1,0 +1,33 @@
+name: build-and-push-image
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  docker:
+    runs-on: docker
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Forgejo container registry
+        run: |
+          echo "${{ secrets.REGISTRY_TOKEN }}" | docker login "${{ secrets.REGISTRY_HOST }}" \
+            -u "${{ secrets.REGISTRY_USER }}" --password-stdin
+
+      - name: Build image
+        run: |
+          IMAGE="${{ secrets.REGISTRY_HOST }}/greg/feeds"
+          docker build \
+            -t "$IMAGE:latest" \
+            -t "$IMAGE:main" \
+            -t "$IMAGE:${{ github.sha }}" \
+            .
+
+      - name: Push image
+        run: |
+          IMAGE="${{ secrets.REGISTRY_HOST }}/greg/feeds"
+          docker push "$IMAGE:latest"
+          docker push "$IMAGE:main"
+          docker push "$IMAGE:${{ github.sha }}"
