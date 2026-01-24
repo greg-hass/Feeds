@@ -17,6 +17,7 @@ export const timelineStyles = (colors: any, isMobile: boolean) => StyleSheet.cre
     filterWrapper: {
         borderBottomWidth: 1,
         borderBottomColor: colors.border.DEFAULT,
+        marginTop: -spacing.sm,
         paddingBottom: spacing.md,
     },
     filterScroll: {
