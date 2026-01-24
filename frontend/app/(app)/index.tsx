@@ -82,7 +82,7 @@ export default function ArticleListScreen() {
                             Timeline header corresponds to the "List Pane" header.
                             Previous index.tsx header had the Menu button.
                         */}
-                        <TouchableOpacity onPress={toggleMenu} style={s.mobileMenuButton}>
+                        <TouchableOpacity onPress={toggleMenu} style={s.mobileMenuButton} accessibilityLabel="Open menu">
                             <Menu size={24} color={colors.text.primary} />
                         </TouchableOpacity>
                     </View>
@@ -114,7 +114,7 @@ export default function ArticleListScreen() {
                         ]}
                     >
                         <View style={{ alignItems: 'flex-end', padding: spacing.md }}>
-                            <TouchableOpacity onPress={toggleMenu} style={{ padding: spacing.sm }}>
+                            <TouchableOpacity onPress={toggleMenu} style={{ padding: spacing.sm }} accessibilityLabel="Close menu">
                                 <X size={24} color={colors.text.primary} />
                             </TouchableOpacity>
                         </View>

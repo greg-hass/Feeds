@@ -206,7 +206,7 @@ export const FeedInfoSheet = ({ feedId, visible, onClose, onEdit, onDelete }: Fe
                     {/* Header */}
                     <View style={s.header}>
                         <Text style={s.headerTitle}>Feed Info</Text>
-                        <TouchableOpacity onPress={onClose} style={s.closeButton}>
+                        <TouchableOpacity onPress={onClose} style={s.closeButton} accessibilityLabel="Close feed info">
                             <X size={24} color={colors.text.primary} />
                         </TouchableOpacity>
                     </View>

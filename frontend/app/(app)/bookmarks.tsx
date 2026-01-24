@@ -187,7 +187,7 @@ export default function BookmarksScreen() {
             {/* Mobile menu button */}
             {isMobile && (
                 <>
-                    <TouchableOpacity onPress={toggleMenu} style={s.mobileMenuButton}>
+                    <TouchableOpacity onPress={toggleMenu} style={s.mobileMenuButton} accessibilityLabel="Open menu">
                         <Menu size={24} color={colors.text.primary} />
                     </TouchableOpacity>
 
@@ -210,7 +210,7 @@ export default function BookmarksScreen() {
                         ]}
                     >
                         <View style={{ alignItems: 'flex-end', padding: spacing.md }}>
-                            <TouchableOpacity onPress={toggleMenu} style={{ padding: spacing.sm }}>
+                            <TouchableOpacity onPress={toggleMenu} style={{ padding: spacing.sm }} accessibilityLabel="Close menu">
                                 <X size={24} color={colors.text.primary} />
                             </TouchableOpacity>
                         </View>

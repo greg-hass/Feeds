@@ -194,7 +194,7 @@ export default function CreateRuleScreen() {
                     >
                         <TestTube size={20} color={colors.text.primary} />
                         <Text style={s.testButtonText}>
-                            {testing ? 'Testing...' : 'Test Rule on Recent Articles'}
+                            {testing ? 'Testing…' : 'Test Rule on Recent Articles'}
                         </Text>
                     </Pressable>
                 </View>

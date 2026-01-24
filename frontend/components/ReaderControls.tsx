@@ -38,13 +38,13 @@ export const ReaderControls = () => {
                     <View style={s.expandedContent}>
                         {/* Font Size */}
                         <View style={s.section}>
-                            <TouchableOpacity onPress={() => setFontSize('small')} style={[s.iconButton, currentFontSize === 'small' && s.iconButtonActive]}>
+                            <TouchableOpacity onPress={() => setFontSize('small')} style={[s.iconButton, currentFontSize === 'small' && s.iconButtonActive]} accessibilityLabel="Set text size to small">
                                 <Text style={s.sizeTextSmall}>A</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity onPress={() => setFontSize('medium')} style={[s.iconButton, currentFontSize === 'medium' && s.iconButtonActive]}>
+                            <TouchableOpacity onPress={() => setFontSize('medium')} style={[s.iconButton, currentFontSize === 'medium' && s.iconButtonActive]} accessibilityLabel="Set text size to medium">
                                 <Text style={s.sizeTextMedium}>A</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity onPress={() => setFontSize('large')} style={[s.iconButton, currentFontSize === 'large' && s.iconButtonActive]}>
+                            <TouchableOpacity onPress={() => setFontSize('large')} style={[s.iconButton, currentFontSize === 'large' && s.iconButtonActive]} accessibilityLabel="Set text size to large">
                                 <Text style={s.sizeTextLarge}>A</Text>
                             </TouchableOpacity>
                         </View>
@@ -60,6 +60,7 @@ export const ReaderControls = () => {
                                     { backgroundColor: colors.background.primary },
                                     currentReaderTheme === 'default' && s.themeCircleActive
                                 ]}
+                                accessibilityLabel="Set reader theme to default"
                             >
                                 {currentReaderTheme === 'default' && <Check size={12} color={colors.primary.DEFAULT} />}
                             </TouchableOpacity>
@@ -70,6 +71,7 @@ export const ReaderControls = () => {
                                     { backgroundColor: '#f4ecd8' },
                                     currentReaderTheme === 'sepia' && s.themeCircleActive
                                 ]}
+                                accessibilityLabel="Set reader theme to sepia"
                             >
                                 {currentReaderTheme === 'sepia' && <Check size={12} color="#5b4636" />}
                             </TouchableOpacity>
@@ -80,6 +82,7 @@ export const ReaderControls = () => {
                                     { backgroundColor: '#fdfcf8' },
                                     currentReaderTheme === 'paper' && s.themeCircleActive
                                 ]}
+                                accessibilityLabel="Set reader theme to paper"
                             >
                                 {currentReaderTheme === 'paper' && <Check size={12} color="#2c3e50" />}
                             </TouchableOpacity>

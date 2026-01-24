@@ -96,7 +96,7 @@ export function RefreshProgressDialog({ visible, total, completed, currentTitle,
                         <Animated.View style={{ transform: [{ rotate: spin }] }}>
                             <RefreshCw size={14} color={colors.primary.DEFAULT} />
                         </Animated.View>
-                        <Text style={s.title}>Refreshing Feeds</Text>
+                        <Text style={s.title}>Refreshing Feeds…</Text>
                     </View>
                     <View style={s.headerRight}>
                         <Text style={s.countText}>{completed} / {total}</Text>

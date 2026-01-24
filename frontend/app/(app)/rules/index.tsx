@@ -62,7 +62,7 @@ export default function RulesScreen() {
                 {loading && displayedRules.length === 0 ? (
                     <View style={s.loadingContainer}>
                         <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
-                        <Text style={s.loadingText}>Loading rules...</Text>
+                        <Text style={s.loadingText}>Loading rules…</Text>
                     </View>
                 ) : displayedRules.length === 0 ? (
                     <View style={s.emptyContainer}>

@@ -63,7 +63,7 @@ export const DiscoveryPage = () => {
 
         // Optimistic UI: Show immediate feedback
         setSubscribingIds(prev => new Set(prev).add(rec.id));
-        showToast(`Subscribing to ${rec.title}...`, 'success');
+        showToast(`Subscribing to ${rec.title}…`, 'success');
 
         try {
             await addFeed(rec.feed_url, undefined, settings?.refresh_interval_minutes, false);
@@ -119,6 +119,7 @@ export const DiscoveryPage = () => {
                         onPress={handleRefresh}
                         disabled={isRefreshing}
                         style={s.refreshButton}
+                        accessibilityLabel="Refresh recommendations"
                     >
                         {isRefreshing ? (
                             <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
@@ -161,7 +162,7 @@ export const DiscoveryPage = () => {
                             <View key={rec.id} style={s.card}>
                                 <View style={s.cardHeader}>
                                     {metadata.thumbnail ? (
-                                        <Image source={{ uri: metadata.thumbnail }} style={s.thumbnail} />
+                                    <Image source={{ uri: metadata.thumbnail }} style={s.thumbnail} accessibilityLabel={`${rec.title} thumbnail`} />
                                     ) : (
                                         <View style={[s.thumbnailPlaceholder, { backgroundColor: rec.feed_type === 'youtube' ? colors.feedTypes.youtube : colors.primary.DEFAULT }]}>
                                             {rec.feed_type === 'youtube' ? <Youtube size={24} color="#FFF" /> : <Newspaper size={24} color="#FFF" />}

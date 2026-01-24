@@ -59,14 +59,14 @@ export default function SettingsScreen() {
         return (
             <View style={s.container}>
                 <View style={s.header}>
-                    <TouchableOpacity onPress={() => router.back()} style={s.backButton}>
+                    <TouchableOpacity onPress={() => router.back()} style={s.backButton} accessibilityLabel="Go back">
                         <ArrowLeft size={24} color={colors.text.primary} />
                     </TouchableOpacity>
                     <Text style={s.headerTitle}>Settings</Text>
                 </View>
                 <View style={s.loading}>
                     <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
-                    <Text style={s.loadingText}>Loading settings...</Text>
+                    <Text style={s.loadingText}>Loading settings…</Text>
                 </View>
             </View>
         );
@@ -76,7 +76,7 @@ export default function SettingsScreen() {
         <View style={s.container}>
             {/* Header */}
             <View style={s.header}>
-                <TouchableOpacity onPress={() => router.back()} style={s.backButton}>
+                <TouchableOpacity onPress={() => router.back()} style={s.backButton} accessibilityLabel="Go back">
                     <ArrowLeft size={24} color={colors.text.primary} />
                 </TouchableOpacity>
                 <Text style={s.headerTitle}>Settings</Text>
@@ -202,7 +202,7 @@ export default function SettingsScreen() {
                                 >
                                     <RefreshCw size={16} color={colors.primary.DEFAULT} />
                                     <Text style={s.applyButtonText}>
-                                        {isApplyingInterval ? 'Applying...' : `Apply ${settings.refresh_interval_minutes >= 60 ? `${settings.refresh_interval_minutes / 60}h` : `${settings.refresh_interval_minutes}m`} to all ${feeds.length} existing feeds`}
+                                        {isApplyingInterval ? 'Applying…' : `Apply ${settings.refresh_interval_minutes >= 60 ? `${settings.refresh_interval_minutes / 60}h` : `${settings.refresh_interval_minutes}m`} to all ${feeds.length} existing feeds`}
                                     </Text>
                                 </TouchableOpacity>
                             </View>
@@ -389,4 +389,3 @@ const styles = (colors: any) => StyleSheet.create({
         marginTop: spacing.xl,
     },
 });
-

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet, Modal } from 'react-native';
+import { View, Text, TextInput, Pressable, StyleSheet, Modal, Platform, useWindowDimensions } from 'react-native';
 import { Trash2, Edit3, Check, X } from 'lucide-react-native';
 import { useColors, spacing, borderRadius, typography } from '@/theme';
 import {
@@ -26,6 +26,8 @@ export function HighlightPopover({ highlight, visible, onClose }: HighlightPopov
     const colors = useColors();
     const { updateHighlight, deleteHighlight } = useHighlightsStore();
     const { showToast } = useToastStore();
+    const { width } = useWindowDimensions();
+    const isDesktop = Platform.OS === 'web' && width >= 1024;
 
     const [note, setNote] = useState(highlight?.note || '');
     const [isEditingNote, setIsEditingNote] = useState(false);
@@ -108,7 +110,7 @@ export function HighlightPopover({ highlight, visible, onClose }: HighlightPopov
                         <View style={s.sectionHeader}>
                             <Text style={s.sectionTitle}>Note</Text>
                             {!isEditingNote && (
-                                <Pressable onPress={() => setIsEditingNote(true)}>
+                                <Pressable onPress={() => setIsEditingNote(true)} accessibilityLabel="Edit note">
                                     <Edit3 size={16} color={colors.text.tertiary} />
                                 </Pressable>
                             )}
@@ -120,11 +122,12 @@ export function HighlightPopover({ highlight, visible, onClose }: HighlightPopov
                                     style={s.noteInput}
                                     value={note}
                                     onChangeText={setNote}
-                                    placeholder="Add a note..."
+                                    placeholder="Add a note…"
                                     placeholderTextColor={colors.text.tertiary}
                                     multiline
                                     numberOfLines={3}
-                                    autoFocus
+                                    autoFocus={isDesktop}
+                                    accessibilityLabel="Note"
                                 />
                                 <View style={s.noteActions}>
                                     <Pressable

@@ -53,18 +53,18 @@ export const PodcastPlayer = () => {
             <View style={s.container}>
                 {/* Header */}
                 <View style={s.header}>
-                    <TouchableOpacity onPress={handleMinimize} style={s.iconButton}>
+                    <TouchableOpacity onPress={handleMinimize} style={s.iconButton} accessibilityLabel="Minimize player">
                         <ChevronDown size={28} color={colors.text.primary} />
                     </TouchableOpacity>
                     <Text style={s.headerTitle}>Now Playing</Text>
-                    <TouchableOpacity onPress={handleStop} style={s.iconButton}>
+                    <TouchableOpacity onPress={handleStop} style={s.iconButton} accessibilityLabel="Close player">
                         <X size={24} color={colors.error || '#ff4444'} />
                     </TouchableOpacity>
                 </View>
 
                 {/* Immersive Cover Art */}
                 <View style={s.coverWrapper}>
-                    <Image source={{ uri: coverArt || '' }} style={s.coverArt} resizeMode="cover" />
+                <Image source={{ uri: coverArt || '' }} style={s.coverArt} resizeMode="cover" accessibilityLabel={`${title} cover art`} />
                 </View>
 
                 {/* Info */}
@@ -93,7 +93,7 @@ export const PodcastPlayer = () => {
 
                 {/* Controls */}
                 <View style={s.controlsSection}>
-                    <TouchableOpacity onPress={skipBackward} style={s.skipButton}>
+                    <TouchableOpacity onPress={skipBackward} style={s.skipButton} accessibilityLabel="Skip back 15 seconds">
                         <RotateCcw size={32} color={colors.text.primary} />
                         <Text style={s.skipText}>15s</Text>
                     </TouchableOpacity>
@@ -101,6 +101,7 @@ export const PodcastPlayer = () => {
                     <TouchableOpacity
                         onPress={isPlaying ? pause : resume}
                         style={s.playButton}
+                        accessibilityLabel={isPlaying ? 'Pause playback' : 'Play'}
                     >
                         {isPlaying ? (
                             <Pause size={48} color="#fff" fill="#fff" />
@@ -109,7 +110,7 @@ export const PodcastPlayer = () => {
                         )}
                     </TouchableOpacity>
 
-                    <TouchableOpacity onPress={skipForward} style={s.skipButton}>
+                    <TouchableOpacity onPress={skipForward} style={s.skipButton} accessibilityLabel="Skip forward 30 seconds">
                         <RotateCw size={32} color={colors.text.primary} />
                         <Text style={s.skipText}>30s</Text>
                     </TouchableOpacity>
@@ -120,6 +121,7 @@ export const PodcastPlayer = () => {
                     <TouchableOpacity
                         style={[s.footerPill, playbackSpeed !== 1 && s.footerPillActive]}
                         onPress={() => setSpeed(playbackSpeed === 2 ? 1 : playbackSpeed + 0.25)}
+                        accessibilityLabel="Change playback speed"
                     >
                         <Gauge size={16} color={playbackSpeed !== 1 ? '#fff' : colors.text.primary} />
                         <Text style={[s.footerText, playbackSpeed !== 1 && s.footerTextActive]}>{playbackSpeed}x</Text>
@@ -128,6 +130,7 @@ export const PodcastPlayer = () => {
                     <TouchableOpacity
                         style={[s.footerPill, !!sleepTimer && s.footerPillActive]}
                         onPress={() => setSleepTimer(sleepTimer ? null : 30)}
+                        accessibilityLabel="Set sleep timer"
                     >
                         <Timer size={16} color={!!sleepTimer ? '#fff' : colors.text.primary} />
                         <Text style={[s.footerText, !!sleepTimer && s.footerTextActive]}>

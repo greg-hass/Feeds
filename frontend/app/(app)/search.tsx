@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Animated, Platform, ScrollView } from 'react-native';
+import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Animated, Platform, ScrollView, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { formatDistanceToNow } from 'date-fns';
 import { api, SearchResult } from '@/services/api';
@@ -19,6 +19,7 @@ const FILTERS = [
 export default function SearchScreen() {
     const router = useRouter();
     const colors = useColors();
+    const { width } = useWindowDimensions();
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<SearchResult[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -29,6 +30,7 @@ export default function SearchScreen() {
     // Filters
     const [selectedType, setSelectedType] = useState<string | undefined>(undefined);
     const [unreadOnly, setUnreadOnly] = useState(false);
+    const isDesktop = Platform.OS === 'web' && width >= 1024;
 
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -185,17 +187,18 @@ export default function SearchScreen() {
                     <SearchIcon size={18} color={isFocused ? colors.primary.DEFAULT : colors.text.tertiary} />
                     <TextInput
                         style={s.searchInput}
-                        placeholder="Search articles..."
+                        placeholder="Search articles…"
                         placeholderTextColor={colors.text.tertiary}
                         value={query}
                         onChangeText={setQuery}
                         onFocus={() => setIsFocused(true)}
                         onBlur={() => setIsFocused(false)}
                         returnKeyType="search"
-                        autoFocus
+                        autoFocus={isDesktop}
+                        accessibilityLabel="Search articles"
                     />
                     {query.length > 0 && (
-                        <TouchableOpacity onPress={() => setQuery('')}>
+                        <TouchableOpacity onPress={() => setQuery('')} accessibilityLabel="Clear search">
                             <X size={18} color={colors.text.tertiary} />
                         </TouchableOpacity>
                     )}
@@ -229,7 +232,7 @@ export default function SearchScreen() {
                 <View style={s.recentContainer}>
                     <View style={s.recentHeader}>
                         <Text style={s.recentTitle}>Recent Searches</Text>
-                        <TouchableOpacity onPress={clearRecentSearches}>
+                        <TouchableOpacity onPress={clearRecentSearches} accessibilityLabel="Clear recent searches">
                             <Trash2 size={16} color={colors.text.tertiary} />
                         </TouchableOpacity>
                     </View>
@@ -241,7 +244,7 @@ export default function SearchScreen() {
                         >
                             <Clock size={16} color={colors.text.tertiary} />
                             <Text style={s.recentText}>{term}</Text>
-                            <TouchableOpacity onPress={() => removeRecentSearch(term)}>
+                            <TouchableOpacity onPress={() => removeRecentSearch(term)} accessibilityLabel={`Remove recent search ${term}`}>
                                 <X size={16} color={colors.text.tertiary} />
                             </TouchableOpacity>
                         </TouchableOpacity>
@@ -250,7 +253,7 @@ export default function SearchScreen() {
             ) : isLoading ? (
                 <View style={s.loading}>
                     <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
-                    <Text style={s.loadingText}>Searching through your knowledge...</Text>
+                    <Text style={s.loadingText}>Searching through your knowledge…</Text>
                 </View>
             ) : (
                 <Animated.View style={[s.listContainer, { opacity: fadeAnim }]}>

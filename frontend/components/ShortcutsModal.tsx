@@ -34,7 +34,7 @@ export const ShortcutsModal = ({ visible, onClose }: ShortcutsModalProps) => {
         <View style={s.modal}>
           <View style={s.header}>
             <Text style={s.title}>Keyboard Shortcuts</Text>
-            <TouchableOpacity onPress={onClose} style={s.closeButton}>
+            <TouchableOpacity onPress={onClose} style={s.closeButton} accessibilityLabel="Close keyboard shortcuts">
               <X size={24} color={colors.text.primary} />
             </TouchableOpacity>
           </View>

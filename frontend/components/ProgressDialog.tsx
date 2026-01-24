@@ -69,7 +69,7 @@ export function ProgressDialog({ state, onClose, onRetryFailed }: ProgressDialog
         ? 'Complete'
         : `${completedCount} of ${state.total} feeds`;
 
-    const title = state.operation === 'import' ? 'Importing OPML' : 'Refreshing Feeds';
+    const title = state.operation === 'import' ? 'Importing OPML…' : 'Refreshing Feeds…';
 
     const handleRetry = () => {
         const failedIds = state.failedFeeds.map(f => f.id).filter(id => id > 0);
@@ -113,7 +113,7 @@ export function ProgressDialog({ state, onClose, onRetryFailed }: ProgressDialog
                     {/* Header */}
                     <View style={[styles.header, { borderBottomColor: colors.border.DEFAULT }]}>
                         <Text style={[styles.title, { color: colors.text.primary }]}>{title}</Text>
-                        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                        <TouchableOpacity onPress={onClose} style={styles.closeButton} accessibilityLabel="Close progress dialog">
                             <X size={20} color={colors.text.secondary} />
                         </TouchableOpacity>
                     </View>

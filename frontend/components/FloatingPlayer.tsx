@@ -90,10 +90,10 @@ export const FloatingPlayer = () => {
                 </View>
 
                 <View style={s.footer}>
-                    <TouchableOpacity onPress={restore} style={s.actionButton}>
+                    <TouchableOpacity onPress={restore} style={s.actionButton} accessibilityLabel="Restore video player">
                         <Maximize2 size={16} color={colors.text.primary} />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={close} style={s.actionButton}>
+                    <TouchableOpacity onPress={close} style={s.actionButton} accessibilityLabel="Close video player">
                         <X size={16} color={colors.error} />
                     </TouchableOpacity>
                 </View>

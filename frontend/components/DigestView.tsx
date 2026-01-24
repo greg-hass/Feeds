@@ -2,7 +2,6 @@ import React, { useEffect, lazy, Suspense } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Platform } from 'react-native';
 import { useDigestStore } from '@/stores';
 import { Sparkles, BarChart3, BookOpen, RefreshCw, AlertCircle, Calendar } from 'lucide-react-native';
-import { format } from 'date-fns';
 import { useColors, spacing, borderRadius } from '@/theme';
 
 // Lazy load markdown renderer (heavy dependency ~100KB) - only loads when digest is viewed
@@ -22,7 +21,7 @@ export const DigestView = () => {
         return (
             <View style={s.center}>
                 <RefreshCw size={48} color={colors.primary.DEFAULT} style={s.spinIcon} />
-                <Text style={s.loadingText}>Curating your personalized digest...</Text>
+                <Text style={s.loadingText}>Curating your personalized digest…</Text>
             </View>
         );
     }
@@ -85,7 +84,7 @@ export const DigestView = () => {
                 <View style={s.headerMeta}>
                     <Calendar size={14} color={colors.text.tertiary} />
                     <Text style={s.date}>
-                        {format(new Date(latestDigest.generated_at), 'MMMM do, yyyy • h:mm a')}
+                        {new Intl.DateTimeFormat(undefined, { dateStyle: 'long', timeStyle: 'short' }).format(new Date(latestDigest.generated_at))}
                     </Text>
                 </View>
             </View>
@@ -308,4 +307,3 @@ const styles = (colors: any) => StyleSheet.create({
         // Animation handled in component logic or via external lib if needed
     }
 });
-

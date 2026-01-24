@@ -1,6 +1,6 @@
 import * as DocumentPicker from 'expo-document-picker';
 import { useState, useEffect, useCallback } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, Modal, Image, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, Modal, Image, Platform, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFeedStore, useToastStore, useArticleStore, useSettingsStore } from '@/stores';
 import { api, DiscoveredFeed, Feed, Folder, ProgressEvent, RefreshProgressEvent } from '@/services/api';
@@ -22,6 +22,7 @@ type DiscoveryType = 'all' | 'rss' | 'youtube' | 'reddit' | 'podcast';
 export default function ManageScreen() {
     const router = useRouter();
     const colors = useColors();
+    const { width } = useWindowDimensions();
     const { feeds, folders, addFeed, deleteFeed, deleteFolder, fetchFeeds, fetchFolders } = useFeedStore();
     const { setFilter } = useArticleStore();
     const { show } = useToastStore();
@@ -41,6 +42,7 @@ export default function ManageScreen() {
     const [renameValue, setRenameValue] = useState('');
     const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
     const [refreshInterval, setRefreshInterval] = useState(30);
+    const isDesktop = Platform.OS === 'web' && width >= 1024;
 
     const [isExporting, setIsExporting] = useState(false);
 
@@ -711,18 +713,20 @@ export default function ManageScreen() {
                     <View style={s.inputRow}>
                         <TextInput
                             style={s.input}
-                            placeholder={`Search ${discoveryType === 'all' ? 'feeds' : discoveryType}...`}
+                            placeholder={`Search ${discoveryType === 'all' ? 'feeds' : discoveryType}…`}
                             placeholderTextColor={colors.text.tertiary}
                             value={urlInput}
                             onChangeText={setUrlInput}
                             autoCapitalize="none"
                             autoCorrect={false}
                             keyboardType="url"
+                            accessibilityLabel={`Search ${discoveryType === 'all' ? 'feeds' : discoveryType}`}
                         />
                         <TouchableOpacity
                             style={s.primaryButton}
                             onPress={handleDiscover}
                             disabled={isDiscovering}
+                            accessibilityLabel="Discover feeds"
                         >
                             {isDiscovering ? (
                                 <ActivityIndicator size="small" color={colors.text.inverse} />
@@ -764,14 +768,16 @@ export default function ManageScreen() {
                     <View style={s.inputRow}>
                         <TextInput
                             style={s.input}
-                            placeholder="Folder name..."
+                            placeholder="Folder name…"
                             placeholderTextColor={colors.text.tertiary}
                             value={newFolderName}
                             onChangeText={setNewFolderName}
+                            accessibilityLabel="Folder name"
                         />
                         <TouchableOpacity
                             style={[s.primaryButton, { backgroundColor: colors.secondary.DEFAULT }]}
                             onPress={handleCreateFolder}
+                            accessibilityLabel="Create folder"
                         >
                             <FolderIcon size={20} color={colors.text.inverse} />
                         </TouchableOpacity>
@@ -796,12 +802,14 @@ export default function ManageScreen() {
                                 <TouchableOpacity
                                     onPress={() => handleRenameFolder(folder)}
                                     style={s.actionButton}
+                                    accessibilityLabel={`Rename folder ${folder.name}`}
                                 >
                                     <Edit2 size={16} color={colors.text.tertiary} />
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     onPress={() => handleDeleteFolder(folder.id, folder.name)}
                                     style={s.actionButton}
+                                    accessibilityLabel={`Delete folder ${folder.name}`}
                                 >
                                     <Trash2 size={16} color={colors.text.tertiary} />
                                 </TouchableOpacity>
@@ -899,6 +907,7 @@ export default function ManageScreen() {
                                             setFeedInfoVisible(true);
                                         }}
                                         style={s.actionButton}
+                                        accessibilityLabel={`View details for ${feed.title}`}
                                     >
                                         <Info size={16} color={colors.text.tertiary} />
                                     </TouchableOpacity>
@@ -906,6 +915,7 @@ export default function ManageScreen() {
                                         <TouchableOpacity
                                             onPress={() => handleRetryFeed(feed.id, feed.title)}
                                             style={s.actionButton}
+                                            accessibilityLabel={`Retry ${feed.title}`}
                                         >
                                             <RefreshCw size={16} color={colors.error} />
                                         </TouchableOpacity>
@@ -913,6 +923,7 @@ export default function ManageScreen() {
                                         <TouchableOpacity
                                             onPress={() => handleMoveFeed(feed)}
                                             style={s.actionButton}
+                                            accessibilityLabel={`Move ${feed.title}`}
                                         >
                                             <FolderInput size={16} color={colors.text.tertiary} />
                                         </TouchableOpacity>
@@ -920,12 +931,14 @@ export default function ManageScreen() {
                                     <TouchableOpacity
                                         onPress={() => handleEditFeed(feed)}
                                         style={s.actionButton}
+                                        accessibilityLabel={`Edit ${feed.title}`}
                                     >
                                         <Edit2 size={16} color={colors.text.tertiary} />
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         onPress={() => handleDeleteFeed(feed.id, feed.title)}
                                         style={s.actionButton}
+                                        accessibilityLabel={`Delete ${feed.title}`}
                                     >
                                         <Trash2 size={16} color={colors.text.tertiary} />
                                     </TouchableOpacity>
@@ -1031,9 +1044,10 @@ export default function ManageScreen() {
                             style={s.modalInput}
                             value={renameValue}
                             onChangeText={setRenameValue}
-                            placeholder="Enter name..."
+                            placeholder="Enter name…"
                             placeholderTextColor={colors.text.tertiary}
-                            autoFocus={modalType === 'edit_feed'}
+                            autoFocus={modalType === 'edit_feed' && isDesktop}
+                            accessibilityLabel="Name"
                         />
 
                         {modalType === 'edit_feed' && (

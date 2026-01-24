@@ -27,8 +27,8 @@ const ToastItem = ({ id, message, type }: { id: string; message: string; type: '
     return (
         <Animated.View style={[styles.toast, { opacity }]}>
             {getIcon()}
-            <Text style={styles.message}>{message}</Text>
-            <TouchableOpacity onPress={() => hide(id)} style={styles.closeButton}>
+            <Text style={styles.message} accessibilityLiveRegion="polite">{message}</Text>
+            <TouchableOpacity onPress={() => hide(id)} style={styles.closeButton} accessibilityLabel="Dismiss notification">
                 <X size={16} color={colors.text.tertiary} />
             </TouchableOpacity>
         </Animated.View>

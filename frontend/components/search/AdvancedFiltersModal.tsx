@@ -84,7 +84,7 @@ export function AdvancedFiltersModal({
                                 </View>
                             )}
                         </View>
-                        <Pressable style={s.closeButton} onPress={handleClose}>
+                        <Pressable style={s.closeButton} onPress={handleClose} accessibilityLabel="Close filters">
                             <X size={24} color={colors.text.primary} />
                         </Pressable>
                     </View>
@@ -102,6 +102,7 @@ export function AdvancedFiltersModal({
                                 onChangeText={(text) => updateFilter('author', text)}
                                 placeholder="Filter by author name"
                                 placeholderTextColor={colors.text.tertiary}
+                                accessibilityLabel="Filter by author"
                             />
                         </View>
 
@@ -123,11 +124,12 @@ export function AdvancedFiltersModal({
                                 }}
                                 placeholder="Enter comma-separated tags"
                                 placeholderTextColor={colors.text.tertiary}
+                                accessibilityLabel="Filter by tags"
                             />
                             {availableTags.length > 0 && (
                                 <Text style={s.hint}>
                                     Available: {availableTags.slice(0, 5).join(', ')}
-                                    {availableTags.length > 5 && '...'}
+                                    {availableTags.length > 5 && '…'}
                                 </Text>
                             )}
                         </View>
@@ -152,6 +154,7 @@ export function AdvancedFiltersModal({
                                     placeholder="Enter comma-separated feed IDs"
                                     placeholderTextColor={colors.text.tertiary}
                                     keyboardType="numeric"
+                                    accessibilityLabel="Filter by feed IDs"
                                 />
                                 <Text style={s.hint}>TODO: Replace with feed picker</Text>
                             </View>
@@ -177,6 +180,7 @@ export function AdvancedFiltersModal({
                                     placeholder="Enter comma-separated folder IDs"
                                     placeholderTextColor={colors.text.tertiary}
                                     keyboardType="numeric"
+                                    accessibilityLabel="Filter by folder IDs"
                                 />
                                 <Text style={s.hint}>TODO: Replace with folder picker</Text>
                             </View>
@@ -197,6 +201,7 @@ export function AdvancedFiltersModal({
                                         onChangeText={(text) => updateFilter('date_from', text)}
                                         placeholder="YYYY-MM-DD"
                                         placeholderTextColor={colors.text.tertiary}
+                                        accessibilityLabel="Filter from date"
                                     />
                                 </View>
                                 <View style={s.halfWidth}>
@@ -207,6 +212,7 @@ export function AdvancedFiltersModal({
                                         onChangeText={(text) => updateFilter('date_to', text)}
                                         placeholder="YYYY-MM-DD"
                                         placeholderTextColor={colors.text.tertiary}
+                                        accessibilityLabel="Filter to date"
                                     />
                                 </View>
                             </View>

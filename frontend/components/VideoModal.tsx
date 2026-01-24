@@ -55,11 +55,11 @@ export function VideoModal({ videoId, visible, onClose, onMinimize, title }: Vid
                         </View>
                         <View style={s.headerActions}>
                             {onMinimize && (
-                                <TouchableOpacity onPress={onMinimize} style={s.headerButton}>
+                                <TouchableOpacity onPress={onMinimize} style={s.headerButton} accessibilityLabel="Minimize video">
                                     <Minimize2 size={22} color="#fff" />
                                 </TouchableOpacity>
                             )}
-                            <TouchableOpacity onPress={onClose} style={s.headerButton}>
+                            <TouchableOpacity onPress={onClose} style={s.headerButton} accessibilityLabel="Close video">
                                 <X size={22} color="#fff" />
                             </TouchableOpacity>
                         </View>

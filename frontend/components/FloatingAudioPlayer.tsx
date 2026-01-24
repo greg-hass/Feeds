@@ -85,20 +85,20 @@ export const FloatingAudioPlayer = ({ onRestore }: FloatingAudioPlayerProps) => 
                 activeOpacity={0.9}
                 onPress={handleRestore}
             >
-                <Image source={{ uri: coverArt || '' }} style={s.coverArt} />
+                <Image source={{ uri: coverArt || '' }} style={s.coverArt} accessibilityLabel={`${title} cover art`} />
                 <View style={s.info}>
                     <Text style={[s.title, { color: colors.text.primary }]} numberOfLines={1}>{title}</Text>
                     <Text style={[s.author, { color: colors.text.secondary }]} numberOfLines={1}>{author}</Text>
                 </View>
                 <View style={s.controls}>
-                    <TouchableOpacity onPress={handleTogglePlay} style={[s.playButton, { backgroundColor: colors.primary.DEFAULT }]}>
+                    <TouchableOpacity onPress={handleTogglePlay} style={[s.playButton, { backgroundColor: colors.primary.DEFAULT }]} accessibilityLabel={isPlaying ? 'Pause audio' : 'Play audio'}>
                         {isPlaying ? (
                             <Pause size={20} color="#fff" fill="#fff" />
                         ) : (
                             <Play size={20} color="#fff" fill="#fff" style={{ marginLeft: 2 }} />
                         )}
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={handleStop} style={s.closeButton}>
+                    <TouchableOpacity onPress={handleStop} style={s.closeButton} accessibilityLabel="Close audio player">
                         <X size={20} color={colors.text.tertiary} />
                     </TouchableOpacity>
                 </View>

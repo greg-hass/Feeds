@@ -37,6 +37,7 @@ export function AnalyticsHeader() {
                     style={s.iconButton}
                     onPress={() => fetchAll()}
                     disabled={isLoading}
+                    accessibilityLabel="Refresh analytics"
                 >
                     <RefreshCw size={20} color={colors.text.secondary} />
                 </TouchableOpacity>
@@ -44,6 +45,7 @@ export function AnalyticsHeader() {
                 <TouchableOpacity
                     style={s.iconButton}
                     onPress={handleExport}
+                    accessibilityLabel="Export analytics"
                 >
                     <Download size={20} color={colors.text.secondary} />
                 </TouchableOpacity>

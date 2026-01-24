@@ -70,6 +70,13 @@ export default function ArticleScreen() {
         }
     }, [id]);
 
+    useEffect(() => {
+        if (!id || !currentArticle || currentArticle.id !== Number(id)) return;
+        if (isLoading) {
+            fadeAnim.setValue(1);
+        }
+    }, [currentArticle?.id, id, isLoading]);
+
     // Populate adjacent articles from store
     useEffect(() => {
         if (id && articles.length > 0) {
@@ -168,7 +175,7 @@ export default function ArticleScreen() {
     }, [currentArticle, toggleBookmark]);
 
     const renderReader = () => {
-        if (isLoading || !currentArticle) {
+        if (!currentArticle) {
             return (
                 <View style={s.loadingContainer}>
                     <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
@@ -179,6 +186,8 @@ export default function ArticleScreen() {
         const content = showReadability && currentArticle.readability_content
             ? currentArticle.readability_content
             : currentArticle.content;
+        const displayContent = content || currentArticle.summary || '';
+        const isContentLoading = isLoading && !content;
 
         return (
             <View style={s.readerContent}>
@@ -199,7 +208,7 @@ export default function ArticleScreen() {
                 }]}>
                     <View style={s.headerLeft}>
                         {isMobile && (
-                            <TouchableOpacity onPress={() => router.back()} style={s.backButton}>
+                            <TouchableOpacity onPress={() => router.back()} style={s.backButton} accessibilityLabel="Go back">
                                 <ArrowLeft size={24} color={colors.text.primary} />
                             </TouchableOpacity>
                         )}
@@ -208,6 +217,7 @@ export default function ArticleScreen() {
                                 onPress={() => navigateToArticle(adjacentArticles.prev)}
                                 style={[s.navButton, !adjacentArticles.prev && s.navButtonDisabled]}
                                 disabled={!adjacentArticles.prev}
+                                accessibilityLabel="Previous article"
                             >
                                 <ChevronLeft size={20} color={adjacentArticles.prev ? colors.primary.DEFAULT : colors.text.tertiary} />
                             </TouchableOpacity>
@@ -215,6 +225,7 @@ export default function ArticleScreen() {
                                 onPress={() => navigateToArticle(adjacentArticles.next)}
                                 style={[s.navButton, !adjacentArticles.next && s.navButtonDisabled]}
                                 disabled={!adjacentArticles.next}
+                                accessibilityLabel="Next article"
                             >
                                 <ChevronRight size={20} color={adjacentArticles.next ? colors.primary.DEFAULT : colors.text.tertiary} />
                             </TouchableOpacity>
@@ -222,21 +233,21 @@ export default function ArticleScreen() {
                     </View>
 
                     <View style={s.headerActions}>
-                        <TouchableOpacity onPress={handleToggleRead} style={s.actionButton}>
+                        <TouchableOpacity onPress={handleToggleRead} style={s.actionButton} accessibilityLabel={currentArticle.is_read ? 'Mark as unread' : 'Mark as read'}>
                             {currentArticle.is_read ? (
                                 <CircleCheck size={22} color={colors.primary.DEFAULT} />
                             ) : (
                                 <Circle size={22} color={colors.text.secondary} />
                             )}
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={handleToggleBookmark} style={s.actionButton}>
+                        <TouchableOpacity onPress={handleToggleBookmark} style={s.actionButton} accessibilityLabel={currentArticle.is_bookmarked ? 'Remove bookmark' : 'Bookmark article'}>
                             <Bookmark size={22} color={currentArticle.is_bookmarked ? colors.primary.DEFAULT : colors.text.secondary} fill={currentArticle.is_bookmarked ? colors.primary.DEFAULT : 'transparent'} />
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={handleOpenExternal} style={s.actionButton}>
+                        <TouchableOpacity onPress={handleOpenExternal} style={s.actionButton} accessibilityLabel="Open original article">
                             <ExternalLink size={22} color={colors.text.secondary} />
                         </TouchableOpacity>
                         <View style={{ position: 'relative' as const }}>
-                            <TouchableOpacity onPress={() => setShowTextSizeMenu(!showTextSizeMenu)} style={s.actionButton}>
+                            <TouchableOpacity onPress={() => setShowTextSizeMenu(!showTextSizeMenu)} style={s.actionButton} accessibilityLabel="Adjust text size">
                                 <Type size={22} color={showTextSizeMenu ? colors.primary.DEFAULT : colors.text.secondary} />
                             </TouchableOpacity>
                             {showTextSizeMenu && (
@@ -244,18 +255,21 @@ export default function ArticleScreen() {
                                     <TouchableOpacity 
                                         onPress={() => { updateSettings({ font_size: 'small' }); setShowTextSizeMenu(false); }} 
                                         style={[s.textSizeOption, settings?.font_size === 'small' && s.textSizeOptionActive]}
+                                        accessibilityLabel="Set text size to small"
                                     >
                                         <Text style={[s.textSizeLabel, { fontSize: 12 }]}>A</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity 
                                         onPress={() => { updateSettings({ font_size: 'medium' }); setShowTextSizeMenu(false); }} 
                                         style={[s.textSizeOption, (settings?.font_size === 'medium' || !settings?.font_size) && s.textSizeOptionActive]}
+                                        accessibilityLabel="Set text size to medium"
                                     >
                                         <Text style={[s.textSizeLabel, { fontSize: 16 }]}>A</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity 
                                         onPress={() => { updateSettings({ font_size: 'large' }); setShowTextSizeMenu(false); }} 
                                         style={[s.textSizeOption, settings?.font_size === 'large' && s.textSizeOptionActive]}
+                                        accessibilityLabel="Set text size to large"
                                     >
                                         <Text style={[s.textSizeLabel, { fontSize: 20 }]}>A</Text>
                                     </TouchableOpacity>
@@ -283,6 +297,12 @@ export default function ArticleScreen() {
                                 </Text>
                             )}
                         </View>
+                        {isContentLoading && (
+                            <View style={s.inlineLoading}>
+                                <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
+                                <Text style={s.inlineLoadingText}>Loading full article…</Text>
+                            </View>
+                        )}
 
                         {currentArticle.has_audio && (
                             <TouchableOpacity style={s.listenButton} onPress={handlePlayPodcast} activeOpacity={0.8}>
@@ -309,7 +329,7 @@ export default function ArticleScreen() {
                             </View>
                         )}
 
-                        <ArticleContent html={content || ''} />
+                        <ArticleContent html={displayContent} />
                     </Animated.View>
                 </ScrollView>
 
@@ -417,6 +437,17 @@ const styles = (colors: any, isMobile: boolean, readerTheme?: string) => {
         },
         scrollView: {
             flex: 1,
+        },
+        inlineLoading: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: spacing.sm,
+            marginBottom: spacing.md,
+        },
+        inlineLoadingText: {
+            fontSize: 12,
+            color: colors.text.tertiary,
+            fontWeight: '600',
         },
         scrollContent: {
             alignItems: 'center',

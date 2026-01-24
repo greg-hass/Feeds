@@ -70,7 +70,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                     {isBackgroundRefreshing && (
                         <View style={s.refreshIndicator}>
                             <View style={s.refreshDot} />
-                            {isDesktop && <Text style={s.refreshText}>Refreshing...</Text>}
+                            {isDesktop && <Text style={s.refreshText}>Refreshing…</Text>}
                         </View>
                     )}
                 </View>
@@ -97,7 +97,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 accessibilityRole="search"
             >
                 <Search size={18} color={colors.text.tertiary} />
-                <Text style={s.searchText}>Search...</Text>
+                <Text style={s.searchText}>Search…</Text>
             </TouchableOpacity>
 
             <ScrollView style={s.scrollView} showsVerticalScrollIndicator={false}>
