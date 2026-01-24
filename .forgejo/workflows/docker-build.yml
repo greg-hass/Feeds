@@ -15,6 +15,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Log in to Forgejo container registry
+        env:
+          REGISTRY_USER: ${{ secrets.REGISTRY_USER }}
+          REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
         run: |
           echo "${REGISTRY_TOKEN}" | docker login \
             192.168.1.163:3300 \
