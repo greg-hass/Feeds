@@ -9,10 +9,15 @@ jobs:
   docker:
     runs-on: docker
 
+    # Needs node to run actions/checkout, but we'll add docker CLI ourselves
     container:
-      image: docker:26-cli
+      image: node:20-alpine
 
     steps:
+      - name: Install required tools (git + docker CLI)
+        run: |
+          apk add --no-cache git docker-cli
+
       - uses: actions/checkout@v4
 
       - name: Log in to Forgejo container registry
