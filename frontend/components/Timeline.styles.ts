@@ -12,7 +12,7 @@ export const timelineStyles = (colors: any, isMobile: boolean) => StyleSheet.cre
         alignItems: 'center',
         paddingHorizontal: spacing.lg,
         paddingTop: spacing.lg,
-        paddingBottom: spacing.md,
+        paddingBottom: 0,
     },
     filterWrapper: {
         borderBottomWidth: 1,
