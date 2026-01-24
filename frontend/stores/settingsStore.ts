@@ -33,7 +33,7 @@ export const useSettingsStore = create<SettingsState>()(
                     // For mobile PWA: network issues are common, use fallback settings
                     // but show error so user knows sync failed
                     const fallbackSettings: Settings = {
-                        refresh_interval_minutes: 30,
+                        refresh_interval_minutes: 15,
                         retention_days: 90,
                         fetch_full_content: false,
                         readability_enabled: false,

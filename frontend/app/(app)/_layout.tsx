@@ -4,7 +4,7 @@ import { Slot } from 'expo-router';
 import { useArticleStore, useFeedStore } from '@/stores';
 import { useColors } from '@/theme';
 import Sidebar from '@/components/Sidebar';
-import { enableSync } from '@/lib/sync';
+import { enableSync, fetchChanges } from '@/lib/sync';
 import MobileNav from '@/components/MobileNav';
 import Timeline from '@/components/Timeline';
 import { RefreshProgressDialog } from '@/components/RefreshProgressDialog';
@@ -14,6 +14,7 @@ import { PodcastPlayer } from '@/components/PodcastPlayer';
 import { FloatingAudioPlayer } from '@/components/FloatingAudioPlayer';
 import { useAudioStore } from '@/stores/audioStore';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { api } from '@/services/api';
 
 export default function AppLayout() {
     const [mounted, setMounted] = useState(false);
@@ -44,6 +45,72 @@ export default function AppLayout() {
 
         return () => {
             cleanupSync();
+        };
+    }, []);
+
+    useEffect(() => {
+        const controller = new AbortController();
+        let refreshTimeout: ReturnType<typeof setTimeout> | null = null;
+        let hasSyncedOnce = false;
+
+        const syncNow = async () => {
+            const syncResult = await fetchChanges();
+            if (syncResult) {
+                useFeedStore.getState().applySyncChanges(syncResult.changes, true);
+                useArticleStore.getState().applySyncChanges(syncResult.changes);
+            }
+        };
+
+        const debouncedSync = () => {
+            if (!hasSyncedOnce) {
+                hasSyncedOnce = true;
+                syncNow();
+                return;
+            }
+
+            if (refreshTimeout) clearTimeout(refreshTimeout);
+            refreshTimeout = setTimeout(() => {
+                syncNow();
+            }, 800);
+        };
+
+        api.listenForRefreshEvents(
+            (event) => {
+                if (event.type === 'start') {
+                    useFeedStore.setState({ isBackgroundSyncing: true });
+                    return;
+                }
+
+                if (event.type === 'complete') {
+                    useFeedStore.setState({ isBackgroundSyncing: false });
+                    return;
+                }
+
+                if (event.type === 'feed_complete') {
+                    if (event.new_articles > 0) {
+                        debouncedSync();
+                    }
+
+                    const feedStore = useFeedStore.getState();
+                    const existing = feedStore.feeds.find((feed) => feed.id === event.id);
+                    const unreadCount = (existing?.unread_count ?? 0) + event.new_articles;
+                    feedStore.updateLocalFeed(event.id, {
+                        unread_count: unreadCount,
+                        last_fetched_at: new Date().toISOString(),
+                        next_fetch_at: event.next_fetch_at ?? existing?.next_fetch_at ?? null,
+                    });
+                }
+            },
+            (error) => {
+                console.warn('[RefreshEvents] SSE stream error:', error);
+            },
+            controller.signal
+        );
+
+        return () => {
+            controller.abort();
+            if (refreshTimeout) clearTimeout(refreshTimeout);
+            useFeedStore.setState({ isBackgroundSyncing: false });
         };
     }, []);
 
