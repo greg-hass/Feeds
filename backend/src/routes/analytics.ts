@@ -15,6 +15,7 @@ import {
     getTopicDistribution,
     updateFeedEngagementScore,
 } from '../services/analytics.js';
+import { queryAll } from '../db/index.js';
 
 // ============================================================================
 // VALIDATION SCHEMAS
@@ -214,7 +215,7 @@ export async function analyticsRoutes(app: FastifyInstance): Promise<void> {
      * GET /analytics/reading-time/by-hour
      */
     app.get('/reading-time/by-hour', async () => {
-        const stats = await app.db.queryAll<{ hour: number; total_time: number; session_count: number }>(
+        const stats = queryAll<{ hour: number; total_time: number; session_count: number }>(
             `SELECT
                 CAST(strftime('%H', started_at) AS INTEGER) as hour,
                 SUM(COALESCE(duration_seconds, 0)) as total_time,
@@ -244,7 +245,7 @@ export async function analyticsRoutes(app: FastifyInstance): Promise<void> {
      * GET /analytics/reading-time/by-day-of-week
      */
     app.get('/reading-time/by-day-of-week', async () => {
-        const stats = await app.db.queryAll<{ day_of_week: number; total_time: number; articles_read: number }>(
+        const stats = queryAll<{ day_of_week: number; total_time: number; articles_read: number }>(
             `SELECT
                 CAST(strftime('%w', started_at) AS INTEGER) as day_of_week,
                 SUM(COALESCE(duration_seconds, 0)) as total_time,
