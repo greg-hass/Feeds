@@ -1,10 +1,10 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { queryAll, run } from '../db/index.js';
+import { queryAll, queryOne, run } from '../db/index.js';
 import { refreshFeed, FeedToRefreshWithCache } from '../services/feed-refresh.js';
 import { FeedType } from '../services/feed-parser.js';
 import { getUserSettings, updateUserSettingsRaw } from '../services/settings.js';
 import { onRefreshEvent, RefreshEvent } from '../services/refresh-events.js';
-import { Feed, RefreshStats, RefreshProgressEvent } from '../types/index.js';
+import { Feed, RefreshFeedUpdate, RefreshStats, RefreshProgressEvent } from '../types/index.js';
 
 function isGenericIconUrl(url: string | null): boolean {
     if (!url) return true;
@@ -56,6 +56,22 @@ export async function feedsStreamRoutes(app: FastifyInstance) {
             unsubscribe();
         });
     });
+
+    const toRefreshFeedUpdate = (feed: {
+        id: number;
+        title: string;
+        type: FeedType;
+        icon_url: string | null;
+        icon_cached_path: string | null;
+    }): RefreshFeedUpdate => {
+        const iconUrl = feed.icon_cached_path ? `/api/v1/icons/${feed.id}` : feed.icon_url;
+        return {
+            id: feed.id,
+            title: feed.title,
+            icon_url: iconUrl,
+            type: feed.type,
+        };
+    };
 
     // Bulk refresh feeds with SSE progress
     app.get('/refresh-multiple', async (request: FastifyRequest<{ Querystring: { ids?: string } }>, reply: FastifyReply) => {
@@ -176,12 +192,23 @@ export async function feedsStreamRoutes(app: FastifyInstance) {
                         const result = await Promise.race([refreshPromise, timeoutPromise]);
 
                         if (result.success) {
+                            const updatedFeed = queryOne<{
+                                id: number;
+                                title: string;
+                                type: FeedType;
+                                icon_url: string | null;
+                                icon_cached_path: string | null;
+                            }>(
+                                'SELECT id, title, type, icon_url, icon_cached_path FROM feeds WHERE id = ?',
+                                [feed.id]
+                            );
                             sendEvent({
                                 type: 'feed_complete',
                                 id: feed.id,
-                                title: feed.title,
+                                title: updatedFeed?.title ?? feed.title,
                                 new_articles: result.newArticles,
                                 next_fetch_at: result.next_fetch_at,
+                                feed: updatedFeed ? toRefreshFeedUpdate(updatedFeed) : undefined,
                             });
                             stats.success++;
                         } else {

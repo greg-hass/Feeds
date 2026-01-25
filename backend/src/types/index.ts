@@ -75,6 +75,13 @@ export interface RefreshStats {
     failed_feeds: Array<{ id: number; title: string; error: string }>;
 }
 
+export interface RefreshFeedUpdate {
+    id: number;
+    title: string;
+    icon_url: string | null;
+    type: 'rss' | 'youtube' | 'reddit' | 'podcast';
+}
+
 // SSE Progress Events
 export type ProgressEvent =
     | { type: 'start'; total_folders: number; total_feeds: number }
@@ -88,6 +95,6 @@ export type ProgressEvent =
 export type RefreshProgressEvent =
     | { type: 'start'; total_feeds: number }
     | { type: 'feed_refreshing'; id: number; title: string }
-    | { type: 'feed_complete'; id: number; title: string; new_articles: number; next_fetch_at?: string }
+    | { type: 'feed_complete'; id: number; title: string; new_articles: number; next_fetch_at?: string; feed?: RefreshFeedUpdate }
     | { type: 'feed_error'; id: number; title: string; error: string }
     | { type: 'complete'; stats: RefreshStats };

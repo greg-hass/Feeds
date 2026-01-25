@@ -53,6 +53,7 @@ export interface ArticleState {
     markUnread: (id: number) => Promise<void>;
     markAllRead: (scope: 'feed' | 'folder' | 'type' | 'all', scopeId?: number, type?: string) => Promise<void>;
     toggleBookmark: (id: number) => Promise<void>;
+    updateFeedMetadata: (feedId: number, updates: { feed_title?: string; feed_icon_url?: string | null; feed_type?: string }) => void;
     clearError: () => void;
     applySyncChanges: (changes: SyncChanges) => void;
 }

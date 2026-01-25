@@ -620,10 +620,17 @@ export interface RefreshStats {
     failed_feeds: Array<{ id: number; title: string; error: string }>;
 }
 
+export interface RefreshFeedUpdate {
+    id: number;
+    title: string;
+    icon_url: string | null;
+    type: 'rss' | 'youtube' | 'reddit' | 'podcast';
+}
+
 export type RefreshProgressEvent =
     | { type: 'start'; total_feeds: number }
     | { type: 'feed_refreshing'; id: number; title: string }
-    | { type: 'feed_complete'; id: number; title: string; new_articles: number; next_fetch_at?: string }
+    | { type: 'feed_complete'; id: number; title: string; new_articles: number; next_fetch_at?: string; feed?: RefreshFeedUpdate }
     | { type: 'feed_error'; id: number; title: string; error: string }
     | { type: 'complete'; stats: RefreshStats };
 

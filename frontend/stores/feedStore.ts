@@ -148,6 +148,9 @@ export const useFeedStore = create<FeedState>()(
                                         f.id === (event as any).id
                                             ? {
                                                 ...f,
+                                                title: event.type === 'feed_complete' && event.feed ? event.feed.title : f.title,
+                                                icon_url: event.type === 'feed_complete' && event.feed?.icon_url !== undefined ? event.feed.icon_url : f.icon_url,
+                                                type: event.type === 'feed_complete' && event.feed ? event.feed.type : f.type,
                                                 unread_count: event.type === 'feed_complete' ? (f.unread_count || 0) + event.new_articles : f.unread_count,
                                                 last_fetched_at: new Date().toISOString(),
                                                 next_fetch_at: event.type === 'feed_complete' ? event.next_fetch_at || f.next_fetch_at : f.next_fetch_at
@@ -155,6 +158,15 @@ export const useFeedStore = create<FeedState>()(
                                             : f
                                     )
                                 }));
+
+                                if (event.type === 'feed_complete' && event.feed) {
+                                    const articleStore = useArticleStore.getState();
+                                    articleStore.updateFeedMetadata(event.feed.id, {
+                                        feed_title: event.feed.title,
+                                        feed_icon_url: event.feed.icon_url,
+                                        feed_type: event.feed.type,
+                                    });
+                                }
                             }
                         },
                         (error) => {

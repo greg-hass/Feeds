@@ -269,6 +269,39 @@ export const useArticleStore = create<ArticleState>()(
                 }
             },
 
+            updateFeedMetadata: (feedId, updates) => {
+                const patch: Partial<Article> = {};
+                if (updates.feed_title !== undefined) patch.feed_title = updates.feed_title;
+                if (updates.feed_icon_url !== undefined) patch.feed_icon_url = updates.feed_icon_url;
+                if (updates.feed_type !== undefined) patch.feed_type = updates.feed_type;
+
+                if (Object.keys(patch).length === 0) return;
+
+                const updateArticle = <T extends Article>(article: T): T => {
+                    if (article.feed_id !== feedId) return article;
+                    return { ...article, ...patch };
+                };
+
+                set((state) => {
+                    const updatedCache: Record<number, ArticleDetail> = {};
+                    Object.entries(state.contentCache).forEach(([id, article]) => {
+                        const updated = updateArticle(article);
+                        updatedCache[Number(id)] = updated;
+                    });
+
+                    const updatedCurrent = state.currentArticle && state.currentArticle.feed_id === feedId
+                        ? { ...state.currentArticle, ...patch }
+                        : state.currentArticle;
+
+                    return {
+                        articles: state.articles.map(updateArticle),
+                        bookmarkedArticles: state.bookmarkedArticles.map(updateArticle),
+                        currentArticle: updatedCurrent,
+                        contentCache: updatedCache,
+                    };
+                });
+            },
+
             clearError: () => {
                 set({ error: null });
             },

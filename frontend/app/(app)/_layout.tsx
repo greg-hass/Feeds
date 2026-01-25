@@ -131,16 +131,28 @@ export default function AppLayout() {
                             : null,
                     }));
 
-                    if (event.type === 'feed_complete') {
-                        const feedStore = useFeedStore.getState();
-                        const existing = feedStore.feeds.find((feed) => feed.id === event.id);
-                        const unreadCount = (existing?.unread_count ?? 0) + event.new_articles;
-                        feedStore.updateLocalFeed(event.id, {
-                            unread_count: unreadCount,
-                            last_fetched_at: new Date().toISOString(),
-                            next_fetch_at: event.next_fetch_at ?? existing?.next_fetch_at ?? null,
+                if (event.type === 'feed_complete') {
+                    const feedStore = useFeedStore.getState();
+                    const existing = feedStore.feeds.find((feed) => feed.id === event.id);
+                    const unreadCount = (existing?.unread_count ?? 0) + event.new_articles;
+                    feedStore.updateLocalFeed(event.id, {
+                        title: event.feed ? event.feed.title : existing?.title,
+                        icon_url: event.feed ? event.feed.icon_url : existing?.icon_url,
+                        type: event.feed ? event.feed.type : existing?.type,
+                        unread_count: unreadCount,
+                        last_fetched_at: new Date().toISOString(),
+                        next_fetch_at: event.next_fetch_at ?? existing?.next_fetch_at ?? null,
+                    });
+
+                    if (event.feed) {
+                        const articleStore = useArticleStore.getState();
+                        articleStore.updateFeedMetadata(event.feed.id, {
+                            feed_title: event.feed.title,
+                            feed_icon_url: event.feed.icon_url,
+                            feed_type: event.feed.type,
                         });
                     }
+                }
                     return;
                 }
 

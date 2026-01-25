@@ -3,7 +3,7 @@ import { refreshFeed, FeedToRefresh } from './feed-refresh.js';
 import { FeedType } from './feed-parser.js';
 import { getUserSettings, getUserSettingsRaw, updateUserSettingsRaw } from './settings.js';
 import { generateDailyDigest, getCurrentEdition, DigestEdition } from './digest.js';
-import { emitRefreshEvent, RefreshStats } from './refresh-events.js';
+import { emitRefreshEvent, RefreshFeedUpdate, RefreshStats } from './refresh-events.js';
 
 interface Feed extends FeedToRefresh {
     title: string;
@@ -176,6 +176,22 @@ async function checkFeeds() {
         console.log(`[Scheduler] Processing ${feeds.length} feeds on global refresh`);
         emitRefreshEvent({ type: 'start', total_feeds: feeds.length });
 
+        const toRefreshFeedUpdate = (feed: {
+            id: number;
+            title: string;
+            type: FeedType;
+            icon_url: string | null;
+            icon_cached_path: string | null;
+        }): RefreshFeedUpdate => {
+            const iconUrl = feed.icon_cached_path ? `/api/v1/icons/${feed.id}` : feed.icon_url;
+            return {
+                id: feed.id,
+                title: feed.title,
+                icon_url: iconUrl,
+                type: feed.type,
+            };
+        };
+
         // Process in batches with timeout per batch
         for (let i = 0; i < feeds.length; i += BATCH_SIZE) {
             const batch = feeds.slice(i, i + BATCH_SIZE);
@@ -200,6 +216,16 @@ async function checkFeeds() {
                         const feedTime = Date.now() - feedStart;
                         
                         if (result.success) {
+                            const updatedFeed = queryOne<{
+                                id: number;
+                                title: string;
+                                type: FeedType;
+                                icon_url: string | null;
+                                icon_cached_path: string | null;
+                            }>(
+                                'SELECT id, title, type, icon_url, icon_cached_path FROM feeds WHERE id = ?',
+                                [feed.id]
+                            );
                             feedsRefreshed++;
                             if (result.newArticles > 0) {
                                 totalNewArticles += result.newArticles;
@@ -209,9 +235,10 @@ async function checkFeeds() {
                             emitRefreshEvent({
                                 type: 'feed_complete',
                                 id: feed.id,
-                                title: feed.title,
+                                title: updatedFeed?.title ?? feed.title,
                                 new_articles: result.newArticles,
                                 next_fetch_at: result.next_fetch_at,
+                                feed: updatedFeed ? toRefreshFeedUpdate(updatedFeed) : undefined,
                             });
                         } else {
                             feedsFailed++;
