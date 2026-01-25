@@ -216,9 +216,11 @@ export default function ArticleScreen() {
                 if (Platform.OS === 'web') {
                     window.open(externalUrl, '_blank', 'noopener,noreferrer');
                 } else {
-                    // For native platforms, WebBrowser could be dynamically imported here
-                    // For now, use the existing URL as-is
-                    console.log('Open external (native):', externalUrl);
+                    // Dynamically import expo-web-browser only for native platforms
+                    const WebBrowser = await import('expo-web-browser');
+                    await WebBrowser.openBrowserAsync(externalUrl, {
+                        preferredBrowserMode: 'minimal',
+                    });
                 }
             } catch (error) {
                 console.error('Error opening browser:', error);

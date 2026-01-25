@@ -101,12 +101,14 @@ export const ArticleContextMenu: React.FC<ArticleContextMenuProps> = ({
         if (!article.url) return;
         try {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            // Use window.open for web, native apps can enhance this with expo-web-browser later
             if (Platform.OS === 'web') {
                 window.open(article.url, '_blank', 'noopener,noreferrer');
             } else {
-                // For native, could use expo-web-browser via dynamic import
-                console.log('Open external (native):', article.url);
+                // Dynamically import expo-web-browser only for native platforms
+                const WebBrowser = await import('expo-web-browser');
+                await WebBrowser.openBrowserAsync(article.url, {
+                    preferredBrowserMode: 'minimal',
+                });
             }
         } catch (error) {
             console.error('Open external error:', error);
