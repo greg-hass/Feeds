@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Text, TouchableOpacity, Animated } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import * as Haptics from 'expo-haptics';
@@ -6,6 +6,7 @@ import { Check, Bookmark } from 'lucide-react-native';
 import { useArticleStore } from '@/stores';
 import { Article } from '@/services/api';
 import ArticleCard from './ArticleCard';
+import { ArticleContextMenu } from './ArticleContextMenu';
 import { timelineStyles } from './Timeline.styles';
 
 interface TimelineArticleProps {
@@ -31,6 +32,12 @@ const TimelineArticle: React.FC<TimelineArticleProps> = ({
     getBookmarkScale, getBookmarkRotation
 }) => {
     const s = timelineStyles(colors, isMobile);
+    const [contextMenuVisible, setContextMenuVisible] = useState(false);
+
+    const handleLongPress = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        setContextMenuVisible(true);
+    };
 
     const renderRightActions = (progress: any, dragX: any) => {
         const trans = dragX.interpolate({
@@ -71,22 +78,31 @@ const TimelineArticle: React.FC<TimelineArticleProps> = ({
     };
 
     const Content = (
-        <ArticleCard
-            item={item}
-            index={index}
-            isActive={isActive}
-            isMobile={isMobile}
-            activeVideoId={activeVideoId}
-            playingArticleId={playingArticleId}
-            isPlaying={isPlaying}
-            onArticlePress={onArticlePress}
-            onVideoPress={onVideoPress}
-            onPlayPress={onPlayPress}
-            onBookmarkToggle={(id) => useArticleStore.getState().toggleBookmark(id)}
-            getBookmarkScale={getBookmarkScale}
-            getBookmarkRotation={getBookmarkRotation}
-            hotPulseAnim={hotPulseAnim}
-        />
+        <>
+            <ArticleCard
+                item={item}
+                index={index}
+                isActive={isActive}
+                isMobile={isMobile}
+                activeVideoId={activeVideoId}
+                playingArticleId={playingArticleId}
+                isPlaying={isPlaying}
+                onArticlePress={onArticlePress}
+                onVideoPress={onVideoPress}
+                onPlayPress={onPlayPress}
+                onBookmarkToggle={(id) => useArticleStore.getState().toggleBookmark(id)}
+                onLongPress={handleLongPress}
+                getBookmarkScale={getBookmarkScale}
+                getBookmarkRotation={getBookmarkRotation}
+                hotPulseAnim={hotPulseAnim}
+            />
+            <ArticleContextMenu
+                visible={contextMenuVisible}
+                article={item}
+                onClose={() => setContextMenuVisible(false)}
+                onArticlePress={onArticlePress}
+            />
+        </>
     );
 
     if (isMobile) {

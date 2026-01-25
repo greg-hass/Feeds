@@ -19,6 +19,7 @@ interface ArticleCardProps {
     onVideoPress: (item: Article) => void;
     onPlayPress: (item: Article) => void;
     onBookmarkToggle: (id: number) => void;
+    onLongPress?: () => void;
     getBookmarkScale: (id: number) => Animated.Value;
     getBookmarkRotation: (id: number) => Animated.Value;
     hotPulseAnim: Animated.Value;
@@ -40,6 +41,7 @@ const ArticleCard = React.memo<ArticleCardProps>(({
     onVideoPress,
     onPlayPress,
     onBookmarkToggle,
+    onLongPress,
     getBookmarkScale,
     getBookmarkRotation,
     hotPulseAnim,
@@ -88,6 +90,8 @@ const ArticleCard = React.memo<ArticleCardProps>(({
         <TouchableOpacity
             activeOpacity={0.9}
             onPress={() => isYouTube ? onVideoPress(item) : onArticlePress(item)}
+            onLongPress={onLongPress}
+            delayLongPress={200}
             style={[
                 s.articleCard,
                 item.is_read && s.articleRead,
