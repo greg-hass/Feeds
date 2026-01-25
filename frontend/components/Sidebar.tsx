@@ -141,7 +141,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                     accessibilityLabel="View daily digest"
                     accessibilityRole="link"
                 >
-                    <BookOpen size={18} color={colors.secondary.DEFAULT} />
+                    <BookOpen size={18} color={colors.primary.DEFAULT} />
                     <Text style={s.navItemText}>Daily Digest</Text>
                 </TouchableOpacity>
 
@@ -207,7 +207,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                                     accessibilityLabel={`View folder ${folder.name}`}
                                     accessibilityRole="link"
                                 >
-                                    <Folder size={18} color={isActive ? colors.text.inverse : colors.secondary.DEFAULT} />
+                                    <Folder size={18} color={isActive ? colors.text.inverse : colors.primary.DEFAULT} />
                                     <Text style={[s.navItemText, isActive && s.navItemTextActive]}>{folder.name}</Text>
                                     {folder.unread_count > 0 && (
                                         <View style={[s.badge, isActive && s.badgeActive]}>

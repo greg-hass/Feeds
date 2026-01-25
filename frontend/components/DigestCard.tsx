@@ -10,6 +10,7 @@ export const DigestCard = () => {
     const router = useRouter();
     const colors = useColors();
     const { pendingDigest, dismissDigest } = useDigestStore();
+    const s = styles(colors);
 
     if (!pendingDigest) return null;
 
@@ -22,7 +23,7 @@ export const DigestCard = () => {
             onPress={() => router.push('/digest')}
         >
             <LinearGradient
-                colors={['#f43f5e', '#fb7185']}
+                colors={[colors.primary.DEFAULT, colors.primary.light]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={s.gradient}
@@ -63,15 +64,15 @@ export const DigestCard = () => {
     );
 };
 
-const s = StyleSheet.create({
+const styles = (colors: any) => StyleSheet.create({
     container: {
         marginHorizontal: spacing.lg,
         marginTop: spacing.md,
         marginBottom: spacing.sm,
         borderRadius: borderRadius.xl,
         overflow: 'hidden',
-        // Pink glow shadow
-        shadowColor: '#f43f5e',
+        // Accent glow shadow
+        shadowColor: colors.primary.DEFAULT,
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.3,
         shadowRadius: 12,

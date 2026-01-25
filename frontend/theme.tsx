@@ -175,6 +175,18 @@ export const ACCENT_COLORS = {
         dark: '#d97706',
         soft: '#f59e0b25',
     },
+    cyan: {
+        DEFAULT: '#06b6d4',
+        light: '#22d3ee',
+        dark: '#0891b2',
+        soft: '#06b6d425',
+    },
+    yellow: {
+        DEFAULT: '#facc15',
+        light: '#fef08a',
+        dark: '#ca8a04',
+        soft: '#facc1525',
+    },
 };
 
 export type AccentColor = keyof typeof ACCENT_COLORS;
