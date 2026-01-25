@@ -176,6 +176,7 @@ export default function AppLayout() {
 
     useEffect(() => {
         let lastRefreshAt = 0;
+        let wasHidden = false;
         const STALE_MS = 30 * 1000;
 
         const refreshNow = () => {
@@ -196,12 +197,19 @@ export default function AppLayout() {
 
         const onVisibility = () => {
             if (document.visibilityState === 'visible') {
+                wasHidden = true;
                 refreshNow();
+            } else if (document.visibilityState === 'hidden') {
+                wasHidden = true;
             }
         };
 
         const onFocus = () => {
-            refreshNow();
+            // Only refresh if the page was actually hidden (tab switch), not on internal navigation
+            if (wasHidden) {
+                wasHidden = false;
+                refreshNow();
+            }
         };
 
         if (typeof document !== 'undefined') {
