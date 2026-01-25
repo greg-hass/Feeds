@@ -1,5 +1,6 @@
-import { useEffect } from 'react';
+import { useCallback } from 'react';
 import { View, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import { useColors, spacing } from '@/theme';
 import { useAnalyticsStore } from '@/stores/analyticsStore';
 
@@ -19,9 +20,12 @@ export default function AnalyticsScreen() {
 
     const { fetchAll, isLoading, overview } = useAnalyticsStore();
 
-    useEffect(() => {
-        fetchAll();
-    }, []);
+    // Refetch analytics data whenever the screen is focused
+    useFocusEffect(
+        useCallback(() => {
+            fetchAll();
+        }, [fetchAll])
+    );
 
     const s = styles(colors, isMobile);
 

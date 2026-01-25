@@ -5,6 +5,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { formatDistanceToNow } from 'date-fns';
 import { useArticleStore, useSettingsStore, useToastStore, useVideoStore, useAudioStore } from '@/stores';
 import { Article, api } from '@/services/api';
+import { useReadingSession, calculateScrollDepth } from '@/hooks/useReadingSession';
 import {
     ArrowLeft, ExternalLink, Circle, CircleCheck,
     Headphones, BookOpen, Play, Bookmark, Share2,
@@ -38,6 +39,14 @@ export default function ArticleScreen() {
     const { activeVideoId, playVideo, minimize, close: closeVideo, isMinimized } = useVideoStore();
     const { play: playPodcast, isPlaying: isAudioPlaying, showPlayer } = useAudioStore();
     const [adjacentArticles, setAdjacentArticles] = useState<{ prev: number | null; next: number | null }>({ prev: null, next: null });
+
+    // Analytics: Track reading session
+    const { updateScrollDepth } = useReadingSession({
+        articleId: Number(id),
+        enabled: !!id,
+    });
+    const contentHeightRef = useRef(0);
+    const containerHeightRef = useRef(0);
 
     const isYouTube = currentArticle?.feed_type === 'youtube' || isYouTubeUrl(currentArticle?.url || '');
     const videoId = extractVideoId(currentArticle?.url || currentArticle?.thumbnail_url || '');
@@ -108,12 +117,22 @@ export default function ArticleScreen() {
 
     const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
         const offset = event.nativeEvent.contentOffset.y;
-        const totalHeight = event.nativeEvent.contentSize.height - event.nativeEvent.layoutMeasurement.height;
+        const contentHeight = event.nativeEvent.contentSize.height;
+        const containerHeight = event.nativeEvent.layoutMeasurement.height;
+        const totalHeight = contentHeight - containerHeight;
+
+        // Store heights for scroll depth calculation
+        contentHeightRef.current = contentHeight;
+        containerHeightRef.current = containerHeight;
 
         // Update Reading Progress
         if (totalHeight > 0) {
             const progress = Math.min(offset / totalHeight, 1);
             setReadingProgress(progress);
+
+            // Analytics: Update scroll depth for reading session tracking
+            const scrollDepth = calculateScrollDepth(offset, contentHeight, containerHeight);
+            updateScrollDepth(scrollDepth);
         }
 
         // Zen Mode: Hide header on scroll down
