@@ -103,8 +103,8 @@ export default function SettingsScreen() {
                             <Switch
                                 value={settings.show_images}
                                 onValueChange={(v: boolean) => handleToggle('show_images', v)}
-                                trackColor={{ false: colors.border.DEFAULT, true: colors.primary.DEFAULT }}
-                                thumbColor={colors.text.primary}
+                                trackColor={{ false: colors.border.DEFAULT, true: colors.primary.dark }}
+                                thumbColor={colors.background.primary}
                                 accessibilityLabel="Show images in articles"
                             />
                         </View>
@@ -126,7 +126,7 @@ export default function SettingsScreen() {
                                         accessibilityLabel={`Set accent color to ${key}`}
                                     >
                                         {(settings.accent_color === key || (!settings.accent_color && key === 'emerald')) && (
-                                            <Check size={16} color={colors.text.inverse} />
+                                            <Check size={16} color="#fff" />
                                         )}
                                     </TouchableOpacity>
                                 ))}
@@ -147,8 +147,8 @@ export default function SettingsScreen() {
                             <Switch
                                 value={settings.readability_enabled}
                                 onValueChange={(v: boolean) => handleToggle('readability_enabled', v)}
-                                trackColor={{ false: colors.border.DEFAULT, true: colors.primary.DEFAULT }}
-                                thumbColor={colors.text.primary}
+                                trackColor={{ false: colors.border.DEFAULT, true: colors.primary.dark }}
+                                thumbColor={colors.background.primary}
                                 accessibilityLabel="Enable Reader Mode"
                             />
                         </View>
@@ -163,8 +163,8 @@ export default function SettingsScreen() {
                             <Switch
                                 value={settings.fetch_full_content}
                                 onValueChange={(v: boolean) => handleToggle('fetch_full_content', v)}
-                                trackColor={{ false: colors.border.DEFAULT, true: colors.primary.DEFAULT }}
-                                thumbColor={colors.text.primary}
+                                trackColor={{ false: colors.border.DEFAULT, true: colors.primary.dark }}
+                                thumbColor={colors.background.primary}
                                 accessibilityLabel="Fetch Full Content"
                             />
                         </View>
@@ -187,7 +187,7 @@ export default function SettingsScreen() {
                                         onPress={() => handleToggle('refresh_interval_minutes', mins)}
                                         style={[
                                             s.pickerOption,
-                                            settings.refresh_interval_minutes === mins && { backgroundColor: colors.primary.DEFAULT }
+                                            settings.refresh_interval_minutes === mins && { backgroundColor: colors.primary.dark }
                                         ]}
                                     >
                                         <Text style={[
@@ -215,7 +215,7 @@ export default function SettingsScreen() {
                                         onPress={() => handleToggle('retention_days', days)}
                                         style={[
                                             s.pickerOption,
-                                            settings.retention_days === days && { backgroundColor: colors.primary.DEFAULT }
+                                            settings.retention_days === days && { backgroundColor: colors.primary.dark }
                                         ]}
                                     >
                                         <Text style={[
@@ -331,9 +331,9 @@ const styles = (colors: any) => StyleSheet.create({
         backgroundColor: colors.background.tertiary,
     },
     themeOptionActive: {
-        backgroundColor: colors.primary.DEFAULT,
-        borderColor: colors.primary.DEFAULT,
-        ...shadows.colored(colors.primary.DEFAULT),
+        backgroundColor: colors.primary.dark,
+        borderColor: colors.primary.dark,
+        ...shadows.colored(colors.primary.dark),
     },
     themeText: {
         fontSize: 14,
