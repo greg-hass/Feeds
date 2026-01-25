@@ -1,3 +1,4 @@
+/* eslint-env serviceworker */
 const CACHE_NAME = 'feeds-cache-v1';
 const ASSETS_TO_CACHE = [
     '/',

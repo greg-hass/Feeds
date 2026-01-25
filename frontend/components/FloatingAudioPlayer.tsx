@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Animated, Image, Platform, useWindowDimensions } from 'react-native';
 import { useAudioStore } from '@/stores/audioStore';
 import { useColors, borderRadius, spacing } from '@/theme';
@@ -15,8 +15,8 @@ export const FloatingAudioPlayer = ({ onRestore }: FloatingAudioPlayerProps) => 
     const isMobile = width < 1024;
     const isMobileWeb = Platform.OS === 'web' && width < 768;
 
-    const opacity = useRef(new Animated.Value(0)).current;
-    const slideAnim = useRef(new Animated.Value(100)).current;
+    const [opacity] = useState(() => new Animated.Value(0));
+    const [slideAnim] = useState(() => new Animated.Value(100));
 
     useEffect(() => {
         if (title && isMinimized) {

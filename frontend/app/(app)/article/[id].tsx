@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image, useWindowDimensions, Platform, Alert, Animated, NativeSyntheticEvent, NativeScrollEvent, Linking } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image, useWindowDimensions, Platform, Animated, NativeSyntheticEvent, NativeScrollEvent, Linking } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { formatDistanceToNow } from 'date-fns';
 import { useArticleStore, useSettingsStore, useToastStore, useVideoStore, useAudioStore } from '@/stores';
@@ -31,7 +31,7 @@ export default function ArticleScreen() {
 
     // Zen Mode & Progress
     const [scrollOffset, setScrollOffset] = useState(0);
-    const headerOpacity = useRef(new Animated.Value(1)).current;
+    const [headerOpacity] = useState(() => new Animated.Value(1));
     const [readingProgress, setReadingProgress] = useState(0);
     const [showTextSizeMenu, setShowTextSizeMenu] = useState(false);
 
@@ -53,7 +53,7 @@ export default function ArticleScreen() {
 
     const s = styles(colors, isMobile, settings?.reader_theme);
 
-    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const [fadeAnim] = useState(() => new Animated.Value(0));
 
     useEffect(() => {
         if (settings?.readability_enabled !== undefined) {

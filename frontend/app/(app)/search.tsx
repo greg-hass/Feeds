@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Animated, Platform, ScrollView, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { formatDistanceToNow } from 'date-fns';
@@ -32,7 +32,7 @@ export default function SearchScreen() {
     const [unreadOnly, setUnreadOnly] = useState(false);
     const isDesktop = Platform.OS === 'web' && width >= 1024;
 
-    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const [fadeAnim] = useState(() => new Animated.Value(0));
 
     const s = styles(colors);
 

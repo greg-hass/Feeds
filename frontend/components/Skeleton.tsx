@@ -11,7 +11,7 @@ interface SkeletonProps {
 
 export const Skeleton = ({ width = '100%', height = 16, borderRadius = 4, style }: SkeletonProps) => {
   const colors = useColors();
-  const shimmerAnim = React.useRef(new Animated.Value(0)).current;
+  const [shimmerAnim] = React.useState(() => new Animated.Value(0));
 
   React.useEffect(() => {
     Animated.loop(

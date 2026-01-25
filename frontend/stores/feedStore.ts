@@ -123,7 +123,6 @@ export const useFeedStore = create<FeedState>()(
                     await api.refreshFeedsWithProgress(
                         ids,
                         (event) => {
-                            const now = Date.now();
                             if (event.type === 'start') {
                                 set({ refreshProgress: { total: event.total_feeds, completed: 0, currentTitle: '' } });
                             } else if (event.type === 'feed_refreshing') {
@@ -245,7 +244,7 @@ export const useFeedStore = create<FeedState>()(
 
             resumeFeed: async (id) => {
                 try {
-                    const result = await api.resumeFeed(id);
+                    await api.resumeFeed(id);
                     set((state) => ({
                         feeds: state.feeds.map((f) => (f.id === id ? { ...f, paused_at: null } : f)),
                     }));

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Animated, PanResponder, Platform, useWindowDimensions } from 'react-native';
 import { useVideoStore } from '@/stores';
 import { useColors, borderRadius, spacing } from '@/theme';
@@ -11,8 +11,8 @@ export const FloatingPlayer = () => {
     const { width, height } = useWindowDimensions();
     const isMobile = width < 1024;
 
-    const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
-    const opacity = useRef(new Animated.Value(0)).current;
+    const [pan] = useState(() => new Animated.ValueXY({ x: 0, y: 0 }));
+    const [opacity] = useState(() => new Animated.Value(0));
 
     useEffect(() => {
         if (activeVideoId && isMinimized) {
@@ -30,23 +30,25 @@ export const FloatingPlayer = () => {
         }
     }, [activeVideoId, isMinimized]);
 
-    const panResponder = useRef(
-        PanResponder.create({
-            onMoveShouldSetPanResponder: () => true,
-            onPanResponderGrant: () => {
-                pan.setOffset({
-                    x: (pan.x as any)._value,
-                    y: (pan.y as any)._value,
-                });
-            },
-            onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], {
-                useNativeDriver: false,
+    const panResponder = useMemo(
+        () =>
+            PanResponder.create({
+                onMoveShouldSetPanResponder: () => true,
+                onPanResponderGrant: () => {
+                    pan.setOffset({
+                        x: (pan.x as any)._value,
+                        y: (pan.y as any)._value,
+                    });
+                },
+                onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], {
+                    useNativeDriver: false,
+                }),
+                onPanResponderRelease: () => {
+                    pan.flattenOffset();
+                },
             }),
-            onPanResponderRelease: () => {
-                pan.flattenOffset();
-            },
-        })
-    ).current;
+        [pan]
+    );
 
     if (!activeVideoId || !isMinimized) return null;
 

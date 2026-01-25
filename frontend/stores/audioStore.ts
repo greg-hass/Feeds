@@ -72,7 +72,7 @@ export const useAudioStore = create<AudioState>((set, get) => ({
                 playThroughEarpieceAndroid: false,
             });
 
-            const { sound, status } = await Audio.Sound.createAsync(
+            const { sound } = await Audio.Sound.createAsync(
                 { uri: article.url },
                 {
                     shouldPlay: true,

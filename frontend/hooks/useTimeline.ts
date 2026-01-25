@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Animated, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useArticleStore, useFeedStore, useAudioStore, useVideoStore, useDigestStore, useSettingsStore } from '@/stores';
@@ -47,9 +47,9 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
 
         return () => clearInterval(timer);
     }, [globalNextRefreshAt]);
-    const hotPulseAnim = useRef(new Animated.Value(1)).current;
-    const bookmarkScales = useRef<Map<number, Animated.Value>>(new Map());
-    const bookmarkRotations = useRef<Map<number, Animated.Value>>(new Map());
+    const [hotPulseAnim] = useState(() => new Animated.Value(1));
+    const [bookmarkScales] = useState(() => new Map<number, Animated.Value>());
+    const [bookmarkRotations] = useState(() => new Map<number, Animated.Value>());
 
     // HOT badge pulse animation
     useEffect(() => {
@@ -64,13 +64,13 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
     }, []);
 
     const getBookmarkScale = (id: number) => {
-        if (!bookmarkScales.current.has(id)) bookmarkScales.current.set(id, new Animated.Value(1));
-        return bookmarkScales.current.get(id)!;
+        if (!bookmarkScales.has(id)) bookmarkScales.set(id, new Animated.Value(1));
+        return bookmarkScales.get(id)!;
     };
 
     const getBookmarkRotation = (id: number) => {
-        if (!bookmarkRotations.current.has(id)) bookmarkRotations.current.set(id, new Animated.Value(0));
-        return bookmarkRotations.current.get(id)!;
+        if (!bookmarkRotations.has(id)) bookmarkRotations.set(id, new Animated.Value(0));
+        return bookmarkRotations.get(id)!;
     };
 
     const handleMarkAllRead = () => {

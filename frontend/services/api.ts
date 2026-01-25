@@ -603,7 +603,7 @@ export interface ImportStats {
     success: number;
     skipped: number;
     errors: number;
-    failed_feeds: Array<{ id: number; title: string; error: string }>;
+    failed_feeds: { id: number; title: string; error: string }[];
 }
 
 export type ProgressEvent =
@@ -618,7 +618,7 @@ export type ProgressEvent =
 export interface RefreshStats {
     success: number;
     errors: number;
-    failed_feeds: Array<{ id: number; title: string; error: string }>;
+    failed_feeds: { id: number; title: string; error: string }[];
 }
 
 export interface RefreshFeedUpdate {

@@ -24,9 +24,7 @@ export interface SyncChanges {
     };
 }
 
-interface SyncCursor {
-    last_sync_at: string;
-}
+
 
 interface SyncResult {
     changes: SyncChanges;
@@ -35,9 +33,7 @@ interface SyncResult {
     is_refreshing?: boolean;
 }
 
-interface PushSyncBody {
-    read_state?: Array<{ article_id: number; is_read: boolean }>;
-}
+
 
 /**
  * Get the current sync cursor from storage
@@ -88,7 +84,7 @@ export async function fetchChanges(include: string = 'feeds,folders,articles,rea
 /**
  * Push local read state changes to the server
  */
-export async function pushReadState(readState: Array<{ article_id: number; is_read: boolean }>): Promise<boolean> {
+export async function pushReadState(readState: { article_id: number; is_read: boolean }[]): Promise<boolean> {
     try {
         await api.pushSyncChanges(readState);
         return true;

@@ -1,4 +1,4 @@
-import React, { useEffect, lazy, Suspense, useState, useRef } from 'react';
+import React, { useEffect, lazy, Suspense, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Platform, Animated, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useDigestStore, useSettingsStore } from '@/stores';
@@ -16,7 +16,7 @@ export const DigestView = () => {
     const { settings, updateSettings } = useSettingsStore();
     const colors = useColors();
     const [showTextSizeMenu, setShowTextSizeMenu] = useState(false);
-    const headerOpacity = useRef(new Animated.Value(1)).current;
+    const [headerOpacity] = useState(() => new Animated.Value(1));
 
     useEffect(() => {
         fetchLatestDigest();

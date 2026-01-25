@@ -53,6 +53,7 @@ const ArticleCard = React.memo<ArticleCardProps>(({
     const isShort = !!(isYouTube && item.url?.includes('/shorts/'));
     const isVideoPlaying = !!(isYouTube && videoId && activeVideoId === videoId);
     const isFeatured = (index % 5 === 0 && !isMobile && thumbnail) || isYouTube;
+    // eslint-disable-next-line react-hooks/purity
     const isHot = !!(item.published_at && (new Date(item.published_at).getTime() > Date.now() - 4 * 60 * 60 * 1000));
 
     const handleBookmarkPress = () => {

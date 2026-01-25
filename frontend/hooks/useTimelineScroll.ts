@@ -26,15 +26,22 @@ export const useTimelineScroll = (articles: any[], filter: any) => {
     }, [articles.length, scrollPosition]);
 
     // Prefetch articles as user scrolls
-    const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
+    const articlesRef = useRef(articles);
+    useEffect(() => {
+        articlesRef.current = articles;
+    }, [articles]);
+
+    // Prefetch articles as user scrolls
+    const [onViewableItemsChanged] = useState(() => ({ viewableItems }: any) => {
+        const currentArticles = articlesRef.current;
         if (viewableItems.length > 0) {
             const lastIndex = viewableItems[viewableItems.length - 1].index;
-            if (articles && articles.length > lastIndex + 1) {
-                const nextArticles = articles.slice(lastIndex + 1, lastIndex + 4);
+            if (currentArticles && currentArticles.length > lastIndex + 1) {
+                const nextArticles = currentArticles.slice(lastIndex + 1, lastIndex + 4);
                 nextArticles.forEach(a => prefetchArticle(a.id));
             }
         }
-    }).current;
+    });
 
     const handleScroll = (e: any) => {
         const offset = e.nativeEvent.contentOffset.y;

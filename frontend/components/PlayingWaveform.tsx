@@ -1,14 +1,14 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Animated, StyleSheet } from 'react-native';
 import { useColors } from '@/theme';
 
 export const PlayingWaveform = ({ color, size = 16 }: { color: string; size?: number }) => {
-    const anims = [
-        useRef(new Animated.Value(0.4)).current,
-        useRef(new Animated.Value(0.7)).current,
-        useRef(new Animated.Value(0.3)).current,
-        useRef(new Animated.Value(0.9)).current,
-    ];
+    const [anims] = useState(() => [
+        new Animated.Value(0.4),
+        new Animated.Value(0.7),
+        new Animated.Value(0.3),
+        new Animated.Value(0.9),
+    ]);
 
     useEffect(() => {
         anims.forEach((anim, i) => {

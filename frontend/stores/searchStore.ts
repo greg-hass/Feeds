@@ -177,7 +177,7 @@ export const useSearchStore = create<SearchState>((set, get) => ({
         try {
             const response = await api.get<{ searches: SavedSearch[] }>('/search/saved');
             set({ savedSearches: response.searches, savedSearchesLoading: false });
-        } catch (error) {
+        } catch {
             set({ savedSearchesLoading: false });
         }
     },
@@ -280,7 +280,7 @@ export const useSearchStore = create<SearchState>((set, get) => ({
                 `/search/history?limit=${limit}`
             );
             set({ searchHistory: response.history, historyLoading: false });
-        } catch (error) {
+        } catch {
             set({ historyLoading: false });
         }
     },
@@ -313,7 +313,7 @@ export const useSearchStore = create<SearchState>((set, get) => ({
                 availableAuthors: authorsResponse.authors,
                 autocompleteLoading: false,
             });
-        } catch (error) {
+        } catch {
             set({ autocompleteLoading: false });
         }
     },

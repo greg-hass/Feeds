@@ -44,7 +44,7 @@ export const useDigestStore = create<DigestStore>()(
                 try {
                     const { digest } = await api.getPendingDigest();
                     set({ pendingDigest: digest });
-                } catch (error) {
+                } catch {
                     // Silent fail for background check
                 }
             },

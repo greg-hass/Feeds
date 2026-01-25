@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Animated, Platform } from 'react-native';
 import { useFeedStore } from '@/stores';
 import { useColors, borderRadius, spacing } from '@/theme';
@@ -9,9 +9,9 @@ export default function NewArticlesPill() {
     const colors = useColors();
     const lastRefreshNewArticles = useFeedStore((state) => state.lastRefreshNewArticles);
     const [displayCount, setDisplayCount] = useState<number | null>(null);
-    const opacity = useRef(new Animated.Value(0)).current;
-    const translateY = useRef(new Animated.Value(-20)).current;
-    const scale = useRef(new Animated.Value(0.8)).current;
+    const [opacity] = useState(() => new Animated.Value(0));
+    const [translateY] = useState(() => new Animated.Value(-20));
+    const [scale] = useState(() => new Animated.Value(0.8));
 
     useEffect(() => {
         if (lastRefreshNewArticles !== null && lastRefreshNewArticles > 0) {

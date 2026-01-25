@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Image, Animated, Platform, useWindowDimensions } from 'react-native';
 import { api, Recommendation, Interest, ApiError } from '@/services/api';
 import { Sparkles, X, ChevronRight, Plus, RefreshCw, LayoutGrid, Zap, Newspaper, Youtube, Menu } from 'lucide-react-native';
@@ -13,7 +13,7 @@ export const DiscoveryPage = () => {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [subscribingIds, setSubscribingIds] = useState<Set<number>>(new Set());
     const [showMenu, setShowMenu] = useState(false);
-    const [sidebarAnim] = useState(new Animated.Value(-300));
+    const [sidebarAnim] = useState(() => new Animated.Value(-300));
     const colors = useColors();
     const { width } = useWindowDimensions();
     const isMobile = width < 1024;
@@ -21,7 +21,7 @@ export const DiscoveryPage = () => {
     const { show: showToast } = useToastStore();
     const { settings } = useSettingsStore();
 
-    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const [fadeAnim] = useState(() => new Animated.Value(0));
 
     const fetchData = async () => {
         setIsLoading(true);

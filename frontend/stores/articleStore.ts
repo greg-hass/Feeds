@@ -5,7 +5,7 @@ import { api, Article, ArticleDetail } from '@/services/api';
 import { applySyncChanges, SyncChanges } from '@/lib/sync';
 import { handleError } from '@/services/errorHandler';
 import { ArticleState } from './types';
-import { FeedState } from './types';
+
 
 export const useArticleStore = create<ArticleState>()(
     persist(
@@ -210,7 +210,7 @@ export const useArticleStore = create<ArticleState>()(
                     set((state) => ({
                         contentCache: { ...state.contentCache, [id]: article }
                     }));
-                } catch (e) {
+                } catch {
                     // Silent fail for prefetch
                 }
             },
@@ -218,7 +218,7 @@ export const useArticleStore = create<ArticleState>()(
             markRead: async (id) => {
                 try {
                     await api.markArticleRead(id);
-                } catch (e) { /* ignore offline and hope for sync later */ }
+                } catch { /* ignore offline and hope for sync later */ }
                 set((state) => ({
                     articles: state.articles.map((a) =>
                         a.id === id ? { ...a, is_read: true } : a
@@ -229,7 +229,7 @@ export const useArticleStore = create<ArticleState>()(
             markUnread: async (id) => {
                 try {
                     await api.markArticleUnread(id);
-                } catch (e) { /* ignore */ }
+                } catch { /* ignore */ }
                 set((state) => ({
                     articles: state.articles.map((a) =>
                         a.id === id ? { ...a, is_read: false } : a
