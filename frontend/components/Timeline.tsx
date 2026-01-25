@@ -144,16 +144,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                 onRefresh={refreshAllFeeds}
                 onMarkAllRead={handleMarkAllRead}
             />
-            {isRefreshing && (
-                <View style={s.refreshBarContainer}>
-                    <View
-                        style={[
-                            s.refreshBar,
-                            { width: refreshProgress?.total ? `${Math.min(100, (refreshProgress.completed / refreshProgress.total) * 100)}%` : '25%' },
-                        ]}
-                    />
-                </View>
-            )}
+
 
             <FilterPills
                 unreadOnly={filter.unread_only || false}

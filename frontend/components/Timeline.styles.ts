@@ -59,16 +59,7 @@ export const timelineStyles = (colors: any, isMobile: boolean) => StyleSheet.cre
         fontWeight: '700',
         color: colors.text.secondary,
     },
-    refreshBarContainer: {
-        height: 3,
-        backgroundColor: colors.background.secondary,
-    },
-    refreshBar: {
-        height: '100%',
-        backgroundColor: colors.primary.DEFAULT,
-        borderTopRightRadius: borderRadius.sm,
-        borderBottomRightRadius: borderRadius.sm,
-    },
+
     headerActions: {
         flexDirection: 'row',
         alignItems: 'center',
