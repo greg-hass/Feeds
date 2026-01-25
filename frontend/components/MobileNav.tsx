@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet, Platform } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
-import { Home, Search, Bookmark, Rss, Settings, Sparkles, BarChart3 } from 'lucide-react-native';
+import { Home, Search, Bookmark, Rss, Settings, Sparkles } from 'lucide-react-native';
 import { useColors, spacing, borderRadius } from '@/theme';
 
 interface NavItem {
@@ -13,7 +13,6 @@ interface NavItem {
 const navItems: NavItem[] = [
     { icon: Home, label: 'Home', path: '/(app)' },
     { icon: Sparkles, label: 'Discover', path: '/(app)/discovery' },
-    { icon: BarChart3, label: 'Stats', path: '/(app)/analytics' },
     { icon: Bookmark, label: 'Saved', path: '/(app)/bookmarks' },
     { icon: Rss, label: 'Manage', path: '/(app)/manage' },
     { icon: Settings, label: 'Settings', path: '/(app)/settings' },

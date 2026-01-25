@@ -136,7 +136,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                     accessibilityRole="link"
                 >
                     <Sparkles size={18} color={colors.warning} />
-                    <Text style={s.navItemText}>Discovery</Text>
+                    <Text style={s.navItemText}>Discover</Text>
                 </TouchableOpacity>
 
                 {/* Daily Digest */}
