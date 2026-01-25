@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Animated } from 'react-native';
-import { Bookmark, Clock, Flame } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, Animated, Share } from 'react-native';
+import { Bookmark, Clock, Flame, Share2 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { formatDistanceToNow } from 'date-fns';
 import { Article } from '@/services/api';
@@ -58,6 +58,19 @@ const ArticleFooter = React.memo<ArticleFooterProps>(({
         onBookmarkToggle(item.id);
     };
 
+    const handleShare = async (event: any) => {
+        event.stopPropagation();
+        try {
+            await Share.share({
+                message: item.title,
+                url: item.url || undefined,
+                title: item.title,
+            });
+        } catch (error) {
+            console.error('Share error:', error);
+        }
+    };
+
     return (
         <View style={styles.articleFooter}>
             <View style={styles.metaRow}>
@@ -83,35 +96,50 @@ const ArticleFooter = React.memo<ArticleFooterProps>(({
                 </Text>
             </View>
 
-            {/* Bookmark Button */}
-            <TouchableOpacity
-                onPress={handleBookmarkPress}
-                style={styles.cardAction}
-                accessibilityRole="button"
-                accessibilityLabel={item.is_bookmarked ? "Remove bookmark" : "Bookmark article"}
-                accessibilityHint="Double tap to save for later"
-                accessibilityState={{ selected: item.is_bookmarked }}
-            >
-                <Animated.View style={{
-                    transform: [
-                        { scale: getBookmarkScale(item.id) },
-                        { rotate: getBookmarkRotation(item.id).interpolate({
-                            inputRange: [0, 1],
-                            outputRange: ['0deg', '360deg'],
-                        })}
-                    ]
-                }}>
-                    <Bookmark
+            <View style={styles.actionsRow}>
+                {/* Share Button */}
+                <TouchableOpacity
+                    onPress={handleShare}
+                    style={styles.cardAction}
+                    accessibilityRole="button"
+                    accessibilityLabel="Share article"
+                    accessibilityHint="Double tap to share"
+                >
+                    <Share2
                         size={20}
-                        color={item.is_bookmarked ? colors.primary.DEFAULT : colors.text.tertiary}
-                        fill={item.is_bookmarked ? colors.primary.DEFAULT : 'transparent'}
+                        color={colors.text.tertiary}
                     />
-                </Animated.View>
-            </TouchableOpacity>
+                </TouchableOpacity>
+
+                {/* Bookmark Button */}
+                <TouchableOpacity
+                    onPress={handleBookmarkPress}
+                    style={styles.cardAction}
+                    accessibilityRole="button"
+                    accessibilityLabel={item.is_bookmarked ? "Remove bookmark" : "Bookmark article"}
+                    accessibilityHint="Double tap to save for later"
+                    accessibilityState={{ selected: item.is_bookmarked }}
+                >
+                    <Animated.View style={{
+                        transform: [
+                            { scale: getBookmarkScale(item.id) },
+                            { rotate: getBookmarkRotation(item.id).interpolate({
+                                inputRange: [0, 1],
+                                outputRange: ['0deg', '360deg'],
+                            })}
+                        ]
+                    }}>
+                        <Bookmark
+                            size={20}
+                            color={item.is_bookmarked ? colors.primary.DEFAULT : colors.text.tertiary}
+                            fill={item.is_bookmarked ? colors.primary.DEFAULT : 'transparent'}
+                        />
+                    </Animated.View>
+                </TouchableOpacity>
+            </View>
         </View>
     );
 }, (prevProps, nextProps) => {
-    // Custom comparison - only re-render if these props change
     return (
         prevProps.item.id === nextProps.item.id &&
         prevProps.item.is_bookmarked === nextProps.item.is_bookmarked &&
@@ -154,8 +182,12 @@ const styles = {
         color: '#fff',
         letterSpacing: 0.5,
     },
+    actionsRow: {
+        flexDirection: 'row' as const,
+        alignItems: 'center' as const,
+        gap: 4,
+    },
     cardAction: {
         padding: 8,
-        marginRight: -8,
     },
 };
