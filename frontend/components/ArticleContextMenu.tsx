@@ -9,7 +9,6 @@ import { useArticleStore } from '@/stores';
 import { Article } from '@/services/api';
 import { shareContent } from '@/utils/share';
 import { useColors, spacing, borderRadius } from '@/theme';
-import * as Clipboard from 'expo-clipboard';
 
 interface ArticleContextMenuProps {
     visible: boolean;
@@ -79,8 +78,13 @@ export const ArticleContextMenu: React.FC<ArticleContextMenuProps> = ({
     const handleCopyLink = async () => {
         try {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            await Clipboard.setStringAsync(article.url || '');
-            // Optionally show toast - could be added later
+            if (Platform.OS === 'web' && article.url) {
+                await navigator.clipboard.writeText(article.url);
+            } else if (article.url) {
+                // For native platforms, clipboard would need expo-clipboard
+                // For now, just log - can be enhanced later
+                console.log('Copy link (native):', article.url);
+            }
         } catch (error) {
             console.error('Copy error:', error);
         }
