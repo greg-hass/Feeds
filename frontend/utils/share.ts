@@ -9,6 +9,7 @@ type SharePayload = {
 
 type WebNavigator = Navigator & {
     share?: (data: { title?: string; text?: string; url?: string }) => Promise<void>;
+    canShare?: (data: { title?: string; text?: string; url?: string }) => boolean;
     clipboard?: {
         writeText?: (text: string) => Promise<void>;
     };
@@ -22,15 +23,33 @@ export async function shareContent({ title, message, url }: SharePayload): Promi
 
         if (webNavigator?.share) {
             try {
-                await webNavigator.share({
+                const shareData = {
                     title,
                     text: message || title,
                     url,
-                });
+                };
+
+                if (typeof webNavigator.canShare === 'function') {
+                    const canShare = webNavigator.canShare(shareData);
+                    if (!canShare && url) {
+                        await webNavigator.share({ title, url });
+                        return true;
+                    }
+                }
+
+                await webNavigator.share(shareData);
                 return true;
             } catch (error) {
                 const name = typeof error === 'object' && error && 'name' in error ? String((error as { name?: string }).name) : '';
                 if (name === 'AbortError') return false;
+                if (url) {
+                    try {
+                        await webNavigator.share({ title, url });
+                        return true;
+                    } catch {
+                        // fall through
+                    }
+                }
             }
         }
 
@@ -44,10 +63,7 @@ export async function shareContent({ title, message, url }: SharePayload): Promi
             }
         }
 
-        if (typeof window !== 'undefined' && shareText) {
-            window.prompt('Copy to clipboard:', shareText);
-            return true;
-        }
+        useToastStore.getState().show('Sharing not supported in this browser.', 'info');
 
         return false;
     }
