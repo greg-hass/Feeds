@@ -128,23 +128,35 @@ export function getArticleStats(articleId: number): ArticleStats | null {
     ) ?? null;
 }
 
+const isMissingTableError = (error: unknown, tableName: string): boolean => {
+    if (!(error instanceof Error)) return false;
+    return error.message.includes(`no such table: ${tableName}`);
+};
+
 /**
  * Get top read articles
  */
 export function getTopReadArticles(userId: number, limit: number = 10): Array<ArticleStats & { title: string; feed_title: string }> {
-    return query<ArticleStats & { title: string; feed_title: string }>(
-        `SELECT
-            s.*,
-            a.title,
-            f.title as feed_title
-         FROM article_stats s
-         JOIN articles a ON s.article_id = a.id
-         JOIN feeds f ON a.feed_id = f.id
-         WHERE a.user_id = ?
-         ORDER BY s.read_count DESC, s.total_read_time_seconds DESC
-         LIMIT ?`,
-        [userId, limit]
-    );
+    try {
+        return query<ArticleStats & { title: string; feed_title: string }>(
+            `SELECT
+                s.*,
+                a.title,
+                f.title as feed_title
+            FROM article_stats s
+            JOIN articles a ON s.article_id = a.id
+            JOIN feeds f ON a.feed_id = f.id
+            WHERE f.user_id = ?
+            ORDER BY s.read_count DESC, s.total_read_time_seconds DESC
+            LIMIT ?`,
+            [userId, limit]
+        );
+    } catch (error) {
+        if (isMissingTableError(error, 'article_stats')) {
+            return [];
+        }
+        throw error;
+    }
 }
 
 // ============================================================================
@@ -380,18 +392,26 @@ export function getAnalyticsOverview(userId: number): AnalyticsOverview {
  * Get topic distribution from article tags
  */
 export function getTopicDistribution(userId: number, limit: number = 10): Array<{ tag: string; count: number }> {
-    return query<{ tag: string; count: number }>(
-        `SELECT
-            t.tag,
-            COUNT(*) as count
-         FROM article_tags t
-         JOIN articles a ON t.article_id = a.id
-         WHERE a.user_id = ?
-         GROUP BY t.tag
-         ORDER BY count DESC
-         LIMIT ?`,
-        [userId, limit]
-    );
+    try {
+        return query<{ tag: string; count: number }>(
+            `SELECT
+                t.tag,
+                COUNT(*) as count
+            FROM article_tags t
+            JOIN articles a ON t.article_id = a.id
+            JOIN feeds f ON a.feed_id = f.id
+            WHERE f.user_id = ?
+            GROUP BY t.tag
+            ORDER BY count DESC
+            LIMIT ?`,
+            [userId, limit]
+        );
+    } catch (error) {
+        if (isMissingTableError(error, 'article_tags')) {
+            return [];
+        }
+        throw error;
+    }
 }
 
 // ============================================================================
