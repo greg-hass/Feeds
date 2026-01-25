@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image, useWindowDimensions, Platform, Animated, NativeSyntheticEvent, NativeScrollEvent, Linking } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image, useWindowDimensions, Platform, Animated, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { formatDistanceToNow } from 'date-fns';
 import { useArticleStore, useSettingsStore, useToastStore, useVideoStore, useAudioStore } from '@/stores';
 import { useReadingSession, calculateScrollDepth } from '@/hooks/useReadingSession';
@@ -60,6 +61,16 @@ export default function ArticleScreen() {
             setShowReadability(settings.readability_enabled);
         }
     }, [settings?.readability_enabled]);
+
+    // Warm up WebBrowser for better performance
+    useEffect(() => {
+        if (Platform.OS !== 'web') {
+            WebBrowser.warmUpAsync();
+            return () => {
+                WebBrowser.coolDownAsync();
+            };
+        }
+    }, []);
 
     useEffect(() => {
         if (id) {
@@ -212,9 +223,16 @@ export default function ArticleScreen() {
 
     const handleOpenExternal = useCallback(async () => {
         if (externalUrl) {
-            await Linking.openURL(externalUrl);
+            try {
+                await WebBrowser.openBrowserAsync(externalUrl, {
+                    preferredBrowserMode: 'minimal',
+                    toolbarColor: colors.primary.DEFAULT,
+                });
+            } catch (error) {
+                console.error('Error opening browser:', error);
+            }
         }
-    }, [externalUrl]);
+    }, [externalUrl, colors.primary.DEFAULT]);
 
     const handleToggleRead = useCallback(() => {
         if (!currentArticle) return;

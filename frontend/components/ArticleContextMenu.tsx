@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView, Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import * as WebBrowser from 'expo-web-browser';
 import {
     Check, CheckCircle, Bookmark, ExternalLink, Share2,
     Copy, BookmarkCheck, BookmarkX, Circle, CircleDot
@@ -101,12 +102,12 @@ export const ArticleContextMenu: React.FC<ArticleContextMenuProps> = ({
         if (!article.url) return;
         try {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            // Open in external browser
             if (Platform.OS === 'web') {
                 window.open(article.url, '_blank');
             } else {
-                // For native, you'd use expo-web-browser or Linking
-                // For now, just close - the full article view handles external links
+                await WebBrowser.openBrowserAsync(article.url, {
+                    preferredBrowserMode: 'minimal',
+                });
             }
         } catch (error) {
             console.error('Open external error:', error);
