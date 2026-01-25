@@ -2,9 +2,6 @@ import { useEffect, useState } from 'react';
 import { View, TouchableOpacity, StyleSheet, useWindowDimensions, Animated } from 'react-native';
 import { Menu, X } from 'lucide-react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
-import { useArticleStore, useFeedStore } from '@/stores';
-import { fetchChanges } from '@/lib/sync';
-
 import Sidebar from '@/components/Sidebar';
 import Timeline from '@/components/Timeline';
 import { DigestView } from '@/components/DigestView';
@@ -16,31 +13,6 @@ export default function ArticleListScreen() {
     const { width } = useWindowDimensions();
     const isMobile = width < 1024;
     const [showMenu, setShowMenu] = useState(false);
-
-    const { fetchFeeds, fetchFolders, applySyncChanges: applyFeedSync } = useFeedStore();
-    const { fetchArticles, applySyncChanges: applyArticleSync } = useArticleStore();
-
-    // Initial data load only - server handles scheduled refreshes
-    useEffect(() => {
-        const loadInitialData = async () => {
-            console.log('[App] Loading initial data...');
-            await Promise.all([
-                fetchFeeds(),
-                fetchFolders(),
-                fetchArticles(true),
-            ]);
-
-            // Sync any cross-device changes
-            const syncResult = await fetchChanges();
-            if (syncResult) {
-                applyFeedSync(syncResult.changes);
-                applyArticleSync(syncResult.changes);
-            }
-            console.log('[App] Initial data loaded');
-        };
-
-        loadInitialData();
-    }, []); // Run once on mount
 
     // Animated value for sidebar slide-in from left
     const [sidebarAnim] = useState(new Animated.Value(-300));

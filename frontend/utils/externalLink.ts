@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { Platform, Linking } from 'react-native';
 
 let WebBrowser: typeof import('expo-web-browser') | null = null;
 let isInitialized = false;
@@ -8,7 +8,7 @@ let isInitialized = false;
  * Must be called before using openExternalLink
  */
 export async function initWebBrowser(): Promise<void> {
-    if (Platform.OS === 'web' || isInitialized) return;
+    if (Platform.OS === 'web' || Platform.OS === 'ios' || isInitialized) return;
 
     try {
         WebBrowser = await import('expo-web-browser');
@@ -26,6 +26,7 @@ export async function initWebBrowser(): Promise<void> {
  * Clean up WebBrowser resources
  */
 export async function cleanupWebBrowser(): Promise<void> {
+    if (Platform.OS === 'ios') return;
     if (WebBrowser && isInitialized) {
         try {
             await WebBrowser.coolDownAsync();
@@ -42,6 +43,15 @@ export async function openExternalLink(url: string): Promise<void> {
     if (Platform.OS === 'web') {
         // Web: use window.open
         window.open(url, '_blank', 'noopener,noreferrer');
+        return;
+    }
+
+    if (Platform.OS === 'ios') {
+        try {
+            await Linking.openURL(url);
+        } catch (error) {
+            console.error('Linking error:', error);
+        }
         return;
     }
 
