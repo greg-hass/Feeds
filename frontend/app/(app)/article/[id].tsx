@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image, useWindowDimensions, Platform, Alert, Animated, NativeSyntheticEvent, NativeScrollEvent, Share } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image, useWindowDimensions, Platform, Alert, Animated, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { formatDistanceToNow } from 'date-fns';
@@ -12,6 +12,7 @@ import {
 } from 'lucide-react-native';
 import { useColors, borderRadius, spacing, typography } from '@/theme';
 import { extractVideoId, getEmbedUrl, isYouTubeUrl } from '@/utils/youtube';
+import { shareContent } from '@/utils/share';
 import ArticleContent from '@/components/ArticleContent';
 import { VideoModal } from '@/components/VideoModal';
 import { PodcastPlayer } from '@/components/PodcastPlayer';
@@ -179,10 +180,10 @@ export default function ArticleScreen() {
     const handleShare = useCallback(async () => {
         if (!currentArticle) return;
         try {
-            await Share.share({
+            await shareContent({
+                title: currentArticle.title,
                 message: currentArticle.title,
                 url: externalUrl || undefined,
-                title: currentArticle.title,
             });
         } catch (error) {
             console.error('Share error:', error);

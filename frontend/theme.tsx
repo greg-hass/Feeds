@@ -83,16 +83,30 @@ const sharedColors = {
     }
 };
 
+const sansFamily = "'SF Pro Display', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+const serifFamily = "'New York', 'Charter', 'Source Serif Pro', 'Georgia', serif";
+const systemFamily = "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', sans-serif";
+
 export const typography = {
     sans: {
-        family: "'SF Pro Display', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+        family: sansFamily,
     },
     serif: {
-        family: "'New York', 'Charter', 'Source Serif Pro', 'Georgia', serif",
+        family: serifFamily,
     },
     system: {
-        family: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', sans-serif",
-    }
+        family: systemFamily,
+    },
+    h1: {
+        fontFamily: sansFamily,
+        fontSize: 24,
+        fontWeight: '700' as const,
+    },
+    body: {
+        fontFamily: sansFamily,
+        fontSize: 14,
+        fontWeight: '400' as const,
+    },
 };
 
 // Default export for backward compatibility and static use

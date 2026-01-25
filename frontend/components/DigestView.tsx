@@ -189,7 +189,7 @@ const getTextSizes = (size: 'small' | 'medium' | 'large') => {
 
 const styles = (colors: any, textSize: 'small' | 'medium' | 'large' = 'medium', isMobile: boolean = false) => {
     const sizes = getTextSizes(textSize);
-    return StyleSheet.create({
+    const styleSheet = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.background.primary,
@@ -210,9 +210,6 @@ const styles = (colors: any, textSize: 'small' | 'medium' | 'large' = 'medium', 
         alignItems: 'center',
         padding: spacing.xl,
     },
-    bodyFontSize: sizes.body,
-    bodyLineHeight: sizes.bodyLineHeight,
-    headingFontSize: sizes.heading,
     readerHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -417,5 +414,12 @@ const styles = (colors: any, textSize: 'small' | 'medium' | 'large' = 'medium', 
         color: colors.text.tertiary,
     },
     spinIcon: {},
-});
+    });
+
+    return {
+        ...styleSheet,
+        bodyFontSize: sizes.body,
+        bodyLineHeight: sizes.bodyLineHeight,
+        headingFontSize: sizes.heading,
+    };
 };

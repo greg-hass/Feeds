@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Animated, Share } from 'react-native';
+import { View, Text, TouchableOpacity, Animated } from 'react-native';
 import { Bookmark, Clock, Flame, Share2 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { formatDistanceToNow } from 'date-fns';
 import { Article } from '@/services/api';
 import { useColors } from '@/theme';
+import { shareContent } from '@/utils/share';
 
 interface ArticleFooterProps {
     item: Article;
@@ -61,10 +62,10 @@ const ArticleFooter = React.memo<ArticleFooterProps>(({
     const handleShare = async (event: any) => {
         event.stopPropagation();
         try {
-            await Share.share({
+            await shareContent({
+                title: item.title,
                 message: item.title,
                 url: item.url || undefined,
-                title: item.title,
             });
         } catch (error) {
             console.error('Share error:', error);

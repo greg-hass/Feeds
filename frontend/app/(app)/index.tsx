@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { View, TouchableOpacity, StyleSheet, useWindowDimensions, Animated } from 'react-native';
-import { useRouter } from 'expo-router';
 import { Menu, X } from 'lucide-react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
 import { useArticleStore, useFeedStore } from '@/stores';
@@ -13,7 +12,6 @@ import { DigestView } from '@/components/DigestView';
 export default function ArticleListScreen() {
     const [mounted, setMounted] = useState(false);
     useEffect(() => setMounted(true), []);
-    const router = useRouter();
     const colors = useColors();
     const { width } = useWindowDimensions();
     const isMobile = width < 1024;
@@ -68,20 +66,7 @@ export default function ArticleListScreen() {
             <View style={s.mainLayout}>
                 {isMobile ? (
                     <View style={s.fullPane}>
-                        {/* Mobile Header with Menu Button needs to be inside Timeline? 
-                            Wait, Timeline has a header now. 
-                            But Mobile needs the Menu button to toggle sidebar.
-                            Timeline header doesn't have the Menu button logic.
-                            I should pass a prop to Timeline for "onMenuPress"?
-                        */}
                         <Timeline />
-
-                        {/* We need the MENU button on mobile. 
-                            The new Timeline header has "Articles" title but no Menu button. 
-                            I should add 'onMenuPress' prop to Timeline or render a floating button?
-                            Timeline header corresponds to the "List Pane" header.
-                            Previous index.tsx header had the Menu button.
-                        */}
                         <TouchableOpacity onPress={toggleMenu} style={s.mobileMenuButton} accessibilityLabel="Open menu">
                             <Menu size={24} color={colors.text.primary} />
                         </TouchableOpacity>

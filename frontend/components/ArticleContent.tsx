@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, Platform, useWindowDimensions, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, Platform, useWindowDimensions, ActivityIndicator, Linking } from 'react-native';
 import { useColors, spacing, borderRadius, typography } from '@/theme';
 import { extractVideoId } from '@/utils/youtube';
 import { useVideoStore, useSettingsStore } from '@/stores';
@@ -208,18 +208,40 @@ export default function ArticleContent({ html }: ArticleContentProps) {
 
     useEffect(() => {
         if (Platform.OS !== 'web') return;
-        if (!containerRef.current) return;
-        const links = containerRef.current.querySelectorAll('a');
-        links.forEach(link => {
-            const vid = extractVideoId((link as HTMLAnchorElement).href);
-            if (vid) {
-                link.addEventListener('click', (e) => {
-                    e.preventDefault();
+        const container = containerRef.current;
+        if (!container) return;
+
+        const handlers = new Map<HTMLAnchorElement, (event: MouseEvent) => void>();
+        const links = Array.from(container.querySelectorAll('a')) as HTMLAnchorElement[];
+
+        links.forEach((link) => {
+            const handler = (event: MouseEvent) => {
+                const href = link.href;
+                if (!href) return;
+
+                const vid = extractVideoId(href);
+                if (vid) {
+                    event.preventDefault();
                     playVideo(vid);
-                });
-            }
+                    return;
+                }
+
+                if (href.startsWith('http')) {
+                    event.preventDefault();
+                    window.open(href, '_blank', 'noopener,noreferrer');
+                }
+            };
+
+            link.addEventListener('click', handler);
+            handlers.set(link, handler);
         });
-    }, [html, settings, fontSize, readerTheme, customLineHeight]);
+
+        return () => {
+            handlers.forEach((handler, link) => {
+                link.removeEventListener('click', handler);
+            });
+        };
+    }, [html, settings, fontSize, readerTheme, customLineHeight, playVideo]);
 
     const renderWebContent = () => (
         <View style={componentStyles.container}>
@@ -258,6 +280,21 @@ export default function ArticleContent({ html }: ArticleContentProps) {
                     ` }}
                     style={{ backgroundColor: contentColors.bg }}
                     scrollEnabled={false} // Container scroll handles it
+                    onShouldStartLoadWithRequest={(request) => {
+                        const url = request.url;
+                        if (!url || url === 'about:blank' || url.startsWith('data:')) return true;
+
+                        const vid = extractVideoId(url);
+                        if (vid) {
+                            playVideo(vid);
+                            return false;
+                        }
+
+                        if (url.startsWith('http')) {
+                            Linking.openURL(url).catch(() => { });
+                        }
+                        return false;
+                    }}
                     onMessage={(event: any) => {
                         try {
                             const data = JSON.parse(event.nativeEvent.data);

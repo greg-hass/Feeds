@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, Share } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Download, RefreshCw } from 'lucide-react-native';
 import { useColors, spacing, typography, borderRadius } from '@/theme';
 import { useAnalyticsStore } from '@/stores/analyticsStore';
+import { shareContent } from '@/utils/share';
 
 export function AnalyticsHeader() {
     const colors = useColors();
@@ -14,9 +15,9 @@ export function AnalyticsHeader() {
             const jsonString = JSON.stringify(data, null, 2);
 
             // Share or save the data
-            await Share.share({
-                message: jsonString,
+            await shareContent({
                 title: 'Analytics Export',
+                message: jsonString,
             });
         } catch (error) {
             Alert.alert('Export Failed', 'Could not export analytics data');

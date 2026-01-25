@@ -229,7 +229,7 @@ export default function AppLayout() {
         <ErrorBoundary>
             <View style={s.container}>
                 {isDesktop && <Sidebar />}
-                {isDesktop && isReaderRoute && (
+                {isDesktop && isReaderRoute && !isDigest && (
                     <View style={s.timelinePane}>
                         <ErrorBoundary>
                             <Timeline activeArticleId={activeArticleId} />

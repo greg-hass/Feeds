@@ -1,13 +1,13 @@
 import * as DocumentPicker from 'expo-document-picker';
-import { useState, useEffect, useCallback } from 'react';
+import { useMemo, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, Modal, Image, Platform, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFeedStore, useToastStore, useArticleStore, useSettingsStore } from '@/stores';
 import { api, DiscoveredFeed, Feed, Folder } from '@/services/api';
 import {
     ArrowLeft, Plus, Search, Rss, Youtube, Headphones, MessageSquare,
-    Folder as FolderIcon, Trash2, Edit2, FolderInput, Download, Upload,
-    ChevronDown, X, Check, FileUp, FileDown, AlertTriangle, RefreshCw, RefreshCcw,
+    Folder as FolderIcon, Trash2, Edit2, FolderInput,
+    Check, FileUp, FileDown, AlertTriangle, RefreshCw, RefreshCcw,
     Info, Pause
 } from 'lucide-react-native';
 import { FeedInfoSheet } from '@/components/FeedInfoSheet';
@@ -18,6 +18,8 @@ import { useProgressHandler } from '@/hooks/useProgressHandler';
 type ModalType = 'edit_feed' | 'rename_folder' | 'move_feed' | null;
 
 type DiscoveryType = 'all' | 'rss' | 'youtube' | 'reddit' | 'podcast';
+
+const discoveryTypes: DiscoveryType[] = ['all', 'rss', 'youtube', 'reddit', 'podcast'];
 
 export default function ManageScreen() {
     const router = useRouter();
@@ -75,6 +77,19 @@ export default function ManageScreen() {
     });
 
     const s = styles(colors);
+    const folderNameById = useMemo(() => {
+        const entries = folders.map((folder) => [folder.id, folder.name] as const);
+        return new Map(entries);
+    }, [folders]);
+    const feedCountByFolderId = useMemo(() => {
+        const counts = new Map<number, number>();
+        feeds.forEach((feed) => {
+            if (!feed.folder_id) return;
+            counts.set(feed.folder_id, (counts.get(feed.folder_id) ?? 0) + 1);
+        });
+        return counts;
+    }, [feeds]);
+    const discoveryPlaceholder = discoveryType === 'all' ? 'feeds' : discoveryType;
 
     const handleDiscover = async () => {
         if (!urlInput.trim()) return;
@@ -349,11 +364,11 @@ export default function ManageScreen() {
         setProgressState({
             isActive: true,
             operation: 'refresh',
-            items: feeds.map((f: Feed) => ({
-                id: `feed-${f.id}`,
+            items: feeds.map((feed: Feed) => ({
+                id: `feed-${feed.id}`,
                 type: 'feed' as const,
-                title: f.title,
-                folder: folders.find((folder: Folder) => folder.id === f.folder_id)?.name,
+                title: feed.title,
+                folder: feed.folder_id ? folderNameById.get(feed.folder_id) : undefined,
                 status: 'pending' as ItemStatus,
             })),
             current: null,
@@ -365,7 +380,7 @@ export default function ManageScreen() {
 
         await api.refreshFeedsWithProgress(
             undefined, // Refresh all
-                handleProgressEvent,
+            handleProgressEvent,
             (error: Error) => {
                 setProgressState(prev => ({
                     ...prev,
@@ -398,7 +413,7 @@ export default function ManageScreen() {
 
         await api.refreshFeedsWithProgress(
             feedIds,
-                handleProgressEvent,
+            handleProgressEvent,
             (error: Error) => {
                 setProgressState(prev => ({
                     ...prev,
@@ -475,20 +490,6 @@ export default function ManageScreen() {
         setSelectedFolderId(null);
     };
 
-    const submitBulkMove = async () => {
-        try {
-            await api.bulkFeedAction('move', Array.from(selectedFeedIds), selectedFolderId ?? null);
-            fetchFeeds();
-            setModalType(null);
-            setIsBulkMode(false);
-            setSelectedFeedIds(new Set());
-            show(`Moved ${selectedFeedIds.size} feeds`, 'success');
-        } catch (err) {
-            const errorMsg = err instanceof Error ? err.message : 'Bulk move failed';
-            show(errorMsg, 'error');
-        }
-    };
-
     const getTypeIcon = (type: Feed['type']) => {
         switch (type) {
             case 'youtube': return <Youtube size={18} color="#ef4444" />;
@@ -527,7 +528,7 @@ export default function ManageScreen() {
                         contentContainerStyle={s.filterPillsContainer}
                         style={s.filterPillsScroll}
                     >
-                        {(['all', 'rss', 'youtube', 'reddit', 'podcast'] as DiscoveryType[]).map((type) => (
+                        {discoveryTypes.map((type) => (
                             <TouchableOpacity
                                 key={type}
                                 style={[
@@ -549,14 +550,14 @@ export default function ManageScreen() {
                     <View style={s.inputRow}>
                         <TextInput
                             style={s.input}
-                            placeholder={`Search ${discoveryType === 'all' ? 'feeds' : discoveryType}…`}
+                            placeholder={`Search ${discoveryPlaceholder}…`}
                             placeholderTextColor={colors.text.tertiary}
                             value={urlInput}
                             onChangeText={setUrlInput}
                             autoCapitalize="none"
                             autoCorrect={false}
                             keyboardType="url"
-                            accessibilityLabel={`Search ${discoveryType === 'all' ? 'feeds' : discoveryType}`}
+                            accessibilityLabel={`Search ${discoveryPlaceholder}`}
                         />
                         <TouchableOpacity
                             style={s.primaryButton}
@@ -631,7 +632,7 @@ export default function ManageScreen() {
                                     <View style={s.feedInfo}>
                                         <Text style={s.feedTitle}>{folder.name}</Text>
                                         <Text style={s.feedUrl}>
-                                            {feeds.filter((f: Feed) => f.folder_id === folder.id).length} feeds
+                                            {feedCountByFolderId.get(folder.id) ?? 0} feeds
                                         </Text>
                                     </View>
                                 </View>
@@ -718,7 +719,7 @@ export default function ManageScreen() {
                                         )}
                                     </View>
                                     <Text style={s.feedUrl} numberOfLines={1}>
-                                        {folders.find((f: Folder) => f.id === feed.folder_id)?.name || 'No folder'}
+                                        {feed.folder_id ? folderNameById.get(feed.folder_id) || 'No folder' : 'No folder'}
                                     </Text>
                                     {feed.paused_at && (
                                         <View style={s.pausedBadge}>
