@@ -1,3 +1,5 @@
+import { parseSSEStream } from '@/utils/sse';
+
 const API_URL = process.env.EXPO_PUBLIC_API_URL || '/api/v1';
 
 interface RequestOptions {
@@ -381,34 +383,7 @@ class ApiClient {
                 throw new Error(error.error || 'Import failed');
             }
 
-            // Process SSE stream
-            const reader = response.body?.getReader();
-            if (!reader) {
-                throw new Error('No response body');
-            }
-
-            const decoder = new TextDecoder();
-            let buffer = '';
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || '';
-
-                for (const line of lines) {
-                    if (line.startsWith('data: ')) {
-                        try {
-                            const event = JSON.parse(line.slice(6));
-                            onEvent(event);
-                        } catch {
-                            // Skip invalid JSON
-                        }
-                    }
-                }
-            }
+            await parseSSEStream(response, onEvent);
         } catch (err) {
             onError?.(err instanceof Error ? err : new Error('Unknown error'));
         }
@@ -436,34 +411,7 @@ class ApiClient {
                 throw new Error(error.error || 'Refresh failed');
             }
 
-            // Process SSE stream
-            const reader = response.body?.getReader();
-            if (!reader) {
-                throw new Error('No response body');
-            }
-
-            const decoder = new TextDecoder();
-            let buffer = '';
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || '';
-
-                for (const line of lines) {
-                    if (line.startsWith('data: ')) {
-                        try {
-                            const event = JSON.parse(line.slice(6));
-                            onEvent(event);
-                        } catch {
-                            // Skip invalid JSON
-                        }
-                    }
-                }
-            }
+            await parseSSEStream(response, onEvent);
         } catch (err) {
             const error = err instanceof Error ? err : new Error('Unknown error');
             if (error.name === 'AbortError') {
@@ -492,33 +440,7 @@ class ApiClient {
                 throw new Error(error.error || 'Refresh event stream failed');
             }
 
-            const reader = response.body?.getReader();
-            if (!reader) {
-                throw new Error('No response body');
-            }
-
-            const decoder = new TextDecoder();
-            let buffer = '';
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || '';
-
-                for (const line of lines) {
-                    if (line.startsWith('data: ')) {
-                        try {
-                            const event = JSON.parse(line.slice(6));
-                            onEvent(event);
-                        } catch {
-                            // Skip invalid JSON
-                        }
-                    }
-                }
-            }
+            await parseSSEStream(response, onEvent);
         } catch (err) {
             const error = err instanceof Error ? err : new Error('Unknown error');
             if (error.name === 'AbortError') {
