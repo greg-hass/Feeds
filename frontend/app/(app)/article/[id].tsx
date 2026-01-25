@@ -1,19 +1,19 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Linking, Image, useWindowDimensions, Platform, Alert, Animated, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image, useWindowDimensions, Platform, Alert, Animated, NativeSyntheticEvent, NativeScrollEvent, Share } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { formatDistanceToNow } from 'date-fns';
 import { useArticleStore, useSettingsStore, useToastStore, useVideoStore, useAudioStore } from '@/stores';
 import { Article, api } from '@/services/api';
 import {
     ArrowLeft, ExternalLink, Circle, CircleCheck,
-    Headphones, BookOpen, Play, Bookmark,
+    Headphones, BookOpen, Play, Bookmark, Share2,
     ChevronLeft, ChevronRight, Maximize2, Pause, Type
 } from 'lucide-react-native';
 import { useColors, borderRadius, spacing, typography } from '@/theme';
 import { extractVideoId, getEmbedUrl, isYouTubeUrl } from '@/utils/youtube';
 import ArticleContent from '@/components/ArticleContent';
 import { VideoModal } from '@/components/VideoModal';
-// Text size controls moved to header
 import { PodcastPlayer } from '@/components/PodcastPlayer';
 
 export default function ArticleScreen() {
@@ -161,8 +161,10 @@ export default function ArticleScreen() {
         router.replace(`/(app)/article/${articleId}`);
     }, [router, show]);
 
-    const handleOpenExternal = useCallback(() => {
-        if (externalUrl) Linking.openURL(externalUrl);
+    const handleOpenExternal = useCallback(async () => {
+        if (externalUrl) {
+            await WebBrowser.openBrowserAsync(externalUrl);
+        }
     }, [externalUrl]);
 
     const handleToggleRead = useCallback(() => {
@@ -173,6 +175,19 @@ export default function ArticleScreen() {
     const handleToggleBookmark = useCallback(() => {
         if (currentArticle) toggleBookmark(currentArticle.id);
     }, [currentArticle, toggleBookmark]);
+
+    const handleShare = useCallback(async () => {
+        if (!currentArticle) return;
+        try {
+            await Share.share({
+                message: currentArticle.title,
+                url: externalUrl || undefined,
+                title: currentArticle.title,
+            });
+        } catch (error) {
+            console.error('Share error:', error);
+        }
+    }, [currentArticle, externalUrl]);
 
     const renderReader = () => {
         if (!currentArticle) {
@@ -242,6 +257,9 @@ export default function ArticleScreen() {
                         </TouchableOpacity>
                         <TouchableOpacity onPress={handleToggleBookmark} style={s.actionButton} accessibilityLabel={currentArticle.is_bookmarked ? 'Remove bookmark' : 'Bookmark article'}>
                             <Bookmark size={22} color={currentArticle.is_bookmarked ? colors.primary.DEFAULT : colors.text.secondary} fill={currentArticle.is_bookmarked ? colors.primary.DEFAULT : 'transparent'} />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={handleShare} style={s.actionButton} accessibilityLabel="Share article">
+                            <Share2 size={22} color={colors.text.secondary} />
                         </TouchableOpacity>
                         <TouchableOpacity onPress={handleOpenExternal} style={s.actionButton} accessibilityLabel="Open original article">
                             <ExternalLink size={22} color={colors.text.secondary} />
