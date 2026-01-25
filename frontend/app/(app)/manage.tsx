@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, Modal, Image, Platform, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFeedStore, useToastStore, useArticleStore, useSettingsStore } from '@/stores';
-import { api, DiscoveredFeed, Feed, Folder, ProgressEvent, RefreshProgressEvent } from '@/services/api';
+import { api, DiscoveredFeed, Feed, Folder } from '@/services/api';
 import {
     ArrowLeft, Plus, Search, Rss, Youtube, Headphones, MessageSquare,
     Folder as FolderIcon, Trash2, Edit2, FolderInput, Download, Upload,
@@ -12,8 +12,8 @@ import {
 } from 'lucide-react-native';
 import { FeedInfoSheet } from '@/components/FeedInfoSheet';
 import { useColors, borderRadius, spacing } from '@/theme';
-import { ProgressDialog, ProgressState, ProgressStats, FailedFeed } from '@/components/ProgressDialog';
-import { ProgressItemData, ItemStatus } from '@/components/ProgressItem';
+import { ProgressDialog, ProgressState } from '@/components/ProgressDialog';
+import { useProgressHandler } from '@/hooks/useProgressHandler';
 
 type ModalType = 'edit_feed' | 'rename_folder' | 'move_feed' | null;
 
@@ -64,6 +64,15 @@ export default function ManageScreen() {
     // Feed Info Sheet state
     const [feedInfoId, setFeedInfoId] = useState<number | null>(null);
     const [feedInfoVisible, setFeedInfoVisible] = useState(false);
+
+    const handleProgressEvent = useProgressHandler(setProgressState, {
+        onFolderCreated: fetchFolders,
+        onFeedCreated: () => {
+            fetchFeeds();
+            fetchFolders();
+        },
+        onFeedComplete: fetchFeeds,
+    });
 
     const s = styles(colors);
 
@@ -356,7 +365,7 @@ export default function ManageScreen() {
 
         await api.refreshFeedsWithProgress(
             undefined, // Refresh all
-            (event: RefreshProgressEvent) => handleRefreshProgressEvent(event),
+                handleProgressEvent,
             (error: Error) => {
                 setProgressState(prev => ({
                     ...prev,
@@ -389,7 +398,7 @@ export default function ManageScreen() {
 
         await api.refreshFeedsWithProgress(
             feedIds,
-            (event: RefreshProgressEvent) => handleRefreshProgressEvent(event),
+                handleProgressEvent,
             (error: Error) => {
                 setProgressState(prev => ({
                     ...prev,
@@ -403,177 +412,7 @@ export default function ManageScreen() {
         fetchFeeds();
     };
 
-    const handleProgressEvent = (event: ProgressEvent) => {
-        // Live UI updates: refresh global state when items are created
-        if (event.type === 'folder_created') {
-            fetchFolders();
-        } else if (event.type === 'feed_created' && event.status === 'created') {
-            fetchFeeds();
-            fetchFolders(); // Folders might need updating if counts change
-        } else if (event.type === 'feed_complete') {
-            fetchFeeds(); // Update unread counts
-        }
 
-        setProgressState(prev => {
-            switch (event.type) {
-                case 'start':
-                    return {
-                        ...prev,
-                        total: event.total_feeds,
-                    };
-                case 'folder_created': {
-                    const newItem: ProgressItemData = {
-                        id: `folder-${event.id}`,
-                        type: 'folder',
-                        title: event.name,
-                        status: 'success',
-                    };
-                    return {
-                        ...prev,
-                        items: [...prev.items, newItem],
-                    };
-                }
-                case 'feed_created': {
-                    const newItem: ProgressItemData = {
-                        id: `feed-${event.id}`,
-                        type: 'feed',
-                        title: event.title,
-                        folder: event.folder,
-                        status: event.status === 'duplicate' ? 'skipped' : 'pending',
-                        subtitle: event.status === 'duplicate' ? 'Already exists' : undefined,
-                    };
-                    const newStats = event.status === 'duplicate'
-                        ? { ...prev.stats, skipped: prev.stats.skipped + 1 }
-                        : prev.stats;
-                    return {
-                        ...prev,
-                        items: [...prev.items, newItem],
-                        stats: newStats,
-                    };
-                }
-                case 'feed_refreshing': {
-                    const updatedItems = prev.items.map(item =>
-                        item.id === `feed-${event.id}`
-                            ? { ...item, status: 'processing' as ItemStatus }
-                            : item
-                    );
-                    const currentItem = updatedItems.find(item => item.id === `feed-${event.id}`) || null;
-                    return {
-                        ...prev,
-                        items: updatedItems,
-                        current: currentItem,
-                    };
-                }
-                case 'feed_complete': {
-                    const updatedItems = prev.items.map(item =>
-                        item.id === `feed-${event.id}`
-                            ? {
-                                ...item,
-                                status: 'success' as ItemStatus,
-                                subtitle: `${event.new_articles} new articles`,
-                            }
-                            : item
-                    );
-                    return {
-                        ...prev,
-                        items: updatedItems,
-                        stats: { ...prev.stats, success: prev.stats.success + 1 },
-                    };
-                }
-                case 'feed_error': {
-                    const updatedItems = prev.items.map(item =>
-                        item.id === `feed-${event.id}`
-                            ? {
-                                ...item,
-                                status: 'error' as ItemStatus,
-                                subtitle: event.error,
-                            }
-                            : item
-                    );
-                    return {
-                        ...prev,
-                        items: updatedItems,
-                        stats: { ...prev.stats, errors: prev.stats.errors + 1 },
-                        failedFeeds: [...prev.failedFeeds, { id: event.id, title: event.title, error: event.error }],
-                    };
-                }
-                case 'complete':
-                    return {
-                        ...prev,
-                        complete: true,
-                        current: null,
-                    };
-                default:
-                    return prev;
-            }
-        });
-    };
-
-    const handleRefreshProgressEvent = (event: RefreshProgressEvent) => {
-        setProgressState(prev => {
-            switch (event.type) {
-                case 'start':
-                    return {
-                        ...prev,
-                        total: event.total_feeds,
-                    };
-                case 'feed_refreshing': {
-                    const updatedItems = prev.items.map(item =>
-                        item.id === `feed-${event.id}`
-                            ? { ...item, status: 'processing' as ItemStatus }
-                            : item
-                    );
-                    const currentItem = updatedItems.find(item => item.id === `feed-${event.id}`) || null;
-                    return {
-                        ...prev,
-                        items: updatedItems,
-                        current: currentItem,
-                    };
-                }
-                case 'feed_complete': {
-                    const updatedItems = prev.items.map(item =>
-                        item.id === `feed-${event.id}`
-                            ? {
-                                ...item,
-                                status: 'success' as ItemStatus,
-                                subtitle: `${event.new_articles} new articles`,
-                            }
-                            : item
-                    );
-                    return {
-                        ...prev,
-                        items: updatedItems,
-                        stats: { ...prev.stats, success: prev.stats.success + 1 },
-                    };
-                }
-                case 'feed_error': {
-                    const updatedItems = prev.items.map(item =>
-                        item.id === `feed-${event.id}`
-                            ? {
-                                ...item,
-                                status: 'error' as ItemStatus,
-                                subtitle: event.error,
-                            }
-                            : item
-                    );
-                    return {
-                        ...prev,
-                        items: updatedItems,
-                        stats: { ...prev.stats, errors: prev.stats.errors + 1 },
-                        failedFeeds: [...prev.failedFeeds, { id: event.id, title: event.title, error: event.error }],
-                    };
-                }
-                case 'complete':
-                    return {
-                        ...prev,
-                        complete: true,
-                        current: null,
-                    };
-                default:
-                    return prev;
-            }
-        });
-    };
 
     const closeProgressDialog = () => {
         setProgressState(prev => ({ ...prev, isActive: false }));
