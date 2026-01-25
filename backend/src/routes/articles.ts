@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { queryOne, queryAll, run } from '../db/index.js';
 import { extractReadability, fetchAndExtractReadability } from '../services/readability.js';
 import { getUserSettings } from '../services/settings.js';
+import { Article } from '../types/index.js';
 
 const listArticlesSchema = z.object({
     feed_id: z.coerce.number().optional(),
@@ -23,26 +24,6 @@ const markReadSchema = z.object({
     article_ids: z.array(z.number()).optional(),
     before: z.string().optional(),
 });
-
-interface Article {
-    id: number;
-    feed_id: number;
-    guid: string;
-    title: string;
-    url: string | null;
-    author: string | null;
-    summary: string | null;
-    content: string | null;
-    readability_content: string | null;
-    enclosure_url: string | null;
-    enclosure_type: string | null;
-    enclosure_length: number | null;
-    duration_seconds: number | null;
-    thumbnail_url: string | null;
-    thumbnail_cached_path: string | null;
-    published_at: string | null;
-    fetched_at: string;
-}
 
 function getYouTubeIdFromGuid(guid: string | null): string | null {
     if (!guid) return null;

@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { queryOne, queryAll, run } from '../db/index.js';
+import { Folder, SmartFolder } from '../types/index.js';
 
 const createFolderSchema = z.object({
     name: z.string().min(1).max(100),
@@ -11,21 +12,6 @@ const updateFolderSchema = z.object({
     name: z.string().min(1).max(100).optional(),
     position: z.number().optional(),
 });
-
-interface Folder {
-    id: number;
-    user_id: number;
-    name: string;
-    position: number;
-    created_at: string;
-    updated_at: string;
-}
-
-interface SmartFolder {
-    type: string;
-    name: string;
-    unread_count: number;
-}
 
 export async function foldersRoutes(app: FastifyInstance) {
     // Single user app - user_id is always 1

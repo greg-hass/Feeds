@@ -4,38 +4,7 @@ import { queryOne, run } from '../db/index.js';
 import { parseOPML, OPMLFeed, OPMLFolder } from '../services/opml-parser.js';
 import { refreshFeed, FeedToRefresh } from '../services/feed-refresh.js';
 import { parseFeed, FeedType } from '../services/feed-parser.js';
-
-// SSE Event Types
-type ProgressEvent =
-    | { type: 'start'; total_folders: number; total_feeds: number }
-    | { type: 'folder_created'; name: string; id: number }
-    | { type: 'feed_created'; title: string; id: number; folder?: string; status: 'created' | 'duplicate' }
-    | { type: 'feed_refreshing'; id: number; title: string }
-    | { type: 'feed_complete'; id: number; title: string; new_articles: number }
-    | { type: 'feed_error'; id: number; title: string; error: string }
-    | { type: 'complete'; stats: ImportStats };
-
-interface ImportStats {
-    success: number;
-    skipped: number;
-    errors: number;
-    failed_feeds: Array<{ id: number; title: string; error: string }>;
-}
-
-interface Feed {
-    id: number;
-    folder_id: number | null;
-    type: string;
-    title: string;
-    url: string;
-    deleted_at: string | null;
-}
-
-interface Folder {
-    id: number;
-    name: string;
-    deleted_at: string | null;
-}
+import { Feed, Folder, ImportStats, ProgressEvent } from '../types/index.js';
 
 // Timeout configuration
 const FEED_REFRESH_TIMEOUT = 30_000; // 30 seconds

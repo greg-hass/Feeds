@@ -4,36 +4,14 @@ import { refreshFeed, FeedToRefreshWithCache } from '../services/feed-refresh.js
 import { FeedType } from '../services/feed-parser.js';
 import { getUserSettings, updateUserSettingsRaw } from '../services/settings.js';
 import { onRefreshEvent, RefreshEvent } from '../services/refresh-events.js';
+import { Feed, RefreshStats, RefreshProgressEvent } from '../types/index.js';
 
-// Helper to check if icon is generic (duplicated from feed-refresh.ts to avoid circular dep)
 function isGenericIconUrl(url: string | null): boolean {
     if (!url) return true;
     return url.includes('google.com/s2/favicons') ||
            url.endsWith('/favicon.ico') ||
            url.includes('youtube.com/favicon') ||
            url.includes('yt3.ggpht.com/favicon');
-}
-
-// SSE Event Types
-type RefreshProgressEvent =
-    | { type: 'start'; total_feeds: number }
-    | { type: 'feed_refreshing'; id: number; title: string }
-    | { type: 'feed_complete'; id: number; title: string; new_articles: number; next_fetch_at?: string }
-    | { type: 'feed_error'; id: number; title: string; error: string }
-    | { type: 'complete'; stats: RefreshStats };
-
-interface RefreshStats {
-    success: number;
-    errors: number;
-    failed_feeds: Array<{ id: number; title: string; error: string }>;
-}
-
-interface Feed {
-    id: number;
-    title: string;
-    url: string;
-    type: FeedType;
-    refresh_interval_minutes: number;
 }
 
 // Timeout configuration

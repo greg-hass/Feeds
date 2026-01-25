@@ -4,30 +4,7 @@ import { discoverFeedsFromUrl } from '../services/discovery.js';
 import { parseFeed, normalizeArticle, detectFeedType, FeedType, fetchYouTubeIcon } from '../services/feed-parser.js';
 import { refreshFeed } from '../services/feed-refresh.js';
 import { cacheFeedIcon } from '../services/icon-cache.js';
-// Re-using interfaces and constants from original feeds.ts
-export interface Feed {
-    id: number;
-    user_id: number;
-    folder_id: number | null;
-    type: FeedType;
-    title: string;
-    url: string;
-    site_url: string | null;
-    icon_url: string | null;
-    description: string | null;
-    refresh_interval_minutes: number;
-    last_fetched_at: string | null;
-    next_fetch_at: string | null;
-    error_count: number;
-    last_error: string | null;
-    last_error_at: string | null;
-    paused_at: string | null;
-    deleted_at: string | null;
-    created_at: string;
-    updated_at: string;
-    icon_cached_path: string | null;
-    icon_cached_content_type: string | null;
-}
+import { Feed } from '../types/index.js';
 
 const ICON_ENDPOINT_PREFIX = '/api/v1/icons';
 
