@@ -111,7 +111,7 @@ export default function SettingsScreen() {
 
                         <View style={s.divider} />
 
-                        <View style={s.row}>
+                        <View style={s.accentSection}>
                             <Text style={s.label}>Accent Colour</Text>
                             <View style={s.accentRow}>
                                 {(Object.keys(ACCENT_COLORS) as AccentColor[]).map((key) => (
@@ -363,6 +363,10 @@ const styles = (colors: any) => StyleSheet.create({
         textAlign: 'center',
         color: colors.text.tertiary,
         marginTop: spacing.xl,
+    },
+    accentSection: {
+        flexDirection: 'column',
+        gap: spacing.md,
     },
     accentRow: {
         flexDirection: 'row',
