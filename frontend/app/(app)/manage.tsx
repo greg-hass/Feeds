@@ -62,6 +62,7 @@ export default function ManageScreen() {
         failedFeeds: [],
     });
     const [selectedFeedIds, setSelectedFeedIds] = useState<Set<number>>(new Set());
+    const [feedSearch, setFeedSearch] = useState('');
 
     // Feed Info Sheet state
     const [feedInfoId, setFeedInfoId] = useState<number | null>(null);
@@ -89,6 +90,16 @@ export default function ManageScreen() {
         });
         return counts;
     }, [feeds]);
+    const filteredFeeds = useMemo(() => {
+        const query = feedSearch.trim().toLowerCase();
+        if (!query) return feeds;
+        return feeds.filter((feed) => {
+            const folderName = feed.folder_id ? folderNameById.get(feed.folder_id) : null;
+            const haystacks = [feed.title, feed.url, feed.type, folderName].filter(Boolean) as string[];
+            return haystacks.some((value) => value.toLowerCase().includes(query));
+        });
+    }, [feedSearch, feeds, folderNameById]);
+    const visibleFeedCount = feedSearch.trim() ? filteredFeeds.length : feeds.length;
     const discoveryPlaceholder = discoveryType === 'all' ? 'feeds' : discoveryType;
 
     const handleDiscover = async () => {
@@ -434,10 +445,11 @@ export default function ManageScreen() {
     };
 
     const handleSelectAll = () => {
-        if (selectedFeedIds.size === feeds.length) {
+        const visibleFeeds = feedSearch.trim() ? filteredFeeds : feeds;
+        if (selectedFeedIds.size === visibleFeeds.length) {
             setSelectedFeedIds(new Set());
         } else {
-            setSelectedFeedIds(new Set(feeds.map((f: Feed) => f.id)));
+            setSelectedFeedIds(new Set(visibleFeeds.map((f: Feed) => f.id)));
         }
     };
 
@@ -657,8 +669,24 @@ export default function ManageScreen() {
 
                 {/* Feeds */}
                 <View style={s.section}>
-                    <Text style={s.sectionTitle}>Feeds ({feeds.length})</Text>
-                    {feeds.map((feed: Feed) => (
+                    <Text style={s.sectionTitle}>
+                        Feeds ({feedSearch.trim() ? `${filteredFeeds.length} / ${feeds.length}` : feeds.length})
+                    </Text>
+                    <View style={s.searchRow}>
+                        <TextInput
+                            style={s.input}
+                            placeholder="Search feeds…"
+                            placeholderTextColor={colors.text.tertiary}
+                            value={feedSearch}
+                            onChangeText={setFeedSearch}
+                            accessibilityLabel="Search feeds"
+                            autoCorrect={false}
+                            autoCapitalize="none"
+                        />
+                    </View>
+                    {filteredFeeds.length === 0 ? (
+                        <Text style={s.emptyText}>No feeds match your search.</Text>
+                    ) : filteredFeeds.map((feed: Feed) => (
                         <View
                             key={feed.id}
                             style={[
@@ -841,7 +869,7 @@ export default function ManageScreen() {
                     >
                         <Check size={18} color={colors.text.secondary} />
                         <Text style={[s.bulkButtonText, { color: colors.text.secondary }]}>
-                            {selectedFeedIds.size === feeds.length ? 'Deselect All' : 'Select All'}
+                            {selectedFeedIds.size === visibleFeedCount ? 'Deselect All' : 'Select All'}
                         </Text>
                     </TouchableOpacity>
                     <Text style={s.bulkText}>{selectedFeedIds.size} selected</Text>
@@ -1126,6 +1154,15 @@ const styles = (colors: any) => StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         paddingRight: spacing.xs,
+    },
+    searchRow: {
+        marginTop: spacing.sm,
+        marginBottom: spacing.sm,
+    },
+    emptyText: {
+        color: colors.text.tertiary,
+        fontSize: 13,
+        paddingVertical: spacing.sm,
     },
     feedIcon: {
         width: 18,

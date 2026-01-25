@@ -67,12 +67,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 <View style={s.logoRow}>
                     <Rss size={24} color={colors.primary.DEFAULT} />
                     <Text style={s.logoText}>Feeds</Text>
-                    {isBackgroundRefreshing && (
-                        <View style={s.refreshIndicator}>
-                            <View style={s.refreshDot} />
-                            {isDesktop && <Text style={s.refreshText}>Refreshing…</Text>}
-                        </View>
-                    )}
+                    {isBackgroundRefreshing && <View style={s.refreshDot} />}
                 </View>
                 <TouchableOpacity
                     onPress={handleRefresh}
@@ -484,22 +479,11 @@ const styles = (colors: any, isDesktop: boolean) => StyleSheet.create({
         fontWeight: '600',
         color: colors.text.primary,
     },
-    refreshIndicator: {
-        marginLeft: 8,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-    },
     refreshDot: {
         width: 8,
         height: 8,
         borderRadius: 4,
         backgroundColor: colors.primary.DEFAULT,
         opacity: 0.8,
-    },
-    refreshText: {
-        fontSize: 12,
-        color: colors.text.tertiary,
-        fontStyle: 'italic',
     },
 });
