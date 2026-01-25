@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView, Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import * as WebBrowser from 'expo-web-browser';
 import {
     Check, CheckCircle, Bookmark, ExternalLink, Share2,
     Copy, BookmarkCheck, BookmarkX, Circle, CircleDot
@@ -102,12 +101,12 @@ export const ArticleContextMenu: React.FC<ArticleContextMenuProps> = ({
         if (!article.url) return;
         try {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            // Use window.open for web, native apps can enhance this with expo-web-browser later
             if (Platform.OS === 'web') {
-                window.open(article.url, '_blank');
+                window.open(article.url, '_blank', 'noopener,noreferrer');
             } else {
-                await WebBrowser.openBrowserAsync(article.url, {
-                    preferredBrowserMode: 'minimal',
-                });
+                // For native, could use expo-web-browser via dynamic import
+                console.log('Open external (native):', article.url);
             }
         } catch (error) {
             console.error('Open external error:', error);
