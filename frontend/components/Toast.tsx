@@ -2,11 +2,12 @@ import React from 'react';
 import { View, Text, StyleSheet, Animated, TouchableOpacity, Platform, useWindowDimensions } from 'react-native';
 import { useToastStore } from '@/stores';
 import { X, CheckCircle, AlertCircle, Info } from 'lucide-react-native';
-import { colors, borderRadius, spacing } from '@/theme';
+import { useColors, borderRadius, spacing } from '@/theme';
 
 const ToastItem = ({ id, message, type }: { id: string; message: string; type: 'success' | 'error' | 'info' }) => {
     const { hide } = useToastStore();
-    const opacity = React.useRef(new Animated.Value(0)).current;
+    const colors = useColors();
+    const [opacity] = React.useState(() => new Animated.Value(0));
 
     React.useEffect(() => {
         Animated.timing(opacity, {
@@ -14,7 +15,7 @@ const ToastItem = ({ id, message, type }: { id: string; message: string; type: '
             duration: 300,
             useNativeDriver: true,
         }).start();
-    }, []);
+    }, [opacity]);
 
     const getIcon = () => {
         switch (type) {
@@ -24,11 +25,13 @@ const ToastItem = ({ id, message, type }: { id: string; message: string; type: '
         }
     };
 
+    const s = styles(colors);
+
     return (
-        <Animated.View style={[styles.toast, { opacity }]}>
+        <Animated.View style={[s.toast, { opacity }]}>
             {getIcon()}
-            <Text style={styles.message} accessibilityLiveRegion="polite">{message}</Text>
-            <TouchableOpacity onPress={() => hide(id)} style={styles.closeButton} accessibilityLabel="Dismiss notification">
+            <Text style={s.message} accessibilityLiveRegion="polite">{message}</Text>
+            <TouchableOpacity onPress={() => hide(id)} style={s.closeButton} accessibilityLabel="Dismiss notification">
                 <X size={16} color={colors.text.tertiary} />
             </TouchableOpacity>
         </Animated.View>
@@ -37,15 +40,18 @@ const ToastItem = ({ id, message, type }: { id: string; message: string; type: '
 
 export default function ToastContainer() {
     const { toasts } = useToastStore();
+    const colors = useColors();
     const { width } = useWindowDimensions();
     const isMobile = width < 1024;
     const isMobileWeb = Platform.OS === 'web' && width < 768; // Simple breakpoint
 
     if (toasts.length === 0) return null;
 
+    const s = styles(colors);
+
     return (
         <View style={[
-            styles.container,
+            s.container,
             {
                 width: isMobile ? width - spacing.xl * 2 : 400,
                 right: isMobile ? spacing.xl : 40,
@@ -59,7 +65,7 @@ export default function ToastContainer() {
     );
 }
 
-const styles = StyleSheet.create({
+const styles = (colors: any) => StyleSheet.create({
     container: {
         position: 'absolute',
         zIndex: 1000,

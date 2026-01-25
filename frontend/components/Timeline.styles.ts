@@ -39,7 +39,7 @@ export const timelineStyles = (colors: any, isMobile: boolean) => StyleSheet.cre
     timerText: {
         fontSize: 10,
         fontWeight: '800',
-        color: '#10B981',
+        color: colors.primary.DEFAULT,
         fontFamily: Platform.OS === 'web' ? 'monospace' : undefined,
         lineHeight: 12,
         includeFontPadding: false,

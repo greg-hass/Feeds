@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, Animated, useWindowDimensions, Platform, TouchableOpacity } from 'react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
 import { RefreshCw, X } from 'lucide-react-native';
@@ -20,9 +20,9 @@ export function RefreshProgressDialog({ visible, total, completed, currentTitle,
     const isMobileWeb = Platform.OS === 'web' && width < 768;
 
     // Animation
-    const fadeAnim = useRef(new Animated.Value(0)).current;
-    const slideAnim = useRef(new Animated.Value(20)).current;
-    const spinAnim = useRef(new Animated.Value(0)).current;
+    const [fadeAnim] = React.useState(() => new Animated.Value(0));
+    const [slideAnim] = React.useState(() => new Animated.Value(20));
+    const [spinAnim] = React.useState(() => new Animated.Value(0));
 
     const progress = total > 0 ? completed / total : 0;
     const percentage = Math.round(progress * 100);
@@ -66,14 +66,14 @@ export function RefreshProgressDialog({ visible, total, completed, currentTitle,
                 })
             ]).start();
         }
-    }, [visible]);
+    }, [visible, fadeAnim, slideAnim, spinAnim]);
 
     const spin = spinAnim.interpolate({
         inputRange: [0, 1],
         outputRange: ['0deg', '360deg']
     });
 
-    if (!visible && (fadeAnim as any)._value === 0) return null;
+    if (!visible) return null;
 
     const s = styles(colors, isDesktop, isMobileWeb, insets);
 
@@ -143,15 +143,15 @@ const styles = (colors: any, isDesktop: boolean, isMobileWeb: boolean, insets: a
         backgroundColor: colors.background.secondary, // Use secondary for better contrast
         borderRadius: borderRadius.lg,
         borderWidth: 1.5,
-        borderColor: colors.primary.DEFAULT + '60', // Emerald glow border
+        borderColor: colors.primary.dark + '60', // Emerald glow border
         overflow: 'hidden',
         // Solid depth shadow
         ...Platform.select({
             web: {
-                boxShadow: `0 12px 40px rgba(0,0,0,0.4), 0 0 15px ${colors.primary.DEFAULT}10`,
+                boxShadow: `0 12px 40px rgba(0,0,0,0.4), 0 0 15px ${colors.primary.dark}20`,
             },
             default: {
-                shadowColor: colors.primary.DEFAULT,
+                shadowColor: colors.primary.dark,
                 shadowOffset: { width: 0, height: 8 },
                 shadowOpacity: 0.3,
                 shadowRadius: 20,
@@ -195,7 +195,7 @@ const styles = (colors: any, isDesktop: boolean, isMobileWeb: boolean, insets: a
         fontSize: 11,
         fontWeight: '800',
         color: colors.primary.DEFAULT,
-        backgroundColor: colors.primary.DEFAULT + '20',
+        backgroundColor: colors.primary.dark + '25',
         paddingHorizontal: 8,
         paddingVertical: 2,
         borderRadius: 6,
