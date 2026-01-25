@@ -41,6 +41,7 @@ export const useSettingsStore = create<SettingsState>()(
                         font_size: 'medium',
                         show_images: true,
                         accent_color: 'emerald',
+                        view_density: 'comfortable',
                     };
                     set({ settings: fallbackSettings, isLoading: false });
                     handleError(error, { context: 'fetchSettings', fallbackMessage: 'Using offline settings' });

@@ -4,6 +4,8 @@ import { Headphones } from 'lucide-react-native';
 import { Article } from '@/services/api';
 import { useColors, spacing, borderRadius, shadows, animations } from '@/theme';
 import { extractVideoId } from '@/utils/youtube';
+import { useSettingsStore } from '@/stores';
+import { getDensitySpacing, getThumbnailSize, getDensityFontSizes, getFeaturedThumbnailHeight, type ViewDensity } from '@/utils/densitySpacing';
 import ArticleFooter from './ArticleFooter';
 import YouTubePlayer from './YouTubePlayer';
 
@@ -47,7 +49,14 @@ const ArticleCard = React.memo<ArticleCardProps>(({
     hotPulseAnim,
 }) => {
     const colors = useColors();
-    const s = styles(colors, isMobile);
+    const { settings } = useSettingsStore();
+    const viewDensity: ViewDensity = settings?.view_density || 'comfortable';
+
+    const densitySpacing = getDensitySpacing(viewDensity);
+    const thumbnailSize = getThumbnailSize(viewDensity);
+    const fontSizes = getDensityFontSizes(viewDensity);
+
+    const s = styles(colors, isMobile, viewDensity, densitySpacing, thumbnailSize, fontSizes);
 
     const thumbnail = item.thumbnail_url;
     const isYouTube = item.feed_type === 'youtube';
@@ -195,12 +204,19 @@ ArticleCard.displayName = 'ArticleCard';
 export default ArticleCard;
 
 // Styles extracted from Timeline
-const styles = (colors: any, isMobile: boolean) => ({
+const styles = (
+    colors: any,
+    isMobile: boolean,
+    viewDensity: ViewDensity,
+    densitySpacing: ReturnType<typeof getDensitySpacing>,
+    thumbnailSize: { width: number; height: number },
+    fontSizes: ReturnType<typeof getDensityFontSizes>
+) => ({
     articleCard: {
         backgroundColor: colors.background.secondary,
         borderRadius: borderRadius.xl,
-        padding: spacing.lg,
-        marginBottom: spacing.md,
+        padding: densitySpacing.lg,
+        marginBottom: densitySpacing.md,
         borderWidth: 1,
         borderColor: colors.border.DEFAULT,
         position: 'relative' as const,
@@ -223,18 +239,18 @@ const styles = (colors: any, isMobile: boolean) => ({
         elevation: 4,
     },
     articleFeatured: {
-        padding: spacing.xl,
+        padding: densitySpacing.xl,
     },
     articleRead: {
         opacity: 0.6,
     },
     cardBody: {
         flexDirection: 'row' as const,
-        gap: spacing.md,
+        gap: densitySpacing.md,
     },
     featuredBody: {
         flexDirection: 'column-reverse' as const,
-        gap: spacing.lg,
+        gap: densitySpacing.lg,
     },
     cardInfo: {
         flex: 1,
@@ -243,11 +259,11 @@ const styles = (colors: any, isMobile: boolean) => ({
         flexDirection: 'row' as const,
         alignItems: 'center' as const,
         backgroundColor: colors.background.tertiary,
-        paddingHorizontal: spacing.sm,
+        paddingHorizontal: densitySpacing.sm,
         paddingVertical: 4,
         borderRadius: borderRadius.sm,
         alignSelf: 'flex-start' as const,
-        marginBottom: spacing.sm,
+        marginBottom: densitySpacing.sm,
         gap: 6,
     },
     feedIcon: {
@@ -269,30 +285,30 @@ const styles = (colors: any, isMobile: boolean) => ({
         fontWeight: '900' as const,
     },
     feedName: {
-        fontSize: 11,
+        fontSize: fontSizes.feedName,
         fontWeight: '700' as const,
         color: colors.text.secondary,
         maxWidth: 150,
     },
     articleTitle: {
-        fontSize: 16,
+        fontSize: fontSizes.title,
         fontWeight: '700' as const,
         color: colors.text.primary,
         lineHeight: 22,
-        marginBottom: spacing.md,
+        marginBottom: densitySpacing.md,
     },
     articleTitleRead: {
         color: colors.text.secondary,
     },
     featuredSummary: {
-        fontSize: 14,
+        fontSize: fontSizes.summary,
         color: colors.text.secondary,
         lineHeight: 20,
-        marginBottom: spacing.md,
+        marginBottom: densitySpacing.md,
     },
     thumbnailWrapper: {
-        width: 90,
-        height: 90,
+        width: thumbnailSize.width,
+        height: thumbnailSize.height,
         borderRadius: borderRadius.lg,
         overflow: 'hidden' as const,
         position: 'relative' as const,
@@ -300,7 +316,7 @@ const styles = (colors: any, isMobile: boolean) => ({
     },
     featuredThumbnailWrapper: {
         width: '100%' as const,
-        height: 200,
+        height: getFeaturedThumbnailHeight(viewDensity),
         aspectRatio: 16 / 9,
         borderRadius: borderRadius.xl,
     },
