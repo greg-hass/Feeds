@@ -12,6 +12,7 @@ import {
 import { useColors, borderRadius, spacing, typography } from '@/theme';
 import { extractVideoId, getEmbedUrl, isYouTubeUrl } from '@/utils/youtube';
 import { shareContent } from '@/utils/share';
+import { initWebBrowser, cleanupWebBrowser, openExternalLink } from '@/utils/externalLink';
 import ArticleContent from '@/components/ArticleContent';
 import { VideoModal } from '@/components/VideoModal';
 
@@ -60,6 +61,14 @@ export default function ArticleScreen() {
             setShowReadability(settings.readability_enabled);
         }
     }, [settings?.readability_enabled]);
+
+    // Initialize WebBrowser for native platforms
+    useEffect(() => {
+        initWebBrowser();
+        return () => {
+            cleanupWebBrowser();
+        };
+    }, []);
 
     useEffect(() => {
         if (id) {
@@ -213,15 +222,7 @@ export default function ArticleScreen() {
     const handleOpenExternal = useCallback(async () => {
         if (externalUrl) {
             try {
-                if (Platform.OS === 'web') {
-                    window.open(externalUrl, '_blank', 'noopener,noreferrer');
-                } else {
-                    // Dynamically import expo-web-browser only for native platforms
-                    const WebBrowser = await import('expo-web-browser');
-                    await WebBrowser.openBrowserAsync(externalUrl, {
-                        preferredBrowserMode: 'minimal',
-                    });
-                }
+                await openExternalLink(externalUrl);
             } catch (error) {
                 console.error('Error opening browser:', error);
             }

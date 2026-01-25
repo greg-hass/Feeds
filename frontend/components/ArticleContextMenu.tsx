@@ -9,6 +9,7 @@ import { useArticleStore } from '@/stores';
 import { Article } from '@/services/api';
 import { shareContent } from '@/utils/share';
 import { useColors, spacing, borderRadius } from '@/theme';
+import { openExternalLink } from '@/utils/externalLink';
 
 interface ArticleContextMenuProps {
     visible: boolean;
@@ -101,15 +102,7 @@ export const ArticleContextMenu: React.FC<ArticleContextMenuProps> = ({
         if (!article.url) return;
         try {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            if (Platform.OS === 'web') {
-                window.open(article.url, '_blank', 'noopener,noreferrer');
-            } else {
-                // Dynamically import expo-web-browser only for native platforms
-                const WebBrowser = await import('expo-web-browser');
-                await WebBrowser.openBrowserAsync(article.url, {
-                    preferredBrowserMode: 'minimal',
-                });
-            }
+            await openExternalLink(article.url);
         } catch (error) {
             console.error('Open external error:', error);
         }
