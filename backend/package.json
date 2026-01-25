@@ -8,7 +8,7 @@
         "dev": "tsx watch src/index.ts",
         "build": "tsc",
         "start": "node dist/index.js",
-        "migrate": "tsx src/db/migrate.ts",
+        "migrate": "node --input-type=module -e \"import { existsSync } from 'fs'; if (existsSync('dist/db/migrate.js')) { await import('./dist/db/migrate.js'); } else { const { spawnSync } = await import('child_process'); const result = spawnSync('npx', ['tsx', 'src/db/migrate.ts'], { stdio: 'inherit' }); process.exit(result.status ?? 0); }\"",
         "test": "vitest"
     },
     "dependencies": {
