@@ -8,12 +8,13 @@ import {
     ArrowLeft, Plus, Search, Rss, Youtube, Headphones, MessageSquare,
     Folder as FolderIcon, Trash2, Edit2, FolderInput,
     Check, FileUp, FileDown, AlertTriangle, RefreshCw, RefreshCcw,
-    Info, Pause
+    Info, Pause, Clock, Skull
 } from 'lucide-react-native';
 import { FeedInfoSheet } from '@/components/FeedInfoSheet';
 import { useColors, borderRadius, spacing } from '@/theme';
 import { ProgressDialog, ProgressState } from '@/components/ProgressDialog';
 import { useProgressHandler } from '@/hooks/useProgressHandler';
+import { getFeedHealth, getFeedHealthInfo } from '@/utils/feedHealth';
 
 type ModalType = 'edit_feed' | 'rename_folder' | 'move_feed' | null;
 
@@ -686,13 +687,21 @@ export default function ManageScreen() {
                     </View>
                     {filteredFeeds.length === 0 ? (
                         <Text style={s.emptyText}>No feeds match your search.</Text>
-                    ) : filteredFeeds.map((feed: Feed) => (
+                    ) : filteredFeeds.map((feed: Feed) => {
+                        const healthStatus = getFeedHealth(feed);
+                        const healthInfo = getFeedHealthInfo(feed);
+                        const isStale = healthStatus === 'stale';
+                        const isDead = healthStatus === 'dead';
+
+                        return (
                         <View
                             key={feed.id}
                             style={[
                                 s.feedItem,
                                 feed.error_count > 0 && s.feedItemError,
                                 feed.paused_at && s.feedItemPaused,
+                                isStale && s.feedItemStale,
+                                isDead && s.feedItemDead,
                                 isBulkMode && selectedFeedIds.has(feed.id) && { backgroundColor: colors.primary.DEFAULT + '11', borderColor: colors.primary.DEFAULT + '44' }
                             ]}
                         >
@@ -761,6 +770,19 @@ export default function ManageScreen() {
                                             <Text style={s.errorBadgeText}>Connection Issue</Text>
                                         </View>
                                     )}
+                                    {isStale && !feed.paused_at && feed.error_count === 0 && (
+                                        <View style={s.staleBadge}>
+                                            <Clock size={10} color={colors.warning} />
+                                            <Text style={s.staleBadgeText}>Stale</Text>
+                                        </View>
+                                    )}
+                                    {isDead && !feed.paused_at && (
+                                        <View style={s.deadBadge}>
+                                            <Skull size={10} color="#6b7280" />
+                                            <Text style={s.deadBadgeText}>Dead</Text>
+                                        </View>
+                                    )}
+                                    <Text style={s.healthTime}>{healthInfo.lastFetched}</Text>
                                 </View>
                             </TouchableOpacity>
 
@@ -810,7 +832,8 @@ export default function ManageScreen() {
                                 </View>
                             )}
                         </View>
-                    ))}
+                        );
+                    })}
                 </View>
 
                 {/* Data Management */}
@@ -1444,5 +1467,52 @@ const styles = (colors: any) => StyleSheet.create({
     },
     filterPillTextActive: {
         color: colors.text.inverse,
+    },
+    // Feed Health styles
+    feedItemStale: {
+        borderLeftWidth: 3,
+        borderLeftColor: '#f59e0b', // warning orange
+    },
+    feedItemDead: {
+        borderLeftWidth: 3,
+        borderLeftColor: '#6b7280', // gray
+        opacity: 0.7,
+    },
+    staleBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        marginTop: 4,
+        alignSelf: 'flex-start',
+        backgroundColor: '#f59e0b22',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: borderRadius.sm,
+    },
+    staleBadgeText: {
+        fontSize: 11,
+        color: '#f59e0b',
+        fontWeight: '600',
+    },
+    deadBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        marginTop: 4,
+        alignSelf: 'flex-start',
+        backgroundColor: '#6b728022',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: borderRadius.sm,
+    },
+    deadBadgeText: {
+        fontSize: 11,
+        color: '#6b7280',
+        fontWeight: '600',
+    },
+    healthTime: {
+        fontSize: 11,
+        color: colors.text.tertiary,
+        marginTop: 4,
     },
 });
