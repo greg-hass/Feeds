@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Image, Animated, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Image, Animated, Platform, useWindowDimensions } from 'react-native';
 import { api, Recommendation, Interest, ApiError } from '@/services/api';
-import { Sparkles, X, ChevronRight, Plus, RefreshCw, LayoutGrid, Zap, Newspaper, Youtube } from 'lucide-react-native';
+import { Sparkles, X, ChevronRight, Plus, RefreshCw, LayoutGrid, Zap, Newspaper, Youtube, Menu } from 'lucide-react-native';
 import { useFeedStore, useToastStore, useSettingsStore } from '@/stores';
 import { useColors, spacing, borderRadius } from '@/theme';
+import Sidebar from '@/components/Sidebar';
 
 export const DiscoveryPage = () => {
     const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
@@ -11,7 +12,11 @@ export const DiscoveryPage = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [subscribingIds, setSubscribingIds] = useState<Set<number>>(new Set());
+    const [showMenu, setShowMenu] = useState(false);
+    const [sidebarAnim] = useState(new Animated.Value(-300));
     const colors = useColors();
+    const { width } = useWindowDimensions();
+    const isMobile = width < 1024;
     const { addFeed } = useFeedStore();
     const { show: showToast } = useToastStore();
     const { settings } = useSettingsStore();
@@ -96,7 +101,16 @@ export const DiscoveryPage = () => {
         }
     };
 
-    const s = styles(colors);
+    const toggleMenu = () => {
+        setShowMenu(!showMenu);
+        Animated.timing(sidebarAnim, {
+            toValue: showMenu ? -300 : 0,
+            duration: 250,
+            useNativeDriver: true,
+        }).start();
+    };
+
+    const s = styles(colors, isMobile);
 
     if (isLoading) {
         return (
@@ -107,29 +121,30 @@ export const DiscoveryPage = () => {
     }
 
     return (
-        <ScrollView style={s.container} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+        <View style={s.container}>
+            {/* Header matching other pages */}
             <View style={s.header}>
-                <View style={s.headerBadge}>
-                    <Zap size={12} color={colors.primary.DEFAULT} fill={colors.primary.DEFAULT} />
-                    <Text style={s.badgeText}>SMART RECOMMENDATIONS</Text>
+                <View style={s.headerLeft}>
+                    <Text style={s.headerTitle}>Discover</Text>
                 </View>
-                <View style={s.titleRow}>
-                    <Text style={s.title}>Discovery</Text>
+                <View style={s.headerActions}>
                     <TouchableOpacity
                         onPress={handleRefresh}
+                        style={s.iconButton}
                         disabled={isRefreshing}
-                        style={s.refreshButton}
                         accessibilityLabel="Refresh recommendations"
+                        accessibilityRole="button"
                     >
                         {isRefreshing ? (
-                            <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
+                            <ActivityIndicator size={18} color={colors.primary.DEFAULT} />
                         ) : (
-                            <RefreshCw size={20} color={colors.primary.DEFAULT} />
+                            <RefreshCw size={20} color={colors.text.secondary} />
                         )}
                     </TouchableOpacity>
                 </View>
-                <Text style={s.subtitle}>AI-curated feeds matching your reading habits</Text>
             </View>
+
+            <ScrollView style={s.scrollView} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
 
             {interests.length > 0 && (
                 <View style={s.interestsContainer}>
@@ -218,21 +233,57 @@ export const DiscoveryPage = () => {
                     })}
                 </Animated.View>
             )}
-        </ScrollView>
+            </ScrollView>
+
+            {/* Mobile menu button */}
+            {isMobile && (
+                <>
+                    <TouchableOpacity onPress={toggleMenu} style={s.mobileMenuButton} accessibilityLabel="Open menu">
+                        <Menu size={24} color={colors.text.primary} />
+                    </TouchableOpacity>
+
+                    {/* Backdrop */}
+                    {showMenu && (
+                        <TouchableOpacity
+                            style={s.sidebarBackdrop}
+                            activeOpacity={1}
+                            onPress={toggleMenu}
+                        />
+                    )}
+                    {/* Sidebar */}
+                    <Animated.View
+                        style={[
+                            s.sidebarContainer,
+                            {
+                                transform: [{ translateX: sidebarAnim }],
+                                width: 280,
+                            },
+                        ]}
+                    >
+                        <View style={{ alignItems: 'flex-end', padding: spacing.md }}>
+                            <TouchableOpacity onPress={toggleMenu} style={{ padding: spacing.sm }} accessibilityLabel="Close menu">
+                                <X size={24} color={colors.text.primary} />
+                            </TouchableOpacity>
+                        </View>
+                        <Sidebar onNavigate={toggleMenu} />
+                    </Animated.View>
+                </>
+            )}
+        </View>
     );
 };
 
-const styles = (colors: any) => StyleSheet.create({
+const styles = (colors: any, isMobile: boolean = false) => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.background.primary,
     },
+    scrollView: {
+        flex: 1,
+    },
     content: {
-        padding: spacing.xl,
+        padding: spacing.lg,
         paddingBottom: 60,
-        maxWidth: 900,
-        alignSelf: 'center',
-        width: '100%',
     },
     center: {
         flex: 1,
@@ -241,48 +292,31 @@ const styles = (colors: any) => StyleSheet.create({
         padding: spacing.xl,
     },
     header: {
-        marginBottom: spacing.xxl,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: spacing.lg,
+        paddingTop: spacing.lg,
+        paddingBottom: spacing.md,
     },
-    headerBadge: {
+    headerLeft: {
         flexDirection: 'row',
         alignItems: 'center',
-        alignSelf: 'flex-start',
-        gap: 6,
-        backgroundColor: colors.primary.DEFAULT + '15',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: borderRadius.sm,
-        marginBottom: spacing.sm,
+        gap: spacing.sm,
+        marginLeft: isMobile ? 40 : 0,
     },
-    titleRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.md,
-    },
-    badgeText: {
-        fontSize: 10,
-        fontWeight: '900',
-        color: colors.primary.DEFAULT,
-        letterSpacing: 1,
-    },
-    title: {
-        fontSize: 40,
+    headerTitle: {
+        fontSize: 22,
         fontWeight: '900',
         color: colors.text.primary,
-        letterSpacing: -1.5,
+        letterSpacing: -0.5,
     },
-    subtitle: {
-        fontSize: 16,
-        color: colors.text.tertiary,
-        marginTop: 4,
-        fontWeight: '600',
+    headerActions: {
+        flexDirection: 'row',
+        gap: spacing.sm,
     },
-    refreshButton: {
+    iconButton: {
         padding: spacing.sm,
-        borderRadius: borderRadius.full,
-        backgroundColor: colors.background.elevated,
-        borderWidth: 1,
-        borderColor: colors.border.DEFAULT,
     },
     sectionHeader: {
         fontSize: 12,
@@ -461,5 +495,42 @@ const styles = (colors: any) => StyleSheet.create({
         fontWeight: '600',
         maxWidth: 280,
         lineHeight: 24,
+    },
+    mobileMenuButton: {
+        position: 'absolute',
+        top: spacing.md,
+        left: spacing.md,
+        zIndex: 100,
+        padding: 8,
+        backgroundColor: colors.background.elevated,
+        borderRadius: borderRadius.full,
+        shadowColor: '#000',
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    sidebarBackdrop: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        zIndex: 900,
+    },
+    sidebarContainer: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        bottom: 0,
+        backgroundColor: colors.background.elevated,
+        borderRightWidth: 1,
+        borderRightColor: colors.border.DEFAULT,
+        zIndex: 1000,
+        shadowColor: '#000',
+        shadowOffset: { width: 2, height: 0 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+        elevation: 5,
     },
 });
