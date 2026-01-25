@@ -1,22 +1,19 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image, useWindowDimensions, Platform, Alert, Animated, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image, useWindowDimensions, Platform, Alert, Animated, NativeSyntheticEvent, NativeScrollEvent, Linking } from 'react-native';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { formatDistanceToNow } from 'date-fns';
 import { useArticleStore, useSettingsStore, useToastStore, useVideoStore, useAudioStore } from '@/stores';
-import { Article, api } from '@/services/api';
 import { useReadingSession, calculateScrollDepth } from '@/hooks/useReadingSession';
 import {
     ArrowLeft, ExternalLink, Circle, CircleCheck,
-    Headphones, BookOpen, Play, Bookmark, Share2,
-    ChevronLeft, ChevronRight, Maximize2, Pause, Type
+    Headphones, Play, Bookmark, Share2,
+    ChevronLeft, ChevronRight, Maximize2, Type
 } from 'lucide-react-native';
 import { useColors, borderRadius, spacing, typography } from '@/theme';
 import { extractVideoId, getEmbedUrl, isYouTubeUrl } from '@/utils/youtube';
 import { shareContent } from '@/utils/share';
 import ArticleContent from '@/components/ArticleContent';
 import { VideoModal } from '@/components/VideoModal';
-import { PodcastPlayer } from '@/components/PodcastPlayer';
 
 export default function ArticleScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
@@ -24,11 +21,13 @@ export default function ArticleScreen() {
     const colors = useColors();
     const { width } = useWindowDimensions();
     const isMobile = width < 1024;
-    const { currentArticle, fetchArticle, markRead, markUnread, toggleBookmark, articles } = useArticleStore();
+    const { currentArticle, fetchArticle, markRead, markUnread, toggleBookmark, articles, setArticleScrollPosition, getArticleScrollPosition } = useArticleStore();
     const { settings, updateSettings } = useSettingsStore();
     const { show } = useToastStore();
     const [isLoading, setIsLoading] = useState(true);
     const [showReadability, setShowReadability] = useState(settings?.readability_enabled ?? false);
+    const scrollViewRef = useRef<ScrollView>(null);
+    const currentArticleIdRef = useRef<number | null>(null);
 
     // Zen Mode & Progress
     const [scrollOffset, setScrollOffset] = useState(0);
@@ -37,7 +36,7 @@ export default function ArticleScreen() {
     const [showTextSizeMenu, setShowTextSizeMenu] = useState(false);
 
     const { activeVideoId, playVideo, minimize, close: closeVideo, isMinimized } = useVideoStore();
-    const { play: playPodcast, isPlaying: isAudioPlaying, showPlayer } = useAudioStore();
+    const { play: playPodcast } = useAudioStore();
     const [adjacentArticles, setAdjacentArticles] = useState<{ prev: number | null; next: number | null }>({ prev: null, next: null });
 
     // Analytics: Track reading session
@@ -104,7 +103,7 @@ export default function ArticleScreen() {
     useEffect(() => {
         if (currentArticle && activeVideoId) {
             const articleVideoId = extractVideoId(currentArticle.url || currentArticle.thumbnail_url || '');
-            
+
             // If opening a non-YouTube article or different YouTube video, close the current video
             if (!isYouTube || (articleVideoId && articleVideoId !== activeVideoId)) {
                 closeVideo();
@@ -114,6 +113,31 @@ export default function ArticleScreen() {
             }
         }
     }, [currentArticle?.id, activeVideoId]);
+
+    // Restore scroll position when screen is focused and article is loaded
+    useFocusEffect(
+        useCallback(() => {
+            if (!id || !currentArticle || isLoading) return;
+
+            const articleId = Number(id);
+
+            // Only restore if this is a different article than last viewed
+            if (currentArticleIdRef.current !== articleId) {
+                const savedPosition = getArticleScrollPosition(articleId);
+
+                // Small delay to ensure ScrollView is laid out
+                const timeoutId = setTimeout(() => {
+                    if (savedPosition > 0 && scrollViewRef.current) {
+                        scrollViewRef.current.scrollTo({ y: savedPosition, animated: false });
+                    }
+                }, 100);
+
+                currentArticleIdRef.current = articleId;
+
+                return () => clearTimeout(timeoutId);
+            }
+        }, [id, currentArticle, isLoading, getArticleScrollPosition])
+    );
 
     const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
         const offset = event.nativeEvent.contentOffset.y;
@@ -150,6 +174,11 @@ export default function ArticleScreen() {
             }).start();
         }
         setScrollOffset(offset);
+
+        // Save scroll position for current article
+        if (id && offset > 0) {
+            setArticleScrollPosition(Number(id), offset);
+        }
     };
 
     const handlePlayVideo = () => {
@@ -183,7 +212,7 @@ export default function ArticleScreen() {
 
     const handleOpenExternal = useCallback(async () => {
         if (externalUrl) {
-            await WebBrowser.openBrowserAsync(externalUrl);
+            await Linking.openURL(externalUrl);
         }
     }, [externalUrl]);
 
@@ -318,6 +347,7 @@ export default function ArticleScreen() {
                 </Animated.View>
 
                 <ScrollView
+                    ref={scrollViewRef}
                     style={s.scrollView}
                     contentContainerStyle={s.scrollContent}
                     onScroll={handleScroll}

@@ -36,6 +36,7 @@ export interface ArticleState {
     isLoading: boolean;
     error: string | null;
     scrollPosition: number;
+    articleScrollPositions: Record<number, number>;
     filter: {
         feed_id?: number;
         folder_id?: number;
@@ -45,6 +46,8 @@ export interface ArticleState {
 
     setFilter: (filter: Partial<ArticleState['filter']>) => void;
     setScrollPosition: (position: number) => void;
+    setArticleScrollPosition: (articleId: number, position: number) => void;
+    getArticleScrollPosition: (articleId: number) => number;
     fetchArticles: (reset?: boolean, isLiveUpdate?: boolean) => Promise<void>;
     fetchBookmarks: () => Promise<void>;
     fetchArticle: (id: number) => Promise<void>;

@@ -8,8 +8,8 @@ import {
     ScrollView,
     ActivityIndicator,
     Alert,
+    Linking,
 } from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
 import {
     X,
     Rss,
@@ -145,7 +145,7 @@ export const FeedInfoSheet = ({ feedId, visible, onClose, onEdit, onDelete }: Fe
 
     const handleOpenUrl = async (url: string | null) => {
         if (url) {
-            await WebBrowser.openBrowserAsync(url);
+            await Linking.openURL(url);
         }
     };
 

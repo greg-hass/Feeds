@@ -18,6 +18,7 @@ export const useArticleStore = create<ArticleState>()(
             isLoading: false,
             error: null,
             scrollPosition: 0,
+            articleScrollPositions: {},
             filter: {
                 unread_only: true,
             },
@@ -36,6 +37,19 @@ export const useArticleStore = create<ArticleState>()(
 
             setScrollPosition: (position) => {
                 set({ scrollPosition: position });
+            },
+
+            setArticleScrollPosition: (articleId, position) => {
+                set((state) => ({
+                    articleScrollPositions: {
+                        ...state.articleScrollPositions,
+                        [articleId]: position,
+                    },
+                }));
+            },
+
+            getArticleScrollPosition: (articleId) => {
+                return get().articleScrollPositions[articleId] || 0;
             },
 
             fetchArticles: async (reset = false, isLiveUpdate = false) => {
@@ -366,7 +380,8 @@ export const useArticleStore = create<ArticleState>()(
                 articles: state.articles.slice(0, 100), // Only cache the first 100 articles
                 cursor: state.cursor,
                 filter: state.filter,
-                bookmarkedArticles: state.bookmarkedArticles // Cache bookmarks too
+                bookmarkedArticles: state.bookmarkedArticles, // Cache bookmarks too
+                articleScrollPositions: state.articleScrollPositions, // Persist scroll positions
                 // contentCache is deliberately excluded to keep storage light and fresh
             }),
         }
