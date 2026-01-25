@@ -1,21 +1,33 @@
-import React, { useEffect, lazy, Suspense } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Platform } from 'react-native';
-import { useDigestStore } from '@/stores';
-import { Sparkles, BarChart3, BookOpen, RefreshCw, AlertCircle, Calendar } from 'lucide-react-native';
+import React, { useEffect, lazy, Suspense, useState, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Platform, Animated, useWindowDimensions } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useDigestStore, useSettingsStore } from '@/stores';
+import { Sparkles, BarChart3, BookOpen, RefreshCw, AlertCircle, Calendar, ArrowLeft, Type } from 'lucide-react-native';
 import { useColors, spacing, borderRadius } from '@/theme';
 
 // Lazy load markdown renderer (heavy dependency ~100KB) - only loads when digest is viewed
 const Markdown = lazy(() => import('react-native-markdown-display').then(m => ({ default: m.default })));
 
 export const DigestView = () => {
+    const router = useRouter();
+    const { width } = useWindowDimensions();
+    const isMobile = width < 1024;
     const { latestDigest, isLoading, error, fetchLatestDigest, generateDigest } = useDigestStore();
+    const { settings, updateSettings } = useSettingsStore();
     const colors = useColors();
+    const [showTextSizeMenu, setShowTextSizeMenu] = useState(false);
+    const headerOpacity = useRef(new Animated.Value(1)).current;
 
     useEffect(() => {
         fetchLatestDigest();
     }, []);
 
-    const s = styles(colors);
+    const handleTextSizeChange = (size: 'small' | 'medium' | 'large') => {
+        updateSettings({ reader_text_size: size });
+        setShowTextSizeMenu(false);
+    };
+
+    const s = styles(colors, settings?.reader_text_size || 'medium', isMobile);
 
     if (isLoading && !latestDigest) {
         return (
@@ -59,86 +71,131 @@ export const DigestView = () => {
     }
 
     return (
-        <ScrollView style={s.container} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
-            <View style={s.header}>
+        <View style={s.container}>
+            <Animated.View style={[s.readerHeader, { opacity: headerOpacity }]}>
+                <View style={s.headerLeft}>
+                    {isMobile && (
+                        <TouchableOpacity onPress={() => router.back()} style={s.backButton} accessibilityLabel="Go back">
+                            <ArrowLeft size={24} color={colors.text.primary} />
+                        </TouchableOpacity>
+                    )}
+                </View>
+
+                <View style={s.headerActions}>
+                    <View style={{ position: 'relative' as const }}>
+                        <TouchableOpacity onPress={() => setShowTextSizeMenu(!showTextSizeMenu)} style={s.actionButton} accessibilityLabel="Adjust text size">
+                            <Type size={22} color={colors.text.secondary} />
+                        </TouchableOpacity>
+                        {showTextSizeMenu && (
+                            <View style={s.textSizeMenu}>
+                                <TouchableOpacity
+                                    style={[s.textSizeOption, settings?.reader_text_size === 'small' && s.textSizeOptionActive]}
+                                    onPress={() => handleTextSizeChange('small')}
+                                >
+                                    <Text style={s.textSizeLabel}>A</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[s.textSizeOption, settings?.reader_text_size === 'medium' && s.textSizeOptionActive]}
+                                    onPress={() => handleTextSizeChange('medium')}
+                                >
+                                    <Text style={[s.textSizeLabel, { fontSize: 16 }]}>A</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[s.textSizeOption, settings?.reader_text_size === 'large' && s.textSizeOptionActive]}
+                                    onPress={() => handleTextSizeChange('large')}
+                                >
+                                    <Text style={[s.textSizeLabel, { fontSize: 20 }]}>A</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
+                    </View>
+                </View>
+            </Animated.View>
+
+            <ScrollView style={s.scrollView} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+                <View style={s.digestHeader}>
+                    <View style={s.headerBadge}>
+                        <Sparkles size={12} color={colors.primary.DEFAULT} />
+                        <Text style={s.badgeText}>
+                            {latestDigest.edition ? `${latestDigest.edition.toUpperCase()} INSIGHTS` : 'AI INSIGHTS'}
+                        </Text>
+                    </View>
+                    <Text style={s.title}>{latestDigest.title || 'Intelligence Briefing'}</Text>
+                    <View style={s.headerMeta}>
+                        <Calendar size={14} color={colors.text.tertiary} />
+                        <Text style={s.date}>
+                            {new Intl.DateTimeFormat(undefined, { dateStyle: 'long', timeStyle: 'short' }).format(new Date(latestDigest.generated_at))}
+                        </Text>
+                    </View>
+                </View>
+
+                <View style={s.statsRow}>
+                    <View style={[s.statCard, { backgroundColor: colors.background.elevated }]}>
+                        <BookOpen size={20} color={colors.primary.DEFAULT} />
+                        <View>
+                            <Text style={s.statValue}>{latestDigest.article_count}</Text>
+                            <Text style={s.statLabel}>Articles Analyzed</Text>
+                        </View>
+                    </View>
+                    <View style={[s.statCard, { backgroundColor: colors.background.elevated }]}>
+                        <BarChart3 size={20} color={colors.primary.DEFAULT} />
+                        <View>
+                            <Text style={s.statValue}>{latestDigest.feed_count}</Text>
+                            <Text style={s.statLabel}>Sources Refreshed</Text>
+                        </View>
+                    </View>
+                </View>
+
+                <View style={s.card}>
+                    <Suspense fallback={<ActivityIndicator size="small" color={colors.primary.DEFAULT} />}>
+                        <Markdown
+                            style={{
+                                body: { color: colors.text.primary, fontSize: s.bodyFontSize, lineHeight: s.bodyLineHeight, fontWeight: '400' },
+                                heading2: { color: colors.text.primary, fontSize: s.headingFontSize, fontWeight: '800', marginTop: 32, marginBottom: 16, letterSpacing: -0.5 },
+                                bullet_list: { marginBottom: 16 },
+                                list_item: { marginBottom: 8 },
+                                link: { color: colors.primary.DEFAULT, fontWeight: '700', textDecorationLine: 'none' },
+                                paragraph: { marginBottom: 16 }
+                            }}
+                        >
+                            {latestDigest.content}
+                        </Markdown>
+                    </Suspense>
+                </View>
+
                 <TouchableOpacity
+                    style={s.refreshFooter}
                     onPress={generateDigest}
                     disabled={isLoading}
-                    style={s.headerRefreshButton}
-                    accessibilityLabel="Regenerate digest"
                 >
-                    {isLoading ? (
-                        <ActivityIndicator size={20} color={colors.primary.DEFAULT} />
-                    ) : (
-                        <RefreshCw size={20} color={colors.text.tertiary} />
-                    )}
+                    <RefreshCw size={16} color={colors.text.tertiary} />
+                    <Text style={s.refreshFooterText}>Regenerate Briefing</Text>
                 </TouchableOpacity>
-
-                <View style={s.headerBadge}>
-                    <Sparkles size={12} color={colors.primary.DEFAULT} />
-                    <Text style={s.badgeText}>
-                        {latestDigest.edition ? `${latestDigest.edition.toUpperCase()} INSIGHTS` : 'AI INSIGHTS'}
-                    </Text>
-                </View>
-                <Text style={s.title}>{latestDigest.title || 'Intelligence Briefing'}</Text>
-                <View style={s.headerMeta}>
-                    <Calendar size={14} color={colors.text.tertiary} />
-                    <Text style={s.date}>
-                        {new Intl.DateTimeFormat(undefined, { dateStyle: 'long', timeStyle: 'short' }).format(new Date(latestDigest.generated_at))}
-                    </Text>
-                </View>
-            </View>
-
-            <View style={s.statsRow}>
-                <View style={[s.statCard, { backgroundColor: colors.background.elevated }]}>
-                    <BookOpen size={20} color={colors.primary.DEFAULT} />
-                    <View>
-                        <Text style={s.statValue}>{latestDigest.article_count}</Text>
-                        <Text style={s.statLabel}>Articles Analyzed</Text>
-                    </View>
-                </View>
-                <View style={[s.statCard, { backgroundColor: colors.background.elevated }]}>
-                    <BarChart3 size={20} color={colors.primary.DEFAULT} />
-                    <View>
-                        <Text style={s.statValue}>{latestDigest.feed_count}</Text>
-                        <Text style={s.statLabel}>Sources Refreshed</Text>
-                    </View>
-                </View>
-            </View>
-
-            <View style={s.card}>
-                <Suspense fallback={<ActivityIndicator size="small" color={colors.primary.DEFAULT} />}>
-                    <Markdown
-                        style={{
-                            body: { color: colors.text.primary, fontSize: 17, lineHeight: 28, fontWeight: '400' },
-                            heading2: { color: colors.text.primary, fontSize: 22, fontWeight: '800', marginTop: 32, marginBottom: 16, letterSpacing: -0.5 },
-                            bullet_list: { marginBottom: 16 },
-                            list_item: { marginBottom: 8 },
-                            link: { color: colors.primary.DEFAULT, fontWeight: '700', textDecorationLine: 'none' },
-                            paragraph: { marginBottom: 16 }
-                        }}
-                    >
-                        {latestDigest.content}
-                    </Markdown>
-                </Suspense>
-            </View>
-
-            <TouchableOpacity
-                style={s.refreshFooter}
-                onPress={generateDigest}
-                disabled={isLoading}
-            >
-                <RefreshCw size={16} color={colors.text.tertiary} />
-                <Text style={s.refreshFooterText}>Regenerate Briefing</Text>
-            </TouchableOpacity>
-        </ScrollView>
+            </ScrollView>
+        </View>
     );
 };
 
-const styles = (colors: any) => StyleSheet.create({
+const getTextSizes = (size: 'small' | 'medium' | 'large') => {
+    switch (size) {
+        case 'small':
+            return { body: 15, bodyLineHeight: 24, heading: 20 };
+        case 'large':
+            return { body: 19, bodyLineHeight: 32, heading: 24 };
+        default:
+            return { body: 17, bodyLineHeight: 28, heading: 22 };
+    }
+};
+
+const styles = (colors: any, textSize: 'small' | 'medium' | 'large' = 'medium', isMobile: boolean = false) => {
+    const sizes = getTextSizes(textSize);
+    return StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.background.primary,
+    },
+    scrollView: {
+        flex: 1,
     },
     content: {
         padding: spacing.xl,
@@ -153,17 +210,73 @@ const styles = (colors: any) => StyleSheet.create({
         alignItems: 'center',
         padding: spacing.xl,
     },
-    header: {
+    bodyFontSize: sizes.body,
+    bodyLineHeight: sizes.bodyLineHeight,
+    headingFontSize: sizes.heading,
+    readerHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: spacing.lg,
+        paddingVertical: spacing.md,
+        backgroundColor: colors.background.elevated,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border.DEFAULT,
+        zIndex: 100,
+    },
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+    },
+    backButton: {
+        padding: spacing.xs,
+        marginRight: spacing.xs,
+    },
+    headerActions: {
+        flexDirection: 'row',
+        gap: spacing.sm,
+    },
+    actionButton: {
+        padding: spacing.sm,
+    },
+    textSizeMenu: {
+        position: 'absolute',
+        top: '100%',
+        right: 0,
+        marginTop: 8,
+        backgroundColor: colors.background.elevated,
+        borderRadius: borderRadius.lg,
+        padding: spacing.xs,
+        borderWidth: 1,
+        borderColor: colors.border.DEFAULT,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+        elevation: 8,
+        flexDirection: 'row',
+        gap: spacing.xs,
+        zIndex: 1000,
+    },
+    textSizeOption: {
+        width: 40,
+        height: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: borderRadius.md,
+    },
+    textSizeOptionActive: {
+        backgroundColor: colors.primary.DEFAULT,
+    },
+    textSizeLabel: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: colors.text.primary,
+    },
+    digestHeader: {
         marginBottom: spacing.xxl,
         alignItems: 'center',
-        position: 'relative', // Enable absolute positioning for children
-    },
-    headerRefreshButton: {
-        position: 'absolute',
-        right: 0,
-        top: 0,
-        padding: spacing.sm,
-        zIndex: 10,
     },
     headerBadge: {
         flexDirection: 'row',
@@ -303,7 +416,6 @@ const styles = (colors: any) => StyleSheet.create({
         fontWeight: '700',
         color: colors.text.tertiary,
     },
-    spinIcon: {
-        // Animation handled in component logic or via external lib if needed
-    }
+    spinIcon: {},
 });
+};
