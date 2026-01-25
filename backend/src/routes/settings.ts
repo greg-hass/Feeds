@@ -11,6 +11,7 @@ const updateSettingsSchema = z.object({
     theme: z.enum(['light', 'dark', 'auto']).optional(),
     font_size: z.enum(['small', 'medium', 'large']).optional(),
     show_images: z.boolean().optional(),
+    accent_color: z.enum(['emerald', 'blue', 'indigo', 'violet', 'rose', 'amber']).optional(),
 });
 
 // Track if we've already ensured the column exists this session

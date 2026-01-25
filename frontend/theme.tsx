@@ -138,6 +138,46 @@ export const borderRadius = {
 export { shadows } from './theme/shadows';
 export { animations } from './theme/animations';
 
+export const ACCENT_COLORS = {
+    emerald: {
+        DEFAULT: '#10b981',
+        light: '#34d399',
+        dark: '#059669',
+        soft: '#10b98125',
+    },
+    blue: {
+        DEFAULT: '#3b82f6',
+        light: '#60a5fa',
+        dark: '#2563eb',
+        soft: '#3b82f625',
+    },
+    indigo: {
+        DEFAULT: '#6366f1',
+        light: '#818cf8',
+        dark: '#4f46e5',
+        soft: '#6366f125',
+    },
+    violet: {
+        DEFAULT: '#8b5cf6',
+        light: '#a78bfa',
+        dark: '#7c3aed',
+        soft: '#8b5cf625',
+    },
+    rose: {
+        DEFAULT: '#f43f5e',
+        light: '#fb7185',
+        dark: '#e11d48',
+        soft: '#f43f5e25',
+    },
+    amber: {
+        DEFAULT: '#f59e0b',
+        light: '#fbbf24',
+        dark: '#d97706',
+        soft: '#f59e0b25',
+    },
+};
+
+export type AccentColor = keyof typeof ACCENT_COLORS;
 export type ThemeColors = typeof colors;
 
 const ThemeContext = createContext<ThemeColors>(colors);
@@ -148,9 +188,24 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
     const theme = settings?.theme || 'auto';
     const isDark = theme === 'dark' || (theme === 'auto' && systemTheme === 'dark');
+    const accentKey = (settings?.accent_color as AccentColor) || 'emerald';
+    const accent = ACCENT_COLORS[accentKey] || ACCENT_COLORS.emerald;
 
     const currentColors: ThemeColors = {
         ...sharedColors,
+        primary: accent,
+        accent: {
+            primary: accent.DEFAULT,
+        },
+        success: accent.DEFAULT,
+        status: {
+            ...sharedColors.status,
+            success: accent.DEFAULT,
+        },
+        feedTypes: {
+            ...sharedColors.feedTypes,
+            rss: accent.DEFAULT,
+        },
         ...(isDark ? darkColors : lightColors),
         dark: darkColors,
         light: lightColors,

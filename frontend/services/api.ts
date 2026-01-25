@@ -550,6 +550,7 @@ export interface Settings {
     font_family?: 'sans' | 'serif';
     reader_theme?: 'default' | 'sepia' | 'paper' | 'dark';
     reader_line_height?: number;
+    accent_color?: 'emerald' | 'blue' | 'indigo' | 'violet' | 'rose' | 'amber';
 }
 
 export interface ArticleListParams {

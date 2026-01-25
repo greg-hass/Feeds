@@ -3,8 +3,8 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch, ActivityI
 import { useRouter } from 'expo-router';
 import { useSettingsStore, useToastStore } from '@/stores';
 import { Settings } from '@/services/api';
-import { ArrowLeft, Sun, Moon, Monitor } from 'lucide-react-native';
-import { useColors, spacing, borderRadius, shadows } from '@/theme';
+import { ArrowLeft, Sun, Moon, Monitor, Check } from 'lucide-react-native';
+import { useColors, spacing, borderRadius, shadows, ACCENT_COLORS, AccentColor } from '@/theme';
 
 export default function SettingsScreen() {
     const router = useRouter();
@@ -107,6 +107,30 @@ export default function SettingsScreen() {
                                 thumbColor={colors.text.primary}
                                 accessibilityLabel="Show images in articles"
                             />
+                        </View>
+
+                        <View style={s.divider} />
+
+                        <View style={s.row}>
+                            <Text style={s.label}>Accent Colour</Text>
+                            <View style={s.accentRow}>
+                                {(Object.keys(ACCENT_COLORS) as AccentColor[]).map((key) => (
+                                    <TouchableOpacity
+                                        key={key}
+                                        style={[
+                                            s.accentOption,
+                                            { backgroundColor: ACCENT_COLORS[key].DEFAULT },
+                                            (settings.accent_color === key || (!settings.accent_color && key === 'emerald')) && s.accentOptionActive
+                                        ]}
+                                        onPress={() => handleToggle('accent_color', key)}
+                                        accessibilityLabel={`Set accent color to ${key}`}
+                                    >
+                                        {(settings.accent_color === key || (!settings.accent_color && key === 'emerald')) && (
+                                            <Check size={16} color={colors.text.inverse} />
+                                        )}
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
                         </View>
                     </View>
                 </View>
@@ -339,5 +363,23 @@ const styles = (colors: any) => StyleSheet.create({
         textAlign: 'center',
         color: colors.text.tertiary,
         marginTop: spacing.xl,
+    },
+    accentRow: {
+        flexDirection: 'row',
+        gap: spacing.sm,
+        flexWrap: 'wrap',
+    },
+    accentOption: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        borderWidth: 2,
+        borderColor: 'transparent',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    accentOptionActive: {
+        borderColor: colors.text.primary,
+        transform: [{ scale: 1.1 }],
     },
 });
