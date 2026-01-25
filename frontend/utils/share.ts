@@ -19,37 +19,35 @@ export async function shareContent({ title, message, url }: SharePayload): Promi
     const shareText = [message, url].filter(Boolean).join('\n') || message || title || '';
 
     if (Platform.OS === 'web') {
-        const webNavigator: WebNavigator | null = typeof navigator !== 'undefined' ? navigator : null;
+        const webNavigator: WebNavigator | null =
+            typeof window !== 'undefined' && window.navigator
+                ? window.navigator
+                : typeof navigator !== 'undefined'
+                    ? navigator
+                    : null;
 
         if (webNavigator?.share) {
             try {
-                const shareData = {
+                if (url) {
+                    const urlShare = { title, url };
+                    if (typeof webNavigator.canShare !== 'function' || webNavigator.canShare(urlShare)) {
+                        await webNavigator.share(urlShare);
+                        return true;
+                    }
+                }
+
+                const textShare = {
                     title,
                     text: message || title,
                     url,
                 };
-
-                if (typeof webNavigator.canShare === 'function') {
-                    const canShare = webNavigator.canShare(shareData);
-                    if (!canShare && url) {
-                        await webNavigator.share({ title, url });
-                        return true;
-                    }
+                if (typeof webNavigator.canShare !== 'function' || webNavigator.canShare(textShare)) {
+                    await webNavigator.share(textShare);
+                    return true;
                 }
-
-                await webNavigator.share(shareData);
-                return true;
             } catch (error) {
                 const name = typeof error === 'object' && error && 'name' in error ? String((error as { name?: string }).name) : '';
                 if (name === 'AbortError') return false;
-                if (url) {
-                    try {
-                        await webNavigator.share({ title, url });
-                        return true;
-                    } catch {
-                        // fall through
-                    }
-                }
             }
         }
 
