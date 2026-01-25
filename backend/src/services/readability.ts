@@ -1,7 +1,6 @@
 import { JSDOM } from 'jsdom';
 import { Readability } from '@mozilla/readability';
-
-import { extractHeroImage } from './feed-parser.js';
+import { extractHeroImage } from './feed-utils.js';
 
 // Reduced timeout for faster failures - don't wait forever for slow sites
 const CONTENT_FETCH_TIMEOUT = 15000; // 15 seconds (reduced from 30s)

@@ -3,6 +3,9 @@ import { Readable } from 'stream';
 import type { FeedItemExtensions, FeedMetaExtensions } from '../types/rss-extensions.js';
 import { HTTP, CONTENT, STRINGS, MISC } from '../config/constants.js';
 import { fetchWithRetry } from './http.js';
+import { fetchYouTubeIcon, extractYouTubeChannelId, YOUTUBE_FETCH_USER_AGENT } from './youtube-parser.js';
+import { fetchRedditIcon, cleanRedditContent, upgradeRedditImageUrl, normalizeRedditAuthor, extractRedditThumbnail } from './reddit-parser.js';
+import { extractHeroImage, stripHtml, truncate, decodeHtmlEntities, extractFavicon } from './feed-utils.js';
 
 export type FeedType = 'rss' | 'youtube' | 'reddit' | 'podcast';
 
@@ -60,136 +63,12 @@ export interface NormalizedArticle {
 }
 
 const USER_AGENT = 'Feeds/1.0 (Feed Reader; +https://github.com/greg-hass/Feeds) Mozilla/5.0 (compatible)';
-const YOUTUBE_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 
-// Retry configuration - balanced for reliability and speed
-const MAX_RETRIES = 2; // Increased from 1 back to 2 to handle transient YouTube timeouts
-const BASE_RETRY_DELAY = 500; // Reduced from 1000ms
-const MAX_RETRY_DELAY = 2000; // Reduced from 30000ms
+const MAX_RETRIES = 2;
+const BASE_RETRY_DELAY = 500;
+const MAX_RETRY_DELAY = 2000;
 
-if (YOUTUBE_API_KEY) {
-    console.log('[Config] YouTube API Key loaded: ' + YOUTUBE_API_KEY.substring(0, 4) + '...');
-} else {
-    console.warn('[Config] YouTube API Key NOT found. Falling back to scraping.');
-}
 
-export async function fetchYouTubeIcon(channelId: string | null | undefined): Promise<string | null> {
-    // Validate channel ID format (should start with UC and be 24 chars)
-    if (!channelId || typeof channelId !== 'string' || !channelId.startsWith('UC') || channelId.length !== 24) {
-        console.log(`[YouTube Icon] Invalid channel ID format: "${channelId}" (expected UC + 22 chars)`);
-        return null;
-    }
-    
-    console.log(`[YouTube Icon] Fetching icon for channel: ${channelId}`);
-    
-    // Scrape the channel page (proven working approach)
-    try {
-        console.log(`[YouTube Icon] Making request to YouTube...`);
-        const response = await fetchWithRetry(`https://www.youtube.com/channel/${channelId}`, () => ({
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept-Language': 'en-US,en;q=0.9',
-            },
-            signal: AbortSignal.timeout(HTTP.REQUEST_TIMEOUT),
-        }), {
-            retries: 2,
-        });
-        
-        console.log(`[YouTube Icon] Response status: ${response.status}`);
-        
-        if (!response.ok) {
-            console.log(`[YouTube Icon] Failed to fetch channel page: ${response.status}`);
-            return null;
-        }
-        
-        const html = await response.text();
-        console.log(`[YouTube Icon] Got HTML (${html.length} chars), searching for avatar...`);
-
-        // Try multiple regex patterns in order (updated for current YouTube)
-        const avatarPatterns = [
-            { name: 'JSON avatar', regex: /"avatar":\{"thumbnails":\[\{"url":"([^"]+)"/ },
-            { name: 'Metadata v2', regex: /"channelMetadataRenderer"\s*:\s*\{[^}]*"avatar":\s*\{"thumbnails":\s*\[\{"url":\s*"([^"]+)"/ },
-            { name: 'Metadata', regex: /"channelMetadataRenderer".*?"avatar".*?"url":"([^"]+)"/ },
-            { name: 'yt3 dims', regex: /yt3\.googleusercontent\.com\/[^"]*width=\d+[^"]*height=\d+[^"]*url=([^&"\s]+)/ },
-            { name: 'yt-img-shadow', regex: /yt-img-shadow.*?src="(https:\/\/yt3\.googleusercontent\.com\/[^"]+)"/ },
-            { name: 'channel-icon img', regex: /<img[^>]+class="yt-channel-icon"[^>]+src="([^"]+)"/ },
-            { name: 'og:image', regex: /<meta property="og:image" content="([^"]+)"/ },
-            { name: 'profile', regex: /profile\?uid=\d+[^>]+src="([^"]+)"/ },
-        ];
-
-        for (const pattern of avatarPatterns) {
-            const match = html.match(pattern.regex);
-            if (match && match[1]) {
-                let avatarUrl = match[1];
-                
-                // Decode escaped characters
-                avatarUrl = avatarUrl.replace(/\\u0026/g, '&').replace(/\\/g, '');
-                
-                // Force high-res avatar (s176 is standard)
-                if (avatarUrl.includes('=s')) {
-                    avatarUrl = avatarUrl.replace(/=s\d+.*/, '=s176-c-k-c0x00ffffff-no-rj-mo');
-                }
-                
-                console.log(`[YouTube Icon] ✓ Found icon using "${pattern.name}": ${avatarUrl.substring(0, 50)}...`);
-                return avatarUrl;
-            }
-        }
-        
-        console.log(`[YouTube Icon] No patterns matched for ${channelId}`);
-    } catch (e) {
-        console.error(`[YouTube Icon] Error fetching: ${e}`);
-    }
-
-    // Fallback - return null so the frontend can show default icon
-    return null;
-}
-
-export function extractHeroImage(content: string, meta: any = {}): string | null {
-    // 1. Check meta tags
-    if (meta.image?.url) return meta.image.url;
-    if (meta['media:thumbnail']?.url) return meta['media:thumbnail'].url;
-    if (meta['og:image']) return meta['og:image'];
-    if (meta['twitter:image']) return meta['twitter:image'];
-
-    // 2. Scrape first usable img from content
-    if (content) {
-        // Skip common icons/small images
-        const imgRegex = /<img[^>]+src="([^">]+)"[^>]*>/gi;
-        let match;
-        while ((match = imgRegex.exec(content)) !== null) {
-            const src = match[1];
-            // Skip data URLs, icons, avatars, etc.
-            if (src.startsWith('data:')) continue;
-            if (src.includes('icon') || src.includes('avatar') || src.includes('logo') || src.includes('spinner')) continue;
-            return src;
-        }
-    }
-
-    return null;
-}
-
-export async function fetchRedditIcon(subreddit: string): Promise<string | null> {
-    try {
-        const response = await fetchWithRetry(`https://www.reddit.com/r/${subreddit}/about.json`, () => ({
-            headers: { 'User-Agent': USER_AGENT },
-            signal: AbortSignal.timeout(8000),
-        }), {
-            retries: 1,
-        });
-        if (!response.ok) return null;
-        const data = await response.json();
-        const icon = data.data?.community_icon || data.data?.icon_img;
-        if (icon) {
-            // Reddit icons often have escaped unicode like \u0026 -> &
-            const url = icon.split('?')[0]; // Remove query params which often expire
-            return url.replace(/&amp;/g, '&');
-        }
-        return null;
-    } catch {
-        return null;
-    }
-}
 
 export async function parseFeed(url: string, options?: { skipIconFetch?: boolean }): Promise<ParsedFeed> {
     // Validate URL first
@@ -222,7 +101,7 @@ export async function parseFeed(url: string, options?: { skipIconFetch?: boolean
                     method: 'GET',
                     headers: {
                         ...baseHeaders,
-                        'User-Agent': YOUTUBE_USER_AGENT,
+                        'User-Agent': YOUTUBE_FETCH_USER_AGENT,
                         'Accept-Language': 'en-US,en;q=0.9',
                     },
                     signal: AbortSignal.timeout(HTTP.REQUEST_TIMEOUT),
@@ -396,34 +275,19 @@ export function normalizeArticle(raw: RawArticle, feedType: FeedType): Normalize
         }
     }
 
-    // Reddit specific normalization
     if (feedType === 'reddit') {
-        // Clean up Reddit content (often contains [link] [comments] footers)
         if (content) {
             content = cleanRedditContent(content);
         }
 
-        // Regenerate summary from cleaned content to avoid Reddit footers
         summary = content ? truncate(stripHtml(content), CONTENT.PREVIEW_SUMMARY_LENGTH) : null;
 
-        // Reddit author is usually u/username
-        if (author && !author.startsWith('u/')) {
-            author = `u/${author}`;
-        }
+        author = normalizeRedditAuthor(author);
 
-        // Reddit thumbnails
         if (!thumbnail && content) {
-            // Support both src and preview patterns
-            const imgMatch = content.match(/<img[^>]+src="([^">]+)"/) || content.match(/<a[^>]+href="([^">]+\.(?:jpg|jpeg|png|gif|webp)[^">]*)"/i);
-            if (imgMatch) {
-                thumbnail = imgMatch[1];
-            }
-        }
-
-        if (thumbnail) {
-            // First decode any &amp; entities often found in Reddit thumbnails
-            thumbnail = decodeHtmlEntities(thumbnail);
-            thumbnail = upgradeRedditImageUrl(thumbnail);
+            thumbnail = extractRedditThumbnail(content);
+        } else if (thumbnail) {
+            thumbnail = upgradeRedditImageUrl(decodeHtmlEntities(thumbnail));
         }
     }
 
@@ -441,40 +305,7 @@ export function normalizeArticle(raw: RawArticle, feedType: FeedType): Normalize
     };
 }
 
-function cleanRedditContent(html: string): string {
-    // Remove the "submitted by /u/... to /r/..." footer that Reddit RSS adds
-    // which consists of a table with common links
-    return html.replace(/<table[^>]*>[\s\S]*?<\/table>/gi, '').trim();
-}
 
-function upgradeRedditImageUrl(url: string): string {
-    try {
-        const urlObj = new URL(url);
-        if (urlObj.searchParams.has('s') && urlObj.searchParams.get('s')) {
-            return url;
-        }
-
-        // For preview.redd.it, optimize for thumbnails (640px width)
-        if (urlObj.hostname === 'preview.redd.it') {
-            urlObj.searchParams.set('width', '640');
-            urlObj.searchParams.set('crop', 'smart');
-            urlObj.searchParams.set('auto', 'webp');
-            return urlObj.toString();
-        }
-
-        // For external-preview.redd.it, optimize for thumbnails
-        if (urlObj.hostname === 'external-preview.redd.it') {
-            urlObj.searchParams.set('width', '640');
-            urlObj.searchParams.set('format', 'jpg');
-            urlObj.searchParams.set('auto', 'webp');
-            return urlObj.toString();
-        }
-
-        return url;
-    } catch {
-        return url;
-    }
-}
 
 export function detectFeedType(url: string, feed: ParsedFeed): FeedType {
     const urlLower = url.toLowerCase();
@@ -506,69 +337,9 @@ function generateGuid(item: FeedParser.Item): string {
     return `${STRINGS.GENERATED_GUID_PREFIX}${Math.abs(hash).toString(MISC.HASH_RADIX)}`;
 }
 
-function stripHtml(html: string): string {
-    return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-}
-
-function truncate(text: string, length: number): string {
-    if (text.length <= length) return text;
-    return text.substring(0, length).replace(/\s+\S*$/, '') + CONTENT.TRUNCATION_SUFFIX;
-}
-
-function decodeHtmlEntities(text: string | null): string {
-    if (!text) return '';
-    return text.replace(/&(#?[a-zA-Z0-9]+);/g, (match, entity) => {
-        const entities: Record<string, string> = {
-            'amp': '&',
-            'lt': '<',
-            'gt': '>',
-            'quot': '"',
-            'apos': "'",
-            'nbsp': ' ',
-        };
-        if (entity.startsWith('#')) {
-            const isHex = entity.charAt(1).toLowerCase() === 'x';
-            try {
-                const code = isHex ? parseInt(entity.slice(2), 16) : parseInt(entity.slice(1), 10);
-                return isNaN(code) ? match : String.fromCharCode(code);
-            } catch {
-                return match;
-            }
-        }
-        const lowerEntity = entity.toLowerCase();
-        return entities[lowerEntity] || match;
-    });
-}
-
-function extractYouTubeChannelId(extendedMeta: any): string | null {
-    const channelId = (extendedMeta as any)['yt:channelid'] || (extendedMeta as any)['yt:channelId'];
-    if (!channelId) return null;
-    
-    // Handle XML-parsed objects where the actual value is in the '#' property
-    if (typeof channelId === 'object' && channelId && typeof channelId['#'] === 'string') {
-        return channelId['#'];
-    }
-    
-    // Handle string values
-    if (typeof channelId === 'string') {
-        return channelId;
-    }
-    
-    return null;
-}
-
-function extractFavicon(siteUrl: string | null): string | null {
-    if (!siteUrl) return null;
-    try {
-        const url = new URL(siteUrl);
-        return `${url.origin}/favicon.ico`;
-    } catch {
-        return null;
-    }
-}
 
 
-// Validate URL before attempting fetch
+
 function validateUrl(url: string): void {
     if (!url || typeof url !== 'string') {
         throw new Error('URL must be a non-empty string');

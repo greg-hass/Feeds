@@ -1,5 +1,7 @@
 import * as cheerio from 'cheerio';
-import { FeedType, fetchYouTubeIcon, fetchRedditIcon } from './feed-parser.js';
+import { FeedType } from './feed-parser.js';
+import { fetchYouTubeIcon } from './youtube-parser.js';
+import { fetchRedditIcon } from './reddit-parser.js';
 import { getAiSuggestedFeeds } from './ai.js';
 
 export interface DiscoveredFeed {

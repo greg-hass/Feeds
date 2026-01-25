@@ -1,7 +1,8 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { queryOne, queryAll, run, runMany } from '../db/index.js';
 import { discoverFeedsFromUrl } from '../services/discovery.js';
-import { parseFeed, normalizeArticle, detectFeedType, FeedType, fetchYouTubeIcon } from '../services/feed-parser.js';
+import { parseFeed, normalizeArticle, detectFeedType, FeedType } from '../services/feed-parser.js';
+import { fetchYouTubeIcon } from '../services/youtube-parser.js';
 import { refreshFeed } from '../services/feed-refresh.js';
 import { cacheFeedIcon } from '../services/icon-cache.js';
 import { Feed } from '../types/index.js';
