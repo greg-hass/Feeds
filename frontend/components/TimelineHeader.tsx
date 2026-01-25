@@ -37,7 +37,7 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
                 )}
             </View>
             <View style={s.headerActions}>
-                {timeLeft && (
+                {timeLeft && !isRefreshing && (
                     <Text style={s.timerText}>{timeLeft}</Text>
                 )}
                 <TouchableOpacity
