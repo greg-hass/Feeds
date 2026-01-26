@@ -33,7 +33,7 @@ export async function buildApp() {
 
     // CORS
     await app.register(cors, {
-        origin: process.env.CORS_ORIGIN || true,
+        origin: process.env.CORS_ORIGIN || (process.env.NODE_ENV === 'development' ? true : 'http://localhost:8080'),
         credentials: true,
         methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization'],
@@ -44,7 +44,7 @@ export async function buildApp() {
         // Content Security Policy
         const csp = [
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+            `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ""}`,
             "style-src 'self' 'unsafe-inline'",
             "img-src 'self' data: https: http:",
             "media-src 'self' https: http: blob:",
@@ -68,13 +68,15 @@ export async function buildApp() {
     // Health check
     app.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));
 
-    // Debug endpoint (remove in production)
-    app.get('/debug/env', async () => ({
-        youtube_api_key_present: !!process.env.YOUTUBE_API_KEY,
-        youtube_api_key_prefix: process.env.YOUTUBE_API_KEY?.substring(0, 8) || 'NOT_SET',
-        gemini_api_key_present: !!process.env.GEMINI_API_KEY,
-        node_env: process.env.NODE_ENV || 'not_set'
-    }));
+    // Debug endpoint (development only)
+    if (process.env.NODE_ENV === 'development') {
+        app.get('/debug/env', async () => ({
+            youtube_api_key_present: !!process.env.YOUTUBE_API_KEY,
+            youtube_api_key_prefix: process.env.YOUTUBE_API_KEY?.substring(0, 8) || 'NOT_SET',
+            gemini_api_key_present: !!process.env.GEMINI_API_KEY,
+            node_env: process.env.NODE_ENV || 'not_set'
+        }));
+    }
 
     // API routes
     await app.register(feedsRoutes, { prefix: '/api/v1/feeds' });

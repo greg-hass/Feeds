@@ -36,7 +36,7 @@ export async function feedsStreamRoutes(app: FastifyInstance) {
             'Content-Type': 'text/event-stream',
             'Cache-Control': 'no-cache',
             'Connection': 'keep-alive',
-            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Origin': process.env.CORS_ORIGIN || (process.env.NODE_ENV === 'development' ? 'http://localhost:8081' : 'http://localhost:8080'),
             'X-Accel-Buffering': 'no',
         });
 
@@ -76,8 +76,10 @@ export async function feedsStreamRoutes(app: FastifyInstance) {
     // Bulk refresh feeds with SSE progress
     app.get('/refresh-multiple', async (request: FastifyRequest<{ Querystring: { ids?: string } }>, reply: FastifyReply) => {
         let isCancelled = false;
+        const abortController = new AbortController();
         request.raw.on('close', () => {
             isCancelled = true;
+            abortController.abort();
         });
 
         const idsParam = request.query.ids;
@@ -129,7 +131,7 @@ export async function feedsStreamRoutes(app: FastifyInstance) {
             'Content-Type': 'text/event-stream',
             'Cache-Control': 'no-cache',
             'Connection': 'keep-alive',
-            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Origin': process.env.CORS_ORIGIN || (process.env.NODE_ENV === 'development' ? 'http://localhost:8081' : 'http://localhost:8080'),
             'X-Accel-Buffering': 'no', // Disable nginx buffering
         });
 
@@ -181,6 +183,7 @@ export async function feedsStreamRoutes(app: FastifyInstance) {
                             refresh_interval_minutes: feed.refresh_interval_minutes,
                             hasValidIcon: feed.icon_url ? !isGenericIconUrl(feed.icon_url) : false,
                             userId: feed.user_id,
+                            signal: abortController.signal,
                         };
 
                         // Use Promise.race for timeout (fail fast on slow feeds)
@@ -258,11 +261,10 @@ export async function feedsStreamRoutes(app: FastifyInstance) {
 
                 run(
                     `UPDATE feeds SET
-                        refresh_interval_minutes = ?,
-                        next_fetch_at = datetime('now', '+' || ? || ' minutes'),
+                        next_fetch_at = datetime('now', '+' || refresh_interval_minutes || ' minutes'),
                         updated_at = datetime('now')
                      WHERE user_id = ? AND deleted_at IS NULL`,
-                    [intervalMinutes, intervalMinutes, userId]
+                    [userId]
                 );
             }
         } catch (err) {

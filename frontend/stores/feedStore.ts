@@ -7,6 +7,12 @@ import { handleError } from '@/services/errorHandler';
 import { useArticleStore } from './articleStore';
 import { FeedState } from './types';
 
+const isAbortError = (error: unknown): boolean => {
+    return error instanceof Error && error.name === 'AbortError';
+};
+
+let refreshAbortController: AbortController | null = null;
+
 export const useFeedStore = create<FeedState>()(
     persist(
         (set, get) => ({
@@ -82,18 +88,45 @@ export const useFeedStore = create<FeedState>()(
             },
 
             setIsLoading: (loading: boolean) => set({ isLoading: loading }),
-            
-            setRefreshProgress: (progress: { total: number; completed: number; currentTitle: string } | null) => 
+
+            setRefreshProgress: (progress: { total: number; completed: number; currentTitle: string } | null) =>
                 set({ refreshProgress: progress }),
-            
-            setLastRefreshNewArticles: (count: number | null) => 
+
+            setLastRefreshNewArticles: (count: number | null) =>
                 set({ lastRefreshNewArticles: count }),
-            
-            updateLocalFeeds: (updater: (feeds: Feed[]) => Feed[]) => 
+
+            updateLocalFeeds: (updater: (feeds: Feed[]) => Feed[]) =>
                 set((state) => ({ feeds: updater(state.feeds) })),
+
+            refreshAllFeeds: async (feedIds?: number[]) => {
+                let totalNewArticles = 0;
+
+                const controller = new AbortController();
+                if (refreshAbortController) {
+                    refreshAbortController.abort();
+                }
+                refreshAbortController = controller;
+                set({ isLoading: true });
+
+                try {
+                    await api.refreshFeedsWithProgress(
+                        feedIds,
+                        (event) => {
+                            if (event.type === 'start') {
+                                set({ refreshProgress: { total: event.total_feeds, completed: 0, currentTitle: '' } });
+                            } else if (event.type === 'feed_refreshing') {
+                                set((prev) => ({
+                                    refreshProgress: prev.refreshProgress ? {
+                                        ...prev.refreshProgress,
+                                        completed: prev.refreshProgress.completed + 1,
+                                        currentTitle: event.title
+                                    } : null
+                                }));
+                            } else if (event.type === 'feed_complete') {
+                                totalNewArticles += event.new_articles;
+                            }
+                        },
                         (error) => {
-                            // Don't show error toast for SSE stream interruptions (e.g., phone lock, app background)
-                            // The final fetches will still get the updated data
                             if (!isAbortError(error)) {
                                 console.error('[RefreshFeeds] SSE stream error:', error);
                             }
@@ -105,8 +138,6 @@ export const useFeedStore = create<FeedState>()(
                         return;
                     }
 
-                    // Final fetch to ensure everything is in sync
-                    if (refreshTimeout) clearTimeout(refreshTimeout);
                     await Promise.all([
                         get().fetchFeeds(),
                         get().fetchFolders(),
@@ -181,17 +212,6 @@ export const useFeedStore = create<FeedState>()(
                     feeds: state.feeds.map((f) => (f.id === id ? { ...f, ...updates } : f)),
                 }));
             },
-            
-            setIsLoading: (loading: boolean) => set({ isLoading: loading }),
-            
-            setRefreshProgress: (progress: { total: number; completed: number; currentTitle: string } | null) => 
-                set({ refreshProgress: progress }),
-            
-            setLastRefreshNewArticles: (count: number | null) => 
-                set({ lastRefreshNewArticles: count }),
-            
-            updateLocalFeeds: (updater: (feeds: Feed[]) => Feed[]) => 
-                set((state) => ({ feeds: updater(state.feeds) })),
 
             applySyncChanges: (changes: SyncChanges, isRefreshing?: boolean) => {
                 const syncData = applySyncChanges(changes);

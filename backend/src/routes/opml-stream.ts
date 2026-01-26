@@ -50,7 +50,7 @@ export async function opmlStreamRoutes(app: FastifyInstance) {
             'Content-Type': 'text/event-stream',
             'Cache-Control': 'no-cache',
             'Connection': 'keep-alive',
-            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Origin': process.env.CORS_ORIGIN || (process.env.NODE_ENV === 'development' ? 'http://localhost:8081' : 'http://localhost:8080'),
             'X-Accel-Buffering': 'no', // Disable nginx buffering
         });
 

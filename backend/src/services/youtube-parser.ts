@@ -4,12 +4,6 @@ import { fetchWithRetry } from './http.js';
 const YOUTUBE_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 
-if (YOUTUBE_API_KEY) {
-    console.log('[Config] YouTube API Key loaded: ' + YOUTUBE_API_KEY.substring(0, 4) + '...');
-} else {
-    console.warn('[Config] YouTube API Key NOT found. Falling back to scraping.');
-}
-
 export async function fetchYouTubeIcon(channelId: string | null | undefined): Promise<string | null> {
     if (!channelId || typeof channelId !== 'string' || !channelId.startsWith('UC') || channelId.length !== 24) {
         console.log(`[YouTube Icon] Invalid channel ID format: "${channelId}" (expected UC + 22 chars)`);

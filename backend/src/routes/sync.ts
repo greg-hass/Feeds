@@ -19,20 +19,21 @@ function toSqliteTimestamp(value: string): string {
     if (value.includes('T')) {
         const parsed = new Date(value);
         if (!isNaN(parsed.getTime())) {
-            return parsed.toISOString().replace('T', ' ').replace('Z', '').slice(0, 19);
+            // Keep milliseconds if present (YYYY-MM-DD HH:MM:SS.SSS)
+            return parsed.toISOString().replace('T', ' ').replace('Z', '');
         }
     }
     return value;
 }
 
 function decodeCursor(cursor: string | undefined): string {
-    if (!cursor) return '1970-01-01 00:00:00';
+    if (!cursor) return '1970-01-01 00:00:00.000';
 
     try {
         const decoded = JSON.parse(Buffer.from(cursor, 'base64').toString());
         return toSqliteTimestamp(decoded.last_sync_at);
     } catch {
-        return '1970-01-01 00:00:00';
+        return '1970-01-01 00:00:00.000';
     }
 }
 
@@ -101,8 +102,8 @@ export async function syncRoutes(app: FastifyInstance): Promise<void> {
             };
         }
 
-        const serverTimeRow = queryOne<{ now: string }>("SELECT datetime('now') AS now");
-        const serverTime = serverTimeRow?.now || new Date().toISOString().replace('T', ' ').replace('Z', '').slice(0, 19);
+        const serverTimeRow = queryOne<{ now: string }>("SELECT STRFTIME('%Y-%m-%d %H:%M:%f', 'now') AS now");
+        const serverTime = serverTimeRow?.now || new Date().toISOString().replace('T', ' ').replace('Z', '');
         return {
             changes,
             next_cursor: encodeCursor(serverTime),
@@ -120,7 +121,7 @@ export async function syncRoutes(app: FastifyInstance): Promise<void> {
                 try {
                     run(
                         `INSERT OR REPLACE INTO read_state (user_id, article_id, is_read, read_at, updated_at)
-                         VALUES (?, ?, ?, datetime('now'), datetime('now'))`,
+                         VALUES (?, ?, ?, STRFTIME('%Y-%m-%d %H:%M:%f', 'now'), STRFTIME('%Y-%m-%d %H:%M:%f', 'now'))`,
                         [userId, change.article_id, change.is_read ? 1 : 0]
                     );
                     results.read_state.accepted++;

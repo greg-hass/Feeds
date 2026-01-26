@@ -70,18 +70,23 @@ const MAX_RETRY_DELAY = 2000;
 
 
 
-async function fetchFeedWithFallback(url: string): Promise<Response> {
+async function fetchFeedWithFallback(url: string, signal?: AbortSignal): Promise<Response> {
     const baseHeaders = {
         'User-Agent': USER_AGENT,
         'Accept': 'application/rss+xml, application/atom+xml, application/xml, text/xml, */*',
     };
     const isYouTubeFeed = url.toLowerCase().includes('youtube.com/feeds');
 
+    const getSignal = () => {
+        const timeoutSignal = AbortSignal.timeout(HTTP.REQUEST_TIMEOUT);
+        return signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
+    };
+
     try {
         return await fetchWithRetry(url, () => ({
             method: 'GET',
             headers: baseHeaders,
-            signal: AbortSignal.timeout(HTTP.REQUEST_TIMEOUT),
+            signal: getSignal(),
         }), {
             retries: MAX_RETRIES,
             baseDelayMs: BASE_RETRY_DELAY,
@@ -98,7 +103,7 @@ async function fetchFeedWithFallback(url: string): Promise<Response> {
                         'User-Agent': YOUTUBE_FETCH_USER_AGENT,
                         'Accept-Language': 'en-US,en;q=0.9',
                     },
-                    signal: AbortSignal.timeout(HTTP.REQUEST_TIMEOUT),
+                    signal: getSignal(),
                 }), {
                     retries: MAX_RETRIES,
                     baseDelayMs: BASE_RETRY_DELAY,
@@ -113,10 +118,10 @@ async function fetchFeedWithFallback(url: string): Promise<Response> {
     }
 }
 
-export async function parseFeed(url: string, options?: { skipIconFetch?: boolean }): Promise<ParsedFeed> {
+export async function parseFeed(url: string, options?: { skipIconFetch?: boolean, signal?: AbortSignal }): Promise<ParsedFeed> {
     validateUrl(url);
     
-    const response = await fetchFeedWithFallback(url);
+    const response = await fetchFeedWithFallback(url, options?.signal);
 
     if (!response.ok) {
         throw new Error(`Failed to fetch feed: ${response.status} ${response.statusText}`);

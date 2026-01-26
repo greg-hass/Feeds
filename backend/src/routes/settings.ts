@@ -12,6 +12,10 @@ const updateSettingsSchema = z.object({
     font_size: z.enum(['small', 'medium', 'large']).optional(),
     show_images: z.boolean().optional(),
     accent_color: z.enum(['emerald', 'blue', 'indigo', 'violet', 'rose', 'amber', 'cyan', 'yellow']).optional(),
+    font_family: z.enum(['sans', 'serif']).optional(),
+    reader_theme: z.enum(['default', 'sepia', 'paper', 'dark']).optional(),
+    reader_line_height: z.number().optional(),
+    view_density: z.enum(['compact', 'comfortable', 'spacious']).optional(),
 });
 
 // Track if we've already ensured the column exists this session
