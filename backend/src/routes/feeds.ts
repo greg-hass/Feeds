@@ -24,6 +24,10 @@ const bulkActionSchema = z.object({
     refresh_interval_minutes: z.number().min(5).max(1440).optional(),
 });
 
+type AddFeedBody = z.infer<typeof addFeedSchema>;
+type UpdateFeedBody = z.infer<typeof updateFeedSchema>;
+type BulkActionBody = z.infer<typeof bulkActionSchema>;
+
 export async function feedsRoutes(app: FastifyInstance) {
     // List feeds
     app.get('/', FeedsController.list);
@@ -32,28 +36,27 @@ export async function feedsRoutes(app: FastifyInstance) {
     app.get('/:id', FeedsController.getOne);
 
     // Add feed (with discovery)
-    app.post('/', async (request, reply) => {
+    app.post<{ Body: AddFeedBody }>('/', async (request, reply) => {
         const body = addFeedSchema.parse(request.body);
         request.body = body;
-        return FeedsController.add(request as any, reply);
+        return FeedsController.add(request, reply);
     });
 
     // Update feed
-    app.patch('/:id', async (request, reply) => {
+    app.patch<{ Body: UpdateFeedBody; Params: { id: string } }>('/:id', async (request, reply) => {
         const body = updateFeedSchema.parse(request.body);
         request.body = body;
-        // The controller expects params.id
-        return FeedsController.update(request as any, reply);
+        return FeedsController.update(request, reply);
     });
 
     // Delete feed
     app.delete('/:id', FeedsController.delete);
 
     // Bulk operations
-    app.post('/bulk', async (request, reply) => {
+    app.post<{ Body: BulkActionBody }>('/bulk', async (request, reply) => {
         const body = bulkActionSchema.parse(request.body);
         request.body = body;
-        return FeedsController.bulk(request as any, reply);
+        return FeedsController.bulk(request, reply);
     });
 
     // Force refresh feed

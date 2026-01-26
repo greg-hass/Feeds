@@ -1,4 +1,5 @@
-import { run, queryOne } from '../db/index.js';
+import { Database } from 'better-sqlite3';
+import { run, queryOne, db } from '../db/index.js';
 import { parseFeed, normalizeArticle, FeedType } from './feed-parser.js';
 import { cacheFeedIcon } from './icon-cache.js';
 import { cacheArticleThumbnail } from './thumbnail-cache.js';
@@ -94,7 +95,7 @@ interface ArticleInsertResult {
 }
 
 function insertArticles(
-    database: any,
+    database: Database,
     feedId: number,
     articles: any[],
     feedType: FeedType,
@@ -160,34 +161,41 @@ async function updateFeedMetadata(
 ): Promise<string | null> {
     const iconCandidate = feedData.favicon;
     const shouldUpdateIconUrl = !!iconCandidate && (!iconStatus.iconUrl || isGenericIconUrl(iconStatus.iconUrl));
-    const needsIconCache = !iconStatus.iconCachedPath && iconCandidate;
     
-    let typeUpdate = '';
+    // Prepare values for update
+    const titleUpdate = feedData.title;
+    const siteUrlUpdate = feedData.link;
+    const iconUrlUpdate = shouldUpdateIconUrl ? iconCandidate : null;
+    const iconPathUpdate = cachedIcon?.fileName ?? null;
+    const iconMimeUpdate = cachedIcon?.mime ?? null;
+    const descUpdate = feedData.description;
+
     const params: any[] = [
-        feedData.title,
-        feedData.link,
-        shouldUpdateIconUrl ? iconCandidate : null,
-        cachedIcon?.fileName ?? null,
-        cachedIcon?.mime ?? null,
-        feedData.description,
+        titleUpdate,        // for title CASE
+        siteUrlUpdate,      // for site_url COALESCE
+        iconUrlUpdate,      // for icon_url COALESCE
+        iconPathUpdate,     // for icon_cached_path COALESCE
+        iconMimeUpdate,     // for icon_cached_content_type COALESCE
+        descUpdate,         // for description COALESCE
+        refreshIntervalMinutes, // for next_fetch_at
+        refreshIntervalMinutes, // for refresh_interval_minutes
     ];
-    
+
+    let typeClause = '';
     if (newType !== oldType) {
-        typeUpdate = ', type = ?';
+        typeClause = ', type = ?';
         params.push(newType);
     }
     
     params.push(feedId);
-    
-    const updateParams = [...params];
-    updateParams.splice(updateParams.length - 1, 0, refreshIntervalMinutes, refreshIntervalMinutes);
-    
-    run(
-        `UPDATE feeds SET
-        title = CASE 
-                    WHEN title = url OR title = 'Direct Feed' OR title = 'Discovered Feed' THEN ?
-            ELSE title
-        END,
+
+    // SQL broken down for readability
+    const sql = `
+        UPDATE feeds SET
+            title = CASE 
+                WHEN title = url OR title = 'Direct Feed' OR title = 'Discovered Feed' THEN ?
+                ELSE title
+            END,
             site_url = COALESCE(site_url, ?),
             icon_url = COALESCE(?, icon_url),
             icon_cached_path = COALESCE(?, icon_cached_path),
@@ -200,10 +208,11 @@ async function updateFeedMetadata(
             last_error = NULL,
             last_error_at = NULL,
             updated_at = datetime('now')
-                ${typeUpdate}
-             WHERE id = ? `,
-        updateParams
-    );
+            ${typeClause}
+        WHERE id = ?
+    `;
+    
+    run(sql, params);
     
     const updatedFeed = queryOne<{ next_fetch_at: string }>(
         'SELECT next_fetch_at FROM feeds WHERE id = ?',
@@ -328,7 +337,7 @@ export interface FeedToRefreshWithCache extends FeedToRefresh {
  */
 export async function refreshFeed(feed: FeedToRefreshWithCache): Promise<RefreshResult> {
     let refreshIntervalMinutes = feed.refresh_interval_minutes;
-    const database = (await import('../db/index.js')).db();
+    const database = db();
     
     try {
         const iconStatus = await getFeedIconStatus(feed.id, feed.hasValidIcon);

@@ -11,6 +11,7 @@ import TimelineArticle from './TimelineArticle';
 import NewArticlesPill from './NewArticlesPill';
 import { DigestCard } from './DigestCard';
 import { timelineStyles } from './Timeline.styles';
+import { scheduleIdle, canPrefetch } from '@/utils/scheduler';
 
 interface TimelineProps {
     onArticlePress?: (article: Article) => void;
@@ -77,36 +78,6 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
             getBookmarkRotation={getBookmarkRotation}
         />
     );
-
-    const scheduleIdle = (callback: () => void) => {
-        if (Platform.OS === 'web' && typeof window !== 'undefined') {
-            const requestIdle = (window as any).requestIdleCallback;
-            if (typeof requestIdle === 'function') {
-                requestIdle(callback, { timeout: 1500 });
-                return;
-            }
-        }
-        InteractionManager.runAfterInteractions(callback);
-    };
-
-    const canPrefetch = async () => {
-        if (Platform.OS !== 'web' || typeof navigator === 'undefined') return true;
-        const connection = (navigator as any).connection;
-        if (connection?.saveData) return false;
-        const effectiveType = connection?.effectiveType;
-        if (effectiveType && ['slow-2g', '2g'].includes(effectiveType)) return false;
-
-        if (typeof (navigator as any).getBattery === 'function') {
-            try {
-                const battery = await (navigator as any).getBattery();
-                if (battery && !battery.charging) return false;
-            } catch {
-                // Ignore battery API errors and allow prefetch.
-            }
-        }
-
-        return true;
-    };
 
     useEffect(() => {
         if (isLoading || articles.length === 0) return;

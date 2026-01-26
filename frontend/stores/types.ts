@@ -10,6 +10,7 @@ export interface FeedState {
     isBackgroundRefreshing: boolean;
     refreshProgress: { total: number; completed: number; currentTitle: string } | null;
     lastRefreshNewArticles: number | null;
+    refreshAbortController: AbortController | null;
 
     fetchFeeds: () => Promise<void>;
     fetchFolders: () => Promise<void>;
@@ -17,6 +18,7 @@ export interface FeedState {
     deleteFeed: (id: number) => Promise<void>;
     deleteFolder: (id: number) => Promise<void>;
     refreshFeed: (id: number) => Promise<number>;
+    refreshAllFeeds: (feedIds?: number[]) => Promise<void>;
     cancelRefresh: () => void;
     updateFeed: (id: number, updates: Partial<Feed>) => Promise<void>;
     pauseFeed: (id: number) => Promise<void>;

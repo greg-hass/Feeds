@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { api, Feed, Folder } from '@/services/api';
+import { api, Feed, Folder, RefreshProgressEvent } from '@/services/api';
 import { applySyncChanges, SyncChanges, fetchChanges } from '@/lib/sync';
 import { handleError } from '@/services/errorHandler';
 import { useArticleStore } from './articleStore';
@@ -11,7 +11,25 @@ const isAbortError = (error: unknown): boolean => {
     return error instanceof Error && error.name === 'AbortError';
 };
 
-let refreshAbortController: AbortController | null = null;
+const handleRefreshEvent = (
+    event: RefreshProgressEvent,
+    set: any,
+    totalNewArticlesRef: { current: number }
+) => {
+    if (event.type === 'start') {
+        set({ refreshProgress: { total: event.total_feeds, completed: 0, currentTitle: '' } });
+    } else if (event.type === 'feed_refreshing') {
+        set((prev: FeedState) => ({
+            refreshProgress: prev.refreshProgress ? {
+                ...prev.refreshProgress,
+                completed: prev.refreshProgress.completed + 1,
+                currentTitle: event.title
+            } : null
+        }));
+    } else if (event.type === 'feed_complete') {
+        totalNewArticlesRef.current += event.new_articles;
+    }
+};
 
 export const useFeedStore = create<FeedState>()(
     persist(
@@ -24,6 +42,7 @@ export const useFeedStore = create<FeedState>()(
             isBackgroundRefreshing: false,
             refreshProgress: null,
             lastRefreshNewArticles: null,
+            refreshAbortController: null,
 
             fetchFeeds: async () => {
                 set({ isLoading: true });
@@ -99,33 +118,20 @@ export const useFeedStore = create<FeedState>()(
                 set((state) => ({ feeds: updater(state.feeds) })),
 
             refreshAllFeeds: async (feedIds?: number[]) => {
-                let totalNewArticles = 0;
+                const totalNewArticlesRef = { current: 0 };
+                const articleStore = useArticleStore.getState();
 
                 const controller = new AbortController();
+                const { refreshAbortController } = get();
                 if (refreshAbortController) {
                     refreshAbortController.abort();
                 }
-                refreshAbortController = controller;
-                set({ isLoading: true });
+                set({ refreshAbortController: controller, isLoading: true });
 
                 try {
                     await api.refreshFeedsWithProgress(
                         feedIds,
-                        (event) => {
-                            if (event.type === 'start') {
-                                set({ refreshProgress: { total: event.total_feeds, completed: 0, currentTitle: '' } });
-                            } else if (event.type === 'feed_refreshing') {
-                                set((prev) => ({
-                                    refreshProgress: prev.refreshProgress ? {
-                                        ...prev.refreshProgress,
-                                        completed: prev.refreshProgress.completed + 1,
-                                        currentTitle: event.title
-                                    } : null
-                                }));
-                            } else if (event.type === 'feed_complete') {
-                                totalNewArticles += event.new_articles;
-                            }
-                        },
+                        (event) => handleRefreshEvent(event, set, totalNewArticlesRef),
                         (error) => {
                             if (!isAbortError(error)) {
                                 console.error('[RefreshFeeds] SSE stream error:', error);
@@ -154,21 +160,23 @@ export const useFeedStore = create<FeedState>()(
                         handleError(error, { context: 'refreshAllFeeds' });
                     }
                 } finally {
-                    if (refreshAbortController === controller) {
-                        refreshAbortController = null;
+                    // Only clear if we are still the active controller
+                    if (get().refreshAbortController === controller) {
+                        set({ refreshAbortController: null });
                     }
                     set({
                         isLoading: false,
                         refreshProgress: null,
-                        lastRefreshNewArticles: totalNewArticles > 0 ? totalNewArticles : null
+                        lastRefreshNewArticles: totalNewArticlesRef.current > 0 ? totalNewArticlesRef.current : null
                     });
                 }
             },
 
             cancelRefresh: () => {
+                const { refreshAbortController } = get();
                 if (refreshAbortController) {
                     refreshAbortController.abort();
-                    refreshAbortController = null;
+                    set({ refreshAbortController: null });
                 }
                 set({ isLoading: false, refreshProgress: null });
             },
