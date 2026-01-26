@@ -5,7 +5,16 @@ import { api, Article, ArticleDetail } from '@/services/api';
 import { applySyncChanges, SyncChanges } from '@/lib/sync';
 import { handleError } from '@/services/errorHandler';
 import { ArticleState } from './types';
+import { FeedState } from './types';
 
+function sortArticles(articles: Article[]): Article[] {
+    return articles.sort((a, b) => {
+        const dateA = new Date(a.published_at || 0).getTime();
+        const dateB = new Date(b.published_at || 0).getTime();
+        if (dateA !== dateB) return dateB - dateA;
+        return b.id - a.id;
+    });
+}
 
 export const useArticleStore = create<ArticleState>()(
     persist(
@@ -84,14 +93,7 @@ export const useArticleStore = create<ArticleState>()(
                             return;
                         }
 
-                        // Combine and re-sort just in case, though backend usually handles it
-                        finalArticles = [...trulyNew, ...state.articles];
-                        finalArticles.sort((a, b) => {
-                            const dateA = new Date(a.published_at || 0).getTime();
-                            const dateB = new Date(b.published_at || 0).getTime();
-                            if (dateA !== dateB) return dateB - dateA;
-                            return b.id - a.id;
-                        });
+                        finalArticles = sortArticles([...trulyNew, ...state.articles]);
                     } else {
                         // Merge new articles into existing sorted list
                         // Backend returns sorted articles, so we can do efficient merge
@@ -105,14 +107,7 @@ export const useArticleStore = create<ArticleState>()(
 
                         // Only sort if we actually have duplicates (rare case)
                         if (newMap.size < articles.length || existingMap.size !== state.articles.length + articles.length) {
-                            // Had duplicates, need to sort
-                            finalArticles = Array.from(existingMap.values());
-                            finalArticles.sort((a, b) => {
-                                const dateA = new Date(a.published_at || 0).getTime();
-                                const dateB = new Date(b.published_at || 0).getTime();
-                                if (dateA !== dateB) return dateB - dateA;
-                                return b.id - a.id;
-                            });
+                            finalArticles = sortArticles(Array.from(existingMap.values()));
                         } else {
                             // No duplicates, just concatenate (backend already sorted)
                             finalArticles = [...state.articles, ...articles];
@@ -210,7 +205,7 @@ export const useArticleStore = create<ArticleState>()(
                     set((state) => ({
                         contentCache: { ...state.contentCache, [id]: article }
                     }));
-                } catch {
+                } catch (e) {
                     // Silent fail for prefetch
                 }
             },
@@ -218,7 +213,7 @@ export const useArticleStore = create<ArticleState>()(
             markRead: async (id) => {
                 try {
                     await api.markArticleRead(id);
-                } catch { /* ignore offline and hope for sync later */ }
+                } catch (e) { /* ignore offline and hope for sync later */ }
                 set((state) => ({
                     articles: state.articles.map((a) =>
                         a.id === id ? { ...a, is_read: true } : a
@@ -229,7 +224,7 @@ export const useArticleStore = create<ArticleState>()(
             markUnread: async (id) => {
                 try {
                     await api.markArticleUnread(id);
-                } catch { /* ignore */ }
+                } catch (e) { /* ignore */ }
                 set((state) => ({
                     articles: state.articles.map((a) =>
                         a.id === id ? { ...a, is_read: false } : a
@@ -358,14 +353,7 @@ export const useArticleStore = create<ArticleState>()(
                         });
 
                         if (addedArticles.length > 0) {
-                            newArticles = [...addedArticles, ...newArticles];
-                            // Sort by date then ID
-                            newArticles.sort((a, b) => {
-                                const dateA = new Date(a.published_at || 0).getTime();
-                                const dateB = new Date(b.published_at || 0).getTime();
-                                if (dateA !== dateB) return dateB - dateA;
-                                return b.id - a.id;
-                            });
+                            newArticles = sortArticles([...addedArticles, ...newArticles]);
                         }
                     }
 

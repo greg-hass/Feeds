@@ -17,13 +17,18 @@ export interface FeedState {
     deleteFeed: (id: number) => Promise<void>;
     deleteFolder: (id: number) => Promise<void>;
     refreshFeed: (id: number) => Promise<number>;
-    refreshAllFeeds: (ids?: number[]) => Promise<void>;
     cancelRefresh: () => void;
     updateFeed: (id: number, updates: Partial<Feed>) => Promise<void>;
     pauseFeed: (id: number) => Promise<void>;
     resumeFeed: (id: number) => Promise<void>;
     updateLocalFeed: (id: number, updates: Partial<Feed>) => void;
     applySyncChanges: (changes: SyncChanges, isRefreshing?: boolean) => void;
+    
+    // Simplified setters for useFeedRefresh hook
+    setIsLoading: (loading: boolean) => void;
+    setRefreshProgress: (progress: { total: number; completed: number; currentTitle: string } | null) => void;
+    setLastRefreshNewArticles: (count: number | null) => void;
+    updateLocalFeeds: (updater: (feeds: Feed[]) => Feed[]) => void;
 }
 
 export interface ArticleState {

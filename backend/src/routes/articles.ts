@@ -40,6 +40,55 @@ function resolveArticleIconUrl(feedId: number, cachedPath: string | null, fallba
     return fallback;
 }
 
+interface NormalizedArticleResponse {
+    id: number;
+    feed_id: number;
+    guid: string;
+    title: string;
+    url: string | null;
+    author: string | null;
+    summary: string | null;
+    enclosure_url: string | null;
+    enclosure_type: string | null;
+    thumbnail_url: string | null;
+    published_at: string | null;
+    feed_title: string;
+    feed_icon_url: string;
+    feed_type: string;
+    is_read: boolean;
+    is_bookmarked: boolean;
+    has_audio: boolean;
+}
+
+function normalizeArticleResponse(
+    article: Article & {
+        feed_title: string;
+        feed_icon_url: string | null;
+        feed_icon_cached_path: string | null;
+        feed_type: string;
+        is_read: number | null;
+        is_bookmarked: number;
+        thumbnail_cached_path: string | null;
+    }
+): NormalizedArticleResponse {
+    const videoId = article.feed_type === 'youtube' ? getYouTubeIdFromGuid(article.guid) : null;
+    const iconUrl = resolveArticleIconUrl(article.feed_id, article.feed_icon_cached_path, article.feed_icon_url);
+    const { feed_icon_cached_path, thumbnail_cached_path, ...rest } = article;
+    let thumbnailUrl = resolveArticleThumbnailUrl(rest.id, thumbnail_cached_path, rest.thumbnail_url);
+    if (!thumbnailUrl && videoId) {
+        thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+    }
+    return {
+        ...rest,
+        feed_icon_url: iconUrl,
+        thumbnail_url: thumbnailUrl,
+        url: rest.url || (videoId ? `https://www.youtube.com/watch?v=${videoId}` : null),
+        is_read: Boolean(rest.is_read),
+        is_bookmarked: Boolean(rest.is_bookmarked),
+        has_audio: Boolean(rest.enclosure_url),
+    };
+}
+
 const THUMBNAIL_ENDPOINT_PREFIX = '/api/v1/thumbnails';
 
 function resolveArticleThumbnailUrl(articleId: number, cachedPath: string | null, fallback: string | null) {
@@ -146,24 +195,7 @@ export async function articlesRoutes(app: FastifyInstance) {
         // Note: Removed expensive COUNT(*) query for total_unread
         // Frontend doesn't actually use this value, saving ~50% query time per request
 
-        const normalizedArticles = articles.map(a => {
-            const videoId = a.feed_type === 'youtube' ? getYouTubeIdFromGuid(a.guid) : null;
-            const iconUrl = resolveArticleIconUrl(a.feed_id, a.feed_icon_cached_path, a.feed_icon_url);
-            const { feed_icon_cached_path, thumbnail_cached_path, ...rest } = a;
-            let thumbnailUrl = resolveArticleThumbnailUrl(rest.id, thumbnail_cached_path, rest.thumbnail_url);
-            if (!thumbnailUrl && videoId) {
-                thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-            }
-            return {
-                ...rest,
-                feed_icon_url: iconUrl,
-                thumbnail_url: thumbnailUrl,
-                url: rest.url || (videoId ? `https://www.youtube.com/watch?v=${videoId}` : null),
-                is_read: Boolean(rest.is_read),
-                is_bookmarked: Boolean(rest.is_bookmarked),
-                has_audio: Boolean(rest.enclosure_url),
-            };
-        });
+        const normalizedArticles = articles.map(normalizeArticleResponse);
 
         return {
             articles: normalizedArticles,
@@ -407,24 +439,7 @@ export async function articlesRoutes(app: FastifyInstance) {
         );
 
         return {
-            articles: articles.map(a => {
-                const videoId = a.feed_type === 'youtube' ? getYouTubeIdFromGuid(a.guid) : null;
-                const iconUrl = resolveArticleIconUrl(a.feed_id, a.feed_icon_cached_path, a.feed_icon_url);
-                const { feed_icon_cached_path, thumbnail_cached_path, ...rest } = a;
-                let thumbnailUrl = resolveArticleThumbnailUrl(rest.id, thumbnail_cached_path, rest.thumbnail_url);
-                if (!thumbnailUrl && videoId) {
-                    thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-                }
-                return {
-                    ...rest,
-                    feed_icon_url: iconUrl,
-                    thumbnail_url: thumbnailUrl,
-                    url: rest.url || (videoId ? `https://www.youtube.com/watch?v=${videoId}` : null),
-                    is_read: Boolean(rest.is_read),
-                    is_bookmarked: Boolean(rest.is_bookmarked),
-                    has_audio: Boolean(rest.enclosure_url),
-                };
-            }),
+            articles: articles.map(normalizeArticleResponse),
         };
     });
 

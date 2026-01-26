@@ -3,6 +3,7 @@ import { FeedType } from './feed-parser.js';
 import { fetchYouTubeIcon } from './youtube-parser.js';
 import { fetchRedditIcon } from './reddit-parser.js';
 import { getAiSuggestedFeeds } from './ai.js';
+import iconService from './icon-service.js';
 
 export interface DiscoveredFeed {
     type: FeedType;
@@ -213,7 +214,7 @@ async function discoverYouTubeFeed(url: string): Promise<DiscoveredFeed | null> 
             title: 'YouTube Channel',
             feed_url: `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`,
             site_url: url,
-            icon_url: (await fetchYouTubeIcon(channelId)) || iconUrl,
+            icon_url: (await iconService.getYouTubeIcon(channelId)) || iconUrl,
             confidence: 0.95,
             method: 'youtube',
         };
@@ -265,7 +266,7 @@ async function discoverRedditFeed(url: string): Promise<DiscoveredFeed | null> {
         title,
         feed_url: feedUrl,
         site_url: url,
-        icon_url: (await fetchRedditIcon(title.replace('r/', '').replace('u/', ''))) || 'https://www.redditstatic.com/desktop2x/img/favicon/favicon-32x32.png',
+        icon_url: (await iconService.getRedditIcon(title.replace('r/', '').replace('u/', ''))) || 'https://www.redditstatic.com/desktop2x/img/favicon/favicon-32x32.png',
         confidence: 0.9,
         method: 'reddit',
     };
@@ -302,7 +303,7 @@ async function discoverYouTubeByKeyword(keyword: string, limit: number): Promise
                 const channelId = info.channelId;
                 const title = info.title?.simpleText || info.title?.runs?.[0]?.text || 'YouTube Channel';
 
-                const icon = await fetchYouTubeIcon(channelId);
+                const icon = await iconService.getYouTubeIcon(channelId);
 
                 discoveries.push({
                     type: 'youtube',
@@ -398,7 +399,7 @@ async function discoverRedditByKeyword(keyword: string, limit: number): Promise<
 
             for (const sub of subreddits) {
                 const info = sub.data;
-                const icon = await fetchRedditIcon(info.display_name);
+                const icon = await iconService.getRedditIcon(info.display_name);
 
                 discoveries.push({
                     type: 'reddit',

@@ -49,6 +49,193 @@ function categorizeRefreshError(err: unknown): { category: string; message: stri
     return { category: 'unknown', message };
 }
 
+interface IconStatus {
+    hasValidIcon: boolean;
+    iconUrl: string | null;
+    iconCachedPath: string | null;
+    iconCachedContentType: string | null;
+}
+
+async function getFeedIconStatus(feedId: number, preFetchedHasValidIcon?: boolean): Promise<IconStatus> {
+    const existingIcon = queryOne<{
+        icon_url: string | null;
+        icon_cached_path: string | null;
+        icon_cached_content_type: string | null;
+    }>('SELECT icon_url, icon_cached_path, icon_cached_content_type FROM feeds WHERE id = ?', [feedId]);
+    
+    const hasValidIcon = preFetchedHasValidIcon ?? (existingIcon?.icon_url ? !isGenericIconUrl(existingIcon.icon_url) : false);
+    
+    return {
+        hasValidIcon,
+        iconUrl: existingIcon?.icon_url ?? null,
+        iconCachedPath: existingIcon?.icon_cached_path ?? null,
+        iconCachedContentType: existingIcon?.icon_cached_content_type ?? null,
+    };
+}
+
+interface FeedSettings {
+    userId: number;
+    refreshIntervalMinutes: number;
+}
+
+function getFeedSettings(feedId: number, userId?: number, baseInterval?: number): FeedSettings {
+    const userIdResolved = userId ?? queryOne<{ user_id: number }>('SELECT user_id FROM feeds WHERE id = ?', [feedId])?.user_id ?? 1;
+    const settings = getUserSettings(userIdResolved);
+    
+    return {
+        userId: userIdResolved,
+        refreshIntervalMinutes: settings.refresh_interval_minutes ?? baseInterval ?? 30,
+    };
+}
+
+interface ArticleInsertResult {
+    insertedCount: number;
+    thumbnailUpdates: Array<{ id: number; url: string }>;
+}
+
+function insertArticles(
+    database: any,
+    feedId: number,
+    articles: any[],
+    feedType: FeedType,
+    shouldCacheThumbnails: boolean
+): ArticleInsertResult {
+    const insertArticle = `
+        INSERT OR IGNORE INTO articles
+        (feed_id, guid, title, url, author, summary, content, enclosure_url, enclosure_type, thumbnail_url, published_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+    
+    const insertStmt = database.prepare(insertArticle);
+    const updateThumbnailStmt = database.prepare(
+        `UPDATE articles SET thumbnail_cached_path = ?, thumbnail_cached_content_type = ? WHERE id = ?`
+    );
+    
+    const transaction = database.transaction((items: any[], type: FeedType) => {
+        let count = 0;
+        const thumbnailUpdates: Array<{ id: number; url: string }> = [];
+        
+        for (const article of items) {
+            const normalized = normalizeArticle(article, type);
+            const insertResult = insertStmt.run(
+                feedId,
+                normalized.guid,
+                normalized.title,
+                normalized.url,
+                normalized.author,
+                normalized.summary,
+                normalized.content,
+                normalized.enclosure_url,
+                normalized.enclosure_type,
+                normalized.thumbnail_url,
+                normalized.published_at
+            );
+            
+            if (insertResult.changes > 0) {
+                count++;
+                const articleId = Number(insertResult.lastInsertRowid);
+                
+                if (normalized.thumbnail_url && shouldCacheThumbnails) {
+                    thumbnailUpdates.push({ id: articleId, url: normalized.thumbnail_url });
+                }
+            }
+        }
+        
+        return { count, thumbnailUpdates };
+    });
+    
+    const { count, thumbnailUpdates } = transaction(articles, feedType);
+    
+    return { insertedCount: count, thumbnailUpdates };
+}
+
+async function updateFeedMetadata(
+    feedId: number,
+    feedData: any,
+    currentType: FeedType,
+    refreshIntervalMinutes: number,
+    iconStatus: IconStatus,
+    cachedIcon: { fileName: string | null; mime: string | null } | null
+): Promise<string | null> {
+    const iconCandidate = feedData.favicon;
+    const shouldUpdateIconUrl = !!iconCandidate && (!iconStatus.iconUrl || isGenericIconUrl(iconStatus.iconUrl));
+    const needsIconCache = !iconStatus.iconCachedPath && iconCandidate;
+    
+    let typeUpdate = '';
+    const params: any[] = [
+        feedData.title,
+        feedData.link,
+        shouldUpdateIconUrl ? iconCandidate : null,
+        cachedIcon?.fileName ?? null,
+        cachedIcon?.mime ?? null,
+        feedData.description,
+    ];
+    
+    if (currentType !== feedType) {
+        typeUpdate = ', type = ?';
+        params.push(currentType);
+    }
+    
+    params.push(feedId);
+    
+    const updateParams = [...params];
+    updateParams.splice(updateParams.length - 1, 0, refreshIntervalMinutes, refreshIntervalMinutes);
+    
+    run(
+        `UPDATE feeds SET
+        title = CASE 
+                    WHEN title = url OR title = 'Direct Feed' OR title = 'Discovered Feed' THEN ?
+            ELSE title
+        END,
+            site_url = COALESCE(site_url, ?),
+            icon_url = COALESCE(?, icon_url),
+            icon_cached_path = COALESCE(?, icon_cached_path),
+            icon_cached_content_type = COALESCE(?, icon_cached_content_type),
+            description = COALESCE(description, ?),
+            last_fetched_at = datetime('now'),
+            next_fetch_at = datetime('now', '+' || CAST(? AS INTEGER) || ' minutes'),
+            refresh_interval_minutes = ?,
+            error_count = 0,
+            last_error = NULL,
+            last_error_at = NULL,
+            updated_at = datetime('now')
+                ${typeUpdate}
+             WHERE id = ? `,
+        updateParams
+    );
+    
+    const updatedFeed = queryOne<{ next_fetch_at: string }>(
+        'SELECT next_fetch_at FROM feeds WHERE id = ?',
+        [feedId]
+    );
+    
+    return updatedFeed?.next_fetch_at ?? null;
+}
+
+async function handleRefreshError(
+    feedId: number,
+    err: unknown,
+    refreshIntervalMinutes: number
+): Promise<{ success: false; newArticles: 0; error: string }> {
+    const { category, message } = categorizeRefreshError(err);
+    const errorMessage = `[${category}] ${message}`;
+    const backoffMinutes = Math.min(refreshIntervalMinutes * 2, 300);
+    
+    run(
+        `UPDATE feeds SET
+        error_count = error_count + 1,
+            last_error = ?,
+            last_error_at = datetime('now'),
+            next_fetch_at = datetime('now', '+' || CAST(? AS INTEGER) || ' minutes'),
+            refresh_interval_minutes = ?,
+            updated_at = datetime('now')
+             WHERE id = ? `,
+        [errorMessage, backoffMinutes, refreshIntervalMinutes, feedId]
+    );
+    
+    return { success: false, newArticles: 0, error: errorMessage };
+}
+
 /**
  * Simple concurrency-limited queue for background tasks
  */
@@ -139,29 +326,59 @@ export interface FeedToRefreshWithCache extends FeedToRefresh {
  */
 export async function refreshFeed(feed: FeedToRefreshWithCache): Promise<RefreshResult> {
     let refreshIntervalMinutes = feed.refresh_interval_minutes;
+    const database = (await import('../db/index.js')).db();
+    
     try {
-        // Use pre-fetched icon status if available (batch optimization)
-        // Otherwise fall back to individual query (single feed refresh)
-        let hasValidIcon = feed.hasValidIcon;
-        let existingIcon: { icon_url: string | null; icon_cached_path: string | null; icon_cached_content_type: string | null } | undefined;
-
-        if (hasValidIcon === undefined) {
-            existingIcon = queryOne<{
-                icon_url: string | null;
-                icon_cached_path: string | null;
-                icon_cached_content_type: string | null;
-            }>('SELECT icon_url, icon_cached_path, icon_cached_content_type FROM feeds WHERE id = ?', [feed.id]);
-            hasValidIcon = existingIcon?.icon_url ? !isGenericIconUrl(existingIcon.icon_url) : false;
-        } else {
-            // When using batch optimization, we may need icon info later for caching decisions
-            // Only fetch if we need it (when hasValidIcon is false - meaning we might cache a new icon)
-            if (!hasValidIcon) {
-                existingIcon = queryOne<{
-                    icon_url: string | null;
-                    icon_cached_path: string | null;
-                    icon_cached_content_type: string | null;
-                }>('SELECT icon_url, icon_cached_path, icon_cached_content_type FROM feeds WHERE id = ?', [feed.id]);
-            }
+        const iconStatus = await getFeedIconStatus(feed.id, feed.hasValidIcon);
+        const feedData = await parseFeed(feed.url, { skipIconFetch: !!iconStatus.hasValidIcon });
+        
+        const { userId, refreshIntervalMinutes: updatedInterval } = getFeedSettings(
+            feed.id,
+            feed.userId,
+            feed.refresh_interval_minutes
+        );
+        refreshIntervalMinutes = updatedInterval;
+        
+        let currentType = feed.type;
+        if (currentType === 'rss') {
+            const { detectFeedType } = await import('./feed-parser.js');
+            currentType = detectFeedType(feed.url, feedData);
+        }
+        
+        const { insertedCount, thumbnailUpdates } = insertArticles(
+            database,
+            feed.id,
+            feedData.articles,
+            currentType,
+            true
+        );
+        
+        if (thumbnailUpdates.length > 0) {
+            const updateThumbnailStmt = database.prepare(
+                `UPDATE articles SET thumbnail_cached_path = ?, thumbnail_cached_content_type = ? WHERE id = ?`
+            );
+            cacheThumbnailsInBackground(thumbnailUpdates, updateThumbnailStmt).catch(err => {
+                console.warn(`[Thumbnails] Background caching failed:`, err);
+            });
+        }
+        
+        const needsIconCache = !iconStatus.iconCachedPath && feedData.favicon;
+        const cachedIcon = needsIconCache ? await cacheFeedIcon(feed.id, feedData.favicon) : null;
+        
+        const nextFetchAt = await updateFeedMetadata(
+            feed.id,
+            feedData,
+            currentType,
+            refreshIntervalMinutes,
+            iconStatus,
+            cachedIcon
+        );
+        
+        return { success: true, newArticles: insertedCount, next_fetch_at: nextFetchAt };
+    } catch (err) {
+        return handleRefreshError(feed.id, err, refreshIntervalMinutes);
+    }
+}
         }
 
         const feedData = await parseFeed(feed.url, { skipIconFetch: !!hasValidIcon });

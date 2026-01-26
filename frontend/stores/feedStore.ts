@@ -7,11 +7,6 @@ import { handleError } from '@/services/errorHandler';
 import { useArticleStore } from './articleStore';
 import { FeedState } from './types';
 
-let refreshAbortController: AbortController | null = null;
-
-const isAbortError = (error: unknown) =>
-    error instanceof Error && error.name === 'AbortError';
-
 export const useFeedStore = create<FeedState>()(
     persist(
         (set, get) => ({
@@ -86,88 +81,16 @@ export const useFeedStore = create<FeedState>()(
                 }
             },
 
-            refreshAllFeeds: async (ids) => {
-                set({ isLoading: true, lastRefreshNewArticles: null });
-                const controller = new AbortController();
-                refreshAbortController = controller;
-                let totalNewArticles = 0;
-                const articleStore = useArticleStore.getState();
-                const estimatedTotal = ids?.length ?? get().feeds.length;
-                set({
-                    refreshProgress: {
-                        total: estimatedTotal,
-                        completed: 0,
-                        currentTitle: '',
-                    }
-                });
-
-                // Optimized debounce: fetch immediately on first new article, then debounce subsequent
-                let refreshTimeout: ReturnType<typeof setTimeout> | null = null;
-                let hasRefreshedOnce = false;
-                const debouncedRefresh = () => {
-                    if (!hasRefreshedOnce) {
-                        // First new article: refresh immediately for instant feedback
-                        hasRefreshedOnce = true;
-                        articleStore.fetchArticles(true, true);
-                    } else {
-                        // Subsequent updates: debounce to avoid hammering the server
-                        if (refreshTimeout) clearTimeout(refreshTimeout);
-                        refreshTimeout = setTimeout(() => {
-                            articleStore.fetchArticles(true, true);
-                        }, 800);
-                    }
-                };
-
-
-                try {
-                    await api.refreshFeedsWithProgress(
-                        ids,
-                        (event) => {
-                            if (event.type === 'start') {
-                                set({ refreshProgress: { total: event.total_feeds, completed: 0, currentTitle: '' } });
-                            } else if (event.type === 'feed_refreshing') {
-                                // Show every feed name as it starts
-                                set((state) => ({
-                                    refreshProgress: state.refreshProgress ? { ...state.refreshProgress, currentTitle: event.title } : null
-                                }));
-                            } else if (event.type === 'feed_complete' || event.type === 'feed_error') {
-                                if (event.type === 'feed_complete' && event.new_articles > 0) {
-                                    totalNewArticles += event.new_articles;
-                                    debouncedRefresh();
-                                }
-
-                                // Update progress and feed list
-                                set((state) => ({
-                                    refreshProgress: state.refreshProgress ? {
-                                        ...state.refreshProgress,
-                                        completed: state.refreshProgress.completed + 1,
-                                        currentTitle: event.title // Show name on completion too
-                                    } : null,
-                                    feeds: state.feeds.map(f =>
-                                        f.id === (event as any).id
-                                            ? {
-                                                ...f,
-                                                title: event.type === 'feed_complete' && event.feed ? event.feed.title : f.title,
-                                                icon_url: event.type === 'feed_complete' && event.feed?.icon_url !== undefined ? event.feed.icon_url : f.icon_url,
-                                                type: event.type === 'feed_complete' && event.feed ? event.feed.type : f.type,
-                                                unread_count: event.type === 'feed_complete' ? (f.unread_count || 0) + event.new_articles : f.unread_count,
-                                                last_fetched_at: new Date().toISOString(),
-                                                next_fetch_at: event.type === 'feed_complete' ? event.next_fetch_at || f.next_fetch_at : f.next_fetch_at
-                                            }
-                                            : f
-                                    )
-                                }));
-
-                                if (event.type === 'feed_complete' && event.feed) {
-                                    const articleStore = useArticleStore.getState();
-                                    articleStore.updateFeedMetadata(event.feed.id, {
-                                        feed_title: event.feed.title,
-                                        feed_icon_url: event.feed.icon_url,
-                                        feed_type: event.feed.type,
-                                    });
-                                }
-                            }
-                        },
+            setIsLoading: (loading: boolean) => set({ isLoading: loading }),
+            
+            setRefreshProgress: (progress: { total: number; completed: number; currentTitle: string } | null) => 
+                set({ refreshProgress: progress }),
+            
+            setLastRefreshNewArticles: (count: number | null) => 
+                set({ lastRefreshNewArticles: count }),
+            
+            updateLocalFeeds: (updater: (feeds: Feed[]) => Feed[]) => 
+                set((state) => ({ feeds: updater(state.feeds) })),
                         (error) => {
                             // Don't show error toast for SSE stream interruptions (e.g., phone lock, app background)
                             // The final fetches will still get the updated data
@@ -244,7 +167,7 @@ export const useFeedStore = create<FeedState>()(
 
             resumeFeed: async (id) => {
                 try {
-                    await api.resumeFeed(id);
+                    const result = await api.resumeFeed(id);
                     set((state) => ({
                         feeds: state.feeds.map((f) => (f.id === id ? { ...f, paused_at: null } : f)),
                     }));
@@ -258,6 +181,17 @@ export const useFeedStore = create<FeedState>()(
                     feeds: state.feeds.map((f) => (f.id === id ? { ...f, ...updates } : f)),
                 }));
             },
+            
+            setIsLoading: (loading: boolean) => set({ isLoading: loading }),
+            
+            setRefreshProgress: (progress: { total: number; completed: number; currentTitle: string } | null) => 
+                set({ refreshProgress: progress }),
+            
+            setLastRefreshNewArticles: (count: number | null) => 
+                set({ lastRefreshNewArticles: count }),
+            
+            updateLocalFeeds: (updater: (feeds: Feed[]) => Feed[]) => 
+                set((state) => ({ feeds: updater(state.feeds) })),
 
             applySyncChanges: (changes: SyncChanges, isRefreshing?: boolean) => {
                 const syncData = applySyncChanges(changes);

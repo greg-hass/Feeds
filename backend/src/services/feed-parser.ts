@@ -70,20 +70,15 @@ const MAX_RETRY_DELAY = 2000;
 
 
 
-export async function parseFeed(url: string, options?: { skipIconFetch?: boolean }): Promise<ParsedFeed> {
-    // Validate URL first
-    validateUrl(url);
-    
+async function fetchFeedWithFallback(url: string): Promise<Response> {
     const baseHeaders = {
         'User-Agent': USER_AGENT,
         'Accept': 'application/rss+xml, application/atom+xml, application/xml, text/xml, */*',
     };
     const isYouTubeFeed = url.toLowerCase().includes('youtube.com/feeds');
 
-    // Try with default user agent first, with retry
-    let response: Response;
     try {
-        response = await fetchWithRetry(url, () => ({
+        return await fetchWithRetry(url, () => ({
             method: 'GET',
             headers: baseHeaders,
             signal: AbortSignal.timeout(HTTP.REQUEST_TIMEOUT),
@@ -93,11 +88,10 @@ export async function parseFeed(url: string, options?: { skipIconFetch?: boolean
             maxDelayMs: MAX_RETRY_DELAY,
         });
     } catch (err) {
-        // If default user agent failed and it's a YouTube feed, try with YouTube user agent
         if (isYouTubeFeed) {
             console.log(`[YouTube] Retrying with YouTube user agent for: ${url}`);
             try {
-                response = await fetchWithRetry(url, () => ({
+                return await fetchWithRetry(url, () => ({
                     method: 'GET',
                     headers: {
                         ...baseHeaders,
@@ -114,10 +108,15 @@ export async function parseFeed(url: string, options?: { skipIconFetch?: boolean
                 const errorMessage = youtubeErr instanceof Error ? youtubeErr.message : String(youtubeErr);
                 throw new Error(`YouTube fetch failed with both user agents: ${errorMessage}`);
             }
-        } else {
-            throw err;
         }
+        throw err;
     }
+}
+
+export async function parseFeed(url: string, options?: { skipIconFetch?: boolean }): Promise<ParsedFeed> {
+    validateUrl(url);
+    
+    const response = await fetchFeedWithFallback(url);
 
     if (!response.ok) {
         throw new Error(`Failed to fetch feed: ${response.status} ${response.statusText}`);
@@ -212,39 +211,46 @@ export async function parseFeed(url: string, options?: { skipIconFetch?: boolean
         const stream = Readable.from([text]);
         stream.pipe(feedparser);
     }).then(async (feed: any) => {
-        // Post-processing for specific feed types (async icon fetching)
-        const type = detectFeedType(url, feed);
-
         if (options?.skipIconFetch) {
             return feed;
         }
 
-        if (type === 'youtube') {
-            // ... fetch youtube icon ...
-            let channelId = null;
-            try {
-                const urlObj = new URL(url);
-                channelId = urlObj.searchParams.get('channel_id');
-            } catch { }
-
-            if (!channelId && feed.youtubeChannelId) {
-                channelId = feed.youtubeChannelId.startsWith('UC') ? feed.youtubeChannelId : 'UC' + feed.youtubeChannelId;
-            }
-
-            if (channelId) {
-                const icon = await fetchYouTubeIcon(channelId);
-                if (icon) feed.favicon = icon;
-            }
-        } else if (type === 'reddit') {
-            const subredditMatch = feed.link?.match(/\/r\/([^\/]+)/);
-            if (subredditMatch) {
-                const icon = await fetchRedditIcon(subredditMatch[1]);
-                if (icon) feed.favicon = icon;
-            }
-        }
-
-        return feed;
+        const type = detectFeedType(url, feed);
+        return await enhanceFeedWithIcon(feed, type, url);
     });
+}
+
+async function enhanceFeedWithIcon(feed: any, feedType: FeedType, url: string): Promise<any> {
+    if (feedType === 'youtube') {
+        const channelId = extractChannelIdFromUrl(url, feed.youtubeChannelId);
+        if (channelId) {
+            const icon = await fetchYouTubeIcon(channelId);
+            if (icon) feed.favicon = icon;
+        }
+    } else if (feedType === 'reddit') {
+        const subredditMatch = feed.link?.match(/\/r\/([^\/]+)/);
+        if (subredditMatch) {
+            const icon = await fetchRedditIcon(subredditMatch[1]);
+            if (icon) feed.favicon = icon;
+        }
+    }
+    
+    return feed;
+}
+
+function extractChannelIdFromUrl(url: string, youtubeChannelId: string | null): string | null {
+    let channelId = null;
+    
+    try {
+        const urlObj = new URL(url);
+        channelId = urlObj.searchParams.get('channel_id');
+    } catch {}
+
+    if (!channelId && youtubeChannelId) {
+        channelId = youtubeChannelId.startsWith('UC') ? youtubeChannelId : 'UC' + youtubeChannelId;
+    }
+
+    return channelId;
 }
 
 export function normalizeArticle(raw: RawArticle, feedType: FeedType): NormalizedArticle {
