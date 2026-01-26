@@ -5,11 +5,13 @@ import { Sparkles, X, ChevronRight, Plus, RefreshCw, LayoutGrid, Zap, Newspaper,
 import { useFeedStore, useToastStore, useSettingsStore } from '@/stores';
 import { useColors, spacing, borderRadius } from '@/theme';
 import Sidebar from '@/components/Sidebar';
+import { ErrorView } from '@/components/ErrorView';
 
 export const DiscoveryPage = () => {
     const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
     const [interests, setInterests] = useState<Interest[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [subscribingIds, setSubscribingIds] = useState<Set<number>>(new Set());
     const [showMenu, setShowMenu] = useState(false);
@@ -25,6 +27,7 @@ export const DiscoveryPage = () => {
 
     const fetchData = async () => {
         setIsLoading(true);
+        setError(null);
         try {
             const [recRes, intRes] = await Promise.all([
                 api.getRecommendations(),
@@ -40,6 +43,7 @@ export const DiscoveryPage = () => {
             }).start();
         } catch (error) {
             console.error('Failed to fetch discovery data:', error);
+            setError('Failed to load recommendations. Please check your connection.');
         } finally {
             setIsLoading(false);
         }
@@ -117,6 +121,15 @@ export const DiscoveryPage = () => {
             <View style={s.center}>
                 <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
             </View>
+        );
+    }
+
+    if (error) {
+        return (
+            <ErrorView 
+                message={error} 
+                onRetry={fetchData} 
+            />
         );
     }
 

@@ -3,8 +3,10 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch, ActivityI
 import { useRouter } from 'expo-router';
 import { useSettingsStore, useToastStore, useFeedStore } from '@/stores';
 import { Settings, api } from '@/services/api';
-import { ArrowLeft, Sun, Moon, Monitor, Check, Trash2 } from 'lucide-react-native';
+import { Sun, Moon, Monitor, Check, Trash2 } from 'lucide-react-native';
 import { useColors, spacing, borderRadius, shadows, ACCENT_COLORS, AccentColor } from '@/theme';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { SectionHeader } from '@/components/ui/SectionHeader';
 
 export default function SettingsScreen() {
     const router = useRouter();
@@ -53,12 +55,7 @@ export default function SettingsScreen() {
     if (!settings) {
         return (
             <View style={s.container}>
-                <View style={s.header}>
-                    <TouchableOpacity onPress={() => router.back()} style={s.backButton} accessibilityLabel="Go back">
-                        <ArrowLeft size={24} color={colors.text.primary} />
-                    </TouchableOpacity>
-                    <Text style={s.headerTitle}>Settings</Text>
-                </View>
+                <ScreenHeader title="Settings" />
                 <View style={s.loading}>
                     <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
                     <Text style={s.loadingText}>Loading settings…</Text>
@@ -69,18 +66,12 @@ export default function SettingsScreen() {
 
     return (
         <View style={s.container}>
-            {/* Header */}
-            <View style={s.header}>
-                <TouchableOpacity onPress={() => router.back()} style={s.backButton} accessibilityLabel="Go back">
-                    <ArrowLeft size={24} color={colors.text.primary} />
-                </TouchableOpacity>
-                <Text style={s.headerTitle}>Settings</Text>
-            </View>
+            <ScreenHeader title="Settings" />
 
             <ScrollView style={s.scrollView} contentContainerStyle={s.content}>
                 {/* Appearance */}
                 <View style={s.section}>
-                    <Text style={s.sectionTitle}>Appearance</Text>
+                    <SectionHeader title="Appearance" />
                     <View style={s.card}>
                         <Text style={s.label}>Theme</Text>
                         <View style={s.themeRow}>
@@ -176,7 +167,7 @@ export default function SettingsScreen() {
 
                 {/* Reading */}
                 <View style={s.section}>
-                    <Text style={s.sectionTitle}>Reading</Text>
+                    <SectionHeader title="Reading" />
                     <View style={s.card}>
                         <View style={s.row}>
                             <View>
@@ -212,7 +203,7 @@ export default function SettingsScreen() {
 
                 {/* Refresh & Storage */}
                 <View style={s.section}>
-                    <Text style={s.sectionTitle}>Refresh & Storage</Text>
+                    <SectionHeader title="Refresh & Storage" />
                     <View style={s.card}>
                         <View style={s.row}>
                             <View style={{ flex: 1 }}>
@@ -292,23 +283,6 @@ const styles = (colors: any) => StyleSheet.create({
         flex: 1,
         backgroundColor: colors.background.primary,
     },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: spacing.lg,
-        gap: spacing.md,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border.DEFAULT,
-    },
-    backButton: {
-        padding: spacing.sm,
-        marginLeft: -spacing.sm,
-    },
-    headerTitle: {
-        fontSize: 20,
-        fontWeight: '600',
-        color: colors.text.primary,
-    },
     loading: {
         flex: 1,
         justifyContent: 'center',
@@ -327,14 +301,6 @@ const styles = (colors: any) => StyleSheet.create({
     },
     section: {
         marginBottom: spacing.xl,
-    },
-    sectionTitle: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: colors.text.tertiary,
-        marginBottom: spacing.sm,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
     },
     card: {
         backgroundColor: colors.background.secondary,

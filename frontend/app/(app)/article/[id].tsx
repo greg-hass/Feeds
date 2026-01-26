@@ -15,6 +15,7 @@ import { shareContent } from '@/utils/share';
 import { initWebBrowser, cleanupWebBrowser, openExternalLink } from '@/utils/externalLink';
 import ArticleContent from '@/components/ArticleContent';
 import { VideoModal } from '@/components/VideoModal';
+import { ErrorView } from '@/components/ErrorView';
 
 export default function ArticleScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
@@ -22,7 +23,7 @@ export default function ArticleScreen() {
     const colors = useColors();
     const { width } = useWindowDimensions();
     const isMobile = width < 1024;
-    const { currentArticle, fetchArticle, markRead, markUnread, toggleBookmark, articles, setArticleScrollPosition, getArticleScrollPosition } = useArticleStore();
+    const { currentArticle, fetchArticle, markRead, markUnread, toggleBookmark, articles, setArticleScrollPosition, getArticleScrollPosition, error, isLoading: isStoreLoading } = useArticleStore();
     const { settings, updateSettings } = useSettingsStore();
     const { show } = useToastStore();
     const [isLoading, setIsLoading] = useState(true);
@@ -251,7 +252,23 @@ export default function ArticleScreen() {
         }
     }, [currentArticle, externalUrl]);
 
+    const handleRetry = useCallback(() => {
+        if (id) {
+            setIsLoading(true);
+            fetchArticle(Number(id)).finally(() => setIsLoading(false));
+        }
+    }, [id, fetchArticle]);
+
     const renderReader = () => {
+        if (error && !isLoading) {
+            return (
+                <ErrorView 
+                    message={error} 
+                    onRetry={handleRetry} 
+                />
+            );
+        }
+
         if (!currentArticle) {
             return (
                 <View style={s.loadingContainer}>

@@ -9,7 +9,7 @@ import FilterPills from './FilterPills';
 import TimelineHeader from './TimelineHeader';
 import TimelineArticle from './TimelineArticle';
 import NewArticlesPill from './NewArticlesPill';
-import { DigestCard } from './DigestCard';
+import { TimelineEmptyState } from './TimelineEmptyState';
 import { timelineStyles } from './Timeline.styles';
 import { scheduleIdle, canPrefetch } from '@/utils/scheduler';
 
@@ -30,7 +30,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
 
     const {
         articles, isLoading, hasMore, filter, isFeedLoading, headerTitle, timeLeft, isRefreshing, refreshProgress,
-        playingArticleId, isPlaying, activeVideoId, hotPulseAnim,
+        playingArticleId, isPlaying, activeVideoId, hotPulseAnim, feeds,
         fetchArticles, setFilter, refreshAllFeeds, handleMarkAllRead, prefetchArticle,
         handleArticlePress, handlePlayPress, handleVideoPress,
         getBookmarkScale, getBookmarkRotation,
@@ -151,6 +151,15 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                             />
                         }
                         ListFooterComponent={isLoading ? <ActivityIndicator style={s.loader} color={colors.primary.DEFAULT} /> : null}
+                        ListEmptyComponent={
+                            !isLoading ? (
+                                <TimelineEmptyState 
+                                    hasFeeds={feeds.length > 0}
+                                    isFiltered={filter.unread_only || !!filter.feed_id || !!filter.folder_id || !!filter.type}
+                                    onClearFilter={() => setFilter({ unread_only: false })}
+                                />
+                            ) : null
+                        }
                         onViewableItemsChanged={onViewableItemsChanged}
                         viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
                         scrollEventThrottle={16}

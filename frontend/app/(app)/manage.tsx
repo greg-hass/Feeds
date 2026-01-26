@@ -15,6 +15,10 @@ import { useColors, borderRadius, spacing } from '@/theme';
 import { ProgressDialog, ProgressState } from '@/components/ProgressDialog';
 import { useProgressHandler } from '@/hooks/useProgressHandler';
 import { getFeedHealth, getFeedHealthInfo } from '@/utils/feedHealth';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { SectionHeader } from '@/components/ui/SectionHeader';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 
 type ModalType = 'edit_feed' | 'rename_folder' | 'move_feed' | null;
 
@@ -515,25 +519,22 @@ export default function ManageScreen() {
     return (
         <View style={s.container}>
             {/* Header */}
-            <View style={s.header}>
-                <TouchableOpacity onPress={() => router.back()} style={s.backButton}>
-                    <ArrowLeft size={24} color={colors.text.primary} />
-                </TouchableOpacity>
-                <Text style={s.headerTitle}>Manage Feeds</Text>
-                <View style={s.headerActions}>
+            <ScreenHeader
+                title="Manage Feeds"
+                rightAction={
                     <TouchableOpacity
                         style={[s.headerButton, isBulkMode && { backgroundColor: colors.primary.DEFAULT + '22' }]}
                         onPress={toggleBulkMode}
                     >
                         <Check size={18} color={isBulkMode ? colors.primary.DEFAULT : colors.text.secondary} />
                     </TouchableOpacity>
-                </View>
-            </View>
+                }
+            />
 
             <ScrollView style={s.scrollView} contentContainerStyle={s.content}>
                 {/* Add Feed */}
                 <View style={s.section}>
-                    <Text style={s.sectionTitle}>Add Feed</Text>
+                    <SectionHeader title="Add Feed" />
 
                     <ScrollView
                         horizontal
@@ -561,10 +562,9 @@ export default function ManageScreen() {
                     </ScrollView>
 
                     <View style={s.inputRow}>
-                        <TextInput
-                            style={s.input}
+                        <Input
+                            style={{ flex: 1 }}
                             placeholder={`Search ${discoveryPlaceholder}…`}
-                            placeholderTextColor={colors.text.tertiary}
                             value={urlInput}
                             onChangeText={setUrlInput}
                             autoCapitalize="none"
@@ -572,18 +572,13 @@ export default function ManageScreen() {
                             keyboardType="url"
                             accessibilityLabel={`Search ${discoveryPlaceholder}`}
                         />
-                        <TouchableOpacity
-                            style={s.primaryButton}
+                        <Button
                             onPress={handleDiscover}
                             disabled={isDiscovering}
-                            accessibilityLabel="Discover feeds"
-                        >
-                            {isDiscovering ? (
-                                <ActivityIndicator size="small" color={colors.text.inverse} />
-                            ) : (
-                                <Search size={20} color={colors.text.inverse} />
-                            )}
-                        </TouchableOpacity>
+                            loading={isDiscovering}
+                            icon={!isDiscovering ? <Search size={20} color={colors.text.inverse} /> : undefined}
+                            style={{ width: 44, height: 44, paddingHorizontal: 0 }}
+                        />
                     </View>
 
                     {discoveries.length > 0 && (
@@ -614,30 +609,28 @@ export default function ManageScreen() {
 
                 {/* Create Folder */}
                 <View style={s.section}>
-                    <Text style={s.sectionTitle}>Create Folder</Text>
+                    <SectionHeader title="Create Folder" />
                     <View style={s.inputRow}>
-                        <TextInput
-                            style={s.input}
+                        <Input
+                            style={{ flex: 1 }}
                             placeholder="Folder name…"
-                            placeholderTextColor={colors.text.tertiary}
                             value={newFolderName}
                             onChangeText={setNewFolderName}
                             accessibilityLabel="Folder name"
                         />
-                        <TouchableOpacity
-                            style={[s.primaryButton, { backgroundColor: colors.secondary.DEFAULT }]}
+                        <Button
+                            variant="secondary"
                             onPress={handleCreateFolder}
-                            accessibilityLabel="Create folder"
-                        >
-                            <FolderIcon size={20} color={colors.text.inverse} />
-                        </TouchableOpacity>
+                            icon={<FolderIcon size={20} color={colors.text.primary} />}
+                            style={{ width: 44, height: 44, paddingHorizontal: 0 }}
+                        />
                     </View>
                 </View>
 
                 {/* Folders */}
                 {folders.length > 0 && (
                     <View style={s.section}>
-                        <Text style={s.sectionTitle}>Folders ({folders.length})</Text>
+                        <SectionHeader title={`Folders (${folders.length})`} />
                         {folders.map((folder: Folder) => (
                             <View key={folder.id} style={s.feedItem}>
                                 <View style={s.folderContent}>
@@ -670,14 +663,10 @@ export default function ManageScreen() {
 
                 {/* Feeds */}
                 <View style={s.section}>
-                    <Text style={s.sectionTitle}>
-                        Feeds ({feedSearch.trim() ? `${filteredFeeds.length} / ${feeds.length}` : feeds.length})
-                    </Text>
+                    <SectionHeader title={`Feeds (${feedSearch.trim() ? `${filteredFeeds.length} / ${feeds.length}` : feeds.length})`} />
                     <View style={s.searchRow}>
-                        <TextInput
-                            style={s.input}
+                        <Input
                             placeholder="Search feeds…"
-                            placeholderTextColor={colors.text.tertiary}
                             value={feedSearch}
                             onChangeText={setFeedSearch}
                             accessibilityLabel="Search feeds"
@@ -838,48 +827,37 @@ export default function ManageScreen() {
 
                 {/* Data Management */}
                 <View style={s.section}>
-                    <Text style={s.sectionTitle}>Data Management</Text>
+                    <SectionHeader title="Data Management" />
                     <View style={s.dataActions}>
-                        <TouchableOpacity
-                            style={s.dataButton}
+                        <Button
+                            title="Import OPML"
                             onPress={handleImportOpml}
+                            loading={progressState.isActive && progressState.operation === 'import'}
                             disabled={progressState.isActive}
-                        >
-                            {progressState.isActive && progressState.operation === 'import' ? (
-                                <ActivityIndicator color={colors.text.inverse} />
-                            ) : (
-                                <FileUp size={20} color={colors.text.inverse} />
-                            )}
-                            <Text style={s.dataButtonText}>Import OPML</Text>
-                        </TouchableOpacity>
+                            icon={!progressState.isActive ? <FileUp size={20} color={colors.text.inverse} /> : undefined}
+                            style={{ flex: 1 }}
+                        />
 
-                        <TouchableOpacity
-                            style={[s.dataButton, { backgroundColor: colors.background.tertiary }]}
+                        <Button
+                            title="Export OPML"
+                            variant="secondary"
                             onPress={handleExportOpml}
+                            loading={isExporting}
                             disabled={isExporting}
-                        >
-                            {isExporting ? (
-                                <ActivityIndicator color={colors.text.primary} />
-                            ) : (
-                                <FileDown size={20} color={colors.text.primary} />
-                            )}
-                            <Text style={[s.dataButtonText, { color: colors.text.primary }]}>Export OPML</Text>
-                        </TouchableOpacity>
+                            icon={!isExporting ? <FileDown size={20} color={colors.text.primary} /> : undefined}
+                            style={{ flex: 1 }}
+                        />
                     </View>
 
                     {/* Refresh All Feeds button */}
-                    <TouchableOpacity
-                        style={[s.dataButton, { backgroundColor: colors.primary.dark, marginTop: spacing.md }]}
+                    <Button
+                        title={`Refresh All Feeds (${feeds.length})`}
                         onPress={handleRefreshAll}
+                        loading={progressState.isActive && progressState.operation === 'refresh'}
                         disabled={progressState.isActive || feeds.length === 0}
-                    >
-                        {progressState.isActive && progressState.operation === 'refresh' ? (
-                            <ActivityIndicator color={colors.text.inverse} />
-                        ) : (
-                            <RefreshCcw size={20} color={colors.text.inverse} />
-                        )}
-                        <Text style={s.dataButtonText}>Refresh All Feeds ({feeds.length})</Text>
-                    </TouchableOpacity>
+                        icon={!(progressState.isActive && progressState.operation === 'refresh') ? <RefreshCcw size={20} color={colors.text.inverse} /> : undefined}
+                        style={{ marginTop: spacing.md, backgroundColor: colors.primary.dark }}
+                    />
                 </View>
             </ScrollView>
 
@@ -928,29 +906,27 @@ export default function ManageScreen() {
                         </Text>
 
                         <Text style={s.modalLabel}>Name</Text>
-                        <TextInput
-                            style={s.modalInput}
+                        <Input
                             value={renameValue}
                             onChangeText={setRenameValue}
                             placeholder="Enter name…"
-                            placeholderTextColor={colors.text.tertiary}
                             autoFocus={modalType === 'edit_feed' && isDesktop}
                             accessibilityLabel="Name"
+                            style={{ marginBottom: spacing.xl }}
                         />
 
                         <View style={s.modalActions}>
-                            <TouchableOpacity
-                                style={s.modalCancel}
+                            <Button
+                                title="Cancel"
+                                variant="secondary"
                                 onPress={() => setModalType(null)}
-                            >
-                                <Text style={s.modalCancelText}>Cancel</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={s.modalConfirm}
+                                style={{ flex: 1 }}
+                            />
+                            <Button
+                                title="Save"
                                 onPress={submitRename}
-                            >
-                                <Text style={s.modalConfirmText}>Save</Text>
-                            </TouchableOpacity>
+                                style={{ flex: 1 }}
+                            />
                         </View>
                     </View>
                 </View>
@@ -990,18 +966,17 @@ export default function ManageScreen() {
                             </TouchableOpacity>
                         ))}
                         <View style={s.modalActions}>
-                            <TouchableOpacity
-                                style={s.modalCancel}
+                            <Button
+                                title="Cancel"
+                                variant="secondary"
                                 onPress={() => setModalType(null)}
-                            >
-                                <Text style={s.modalCancelText}>Cancel</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={s.modalConfirm}
+                                style={{ flex: 1 }}
+                            />
+                            <Button
+                                title="Move"
                                 onPress={submitMove}
-                            >
-                                <Text style={s.modalConfirmText}>Move</Text>
-                            </TouchableOpacity>
+                                style={{ flex: 1 }}
+                            />
                         </View>
                     </View>
                 </View>
@@ -1039,28 +1014,6 @@ const styles = (colors: any) => StyleSheet.create({
         flex: 1,
         backgroundColor: colors.background.primary,
     },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: spacing.lg,
-        gap: spacing.md,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border.DEFAULT,
-    },
-    backButton: {
-        padding: spacing.sm,
-        marginLeft: -spacing.sm,
-    },
-    headerTitle: {
-        flex: 1,
-        fontSize: 20,
-        fontWeight: '600',
-        color: colors.text.primary,
-    },
-    headerActions: {
-        flexDirection: 'row',
-        gap: spacing.sm,
-    },
     headerButton: {
         padding: spacing.sm,
         backgroundColor: colors.background.secondary,
@@ -1075,34 +1028,10 @@ const styles = (colors: any) => StyleSheet.create({
     section: {
         marginBottom: spacing.xxl,
     },
-    sectionTitle: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: colors.text.secondary,
-        marginBottom: spacing.md,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-    },
     inputRow: {
         flexDirection: 'row',
         gap: spacing.sm,
-    },
-    input: {
-        flex: 1,
-        backgroundColor: colors.background.secondary,
-        borderRadius: borderRadius.md,
-        padding: spacing.lg,
-        fontSize: 16,
-        color: colors.text.primary,
-        borderWidth: 1,
-        borderColor: colors.border.DEFAULT,
-    },
-    primaryButton: {
-        backgroundColor: colors.primary.DEFAULT,
-        borderRadius: borderRadius.md,
-        padding: spacing.lg,
         alignItems: 'center',
-        justifyContent: 'center',
     },
     discoveries: {
         marginTop: spacing.lg,
@@ -1195,21 +1124,6 @@ const styles = (colors: any) => StyleSheet.create({
     dataActions: {
         flexDirection: 'row',
         gap: spacing.md,
-    },
-    dataButton: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: colors.primary.DEFAULT,
-        padding: spacing.lg,
-        borderRadius: borderRadius.md,
-        gap: spacing.sm,
-    },
-    dataButtonText: {
-        color: colors.text.inverse,
-        fontWeight: '600',
-        fontSize: 16,
     },
     feedInfo: {
         flex: 1,
@@ -1331,12 +1245,9 @@ const styles = (colors: any) => StyleSheet.create({
         marginBottom: spacing.lg,
     },
     modalLabel: {
-        fontSize: 13,
-        fontWeight: '600',
+        fontSize: 14,
         color: colors.text.secondary,
-        marginBottom: spacing.xs,
-        marginTop: spacing.md,
-        textTransform: 'uppercase',
+        marginBottom: spacing.sm,
     },
     modalActions: {
         flexDirection: 'row',
@@ -1345,174 +1256,24 @@ const styles = (colors: any) => StyleSheet.create({
     modalCancel: {
         flex: 1,
         padding: spacing.md,
-        borderRadius: borderRadius.md,
-        backgroundColor: colors.background.tertiary,
         alignItems: 'center',
+        backgroundColor: colors.background.secondary,
+        borderRadius: borderRadius.md,
     },
     modalCancelText: {
-        fontSize: 15,
-        color: colors.text.secondary,
-        fontWeight: '500',
+        fontSize: 16,
+        color: colors.text.primary,
     },
     modalConfirm: {
         flex: 1,
         padding: spacing.md,
-        borderRadius: borderRadius.md,
-        backgroundColor: colors.primary.DEFAULT,
         alignItems: 'center',
+        backgroundColor: colors.primary.DEFAULT,
+        borderRadius: borderRadius.md,
     },
     modalConfirmText: {
-        fontSize: 15,
+        fontSize: 16,
         color: colors.text.inverse,
-        fontWeight: '500',
-    },
-    folderOption: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.md,
-        padding: spacing.md,
-        borderRadius: borderRadius.md,
-        marginBottom: spacing.sm,
-    },
-    folderOptionSelected: {
-        backgroundColor: colors.background.tertiary,
-    },
-    folderOptionText: {
-        flex: 1,
-        fontSize: 15,
-        color: colors.text.primary,
-    },
-    // Bulk styles
-    checkbox: {
-        width: 20,
-        height: 20,
-        borderRadius: 4,
-        borderWidth: 2,
-        borderColor: colors.border.DEFAULT,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    checkboxSelected: {
-        backgroundColor: colors.primary.DEFAULT,
-        borderColor: colors.primary.DEFAULT,
-    },
-    bulkToolbar: {
-        position: 'absolute',
-        bottom: spacing.xl,
-        left: spacing.xl,
-        right: spacing.xl,
-        backgroundColor: colors.background.secondary,
-        borderRadius: borderRadius.lg,
-        padding: spacing.md,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.lg,
-        borderWidth: 1,
-        borderColor: colors.border.DEFAULT,
-        // Shadow
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 8,
-    },
-    bulkText: {
-        flex: 1,
-        fontSize: 14,
         fontWeight: '600',
-        color: colors.text.primary,
-        marginLeft: spacing.sm,
-    },
-    bulkActions: {
-        flexDirection: 'row',
-        gap: spacing.sm,
-    },
-    bulkButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: spacing.md,
-        paddingVertical: spacing.sm,
-        borderRadius: borderRadius.md,
-        gap: spacing.xs,
-    },
-    bulkButtonText: {
-        fontSize: 13,
-        fontWeight: '600',
-    },
-    filterPillsContainer: {
-        flexDirection: 'row',
-        gap: spacing.sm,
-        paddingBottom: spacing.sm,
-    },
-    filterPillsScroll: {
-        flexGrow: 0,
-        marginBottom: spacing.sm,
-    },
-    filterPill: {
-        paddingHorizontal: spacing.md,
-        paddingVertical: 6,
-        borderRadius: borderRadius.full,
-        backgroundColor: colors.background.tertiary,
-        borderWidth: 1,
-        borderColor: colors.border.DEFAULT,
-    },
-    filterPillActive: {
-        backgroundColor: colors.primary.DEFAULT,
-        borderColor: colors.primary.DEFAULT,
-    },
-    filterPillText: {
-        fontSize: 13,
-        color: colors.text.secondary,
-        fontWeight: '500',
-    },
-    filterPillTextActive: {
-        color: colors.text.inverse,
-    },
-    // Feed Health styles
-    feedItemStale: {
-        borderLeftWidth: 3,
-        borderLeftColor: '#f59e0b', // warning orange
-    },
-    feedItemDead: {
-        borderLeftWidth: 3,
-        borderLeftColor: '#6b7280', // gray
-        opacity: 0.7,
-    },
-    staleBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        marginTop: 4,
-        alignSelf: 'flex-start',
-        backgroundColor: '#f59e0b22',
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: borderRadius.sm,
-    },
-    staleBadgeText: {
-        fontSize: 11,
-        color: '#f59e0b',
-        fontWeight: '600',
-    },
-    deadBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        marginTop: 4,
-        alignSelf: 'flex-start',
-        backgroundColor: '#6b728022',
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: borderRadius.sm,
-    },
-    deadBadgeText: {
-        fontSize: 11,
-        color: '#6b7280',
-        fontWeight: '600',
-    },
-    healthTime: {
-        fontSize: 11,
-        color: colors.text.tertiary,
-        marginTop: 4,
     },
 });
