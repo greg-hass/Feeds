@@ -53,7 +53,7 @@ interface NormalizedArticleResponse {
     thumbnail_url: string | null;
     published_at: string | null;
     feed_title: string;
-    feed_icon_url: string;
+    feed_icon_url: string | null;
     feed_type: string;
     is_read: boolean;
     is_bookmarked: boolean;

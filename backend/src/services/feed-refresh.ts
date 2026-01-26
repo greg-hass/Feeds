@@ -152,7 +152,8 @@ function insertArticles(
 async function updateFeedMetadata(
     feedId: number,
     feedData: any,
-    currentType: FeedType,
+    newType: FeedType,
+    oldType: FeedType,
     refreshIntervalMinutes: number,
     iconStatus: IconStatus,
     cachedIcon: { fileName: string | null; mime: string | null } | null
@@ -171,9 +172,9 @@ async function updateFeedMetadata(
         feedData.description,
     ];
     
-    if (currentType !== feedType) {
+    if (newType !== oldType) {
         typeUpdate = ', type = ?';
-        params.push(currentType);
+        params.push(newType);
     }
     
     params.push(feedId);
@@ -364,18 +365,19 @@ export async function refreshFeed(feed: FeedToRefreshWithCache): Promise<Refresh
         }
         
         const needsIconCache = !iconStatus.iconCachedPath && feedData.favicon;
-        const cachedIcon = needsIconCache ? await cacheFeedIcon(feed.id, feedData.favicon) : null;
+        const cachedIcon = needsIconCache ? await cacheFeedIcon(feed.id, feedData.favicon!) : null;
         
         const nextFetchAt = await updateFeedMetadata(
             feed.id,
             feedData,
             currentType,
+            feed.type,
             refreshIntervalMinutes,
             iconStatus,
             cachedIcon
         );
         
-        return { success: true, newArticles: insertedCount, next_fetch_at: nextFetchAt };
+        return { success: true, newArticles: insertedCount, next_fetch_at: nextFetchAt ?? undefined };
     } catch (err) {
         return handleRefreshError(feed.id, err, refreshIntervalMinutes);
     }

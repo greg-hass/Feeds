@@ -1,4 +1,5 @@
-import { fetchYouTubeIcon, fetchRedditIcon } from './feed-parser.js';
+import { fetchYouTubeIcon } from './youtube-parser.js';
+import { fetchRedditIcon } from './reddit-parser.js';
 
 type PlatformType = 'youtube' | 'reddit' | 'generic';
 
