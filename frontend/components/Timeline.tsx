@@ -10,6 +10,7 @@ import TimelineHeader from './TimelineHeader';
 import TimelineArticle from './TimelineArticle';
 import NewArticlesPill from './NewArticlesPill';
 import { TimelineEmptyState } from './TimelineEmptyState';
+import { DigestCard } from './DigestCard';
 import { timelineStyles } from './Timeline.styles';
 import { scheduleIdle, canPrefetch } from '@/utils/scheduler';
 
