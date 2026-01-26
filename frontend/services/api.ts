@@ -114,6 +114,12 @@ class ApiClient {
         });
     }
 
+    async clearIconCache() {
+        return this.request<{ success: boolean }>('/feeds/clear-icon-cache', {
+            method: 'POST',
+        });
+    }
+
     async getFeedInfo(id: number) {
         return this.request<FeedInfo>(`/feeds/${id}/info`);
     }

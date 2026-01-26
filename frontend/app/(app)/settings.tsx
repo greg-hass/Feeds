@@ -1,15 +1,16 @@
 import { useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useSettingsStore, useToastStore } from '@/stores';
-import { Settings } from '@/services/api';
-import { ArrowLeft, Sun, Moon, Monitor, Check } from 'lucide-react-native';
+import { useSettingsStore, useToastStore, useFeedStore } from '@/stores';
+import { Settings, api } from '@/services/api';
+import { ArrowLeft, Sun, Moon, Monitor, Check, Trash2 } from 'lucide-react-native';
 import { useColors, spacing, borderRadius, shadows, ACCENT_COLORS, AccentColor } from '@/theme';
 
 export default function SettingsScreen() {
     const router = useRouter();
     const colors = useColors();
     const { settings, fetchSettings, updateSettings } = useSettingsStore();
+    const { fetchFeeds } = useFeedStore();
     const { show } = useToastStore();
 
     const s = styles(colors);
@@ -35,6 +36,16 @@ export default function SettingsScreen() {
             } catch (error) {
                 show('Failed to update setting', 'error');
             }
+        }
+    };
+
+    const handleClearIconCache = async () => {
+        try {
+            await api.clearIconCache();
+            await fetchFeeds(); // Reload feeds to get remote URLs
+            show('Icon cache cleared', 'success');
+        } catch (error) {
+            show('Failed to clear icon cache', 'error');
         }
     };
 
@@ -256,6 +267,16 @@ export default function SettingsScreen() {
                                 ))}
                             </View>
                         </View>
+
+                        <View style={s.divider} />
+
+                        <TouchableOpacity style={s.dangerRow} onPress={handleClearIconCache}>
+                            <View>
+                                <Text style={s.dangerLabel}>Clear Icon Cache</Text>
+                                <Text style={s.hint}>Fixes incorrect feed icons</Text>
+                            </View>
+                            <Trash2 size={20} color={colors.feedback.error} />
+                        </TouchableOpacity>
                     </View>
                 </View>
 
@@ -413,5 +434,16 @@ const styles = (colors: any) => StyleSheet.create({
     accentOptionActive: {
         borderColor: colors.text.primary,
         transform: [{ scale: 1.1 }],
+    },
+    dangerRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: spacing.sm,
+    },
+    dangerLabel: {
+        fontSize: 16,
+        color: colors.feedback.error,
+        fontWeight: '500',
     },
 });

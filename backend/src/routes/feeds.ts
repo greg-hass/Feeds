@@ -76,4 +76,7 @@ export async function feedsRoutes(app: FastifyInstance) {
 
     // Refetch all YouTube channel icons (one-time fix)
     app.post('/refetch-youtube-icons', FeedsController.refetchYouTubeIcons);
+
+    // Clear all icon caches
+    app.post('/clear-icon-cache', FeedsController.clearIconCache);
 }

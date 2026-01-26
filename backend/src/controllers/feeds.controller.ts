@@ -4,7 +4,7 @@ import { discoverFeedsFromUrl } from '../services/discovery.js';
 import { parseFeed, normalizeArticle, detectFeedType, FeedType } from '../services/feed-parser.js';
 import { fetchYouTubeIcon } from '../services/youtube-parser.js';
 import { refreshFeed } from '../services/feed-refresh.js';
-import { cacheFeedIcon } from '../services/icon-cache.js';
+import { cacheFeedIcon, clearAllIconCaches } from '../services/icon-cache.js';
 import { Feed } from '../types/index.js';
 
 const ICON_ENDPOINT_PREFIX = '/api/v1/icons';
@@ -451,5 +451,15 @@ export class FeedsController {
             failed: results.failed,
             details: results.details
         };
+    }
+
+    static async clearIconCache(request: FastifyRequest, reply: FastifyReply) {
+        try {
+            await clearAllIconCaches();
+            return { success: true };
+        } catch (err) {
+            console.error('Failed to clear icon cache:', err);
+            return reply.status(500).send({ error: 'Failed to clear icon cache' });
+        }
     }
 }

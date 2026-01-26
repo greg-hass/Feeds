@@ -29,7 +29,7 @@ const BASE_CACHE_DIR = (() => {
     return dirname(dbPath);
 })();
 
-function getCacheDir(subdir: string) {
+export function getCacheDir(subdir: string) {
     return join(BASE_CACHE_DIR, subdir);
 }
 
