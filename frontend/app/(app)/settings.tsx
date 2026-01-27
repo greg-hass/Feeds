@@ -261,6 +261,15 @@ export default function SettingsScreen() {
 
                         <View style={s.divider} />
 
+                        <TouchableOpacity style={s.row} onPress={() => router.push('/database-health')}>
+                            <View>
+                                <Text style={s.label}>Database Health</Text>
+                                <Text style={s.hint}>View stats & optimize</Text>
+                            </View>
+                        </TouchableOpacity>
+
+                        <View style={s.divider} />
+
                         <TouchableOpacity style={s.dangerRow} onPress={handleClearIconCache}>
                             <View>
                                 <Text style={s.dangerLabel}>Clear Icon Cache</Text>

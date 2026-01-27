@@ -126,7 +126,7 @@ class ApiClient {
 
     // Database Health
     async getDatabaseStats() {
-        return this.request<{
+        return this.get<{
             database: {
                 totalSizeMb: string;
                 articleCount: number;
