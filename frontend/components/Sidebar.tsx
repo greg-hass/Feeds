@@ -1,5 +1,5 @@
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, ActivityIndicator, Platform, useWindowDimensions } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
 import { useFeedStore, useArticleStore } from '@/stores';
 import {
     Rss, Youtube, MessageSquare, Headphones,
@@ -18,6 +18,7 @@ const FEED_TYPE_ICONS: Record<string, React.ComponentType<any>> = {
 
 export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     const router = useRouter();
+    const pathname = usePathname();
     const colors = useColors();
     const {
         feeds, folders, smartFolders, totalUnread, fetchFeeds, fetchFolders,
@@ -58,7 +59,8 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         await refreshAllFeeds();
     };
 
-    const isAllActive = !filter.feed_id && !filter.folder_id && !filter.type;
+    const isHome = pathname === '/' || pathname === '/index';
+    const isAllActive = isHome && !filter.feed_id && !filter.folder_id && !filter.type;
 
     return (
         <View style={s.container}>
@@ -114,64 +116,64 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
                 {/* Bookmarks */}
                 <TouchableOpacity
-                    style={s.navItem}
+                    style={[s.navItem, pathname === '/bookmarks' && s.navItemActive]}
                     onPress={() => { onNavigate?.(); router.push('/bookmarks'); }}
                     accessibilityLabel="View bookmarks"
                     accessibilityRole="link"
                 >
-                    <Bookmark size={18} color={colors.primary.DEFAULT} />
-                    <Text style={s.navItemText}>Bookmarks</Text>
+                    <Bookmark size={18} color={pathname === '/bookmarks' ? colors.text.inverse : colors.primary.DEFAULT} />
+                    <Text style={[s.navItemText, pathname === '/bookmarks' && s.navItemTextActive]}>Bookmarks</Text>
                 </TouchableOpacity>
 
                 {/* AI Discovery */}
                 <TouchableOpacity
-                    style={s.navItem}
+                    style={[s.navItem, pathname === '/discovery' && s.navItemActive]}
                     onPress={() => { onNavigate?.(); router.push('/discovery'); }}
                     accessibilityLabel="Explore new feeds"
                     accessibilityRole="link"
                 >
-                    <Sparkles size={18} color={colors.warning} />
-                    <Text style={s.navItemText}>Discover</Text>
+                    <Sparkles size={18} color={pathname === '/discovery' ? colors.text.inverse : colors.warning} />
+                    <Text style={[s.navItemText, pathname === '/discovery' && s.navItemTextActive]}>Discover</Text>
                 </TouchableOpacity>
 
                 {/* Daily Digest */}
                 <TouchableOpacity
-                    style={s.navItem}
+                    style={[s.navItem, pathname === '/digest' && s.navItemActive]}
                     onPress={() => { onNavigate?.(); router.push('/digest'); }}
                     accessibilityLabel="View daily digest"
                     accessibilityRole="link"
                 >
-                    <BookOpen size={18} color={colors.primary.DEFAULT} />
-                    <Text style={s.navItemText}>Daily Digest</Text>
+                    <BookOpen size={18} color={pathname === '/digest' ? colors.text.inverse : colors.primary.DEFAULT} />
+                    <Text style={[s.navItemText, pathname === '/digest' && s.navItemTextActive]}>Daily Digest</Text>
                 </TouchableOpacity>
 
                 {/* Analytics */}
                 <TouchableOpacity
-                    style={s.navItem}
+                    style={[s.navItem, pathname.includes('/analytics') && s.navItemActive]}
                     onPress={() => { onNavigate?.(); router.push('/(app)/analytics' as any); }}
                     accessibilityLabel="View analytics dashboard"
                     accessibilityRole="link"
                 >
-                    <BarChart3 size={18} color={colors.primary.DEFAULT} />
-                    <Text style={s.navItemText}>Analytics</Text>
+                    <BarChart3 size={18} color={pathname.includes('/analytics') ? colors.text.inverse : colors.primary.DEFAULT} />
+                    <Text style={[s.navItemText, pathname.includes('/analytics') && s.navItemTextActive]}>Analytics</Text>
                 </TouchableOpacity>
 
                 {/* Automation Rules */}
                 <TouchableOpacity
-                    style={s.navItem}
+                    style={[s.navItem, pathname.includes('/rules') && s.navItemActive]}
                     onPress={() => { onNavigate?.(); router.push('/(app)/rules' as any); }}
                     accessibilityLabel="Manage automation rules"
                     accessibilityRole="link"
                 >
-                    <Zap size={18} color={colors.warning} />
-                    <Text style={s.navItemText}>Automation</Text>
+                    <Zap size={18} color={pathname.includes('/rules') ? colors.text.inverse : colors.warning} />
+                    <Text style={[s.navItemText, pathname.includes('/rules') && s.navItemTextActive]}>Automation</Text>
                 </TouchableOpacity>
 
                 {/* Smart Folders */}
                 <Text style={s.sectionTitle}>By Type</Text>
                 {smartFolders.map((sf) => {
                     const Icon = FEED_TYPE_ICONS[sf.type] || Rss;
-                    const isActive = filter.type === sf.type;
+                    const isActive = isHome && filter.type === sf.type;
                     const iconColor = isActive ? colors.text.inverse : colors.text.secondary;
 
                     return (
@@ -198,7 +200,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                     <>
                         <Text style={s.sectionTitle}>Folders</Text>
                         {folders.map((folder) => {
-                            const isActive = filter.folder_id === folder.id;
+                            const isActive = isHome && filter.folder_id === folder.id;
                             return (
                                 <TouchableOpacity
                                     key={folder.id}
@@ -226,7 +228,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                     .filter((f) => !f.folder_id)
                     .map((feed) => {
                         const Icon = FEED_TYPE_ICONS[feed.type] || Rss;
-                        const isActive = filter.feed_id === feed.id;
+                        const isActive = isHome && filter.feed_id === feed.id;
                         const isPaused = !!feed.paused_at;
                         return (
                             <TouchableOpacity
