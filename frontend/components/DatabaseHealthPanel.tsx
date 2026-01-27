@@ -69,6 +69,22 @@ export const DatabaseHealthPanel = () => {
         }
     };
 
+    const [vacuuming, setVacuuming] = useState(false);
+
+    const handleVacuum = async () => {
+        try {
+            setVacuuming(true);
+            setMessage('Running VACUUM (this may take a moment)...');
+            const result = await api.vacuumDatabase();
+            setMessage(`${result.message} (${result.mbReclaimed} MB reclaimed)`);
+            await loadStats(false);
+        } catch (err: any) {
+            setMessage(err?.message || 'VACUUM failed');
+        } finally {
+            setVacuuming(false);
+        }
+    };
+
     if (loading) {
         return (
             <View style={s.container}>
@@ -180,6 +196,20 @@ export const DatabaseHealthPanel = () => {
                         <Text style={s.buttonText}>Optimize Database</Text>
                     )}
                 </TouchableOpacity>
+
+                {stats.maintenance.needsVacuum && (
+                    <TouchableOpacity
+                        style={[s.button, s.buttonWarning, vacuuming && s.buttonDisabled]}
+                        onPress={handleVacuum}
+                        disabled={vacuuming}
+                    >
+                        {vacuuming ? (
+                            <ActivityIndicator size="small" color={colors.text?.inverse} />
+                        ) : (
+                            <Text style={s.buttonText}>Run VACUUM (Defragment)</Text>
+                        )}
+                    </TouchableOpacity>
+                )}
 
                 <TouchableOpacity
                     style={[s.button, s.buttonSecondary, refreshing && s.buttonDisabled]}
@@ -317,6 +347,9 @@ const styles = (colors: any) => StyleSheet.create({
     },
     buttonSecondary: {
         backgroundColor: colors.background?.tertiary,
+    },
+    buttonWarning: {
+        backgroundColor: colors.status?.warning ?? '#f59e0b',
     },
     buttonDisabled: {
         opacity: 0.5,
