@@ -104,11 +104,17 @@ async function runSchedulerCycle() {
         console.log(`[Scheduler] Running cycle (failures: ${state.consecutiveFailures})`);
         await checkFeeds();
         
+        // Check if still running after async operation
+        if (!state.isRunning) return;
+        
         // Reset failure count on success
         state.consecutiveFailures = 0;
         state.isPaused = false;
         
     } catch (err) {
+        // Check if still running before updating state
+        if (!state.isRunning) return;
+        
         state.consecutiveFailures++;
         state.lastFailureTime = Date.now();
         
@@ -127,7 +133,7 @@ async function runSchedulerCycle() {
         }
     }
     
-    // Schedule next cycle if not paused
+    // Schedule next cycle if not paused and still running
     if (state.isRunning && !state.isPaused) {
         state.timeoutHandle = setTimeout(runSchedulerCycle, CHECK_INTERVAL);
     }
@@ -402,8 +408,18 @@ async function cleanupThumbnailCache(retentionDays: number) {
     let deletedCount = 0;
     let reclaimedBytes = 0;
     let scanned = 0;
+    let skippedActive = 0;
 
     try {
+        // Get list of active thumbnail filenames from database
+        const activeThumbnails = new Set(
+            queryAll<{ thumbnail_cached_path: string }>(
+                `SELECT thumbnail_cached_path FROM articles 
+                 WHERE thumbnail_cached_path IS NOT NULL 
+                 AND published_at > datetime('now', '-30 days')`
+            ).map(a => a.thumbnail_cached_path.split('/').pop())
+        );
+
         const entries = await readdir(thumbnailsDir, { withFileTypes: true });
         for (const entry of entries) {
             if (!entry.isFile()) continue;
@@ -411,6 +427,11 @@ async function cleanupThumbnailCache(retentionDays: number) {
             const filePath = join(thumbnailsDir, entry.name);
             try {
                 const fileStat = await stat(filePath);
+                // Skip files that are still referenced by recent articles
+                if (activeThumbnails.has(entry.name)) {
+                    skippedActive++;
+                    continue;
+                }
                 if (fileStat.mtimeMs <= cutoff) {
                     await unlink(filePath);
                     deletedCount += 1;
@@ -419,6 +440,10 @@ async function cleanupThumbnailCache(retentionDays: number) {
             } catch (err) {
                 console.warn(`[Cleanup] Failed to delete thumbnail ${entry.name}:`, err);
             }
+        }
+
+        if (skippedActive > 0) {
+            console.log(`[Cleanup] Skipped ${skippedActive} active thumbnails`);
         }
     } catch (err) {
         console.warn('[Cleanup] Failed to scan thumbnail cache:', err);
