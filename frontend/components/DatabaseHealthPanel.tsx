@@ -30,22 +30,28 @@ export const DatabaseHealthPanel = () => {
     const s = styles(colors);
     const [stats, setStats] = useState<DatabaseStats | null>(null);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [optimizing, setOptimizing] = useState(false);
     const [message, setMessage] = useState<string | null>(null);
 
     useEffect(() => {
-        loadStats();
+        loadStats(true);
     }, []);
 
-    const loadStats = async () => {
+    const loadStats = async (isInitial = false) => {
         try {
-            setLoading(true);
+            if (isInitial) {
+                setLoading(true);
+            } else {
+                setRefreshing(true);
+            }
             const data = await api.getDatabaseStats();
             setStats(data);
         } catch (err) {
             console.error('Failed to load database stats:', err);
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
     };
 
@@ -55,7 +61,7 @@ export const DatabaseHealthPanel = () => {
             setMessage('Optimizing database...');
             const result = await api.optimizeDatabase();
             setMessage(result.message);
-            await loadStats();
+            await loadStats(false);
         } catch (err) {
             setMessage('Optimization failed');
         } finally {
@@ -79,7 +85,8 @@ export const DatabaseHealthPanel = () => {
         );
     }
 
-    const isHealthy = !stats.maintenance.needsVacuum && stats.maintenance.recommendations.length === 0;
+    // Database is healthy if it doesn't need vacuum (the critical threshold)
+    const isHealthy = !stats.maintenance.needsVacuum;
 
     return (
         <ScrollView style={s.container}>
@@ -109,22 +116,22 @@ export const DatabaseHealthPanel = () => {
                     <HardDrive size={18} color={colors.text?.secondary} />
                     <Text style={s.cardTitle}>Storage Overview</Text>
                 </View>
-                
+
                 <View style={s.statRow}>
                     <Text style={s.statLabel}>Total Size</Text>
                     <Text style={s.statValue}>{stats.database.totalSizeMb} MB</Text>
                 </View>
-                
+
                 <View style={s.statRow}>
                     <Text style={s.statLabel}>Articles</Text>
                     <Text style={s.statValue}>{stats.database.articleCount.toLocaleString()}</Text>
                 </View>
-                
+
                 <View style={s.statRow}>
                     <Text style={s.statLabel}>Feeds</Text>
                     <Text style={s.statValue}>{stats.database.feedCount}</Text>
                 </View>
-                
+
                 <View style={s.statRow}>
                     <Text style={s.statLabel}>Fragmentation</Text>
                     <Text style={[s.statValue, stats.maintenance.needsVacuum && s.warningText]}>
@@ -175,11 +182,15 @@ export const DatabaseHealthPanel = () => {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                    style={[s.button, s.buttonSecondary]}
-                    onPress={loadStats}
-                    disabled={loading}
+                    style={[s.button, s.buttonSecondary, refreshing && s.buttonDisabled]}
+                    onPress={() => loadStats(false)}
+                    disabled={refreshing}
                 >
-                    <Text style={[s.buttonText, s.buttonTextSecondary]}>Refresh Stats</Text>
+                    {refreshing ? (
+                        <ActivityIndicator size="small" color={colors.text?.primary} />
+                    ) : (
+                        <Text style={[s.buttonText, s.buttonTextSecondary]}>Refresh Stats</Text>
+                    )}
                 </TouchableOpacity>
             </View>
 
