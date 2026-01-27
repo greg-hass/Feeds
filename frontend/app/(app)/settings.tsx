@@ -266,7 +266,7 @@ export default function SettingsScreen() {
                                 <Text style={s.dangerLabel}>Clear Icon Cache</Text>
                                 <Text style={s.hint}>Fixes incorrect feed icons</Text>
                             </View>
-                            <Trash2 size={20} color={colors.feedback.error} />
+                            <Trash2 size={20} color={colors.error} />
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -409,7 +409,7 @@ const styles = (colors: any) => StyleSheet.create({
     },
     dangerLabel: {
         fontSize: 16,
-        color: colors.feedback.error,
+        color: colors.error,
         fontWeight: '500',
     },
 });
