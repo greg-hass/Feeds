@@ -336,6 +336,7 @@ async function checkFeeds() {
 /**
  * Cleanup cycle - runs daily to delete old articles based on retention_days setting.
  * IMPORTANT: Bookmarked articles are NEVER deleted, regardless of age.
+ * Uses batch processing to avoid long-running transactions.
  */
 async function runCleanupCycle() {
     if (!state.isRunning) return;
@@ -344,28 +345,57 @@ async function runCleanupCycle() {
         const userId = 1;
         const settings = getUserSettings(userId);
         const retentionDays = settings.retention_days;
+        const BATCH_SIZE = 1000; // Process in batches to avoid locking
 
         console.log(`[Cleanup] Starting cleanup cycle (retention: ${retentionDays} days)`);
 
-        // Delete old articles that are:
-        // 1. Older than retention_days
-        // 2. NOT bookmarked (is_bookmarked = 0 or NULL)
-        // 3. Associated with feeds that belong to this user
-        const result = run(
-            `DELETE FROM articles
-             WHERE id IN (
-                 SELECT a.id FROM articles a
+        let totalDeleted = 0;
+        let batchDeleted = 0;
+        let batchCount = 0;
+
+        // Process deletions in batches to avoid long-running transactions
+        do {
+            // Get batch of old article IDs to delete
+            const articlesToDelete = queryAll<{ id: number }>(
+                `SELECT a.id FROM articles a
                  JOIN feeds f ON a.feed_id = f.id
                  WHERE f.user_id = ?
                  AND a.published_at < datetime('now', '-' || ? || ' days')
                  AND (a.is_bookmarked = 0 OR a.is_bookmarked IS NULL)
-             )`,
-            [userId, retentionDays]
-        );
+                 LIMIT ?`,
+                [userId, retentionDays, BATCH_SIZE]
+            );
 
-        const deletedCount = result.changes;
-        if (deletedCount > 0) {
-            console.log(`[Cleanup] Deleted ${deletedCount} old articles (older than ${retentionDays} days)`);
+            if (articlesToDelete.length === 0) break;
+
+            // Delete this batch
+            const ids = articlesToDelete.map(a => a.id);
+            const placeholders = ids.map(() => '?').join(',');
+            
+            const result = run(
+                `DELETE FROM articles WHERE id IN (${placeholders})`,
+                ids
+            );
+
+            batchDeleted = result.changes;
+            totalDeleted += batchDeleted;
+            batchCount++;
+
+            // Small delay between batches to allow other operations
+            if (batchDeleted === BATCH_SIZE) {
+                await sleep(100);
+            }
+
+        } while (batchDeleted === BATCH_SIZE && state.isRunning);
+
+        if (totalDeleted > 0) {
+            console.log(`[Cleanup] Deleted ${totalDeleted} old articles in ${batchCount} batches (older than ${retentionDays} days)`);
+            
+            // Run OPTIMIZE after significant deletions to help query planner
+            if (totalDeleted > 10000) {
+                console.log('[Cleanup] Running ANALYZE after large deletion...');
+                queryOne('ANALYZE articles');
+            }
         } else {
             console.log(`[Cleanup] No articles to clean up`);
         }

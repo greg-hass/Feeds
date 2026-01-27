@@ -17,6 +17,7 @@ import { thumbnailsRoutes } from './routes/thumbnails.js';
 import { analyticsRoutes } from './routes/analytics.js';
 import { rulesRoutes } from './routes/rules.js';
 import { highlightsRoutes } from './routes/highlights.js';
+import { healthRoutes } from './routes/health.js';
 import { startScheduler, stopScheduler } from './services/scheduler.js';
 import { ensureIconCacheDir } from './services/icon-cache.js';
 import { ensureThumbnailCacheDir } from './services/thumbnail-cache.js';
@@ -95,6 +96,7 @@ export async function buildApp() {
     await app.register(analyticsRoutes, { prefix: '/api/v1/analytics' });
     await app.register(rulesRoutes, { prefix: '/api/v1/rules' });
     await app.register(highlightsRoutes, { prefix: '/api/v1/highlights' });
+    await app.register(healthRoutes, { prefix: '/api/v1/health' });
 
     return app;
 }

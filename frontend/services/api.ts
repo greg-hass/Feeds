@@ -124,6 +124,48 @@ class ApiClient {
         return this.request<FeedInfo>(`/feeds/${id}/info`);
     }
 
+    // Database Health
+    async getDatabaseStats() {
+        return this.request<{
+            database: {
+                totalSizeMb: string;
+                articleCount: number;
+                feedCount: number;
+                oldestArticleDate: string | null;
+                ftsSizeMb: string;
+            };
+            tables: Array<{
+                name: string;
+                rows: number;
+                estimatedSizeMb: string;
+            }>;
+            maintenance: {
+                fragmentationPercent: string;
+                needsVacuum: boolean;
+                needsOptimize: boolean;
+                recommendations: string[];
+            };
+        }>('/health/db-stats');
+    }
+
+    async optimizeDatabase() {
+        return this.post<{
+            success: boolean;
+            message: string;
+            durationMs: number;
+        }>('/health/db-optimize');
+    }
+
+    async vacuumDatabase() {
+        return this.post<{
+            success: boolean;
+            message: string;
+            durationMs: number;
+            mbReclaimed: string;
+        }>('/health/db-vacuum');
+    }
+}
+
     async bulkFeedAction(action: 'move' | 'delete' | 'mark_read' | 'update_refresh_interval', feedIds: number[], folderId?: number | null, refreshInterval?: number) {
         return this.request<{ affected: number }>('/feeds/bulk', {
             method: 'POST',
