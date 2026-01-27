@@ -1,4 +1,4 @@
-import { queryOne, queryAll } from '../db/index.js';
+import { queryOne, queryAll, run } from '../db/index.js';
 
 export interface DatabaseStats {
     totalSizeBytes: number;
@@ -162,10 +162,10 @@ export async function optimizeDatabase(): Promise<{
 
     try {
         // Run ANALYZE to update statistics for query planner
-        queryOne('ANALYZE');
+        run('ANALYZE');
 
         // Run REINDEX to rebuild indexes
-        queryOne('REINDEX');
+        run('REINDEX');
 
         // Note: VACUUM is not run automatically as it requires exclusive lock
         // It should be scheduled during maintenance windows
@@ -205,7 +205,7 @@ export async function vacuumDatabase(): Promise<{
     try {
         // VACUUM requires exclusive database access
         // This will fail if there are any open transactions
-        queryOne('VACUUM');
+        run('VACUUM');
 
         const statsAfter = getDatabaseStats();
         const durationMs = Date.now() - startTime;
