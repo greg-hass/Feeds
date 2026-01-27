@@ -4,6 +4,10 @@ import { FeedType } from './feed-parser.js';
 import { getUserSettings, getUserSettingsRaw, updateUserSettingsRaw } from './settings.js';
 import { generateDailyDigest, getCurrentEdition, DigestEdition } from './digest.js';
 import { emitRefreshEvent, RefreshFeedUpdate, RefreshStats } from './refresh-events.js';
+import { existsSync } from 'node:fs';
+import { readdir, stat, unlink } from 'node:fs/promises';
+import { join } from 'node:path';
+import { getCacheDir } from './image-cache.js';
 
 interface Feed extends FeedToRefresh {
     title: string;
@@ -14,6 +18,8 @@ const FEED_DELAY = 100; // 100ms delay between batches (increased from 25ms to r
 const BATCH_SIZE = 20; // Reduced from 30 to stay within common API rate limits and reduce parallel connection overhead
 const CLEANUP_INTERVAL = 24 * 60 * 60 * 1000; // Run cleanup once per day
 const DIGEST_CHECK_INTERVAL = 5 * 60 * 1000; // Check digest schedule every 5 minutes
+const THUMBNAIL_RETENTION_DAYS = 7;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 // Circuit breaker configuration
 const FAILURE_THRESHOLD = 3;
@@ -358,6 +364,13 @@ async function runCleanupCycle() {
             console.log(`[Cleanup] No articles to clean up`);
         }
 
+        const thumbnailResult = await cleanupThumbnailCache(THUMBNAIL_RETENTION_DAYS);
+        if (thumbnailResult.deletedCount > 0) {
+            console.log(`[Cleanup] Deleted ${thumbnailResult.deletedCount} cached thumbnails (${formatBytes(thumbnailResult.reclaimedBytes)})`);
+        } else if (thumbnailResult.scanned > 0) {
+            console.log('[Cleanup] No cached thumbnails to delete');
+        }
+
         state.lastCleanupAt = Date.now();
 
     } catch (err) {
@@ -369,6 +382,49 @@ async function runCleanupCycle() {
     if (state.isRunning) {
         state.cleanupTimeoutHandle = setTimeout(runCleanupCycle, CLEANUP_INTERVAL);
     }
+}
+
+function formatBytes(bytes: number): string {
+    if (bytes <= 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const order = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+    const value = bytes / Math.pow(1024, order);
+    return `${value.toFixed(order === 0 ? 0 : 1)} ${units[order]}`;
+}
+
+async function cleanupThumbnailCache(retentionDays: number) {
+    const thumbnailsDir = getCacheDir('thumbnails');
+    if (!existsSync(thumbnailsDir)) {
+        return { deletedCount: 0, reclaimedBytes: 0, scanned: 0 };
+    }
+
+    const cutoff = Date.now() - retentionDays * MS_PER_DAY;
+    let deletedCount = 0;
+    let reclaimedBytes = 0;
+    let scanned = 0;
+
+    try {
+        const entries = await readdir(thumbnailsDir, { withFileTypes: true });
+        for (const entry of entries) {
+            if (!entry.isFile()) continue;
+            scanned += 1;
+            const filePath = join(thumbnailsDir, entry.name);
+            try {
+                const fileStat = await stat(filePath);
+                if (fileStat.mtimeMs <= cutoff) {
+                    await unlink(filePath);
+                    deletedCount += 1;
+                    reclaimedBytes += fileStat.size;
+                }
+            } catch (err) {
+                console.warn(`[Cleanup] Failed to delete thumbnail ${entry.name}:`, err);
+            }
+        }
+    } catch (err) {
+        console.warn('[Cleanup] Failed to scan thumbnail cache:', err);
+    }
+
+    return { deletedCount, reclaimedBytes, scanned };
 }
 
 /**
