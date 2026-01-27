@@ -512,7 +512,7 @@ export default function ManageScreen() {
             case 'youtube': return <Youtube size={18} color="#ef4444" />;
             case 'podcast': return <Headphones size={18} color={colors.secondary.DEFAULT} />;
             case 'reddit': return <MessageSquare size={18} color="#f97316" />;
-            default: return <Rss size={18} color={colors.primary.DEFAULT} />;
+            default: return <Rss size={18} color={colors.primary?.DEFAULT ?? colors.primary} />;
         }
     };
 
@@ -523,10 +523,10 @@ export default function ManageScreen() {
                 title="Manage Feeds"
                 rightAction={
                     <TouchableOpacity
-                        style={[s.headerButton, isBulkMode && { backgroundColor: colors.primary.DEFAULT + '22' }]}
+                        style={[s.headerButton, isBulkMode && { backgroundColor: (colors.primary?.DEFAULT ?? colors.primary) + '22' }]}
                         onPress={toggleBulkMode}
                     >
-                        <Check size={18} color={isBulkMode ? colors.primary.DEFAULT : colors.text.secondary} />
+                        <Check size={18} color={isBulkMode ? (colors.primary?.DEFAULT ?? colors.primary) : colors.text.secondary} />
                     </TouchableOpacity>
                 }
             />
@@ -600,7 +600,7 @@ export default function ManageScreen() {
                                         <Text style={s.discoveryTitle}>{d.title}</Text>
                                         <Text style={s.discoveryUrl} numberOfLines={1}>{d.feed_url}</Text>
                                     </View>
-                                    <Plus size={20} color={colors.primary.DEFAULT} />
+                                    <Plus size={20} color={colors.primary?.DEFAULT ?? colors.primary} />
                                 </TouchableOpacity>
                             ))}
                         </View>
@@ -691,7 +691,7 @@ export default function ManageScreen() {
                                 feed.paused_at && s.feedItemPaused,
                                 isStale && s.feedItemStale,
                                 isDead && s.feedItemDead,
-                                isBulkMode && selectedFeedIds.has(feed.id) && { backgroundColor: colors.primary.DEFAULT + '11', borderColor: colors.primary.DEFAULT + '44' }
+                                isBulkMode && selectedFeedIds.has(feed.id) && { backgroundColor: (colors.primary?.DEFAULT ?? colors.primary) + '11', borderColor: (colors.primary?.DEFAULT ?? colors.primary) + '44' }
                             ]}
                         >
                             <TouchableOpacity
@@ -856,7 +856,7 @@ export default function ManageScreen() {
                         loading={progressState.isActive && progressState.operation === 'refresh'}
                         disabled={progressState.isActive || feeds.length === 0}
                         icon={!(progressState.isActive && progressState.operation === 'refresh') ? <RefreshCcw size={20} color={colors.text.inverse} /> : undefined}
-                        style={{ marginTop: spacing.md, backgroundColor: colors.primary.dark }}
+                        style={{ marginTop: spacing.md, backgroundColor: colors.primary?.dark ?? colors.primary }}
                     />
                 </View>
             </ScrollView>
@@ -949,7 +949,7 @@ export default function ManageScreen() {
                             onPress={() => setSelectedFolderId(null)}
                         >
                             <Text style={s.folderOptionText}>No Folder</Text>
-                            {selectedFolderId === null && <Check size={18} color={colors.primary.DEFAULT} />}
+                            {selectedFolderId === null && <Check size={18} color={colors.primary?.DEFAULT ?? colors.primary} />}
                         </TouchableOpacity>
                         {folders.map((folder: Folder) => (
                             <TouchableOpacity
@@ -962,7 +962,7 @@ export default function ManageScreen() {
                             >
                                 <FolderIcon size={18} color={colors.secondary.DEFAULT} />
                                 <Text style={s.folderOptionText}>{folder.name}</Text>
-                                {selectedFolderId === folder.id && <Check size={18} color={colors.primary.DEFAULT} />}
+                                {selectedFolderId === folder.id && <Check size={18} color={colors.primary?.DEFAULT ?? colors.primary} />}
                             </TouchableOpacity>
                         ))}
                         <View style={s.modalActions}>
