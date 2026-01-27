@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle, TextStyle } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle, TextStyle, View } from 'react-native';
 import { useColors, spacing, borderRadius } from '@/theme';
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'outline';
@@ -102,7 +102,7 @@ export const Button = ({
                 <React.Fragment>
                     {icon}
                     {/* Add spacing if there is also text */}
-                    {(title || children) && <ViewStyle style={{ width: spacing.sm }} />} 
+                    {(title || children) && <View style={{ width: spacing.sm }} />} 
                 </React.Fragment>
             ) : null}
             
