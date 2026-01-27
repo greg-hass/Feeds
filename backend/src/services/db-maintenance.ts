@@ -27,27 +27,28 @@ interface IndexSize {
  */
 export function getDatabaseStats(): DatabaseStats {
     // Get page size and page count to calculate total size
-    const pageInfo = queryOne<{ page_size: number; page_count: number }>(
-        "PRAGMA page_size; SELECT page_size, (SELECT page_count FROM pragma_page_count()) as page_count"
-    );
-    
-    const totalSizeBytes = pageInfo ? pageInfo.page_size * pageInfo.page_count : 0;
+    const pageSizeResult = queryOne<{ page_size: number }>('PRAGMA page_size');
+    const pageCountResult = queryOne<{ page_count: number }>('PRAGMA page_count');
+
+    const pageSize = pageSizeResult?.page_size ?? 4096;
+    const pageCount = pageCountResult?.page_count ?? 0;
+    const totalSizeBytes = pageSize * pageCount;
 
     // Get table statistics
     const tables = queryAll<{ name: string }>(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'articles_fts%"
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'articles_fts%'"
     );
 
     const tableSizes: TableSize[] = tables.map(table => {
         const count = queryOne<{ count: number }>(
             `SELECT COUNT(*) as count FROM "${table.name}"`
         );
-        
+
         // Estimate size based on sample (SQLite doesn't provide per-table sizes easily)
         const sample = queryOne<{ avg_row_size: number }>(
             `SELECT AVG(LENGTH(CAST(rowid AS TEXT))) as avg_row_size FROM "${table.name}" LIMIT 1000`
         );
-        
+
         return {
             name: table.name,
             rowCount: count?.count || 0,
@@ -80,11 +81,18 @@ export function getDatabaseStats(): DatabaseStats {
         'SELECT published_at FROM articles ORDER BY published_at ASC LIMIT 1'
     );
 
-    // Estimate FTS size (FTS5 tables are separate)
-    const ftsPages = queryOne<{ page_count: number }>(
-        "SELECT page_count FROM pragma_page_count() WHERE 'articles_fts' IN (SELECT name FROM sqlite_master)"
-    );
-    const ftsSizeBytes = (ftsPages?.page_count || 0) * (pageInfo?.page_size || 4096);
+    // Estimate FTS size based on row count (SQLite doesn't expose per-table page counts)
+    let ftsSizeBytes = 0;
+    try {
+        const ftsRowCount = queryOne<{ count: number }>(
+            "SELECT COUNT(*) as count FROM articles_fts"
+        );
+        // Rough estimate: FTS typically uses ~1.5x the text size, assume ~200 bytes avg per article
+        ftsSizeBytes = (ftsRowCount?.count || 0) * 300;
+    } catch {
+        // FTS table may not exist yet
+        ftsSizeBytes = 0;
+    }
 
     return {
         totalSizeBytes,
@@ -107,13 +115,17 @@ export function checkMaintenanceNeeded(): {
     recommendations: string[];
 } {
     const recommendations: string[] = [];
-    
-    // Check freelist pages (fragmentation indicator)
-    const freelistInfo = queryOne<{ freelist_count: number; page_count: number }>(
-        'SELECT (SELECT freelist_count FROM pragma_freelist_count()) as freelist_count, (SELECT page_count FROM pragma_page_count()) as page_count'
-    );
 
-    const fragmentationRatio = freelistInfo 
+    // Check freelist pages (fragmentation indicator)
+    const freelistResult = queryOne<{ freelist_count: number }>('PRAGMA freelist_count');
+    const pageCountResult = queryOne<{ page_count: number }>('PRAGMA page_count');
+
+    const freelistInfo = {
+        freelist_count: freelistResult?.freelist_count ?? 0,
+        page_count: pageCountResult?.page_count ?? 1
+    };
+
+    const fragmentationRatio = freelistInfo
         ? freelistInfo.freelist_count / Math.max(freelistInfo.page_count, 1)
         : 0;
 
@@ -126,14 +138,8 @@ export function checkMaintenanceNeeded(): {
         recommendations.push(`Database fragmentation is ${(fragmentationRatio * 100).toFixed(1)}%. Consider running VACUUM during low-traffic period.`);
     }
 
-    // Check for long-running queries (if query log is enabled)
-    const slowQueries = queryAll<{ sql: string; time_ms: number }>(
-        "SELECT sql, time_ms FROM sqlite_stat4 WHERE time_ms > 1000 LIMIT 5"
-    );
-
-    if (slowQueries.length > 0) {
-        recommendations.push(`Found ${slowQueries.length} slow queries (>1000ms). Review query performance.`);
-    }
+    // Note: SQLite doesn't have built-in slow query logging
+    // This would require application-level tracking
 
     return {
         needsVacuum,
@@ -153,19 +159,19 @@ export async function optimizeDatabase(): Promise<{
     durationMs: number;
 }> {
     const startTime = Date.now();
-    
+
     try {
         // Run ANALYZE to update statistics for query planner
         queryOne('ANALYZE');
-        
+
         // Run REINDEX to rebuild indexes
         queryOne('REINDEX');
-        
+
         // Note: VACUUM is not run automatically as it requires exclusive lock
         // It should be scheduled during maintenance windows
-        
+
         const durationMs = Date.now() - startTime;
-        
+
         return {
             success: true,
             message: 'Database optimized successfully (ANALYZE + REINDEX)',
@@ -174,7 +180,7 @@ export async function optimizeDatabase(): Promise<{
     } catch (error) {
         const durationMs = Date.now() - startTime;
         const errorMessage = error instanceof Error ? error.message : String(error);
-        
+
         return {
             success: false,
             message: `Optimization failed: ${errorMessage}`,
@@ -195,16 +201,16 @@ export async function vacuumDatabase(): Promise<{
 }> {
     const startTime = Date.now();
     const statsBefore = getDatabaseStats();
-    
+
     try {
         // VACUUM requires exclusive database access
         // This will fail if there are any open transactions
         queryOne('VACUUM');
-        
+
         const statsAfter = getDatabaseStats();
         const durationMs = Date.now() - startTime;
         const bytesReclaimed = statsBefore.totalSizeBytes - statsAfter.totalSizeBytes;
-        
+
         return {
             success: true,
             message: `Database vacuumed successfully. Reclaimed ${(bytesReclaimed / 1024 / 1024).toFixed(2)} MB`,
@@ -214,7 +220,7 @@ export async function vacuumDatabase(): Promise<{
     } catch (error) {
         const durationMs = Date.now() - startTime;
         const errorMessage = error instanceof Error ? error.message : String(error);
-        
+
         return {
             success: false,
             message: `VACUUM failed: ${errorMessage}`,
