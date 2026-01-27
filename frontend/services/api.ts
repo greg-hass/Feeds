@@ -164,7 +164,6 @@ class ApiClient {
             mbReclaimed: string;
         }>('/health/db-vacuum');
     }
-}
 
     async bulkFeedAction(action: 'move' | 'delete' | 'mark_read' | 'update_refresh_interval', feedIds: number[], folderId?: number | null, refreshInterval?: number) {
         return this.request<{ affected: number }>('/feeds/bulk', {
