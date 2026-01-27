@@ -148,10 +148,10 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                             <RefreshControl
                                 refreshing={isLoading && articles.length === 0}
                                 onRefresh={refreshAllFeeds}
-                                tintColor={colors.primary.DEFAULT}
+                                tintColor={colors.primary?.DEFAULT ?? colors.primary}
                             />
                         }
-                        ListFooterComponent={isLoading ? <ActivityIndicator style={s.loader} color={colors.primary.DEFAULT} /> : null}
+                        ListFooterComponent={isLoading ? <ActivityIndicator style={s.loader} color={colors.primary?.DEFAULT ?? colors.primary} /> : null}
                         ListEmptyComponent={
                             !isLoading ? (
                                 <TimelineEmptyState 

@@ -23,7 +23,7 @@ export const DigestCard = () => {
             onPress={() => router.push('/digest')}
         >
             <LinearGradient
-                colors={[colors.primary.DEFAULT, colors.primary.light]}
+                colors={[colors.primary?.DEFAULT ?? colors.primary, colors.primary?.light ?? colors.primary]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={s.gradient}
@@ -72,7 +72,7 @@ const styles = (colors: any) => StyleSheet.create({
         borderRadius: borderRadius.xl,
         overflow: 'hidden',
         // Accent glow shadow
-        shadowColor: colors.primary.DEFAULT,
+        shadowColor: colors.primary?.DEFAULT ?? colors.primary,
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.3,
         shadowRadius: 12,

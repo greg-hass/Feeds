@@ -31,7 +31,7 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
                 <Text style={s.headerTitle} numberOfLines={1}>{title}</Text>
                 {isRefreshing && (
                     <View style={s.refreshPill}>
-                        <ActivityIndicator size={10} color={colors.primary.DEFAULT} />
+                        <ActivityIndicator size={10} color={colors.primary?.DEFAULT ?? colors.primary} />
                         <Text style={s.refreshText}>Refreshing…</Text>
                     </View>
                 )}
@@ -48,7 +48,7 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({
                     accessibilityRole="button"
                 >
                     {isFeedLoading ? (
-                        <ActivityIndicator size={18} color={colors.primary.DEFAULT} />
+                        <ActivityIndicator size={18} color={colors.primary?.DEFAULT ?? colors.primary} />
                     ) : (
                         <RefreshCw size={20} color={colors.text.secondary} />
                     )}

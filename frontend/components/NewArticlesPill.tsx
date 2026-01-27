@@ -104,7 +104,7 @@ const styles = (colors: any) => StyleSheet.create({
     pill: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: colors.primary.DEFAULT,
+        backgroundColor: colors.primary?.DEFAULT ?? colors.primary,
         paddingLeft: spacing.md,
         paddingRight: spacing.sm,
         paddingVertical: spacing.sm,

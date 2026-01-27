@@ -110,13 +110,13 @@ const styles = (colors: any) => StyleSheet.create({
         borderColor: colors.border.DEFAULT,
     },
     filterPillActive: {
-        backgroundColor: colors.primary.DEFAULT,
-        borderColor: colors.primary.DEFAULT,
-        ...shadows.colored(colors.primary.DEFAULT),
+        backgroundColor: colors.primary?.DEFAULT ?? colors.primary,
+        borderColor: colors.primary?.DEFAULT ?? colors.primary,
+        ...shadows.colored(colors.primary?.DEFAULT ?? colors.primary),
     },
     unreadPillActive: {
-        backgroundColor: colors.primary.DEFAULT,
-        borderColor: colors.primary.DEFAULT,
+        backgroundColor: colors.primary?.DEFAULT ?? colors.primary,
+        borderColor: colors.primary?.DEFAULT ?? colors.primary,
     },
     filterText: {
         fontSize: 12,

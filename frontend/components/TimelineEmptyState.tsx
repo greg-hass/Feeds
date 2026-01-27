@@ -18,8 +18,8 @@ export const TimelineEmptyState = ({ isFiltered, hasFeeds, onClearFilter }: Time
     if (!hasFeeds) {
         return (
             <View style={s.container}>
-                <View style={[s.iconContainer, { backgroundColor: colors.primary.DEFAULT + '22' }]}>
-                    <Inbox size={48} color={colors.primary.DEFAULT} />
+                <View style={[s.iconContainer, { backgroundColor: (colors.primary?.DEFAULT ?? colors.primary) + '22' }]}>
+                    <Inbox size={48} color={colors.primary?.DEFAULT ?? colors.primary} />
                 </View>
                 <Text style={s.title}>Your feed is empty</Text>
                 <Text style={s.message}>
@@ -104,7 +104,7 @@ const styles = (colors: any) => StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: spacing.sm,
-        backgroundColor: colors.primary.DEFAULT,
+        backgroundColor: colors.primary?.DEFAULT ?? colors.primary,
         paddingHorizontal: spacing.xl,
         paddingVertical: spacing.md,
         borderRadius: borderRadius.full,
