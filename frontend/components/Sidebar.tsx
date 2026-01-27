@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, ActivityIndicator, Platform, useWindowDimensions } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, ActivityIndicator, Platform } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { useFeedStore, useArticleStore } from '@/stores';
 import {
@@ -7,6 +7,7 @@ import {
     Plus, RefreshCw, Bookmark, Sparkles, BookOpen, Pause, BarChart3, Zap
 } from 'lucide-react-native';
 import { useColors, borderRadius, spacing, shadows } from '@/theme';
+import { useIsDesktop } from '@/hooks/useBreakpoint';
 import { formatCount } from '@/utils/formatters';
 
 const FEED_TYPE_ICONS: Record<string, React.ComponentType<any>> = {
@@ -26,8 +27,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     } = useFeedStore();
     const { filter, setFilter } = useArticleStore();
 
-    const { width } = useWindowDimensions();
-    const isDesktop = width >= 1024;
+    const isDesktop = useIsDesktop();
     const s = styles(colors, isDesktop);
 
     const handleSmartFolderPress = (type: string) => {
@@ -171,24 +171,24 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
                 {/* Smart Folders */}
                 <Text style={s.sectionTitle}>By Type</Text>
-                {smartFolders.map((sf) => {
-                    const Icon = FEED_TYPE_ICONS[sf.type] || Rss;
-                    const isActive = isHome && filter.type === sf.type;
+                {smartFolders.map((smartFolder) => {
+                    const Icon = FEED_TYPE_ICONS[smartFolder.type] || Rss;
+                    const isActive = isHome && filter.type === smartFolder.type;
                     const iconColor = isActive ? colors.text.inverse : colors.text.secondary;
 
                     return (
                         <TouchableOpacity
-                            key={sf.type}
+                            key={smartFolder.type}
                             style={[s.navItem, isActive && s.navItemActive]}
-                            onPress={() => handleSmartFolderPress(sf.type)}
-                            accessibilityLabel={`View ${sf.name}`}
+                            onPress={() => handleSmartFolderPress(smartFolder.type)}
+                            accessibilityLabel={`View ${smartFolder.name}`}
                             accessibilityRole="link"
                         >
                             <Icon size={18} color={isActive ? colors.text.inverse : iconColor} />
-                            <Text style={[s.navItemText, isActive && s.navItemTextActive]}>{sf.name}</Text>
-                            {sf.unread_count > 0 && (
+                            <Text style={[s.navItemText, isActive && s.navItemTextActive]}>{smartFolder.name}</Text>
+                            {smartFolder.unread_count > 0 && (
                                 <View style={[s.badge, isActive && s.badgeActive]}>
-                                    <Text style={[s.badgeText, isActive && s.badgeTextActive]}>{formatCount(sf.unread_count)}</Text>
+                                    <Text style={[s.badgeText, isActive && s.badgeTextActive]}>{formatCount(smartFolder.unread_count)}</Text>
                                 </View>
                             )}
                         </TouchableOpacity>
@@ -225,7 +225,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 {/* Feeds without folder */}
                 <Text style={s.sectionTitle}>Feeds</Text>
                 {feeds
-                    .filter((f) => !f.folder_id)
+                    .filter((feedItem) => !feedItem.folder_id)
                     .map((feed) => {
                         const Icon = FEED_TYPE_ICONS[feed.type] || Rss;
                         const isActive = isHome && filter.feed_id === feed.id;

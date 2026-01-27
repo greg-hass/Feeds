@@ -66,15 +66,16 @@ export const useFeedStore = create<FeedState>()(
                 }
             },
 
-            addFeed: async (url: string, folderId?: number, refreshInterval?: number, discover: boolean = true) => {
-                const result = await api.addFeed(url, folderId, discover, refreshInterval);
+            addFeed: async (url: string, folderId?: number, refreshInterval?: number, options: { skipDiscovery?: boolean } = {}) => {
+                const { skipDiscovery = false } = options;
+                const result = await api.addFeed(url, folderId, !skipDiscovery, refreshInterval);
                 set((state: FeedState) => ({ feeds: [...state.feeds, result.feed] }));
                 return result.feed;
             },
 
             deleteFeed: async (id) => {
                 await api.deleteFeed(id);
-                set((state) => ({ feeds: state.feeds.filter((f) => f.id !== id) }));
+                set((state) => ({ feeds: state.feeds.filter((feed) => feed.id !== id) }));
                 // Refresh folders to update counts
                 get().fetchFolders();
             },
@@ -185,7 +186,7 @@ export const useFeedStore = create<FeedState>()(
                 try {
                     const result = await api.updateFeed(id, updates as any);
                     set((state) => ({
-                        feeds: state.feeds.map((f) => (f.id === id ? result.feed : f)),
+                        feeds: state.feeds.map((feed) => (feed.id === id ? result.feed : feed)),
                     }));
                 } catch (error) {
                     handleError(error, { context: 'updateFeed' });
@@ -197,7 +198,7 @@ export const useFeedStore = create<FeedState>()(
                 try {
                     const result = await api.pauseFeed(id);
                     set((state) => ({
-                        feeds: state.feeds.map((f) => (f.id === id ? { ...f, paused_at: result.paused ? new Date().toISOString() : null } : f)),
+                        feeds: state.feeds.map((feed) => (feed.id === id ? { ...feed, paused_at: result.paused ? new Date().toISOString() : null } : feed)),
                     }));
                 } catch (error) {
                     handleError(error, { context: 'pauseFeed' });
@@ -208,7 +209,7 @@ export const useFeedStore = create<FeedState>()(
                 try {
                     const result = await api.resumeFeed(id);
                     set((state) => ({
-                        feeds: state.feeds.map((f) => (f.id === id ? { ...f, paused_at: null } : f)),
+                        feeds: state.feeds.map((feed) => (feed.id === id ? { ...feed, paused_at: null } : feed)),
                     }));
                 } catch (error) {
                     handleError(error, { context: 'resumeFeed' });
@@ -217,7 +218,7 @@ export const useFeedStore = create<FeedState>()(
 
             updateLocalFeed: (id, updates) => {
                 set((state) => ({
-                    feeds: state.feeds.map((f) => (f.id === id ? { ...f, ...updates } : f)),
+                    feeds: state.feeds.map((feed) => (feed.id === id ? { ...feed, ...updates } : feed)),
                 }));
             },
 
@@ -229,10 +230,10 @@ export const useFeedStore = create<FeedState>()(
 
                     // Apply feed changes
                     if (syncData.feedsDeleted.length > 0) {
-                        newFeeds = newFeeds.filter((f) => !syncData.feedsDeleted.includes(f.id));
+                        newFeeds = newFeeds.filter((feed) => !syncData.feedsDeleted.includes(feed.id));
                     }
                     if (syncData.feedsCreated.length > 0) {
-                        const existingIds = new Set(newFeeds.map((f) => f.id));
+                        const existingIds = new Set(newFeeds.map((feed) => feed.id));
                         (syncData.feedsCreated as Feed[]).forEach((feed) => {
                             if (!existingIds.has(feed.id)) {
                                 newFeeds.push(feed);
@@ -240,16 +241,16 @@ export const useFeedStore = create<FeedState>()(
                         });
                     }
                     if (syncData.feedsUpdated.length > 0) {
-                        const updatedMap = new Map((syncData.feedsUpdated as Feed[]).map((f) => [f.id, f]));
-                        newFeeds = newFeeds.map((f) => updatedMap.get(f.id) || f);
+                        const updatedMap = new Map((syncData.feedsUpdated as Feed[]).map((feed) => [feed.id, feed]));
+                        newFeeds = newFeeds.map((feed) => updatedMap.get(feed.id) || feed);
                     }
 
                     // Apply folder changes
                     if (syncData.foldersDeleted.length > 0) {
-                        newFolders = newFolders.filter((f) => !syncData.foldersDeleted.includes(f.id));
+                        newFolders = newFolders.filter((folder) => !syncData.foldersDeleted.includes(folder.id));
                     }
                     if (syncData.foldersCreated.length > 0) {
-                        const existingIds = new Set(newFolders.map((f) => f.id));
+                        const existingIds = new Set(newFolders.map((folder) => folder.id));
                         (syncData.foldersCreated as Folder[]).forEach((folder) => {
                             if (!existingIds.has(folder.id)) {
                                 newFolders.push(folder);
@@ -257,8 +258,8 @@ export const useFeedStore = create<FeedState>()(
                         });
                     }
                     if (syncData.foldersUpdated.length > 0) {
-                        const updatedMap = new Map((syncData.foldersUpdated as Folder[]).map((f) => [f.id, f]));
-                        newFolders = newFolders.map((f) => updatedMap.get(f.id) || f);
+                        const updatedMap = new Map((syncData.foldersUpdated as Folder[]).map((folder) => [folder.id, folder]));
+                        newFolders = newFolders.map((folder) => updatedMap.get(folder.id) || folder);
                     }
 
                     return {

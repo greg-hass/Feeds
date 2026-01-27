@@ -11,6 +11,9 @@ export const UI = {
     /** Mobile breakpoint width in pixels */
     MOBILE_BREAKPOINT: 768,
 
+    /** Desktop breakpoint width in pixels */
+    DESKTOP_BREAKPOINT: 1024,
+
     /** Toast notification duration in milliseconds */
     TOAST_DURATION: 3000,
 

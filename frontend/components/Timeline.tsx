@@ -1,9 +1,10 @@
 import React, { useEffect, useRef } from 'react';
-import { View, FlatList, RefreshControl, ActivityIndicator, useWindowDimensions, Platform, LayoutAnimation, UIManager, InteractionManager } from 'react-native';
+import { View, FlatList, RefreshControl, ActivityIndicator, Platform, LayoutAnimation, UIManager, InteractionManager } from 'react-native';
 import { Article } from '@/services/api';
 import { useColors } from '@/theme';
 import { useTimeline } from '@/hooks/useTimeline';
 import { useTimelineScroll } from '@/hooks/useTimelineScroll';
+import { useIsDesktop } from '@/hooks/useBreakpoint';
 import { TimelineSkeleton } from './Skeleton';
 import FilterPills from './FilterPills';
 import TimelineHeader from './TimelineHeader';
@@ -25,9 +26,9 @@ interface TimelineProps {
  */
 export default function Timeline({ onArticlePress, activeArticleId }: TimelineProps) {
     const colors = useColors();
-    const { width } = useWindowDimensions();
-    const isMobile = width < 1024;
-    const s = timelineStyles(colors, isMobile);
+    const isDesktop = useIsDesktop();
+    const isMobile = !isDesktop;
+    const styles = timelineStyles(colors, isMobile);
 
     const {
         articles, isLoading, hasMore, filter, isFeedLoading, headerTitle, timeLeft, isRefreshing, refreshProgress,
@@ -105,7 +106,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     }, [articles, filter.unread_only, isLoading, isMobile, prefetchArticle]);
 
     return (
-        <View style={s.container}>
+        <View style={styles.container}>
             <NewArticlesPill />
             <TimelineHeader
                 title={headerTitle}
@@ -141,7 +142,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                         data={articles}
                         renderItem={renderArticle}
                         keyExtractor={(item) => item.id.toString()}
-                        contentContainerStyle={s.list}
+                        contentContainerStyle={styles.list}
                         onEndReached={() => hasMore && fetchArticles(false)}
                         onEndReachedThreshold={0.5}
                         refreshControl={
@@ -151,7 +152,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                                 tintColor={colors.primary?.DEFAULT ?? colors.primary}
                             />
                         }
-                        ListFooterComponent={isLoading ? <ActivityIndicator style={s.loader} color={colors.primary?.DEFAULT ?? colors.primary} /> : null}
+                        ListFooterComponent={isLoading ? <ActivityIndicator style={styles.loader} color={colors.primary?.DEFAULT ?? colors.primary} /> : null}
                         ListEmptyComponent={
                             !isLoading ? (
                                 <TimelineEmptyState 
