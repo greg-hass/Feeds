@@ -36,7 +36,7 @@ export const Button = ({
     const getVariantStyle = () => {
         switch (variant) {
             case 'primary':
-                return { backgroundColor: colors.primary.DEFAULT, borderWidth: 0 };
+                return { backgroundColor: colors.primary?.DEFAULT ?? colors.primary, borderWidth: 0 };
             case 'secondary':
                 return { backgroundColor: colors.background.secondary, borderWidth: 0 };
             case 'outline':

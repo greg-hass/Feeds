@@ -213,14 +213,14 @@ export const FeedInfoSheet = ({ feedId, visible, onClose, onEdit, onDelete }: Fe
 
                     {loading ? (
                         <View style={s.loadingContainer}>
-                            <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
+                            <ActivityIndicator size="large" color={colors.primary?.DEFAULT ?? colors.primary} />
                         </View>
                     ) : feedInfo && feed ? (
                         <ScrollView style={s.content} showsVerticalScrollIndicator={false}>
                             {/* Feed Title & Type */}
                             <View style={s.titleSection}>
                                 <View style={s.iconContainer}>
-                                    <TypeIcon size={32} color={colors.primary.DEFAULT} />
+                                    <TypeIcon size={32} color={colors.primary?.DEFAULT ?? colors.primary} />
                                 </View>
                                 <View style={s.titleInfo}>
                                     <Text style={s.feedTitle} numberOfLines={2}>
@@ -290,7 +290,7 @@ export const FeedInfoSheet = ({ feedId, visible, onClose, onEdit, onDelete }: Fe
                                         <Text style={s.statLabel}>Total</Text>
                                     </View>
                                     <View style={s.statBox}>
-                                        <Text style={[s.statValue, { color: colors.primary.DEFAULT }]}>
+                                        <Text style={[s.statValue, { color: colors.primary?.DEFAULT ?? colors.primary }]}>
                                             {feedInfo.unread_count}
                                         </Text>
                                         <Text style={s.statLabel}>Unread</Text>
@@ -587,7 +587,7 @@ const styles = (colors: any) =>
             gap: spacing.sm,
         },
         actionButtonPrimary: {
-            backgroundColor: colors.primary.DEFAULT,
+            backgroundColor: colors.primary?.DEFAULT ?? colors.primary,
         },
         actionButtonDanger: {
             backgroundColor: colors.error + '10',
