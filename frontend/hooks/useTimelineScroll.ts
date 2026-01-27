@@ -9,6 +9,13 @@ export const useTimelineScroll = (articles: any[], filter: any) => {
     const hasRestoredScroll = useRef(false);
     const pendingScrollPosition = useRef<number | null>(null);
 
+    // Reset scroll restoration flag when component mounts or filter changes
+    useEffect(() => {
+        hasRestoredScroll.current = false;
+        setIsScrollRestored(false);
+        pendingScrollPosition.current = null;
+    }, []);
+
     // Reset scroll restoration flag when filter changes
     useEffect(() => {
         hasRestoredScroll.current = false;
