@@ -22,6 +22,13 @@ COPY frontend/ ./
 ARG EXPO_PUBLIC_API_URL=/api/v1
 ENV EXPO_PUBLIC_API_URL=${EXPO_PUBLIC_API_URL}
 
+# Remove expo-web-browser from plugins for web build (causes issues with New Architecture in Docker)
+# The plugin is only needed for native iOS/Android builds
+RUN sed -i 's/"expo-web-browser"//g' app.json && \
+    sed -i 's/,,/,/g' app.json && \
+    sed -i 's/\[, /[/g' app.json && \
+    sed -i 's/, \]/]/g' app.json
+
 RUN npx expo export --platform web
 
 # Stage 3: Production image
