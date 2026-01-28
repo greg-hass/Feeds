@@ -1,6 +1,7 @@
 import { Database } from 'better-sqlite3';
 import { run, queryOne, db } from '../db/index.js';
 import { parseFeed, normalizeArticle, FeedType } from './feed-parser.js';
+import { fetchYouTubeIcon } from './youtube-parser.js';
 import { cacheFeedIcon } from './icon-cache.js';
 import { cacheArticleThumbnail } from './thumbnail-cache.js';
 import { getUserSettings } from './settings.js';
@@ -157,9 +158,10 @@ async function updateFeedMetadata(
     oldType: FeedType,
     refreshIntervalMinutes: number,
     iconStatus: IconStatus,
-    cachedIcon: { fileName: string | null; mime: string | null } | null
+    cachedIcon: { fileName: string | null; mime: string | null } | null,
+    finalFavicon: string | null = null
 ): Promise<string | null> {
-    const iconCandidate = feedData.favicon;
+    const iconCandidate = finalFavicon || feedData.favicon;
     const shouldUpdateIconUrl = !!iconCandidate && (!iconStatus.iconUrl || isGenericIconUrl(iconStatus.iconUrl));
     
     // Prepare values for update
@@ -341,8 +343,15 @@ export async function refreshFeed(feed: FeedToRefreshWithCache): Promise<Refresh
     
     try {
         const iconStatus = await getFeedIconStatus(feed.id, feed.hasValidIcon);
-        // For YouTube feeds, always fetch icon if not cached (scraping may find better icons than RSS)
-        const shouldSkipIconFetch = iconStatus.hasValidIcon && !!iconStatus.iconCachedPath;
+        
+        // Determine if we need to fetch a fresh icon
+        // For YouTube feeds with generic icons, we always try to get a better icon
+        const hasGenericIcon = iconStatus.iconUrl ? isGenericIconUrl(iconStatus.iconUrl) : true;
+        const isYouTubeFeed = feed.type === 'youtube' || feed.url.includes('youtube.com/feeds');
+        const shouldFetchFreshIcon = isYouTubeFeed && hasGenericIcon;
+        
+        // Only skip icon fetch if we have a valid non-generic icon cached
+        const shouldSkipIconFetch = !shouldFetchFreshIcon && iconStatus.hasValidIcon && !!iconStatus.iconCachedPath;
         const feedData = await parseFeed(feed.url, { skipIconFetch: shouldSkipIconFetch, signal: feed.signal });
         
         const { userId, refreshIntervalMinutes: updatedInterval } = getFeedSettings(
@@ -375,10 +384,22 @@ export async function refreshFeed(feed: FeedToRefreshWithCache): Promise<Refresh
             });
         }
         
-        // Cache icon if: (no cached icon OR current icon is generic) AND we have a favicon from parsing
-        const hasGenericIcon = iconStatus.iconUrl ? isGenericIconUrl(iconStatus.iconUrl) : true;
-        const needsIconCache = (!iconStatus.iconCachedPath || hasGenericIcon) && feedData.favicon && !isGenericIconUrl(feedData.favicon);
-        const cachedIcon = needsIconCache ? await cacheFeedIcon(feed.id, feedData.favicon!) : null;
+        // For YouTube feeds with generic icons, try to fetch a proper channel icon
+        let finalFavicon = feedData.favicon;
+        if (isYouTubeFeed && hasGenericIcon && feedData.youtubeChannelId) {
+            try {
+                const youtubeIcon = await fetchYouTubeIcon(feedData.youtubeChannelId);
+                if (youtubeIcon && !isGenericIconUrl(youtubeIcon)) {
+                    finalFavicon = youtubeIcon;
+                }
+            } catch (iconErr) {
+                console.warn(`[Refresh] Failed to fetch YouTube icon for ${feed.id}:`, iconErr);
+            }
+        }
+        
+        // Cache icon if: (no cached icon OR current icon is generic) AND we have a valid favicon
+        const needsIconCache = (!iconStatus.iconCachedPath || hasGenericIcon) && finalFavicon && !isGenericIconUrl(finalFavicon);
+        const cachedIcon = needsIconCache ? await cacheFeedIcon(feed.id, finalFavicon!) : null;
         
         const nextFetchAt = await updateFeedMetadata(
             feed.id,
@@ -387,7 +408,8 @@ export async function refreshFeed(feed: FeedToRefreshWithCache): Promise<Refresh
             feed.type,
             refreshIntervalMinutes,
             iconStatus,
-            cachedIcon
+            cachedIcon,
+            finalFavicon
         );
         
         return { success: true, newArticles: insertedCount, next_fetch_at: nextFetchAt ?? undefined };
