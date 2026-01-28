@@ -1017,44 +1017,90 @@ export default function ManageScreen() {
             <Modal
                 visible={modalType === 'move_feed'}
                 transparent
-                animationType="fade"
+                animationType="slide"
+                onRequestClose={() => setModalType(null)}
             >
-                <View style={s.modalOverlay}>
-                    <View style={s.modal}>
-                        <Text style={s.modalTitle}>Move to Folder</Text>
-                        <TouchableOpacity
-                            style={[
-                                s.folderOption,
-                                selectedFolderId === null && s.folderOptionSelected
-                            ]}
-                            onPress={() => setSelectedFolderId(null)}
-                        >
-                            <Text style={s.folderOptionText}>No Folder</Text>
-                            {selectedFolderId === null && <Check size={18} color={colors.primary?.DEFAULT ?? colors.primary} />}
-                        </TouchableOpacity>
-                        {folders.map((folder: Folder) => (
+                <View style={s.moveModalOverlay}>
+                    <View style={s.moveModalContainer}>
+                        {/* Header */}
+                        <View style={s.moveModalHeader}>
+                            <View style={s.moveModalHeaderContent}>
+                                <Text style={s.moveModalTitle}>Move Feed</Text>
+                                {selectedFeed && (
+                                    <Text style={s.moveModalSubtitle} numberOfLines={1}>
+                                        {selectedFeed.title}
+                                    </Text>
+                                )}
+                            </View>
                             <TouchableOpacity
-                                key={folder.id}
-                                style={[
-                                    s.folderOption,
-                                    selectedFolderId === folder.id && s.folderOptionSelected
-                                ]}
-                                onPress={() => setSelectedFolderId(folder.id)}
-                            >
-                                <FolderIcon size={18} color={colors.secondary.DEFAULT} />
-                                <Text style={s.folderOptionText}>{folder.name}</Text>
-                                {selectedFolderId === folder.id && <Check size={18} color={colors.primary?.DEFAULT ?? colors.primary} />}
-                            </TouchableOpacity>
-                        ))}
-                        <View style={s.modalActions}>
-                            <Button
-                                title="Cancel"
-                                variant="secondary"
                                 onPress={() => setModalType(null)}
-                                style={{ flex: 1 }}
-                            />
+                                style={s.moveModalClose}
+                            >
+                                <X size={24} color={colors.text.secondary} />
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Folder List */}
+                        <ScrollView 
+                            style={s.moveModalList}
+                            showsVerticalScrollIndicator={false}
+                            contentContainerStyle={s.moveModalListContent}
+                        >
+                            {/* No Folder Option */}
+                            <TouchableOpacity
+                                style={[
+                                    s.moveModalOption,
+                                    selectedFolderId === null && s.moveModalOptionSelected
+                                ]}
+                                onPress={() => setSelectedFolderId(null)}
+                                activeOpacity={0.7}
+                            >
+                                <View style={[s.moveModalOptionIcon, { backgroundColor: colors.background.tertiary }]}>
+                                    <FolderIcon size={20} color={colors.text.tertiary} />
+                                </View>
+                                <Text style={[s.moveModalOptionText, selectedFolderId === null && s.moveModalOptionTextSelected]}>
+                                    No Folder
+                                </Text>
+                                {selectedFolderId === null && (
+                                    <View style={s.moveModalCheck}>
+                                        <Check size={18} color={colors.primary?.DEFAULT ?? colors.primary} />
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+
+                            {/* Divider */}
+                            <View style={s.moveModalDivider} />
+
+                            {/* Folder Options */}
+                            {folders.map((folder: Folder) => (
+                                <TouchableOpacity
+                                    key={folder.id}
+                                    style={[
+                                        s.moveModalOption,
+                                        selectedFolderId === folder.id && s.moveModalOptionSelected
+                                    ]}
+                                    onPress={() => setSelectedFolderId(folder.id)}
+                                    activeOpacity={0.7}
+                                >
+                                    <View style={[s.moveModalOptionIcon, { backgroundColor: colors.secondary.DEFAULT + '20' }]}>
+                                        <FolderIcon size={20} color={colors.secondary.DEFAULT} />
+                                    </View>
+                                    <Text style={[s.moveModalOptionText, selectedFolderId === folder.id && s.moveModalOptionTextSelected]}>
+                                        {folder.name}
+                                    </Text>
+                                    {selectedFolderId === folder.id && (
+                                        <View style={s.moveModalCheck}>
+                                            <Check size={18} color={colors.primary?.DEFAULT ?? colors.primary} />
+                                        </View>
+                                    )}
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+
+                        {/* Bottom Actions */}
+                        <View style={s.moveModalActions}>
                             <Button
-                                title="Move"
+                                title={`Move to ${selectedFolderId === null ? 'No Folder' : folders.find((f: Folder) => f.id === selectedFolderId)?.name || 'Selected Folder'}`}
                                 onPress={submitMove}
                                 style={{ flex: 1 }}
                             />
@@ -1741,5 +1787,95 @@ const styles = (colors: any) => StyleSheet.create({
         color: colors.text.tertiary,
         textTransform: 'capitalize',
         marginTop: 2,
+    },
+    // Move Feed Modal styles (mobile-optimized)
+    moveModalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    moveModalContainer: {
+        backgroundColor: colors.background.secondary,
+        borderTopLeftRadius: borderRadius.xxl,
+        borderTopRightRadius: borderRadius.xxl,
+        maxHeight: '85%',
+        paddingBottom: spacing.xl,
+    },
+    moveModalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: spacing.lg,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border.DEFAULT,
+    },
+    moveModalHeaderContent: {
+        flex: 1,
+    },
+    moveModalTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: colors.text.primary,
+    },
+    moveModalSubtitle: {
+        fontSize: 14,
+        color: colors.text.tertiary,
+        marginTop: 2,
+    },
+    moveModalClose: {
+        padding: spacing.sm,
+        marginLeft: spacing.sm,
+    },
+    moveModalList: {
+        maxHeight: 400,
+    },
+    moveModalListContent: {
+        paddingVertical: spacing.sm,
+    },
+    moveModalOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: spacing.md,
+        marginHorizontal: spacing.lg,
+        marginVertical: spacing.xs,
+        borderRadius: borderRadius.lg,
+        backgroundColor: colors.background.tertiary,
+    },
+    moveModalOptionSelected: {
+        backgroundColor: (colors.primary?.DEFAULT ?? colors.primary) + '15',
+        borderWidth: 2,
+        borderColor: colors.primary?.DEFAULT ?? colors.primary,
+    },
+    moveModalOptionIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: borderRadius.full,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: spacing.md,
+    },
+    moveModalOptionText: {
+        flex: 1,
+        fontSize: 16,
+        fontWeight: '600',
+        color: colors.text.primary,
+    },
+    moveModalOptionTextSelected: {
+        color: colors.primary?.DEFAULT ?? colors.primary,
+        fontWeight: '700',
+    },
+    moveModalCheck: {
+        marginLeft: spacing.sm,
+    },
+    moveModalDivider: {
+        height: 1,
+        backgroundColor: colors.border.DEFAULT,
+        marginVertical: spacing.sm,
+        marginHorizontal: spacing.lg,
+    },
+    moveModalActions: {
+        padding: spacing.lg,
+        paddingTop: spacing.md,
+        borderTopWidth: 1,
+        borderTopColor: colors.border.DEFAULT,
     },
 });
