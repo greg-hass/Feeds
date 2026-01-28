@@ -303,9 +303,13 @@ export default function ArticleContent({ html }: ArticleContentProps) {
                         }
 
                         if (url.startsWith('http')) {
-                            // Use centralized external link handler
-                            // This properly handles URLs with native apps (Reddit, YouTube)
-                            openExternalLink(url);
+                            // Use WebBrowser with FORM_SHEET to avoid blank page issues
+                            WebBrowser.openBrowserAsync(url, {
+                                dismissButtonStyle: 'close',
+                                presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,
+                                readerMode: false,
+                                enableBarCollapsing: true,
+                            }).catch(() => { });
                         }
                         return false;
                     }}

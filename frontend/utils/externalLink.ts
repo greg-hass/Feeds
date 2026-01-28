@@ -1,26 +1,12 @@
-import { Platform, Linking } from 'react-native';
+import { Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
-
-// URLs that have native apps and cause blank Safari issues
-const URLS_WITH_NATIVE_APPS = [
-    'reddit.com',
-    'youtube.com',
-    'youtu.be',
-    'twitter.com',
-    'x.com',
-    'instagram.com',
-];
-
-/**
- * Check if URL has a native app that might cause blank Safari pages
- */
-function hasNativeApp(url: string): boolean {
-    return URLS_WITH_NATIVE_APPS.some(domain => url.includes(domain));
-}
 
 /**
  * Open an external URL using the appropriate method for the platform
- * Uses expo-web-browser for native platforms to avoid blank Safari pages
+ * Uses expo-web-browser for native platforms
+ * 
+ * Note: iOS Universal Links (Reddit, YouTube apps) will still redirect to native apps.
+ * The blank Safari page issue is an iOS bug we work around by using modal presentation.
  */
 export async function openExternalLink(url: string): Promise<void> {
     if (Platform.OS === 'web') {
@@ -29,28 +15,15 @@ export async function openExternalLink(url: string): Promise<void> {
         return;
     }
 
-    // For URLs with native apps (Reddit, YouTube), try to open directly
-    // This avoids the blank Safari page that occurs when iOS Universal Links
-    // redirect to the native app and leave Safari in a broken state
-    if (hasNativeApp(url) && Platform.OS === 'ios') {
-        try {
-            // Try opening directly - this may open the native app
-            const canOpen = await Linking.canOpenURL(url);
-            if (canOpen) {
-                await Linking.openURL(url);
-                return;
-            }
-        } catch {
-            // Fall through to WebBrowser
-        }
-    }
-
-    // Use expo-web-browser (SFSafariViewController on iOS, Chrome Custom Tabs on Android)
+    // Use expo-web-browser with FORM_SHEET presentation
+    // This creates a modal that iOS properly dismisses even with Universal Links
     try {
         await WebBrowser.openBrowserAsync(url, {
             dismissButtonStyle: 'close',
-            presentationStyle: WebBrowser.WebBrowserPresentationStyle.AUTOMATIC,
+            presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,
             readerMode: false,
+            // Enable bar collapsing so the browser takes full screen
+            enableBarCollapsing: true,
         });
     } catch (error) {
         console.error('WebBrowser error:', error);
