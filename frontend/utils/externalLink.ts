@@ -1,6 +1,26 @@
 import { Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 
+let isInitialized = false;
+
+/**
+ * Initialize WebBrowser (no-op for compatiblity)
+ * Kept for backward compatibility with existing code
+ */
+export async function initWebBrowser(): Promise<void> {
+    if (Platform.OS === 'web' || isInitialized) return;
+    // Warm up is no longer needed with FORM_SHEET presentation
+    isInitialized = true;
+}
+
+/**
+ * Clean up WebBrowser (no-op for compatibility)
+ * Kept for backward compatibility with existing code
+ */
+export async function cleanupWebBrowser(): Promise<void> {
+    // No cleanup needed with current implementation
+}
+
 /**
  * Open an external URL using the appropriate method for the platform
  * Uses expo-web-browser for native platforms
