@@ -19,9 +19,9 @@ import { getFeedHealth, getFeedHealthInfo } from '@/utils/feedHealth';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { Button } from '@/components/ui/Button';
+import { LoadingState } from '@/components/ui/LoadingState';
 import { Input } from '@/components/ui/Input';
 import { DiscoveryCard } from '@/components/DiscoveryCard';
-import { AddFeedShimmer } from '@/components/AddFeedShimmer';
 import { QuickAddGrid } from '@/components/QuickAddGrid';
 import { useDebouncedDiscovery } from '@/hooks/useDebouncedDiscovery';
 import { isDuplicateFeed, suggestFolderName } from '@/utils/feedUtils';
@@ -755,7 +755,7 @@ export default function ManageScreen() {
                     </View>
 
                     {/* Loading Shimmer */}
-                    {isDiscovering && <AddFeedShimmer />}
+                    {isDiscovering && <LoadingState variant="skeleton" count={2} /}
 
                     {/* Discovery Results */}
                     {!isDiscovering && discoveries.length > 0 && (
@@ -844,14 +844,17 @@ export default function ManageScreen() {
                             </View>
 
                             {isLoadingRecs && recommendations.length === 0 ? (
-                                <AddFeedShimmer />
+                                <LoadingState variant="skeleton" count={2} />
                             ) : recsError ? (
                                 <View style={s.emptyDiscoveries}>
                                     <AlertCircle size={48} color={colors.status.error} />
                                     <Text style={s.emptyTitle}>{recsError}</Text>
-                                    <TouchableOpacity onPress={fetchRecommendations} style={s.retryButton}>
-                                        <Text style={s.retryButtonText}>Try Again</Text>
-                                    </TouchableOpacity>
+                                    <Button
+                                        title="Try Again"
+                                        onPress={fetchRecommendations}
+                                        variant="primary"
+                                        icon={<RefreshCw size={16} color={colors.text.inverse} />}
+                                    />
                                 </View>
                             ) : recommendations.length === 0 ? (
                                 <View style={s.emptyDiscoveries}>
@@ -2162,17 +2165,5 @@ const styles = (colors: any) => StyleSheet.create({
         fontSize: 13,
         fontWeight: '600',
         color: colors.primary?.DEFAULT ?? colors.primary,
-    },
-    retryButton: {
-        backgroundColor: colors.primary?.DEFAULT ?? colors.primary,
-        paddingHorizontal: spacing.lg,
-        paddingVertical: spacing.sm,
-        borderRadius: borderRadius.md,
-        marginTop: spacing.md,
-    },
-    retryButtonText: {
-        color: colors.text.inverse,
-        fontWeight: '700',
-        fontSize: 14,
     },
 });

@@ -4,12 +4,14 @@ import { useColors, spacing, borderRadius } from '@/theme';
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'outline';
 type ButtonSize = 'sm' | 'md' | 'lg';
+type ButtonShape = 'default' | 'icon';
 
 interface ButtonProps {
     title?: string;
     onPress: () => void;
     variant?: ButtonVariant;
     size?: ButtonSize;
+    shape?: ButtonShape;
     icon?: React.ReactNode;
     disabled?: boolean;
     loading?: boolean;
@@ -23,6 +25,7 @@ export const Button = ({
     onPress,
     variant = 'primary',
     size = 'md',
+    shape = 'default',
     icon,
     disabled = false,
     loading = false,
@@ -32,6 +35,7 @@ export const Button = ({
 }: ButtonProps) => {
     const colors = useColors();
     const s = styles(colors);
+    const isIconOnly = shape === 'icon' || (!title && !children && !!icon);
 
     const getVariantStyle = () => {
         switch (variant) {
@@ -51,12 +55,19 @@ export const Button = ({
     };
 
     const getSizeStyle = () => {
+        if (isIconOnly) {
+            switch (size) {
+                case 'sm': return { width: 32, height: 32, padding: 0 };
+                case 'lg': return { width: 48, height: 48, padding: 0 };
+                default: return { width: 40, height: 40, padding: 0 };
+            }
+        }
         switch (size) {
             case 'sm':
                 return { paddingVertical: spacing.xs, paddingHorizontal: spacing.md, minHeight: 32 };
             case 'lg':
                 return { paddingVertical: spacing.lg, paddingHorizontal: spacing.xl, minHeight: 56 };
-            default: // md
+            default:
                 return { paddingVertical: spacing.md, paddingHorizontal: spacing.lg, minHeight: 44 };
         }
     };
@@ -85,6 +96,7 @@ export const Button = ({
             disabled={disabled || loading}
             style={[
                 s.base,
+                isIconOnly && s.iconButton,
                 getVariantStyle(),
                 getSizeStyle(),
                 disabled && s.disabled,
@@ -96,13 +108,13 @@ export const Button = ({
                 <ActivityIndicator 
                     size="small" 
                     color={getTextColor()} 
-                    style={{ marginRight: title ? spacing.sm : 0 }}
+                    style={!isIconOnly && title ? { marginRight: spacing.sm } : undefined}
                 />
             ) : icon ? (
                 <React.Fragment>
                     {icon}
                     {/* Add spacing if there is also text */}
-                    {(title || children) && <View style={{ width: spacing.sm }} />} 
+                    {(title || children) && !isIconOnly && <View style={{ width: spacing.sm }} />} 
                 </React.Fragment>
             ) : null}
             
@@ -110,7 +122,7 @@ export const Button = ({
                 <Text style={[
                     s.text, 
                     { color: getTextColor(), fontSize: getTextSize() },
-                    (icon || loading) && { marginLeft: spacing.sm },
+                    (icon || loading) && !isIconOnly && { marginLeft: spacing.sm },
                     textStyle
                 ]}>
                     {title}
@@ -126,6 +138,9 @@ const styles = (colors: any) => StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         borderRadius: borderRadius.md,
+    },
+    iconButton: {
+        borderRadius: borderRadius.full,
     },
     disabled: {
         opacity: 0.5,
