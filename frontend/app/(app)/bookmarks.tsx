@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { formatDistanceToNow } from 'date-fns';
 import { useArticleStore } from '@/stores';
 import { Article, api } from '@/services/api';
-import { Circle, Bookmark, Headphones, Play, RefreshCw, CircleCheck, Menu, X } from 'lucide-react-native';
+import { Circle, Bookmark, Headphones, Play, RefreshCw, CircleCheck, X } from 'lucide-react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
 import { extractVideoId, getThumbnailUrl } from '@/utils/youtube';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
@@ -146,6 +146,8 @@ export default function BookmarksScreen() {
                 title="Bookmarks"
                 showBackButton={false}
                 isRefreshing={isRefreshing}
+                showMenuButton={isMobile}
+                onMenuPress={toggleMenu}
                 rightActions={[
                     {
                         icon: <RefreshCw size={20} color={colors.text.secondary} />,
@@ -176,13 +178,9 @@ export default function BookmarksScreen() {
                 }
             />
 
-            {/* Mobile menu button */}
+            {/* Mobile Sidebar */}
             {isMobile && (
                 <>
-                    <TouchableOpacity onPress={toggleMenu} style={s.mobileMenuButton} accessibilityLabel="Open menu">
-                        <Menu size={24} color={colors.text.primary} />
-                    </TouchableOpacity>
-
                     {/* Backdrop */}
                     {showMenu && (
                         <TouchableOpacity
@@ -334,19 +332,7 @@ const styles = (colors: any, isMobile: boolean = false) => StyleSheet.create({
         color: colors.text.secondary,
         marginTop: spacing.sm,
     },
-    mobileMenuButton: {
-        position: 'absolute',
-        top: spacing.md,
-        left: spacing.md,
-        zIndex: 100,
-        padding: 8,
-        backgroundColor: colors.background.elevated,
-        borderRadius: borderRadius.full,
-        shadowColor: '#000',
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 2,
-    },
+
     sidebarBackdrop: {
         position: 'absolute',
         top: 0,

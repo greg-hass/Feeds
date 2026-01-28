@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Pressable, ActivityIndicator, Animated, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Plus, AlertCircle } from 'lucide-react-native';
+import { Plus, AlertCircle, RefreshCw, Filter, X, Menu } from 'lucide-react-native';
 import { useColors, spacing, typography, borderRadius } from '@/theme';
 import { useRulesStore } from '@/stores';
 import { RulesList } from '@/components/rules/RulesList';
-import { RulesHeader } from '@/components/rules/RulesHeader';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import Sidebar from '@/components/Sidebar';
+import { useWindowDimensions } from 'react-native';
 
 /**
  * Automation Rules Dashboard
@@ -14,10 +16,23 @@ import { RulesHeader } from '@/components/rules/RulesHeader';
 export default function RulesScreen() {
     const colors = useColors();
     const router = useRouter();
+    const { width } = useWindowDimensions();
+    const isMobile = width < 1024;
     const { rules, loading, error, fetchRules, clearError } = useRulesStore();
     const [showEnabledOnly, setShowEnabledOnly] = useState(false);
+    const [showMenu, setShowMenu] = useState(false);
+    const [sidebarAnim] = useState(new Animated.Value(-300));
 
     const s = styles(colors);
+
+    const toggleMenu = () => {
+        setShowMenu(!showMenu);
+        Animated.timing(sidebarAnim, {
+            toValue: showMenu ? -300 : 0,
+            duration: 250,
+            useNativeDriver: true,
+        }).start();
+    };
 
     // Fetch rules on mount
     useEffect(() => {
@@ -41,13 +56,37 @@ export default function RulesScreen() {
 
     return (
         <View style={s.container}>
+            <ScreenHeader
+                title="Automations"
+                showBackButton={false}
+                showMenuButton={isMobile}
+                onMenuPress={toggleMenu}
+                rightActions={[
+                    {
+                        icon: <Filter size={20} color={showEnabledOnly ? colors.primary.DEFAULT : colors.text.secondary} />,
+                        onPress: handleToggleFilter,
+                        accessibilityLabel: showEnabledOnly ? 'Show all rules' : 'Show enabled only',
+                    },
+                    {
+                        icon: <RefreshCw size={20} color={colors.text.secondary} />,
+                        onPress: handleRefresh,
+                        loading: loading,
+                        accessibilityLabel: 'Refresh rules',
+                    },
+                    {
+                        icon: <Plus size={20} color={colors.background.DEFAULT} />,
+                        onPress: handleCreateRule,
+                        accessibilityLabel: 'Create new rule',
+                        variant: 'primary',
+                    },
+                ]}
+            />
+
             <ScrollView style={s.scrollView} showsVerticalScrollIndicator={false}>
-                <RulesHeader
-                    onRefresh={handleRefresh}
-                    onCreateRule={handleCreateRule}
-                    onToggleFilter={handleToggleFilter}
-                    showEnabledOnly={showEnabledOnly}
-                />
+                {/* Subtitle */}
+                <View style={s.subtitleContainer}>
+                    <Text style={s.subtitle}>Automatically organize and manage your articles</Text>
+                </View>
 
                 {error && (
                     <View style={s.errorContainer}>
@@ -83,6 +122,37 @@ export default function RulesScreen() {
                     <RulesList rules={displayedRules} />
                 )}
             </ScrollView>
+
+            {/* Mobile Sidebar */}
+            {isMobile && (
+                <>
+                    {/* Backdrop */}
+                    {showMenu && (
+                        <TouchableOpacity
+                            style={s.sidebarBackdrop}
+                            activeOpacity={1}
+                            onPress={toggleMenu}
+                        />
+                    )}
+                    {/* Sidebar */}
+                    <Animated.View
+                        style={[
+                            s.sidebarContainer,
+                            {
+                                transform: [{ translateX: sidebarAnim }],
+                                width: 280,
+                            },
+                        ]}
+                    >
+                        <View style={{ alignItems: 'flex-end', padding: spacing.md }}>
+                            <TouchableOpacity onPress={toggleMenu} style={{ padding: spacing.sm }} accessibilityLabel="Close menu">
+                                <X size={24} color={colors.text.primary} />
+                            </TouchableOpacity>
+                        </View>
+                        <Sidebar onNavigate={toggleMenu} />
+                    </Animated.View>
+                </>
+            )}
         </View>
     );
 }
@@ -95,6 +165,39 @@ const styles = (colors: any) =>
         },
         scrollView: {
             flex: 1,
+        },
+        subtitleContainer: {
+            paddingHorizontal: spacing.lg,
+            paddingTop: spacing.lg,
+            paddingBottom: spacing.md,
+        },
+        subtitle: {
+            ...typography.body,
+            color: colors.text.secondary,
+        },
+        sidebarBackdrop: {
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 900,
+        },
+        sidebarContainer: {
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            bottom: 0,
+            backgroundColor: colors.background.elevated,
+            borderRightWidth: 1,
+            borderRightColor: colors.border.DEFAULT,
+            zIndex: 1000,
+            shadowColor: '#000',
+            shadowOffset: { width: 2, height: 0 },
+            shadowOpacity: 0.25,
+            shadowRadius: 8,
+            elevation: 5,
         },
         errorContainer: {
             flexDirection: 'row',

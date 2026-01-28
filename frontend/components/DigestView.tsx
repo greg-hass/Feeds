@@ -2,8 +2,10 @@ import React, { useEffect, lazy, Suspense, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Platform, Animated, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useDigestStore, useSettingsStore } from '@/stores';
-import { Sparkles, BarChart3, BookOpen, RefreshCw, AlertCircle, Calendar, ArrowLeft, Type } from 'lucide-react-native';
+import { Sparkles, BarChart3, BookOpen, RefreshCw, AlertCircle, Calendar, Type, Menu, X } from 'lucide-react-native';
 import { useColors, spacing, borderRadius } from '@/theme';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import Sidebar from '@/components/Sidebar';
 
 // Lazy load markdown renderer (heavy dependency ~100KB) - only loads when digest is viewed
 const Markdown = lazy(() => import('react-native-markdown-display').then(m => ({ default: m.default })));
@@ -16,7 +18,9 @@ export const DigestView = () => {
     const { settings, updateSettings } = useSettingsStore();
     const colors = useColors();
     const [showTextSizeMenu, setShowTextSizeMenu] = useState(false);
+    const [showMenu, setShowMenu] = useState(false);
     const [headerOpacity] = useState(() => new Animated.Value(1));
+    const [sidebarAnim] = useState(new Animated.Value(-300));
 
     useEffect(() => {
         fetchLatestDigest();
@@ -25,6 +29,15 @@ export const DigestView = () => {
     const handleTextSizeChange = (size: 'small' | 'medium' | 'large') => {
         updateSettings({ reader_text_size: size });
         setShowTextSizeMenu(false);
+    };
+
+    const toggleMenu = () => {
+        setShowMenu(!showMenu);
+        Animated.timing(sidebarAnim, {
+            toValue: showMenu ? -300 : 0,
+            duration: 250,
+            useNativeDriver: true,
+        }).start();
     };
 
     const s = styles(colors, settings?.reader_text_size || 'medium', isMobile);
@@ -70,47 +83,51 @@ export const DigestView = () => {
         );
     }
 
+    const textSizeAction = (
+        <View style={{ position: 'relative' as const }}>
+            <TouchableOpacity onPress={() => setShowTextSizeMenu(!showTextSizeMenu)} style={s.actionButton} accessibilityLabel="Adjust text size">
+                <Type size={22} color={colors.text.secondary} />
+            </TouchableOpacity>
+            {showTextSizeMenu && (
+                <View style={s.textSizeMenu}>
+                    <TouchableOpacity
+                        style={[s.textSizeOption, settings?.reader_text_size === 'small' && s.textSizeOptionActive]}
+                        onPress={() => handleTextSizeChange('small')}
+                    >
+                        <Text style={s.textSizeLabel}>A</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[s.textSizeOption, settings?.reader_text_size === 'medium' && s.textSizeOptionActive]}
+                        onPress={() => handleTextSizeChange('medium')}
+                    >
+                        <Text style={[s.textSizeLabel, { fontSize: 16 }]}>A</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[s.textSizeOption, settings?.reader_text_size === 'large' && s.textSizeOptionActive]}
+                        onPress={() => handleTextSizeChange('large')}
+                    >
+                        <Text style={[s.textSizeLabel, { fontSize: 20 }]}>A</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
+        </View>
+    );
+
     return (
         <View style={s.container}>
-            <Animated.View style={[s.readerHeader, { opacity: headerOpacity }]}>
-                <View style={s.headerLeft}>
-                    {isMobile && (
-                        <TouchableOpacity onPress={() => router.back()} style={s.backButton} accessibilityLabel="Go back">
-                            <ArrowLeft size={24} color={colors.text.primary} />
-                        </TouchableOpacity>
-                    )}
-                </View>
-
-                <View style={s.headerActions}>
-                    <View style={{ position: 'relative' as const }}>
-                        <TouchableOpacity onPress={() => setShowTextSizeMenu(!showTextSizeMenu)} style={s.actionButton} accessibilityLabel="Adjust text size">
-                            <Type size={22} color={colors.text.secondary} />
-                        </TouchableOpacity>
-                        {showTextSizeMenu && (
-                            <View style={s.textSizeMenu}>
-                                <TouchableOpacity
-                                    style={[s.textSizeOption, settings?.reader_text_size === 'small' && s.textSizeOptionActive]}
-                                    onPress={() => handleTextSizeChange('small')}
-                                >
-                                    <Text style={s.textSizeLabel}>A</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[s.textSizeOption, settings?.reader_text_size === 'medium' && s.textSizeOptionActive]}
-                                    onPress={() => handleTextSizeChange('medium')}
-                                >
-                                    <Text style={[s.textSizeLabel, { fontSize: 16 }]}>A</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[s.textSizeOption, settings?.reader_text_size === 'large' && s.textSizeOptionActive]}
-                                    onPress={() => handleTextSizeChange('large')}
-                                >
-                                    <Text style={[s.textSizeLabel, { fontSize: 20 }]}>A</Text>
-                                </TouchableOpacity>
-                            </View>
-                        )}
-                    </View>
-                </View>
-            </Animated.View>
+            <ScreenHeader
+                title="Daily Digest"
+                showBackButton={false}
+                showMenuButton={isMobile}
+                onMenuPress={toggleMenu}
+                rightActions={[
+                    {
+                        icon: textSizeAction,
+                        onPress: () => {},
+                        accessibilityLabel: 'Adjust text size',
+                    },
+                ]}
+            />
 
             <ScrollView style={s.scrollView} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
                 <View style={s.digestHeader}>
@@ -172,6 +189,37 @@ export const DigestView = () => {
                     <Text style={s.refreshFooterText}>Regenerate Briefing</Text>
                 </TouchableOpacity>
             </ScrollView>
+
+            {/* Mobile Sidebar */}
+            {isMobile && (
+                <>
+                    {/* Backdrop */}
+                    {showMenu && (
+                        <TouchableOpacity
+                            style={s.sidebarBackdrop}
+                            activeOpacity={1}
+                            onPress={toggleMenu}
+                        />
+                    )}
+                    {/* Sidebar */}
+                    <Animated.View
+                        style={[
+                            s.sidebarContainer,
+                            {
+                                transform: [{ translateX: sidebarAnim }],
+                                width: 280,
+                            },
+                        ]}
+                    >
+                        <View style={{ alignItems: 'flex-end', padding: spacing.md }}>
+                            <TouchableOpacity onPress={toggleMenu} style={{ padding: spacing.sm }} accessibilityLabel="Close menu">
+                                <X size={24} color={colors.text.primary} />
+                            </TouchableOpacity>
+                        </View>
+                        <Sidebar onNavigate={toggleMenu} />
+                    </Animated.View>
+                </>
+            )}
         </View>
     );
 };
@@ -210,29 +258,29 @@ const styles = (colors: any, textSize: 'small' | 'medium' | 'large' = 'medium', 
         alignItems: 'center',
         padding: spacing.xl,
     },
-    readerHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: spacing.lg,
-        paddingVertical: spacing.md,
+    sidebarBackdrop: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        zIndex: 900,
+    },
+    sidebarContainer: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        bottom: 0,
         backgroundColor: colors.background.elevated,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border.DEFAULT,
-        zIndex: 100,
-    },
-    headerLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.sm,
-    },
-    backButton: {
-        padding: spacing.xs,
-        marginRight: spacing.xs,
-    },
-    headerActions: {
-        flexDirection: 'row',
-        gap: spacing.sm,
+        borderRightWidth: 1,
+        borderRightColor: colors.border.DEFAULT,
+        zIndex: 1000,
+        shadowColor: '#000',
+        shadowOffset: { width: 2, height: 0 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+        elevation: 5,
     },
     actionButton: {
         padding: spacing.sm,

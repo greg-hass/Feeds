@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ViewStyle, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, X } from 'lucide-react-native';
+import { ArrowLeft, X, Menu } from 'lucide-react-native';
 import { useColors, spacing, borderRadius } from '@/theme';
 
 export interface HeaderAction {
@@ -25,6 +25,8 @@ interface ScreenHeaderProps {
     style?: ViewStyle;
     isRefreshing?: boolean;
     refreshText?: string;
+    showMenuButton?: boolean;
+    onMenuPress?: () => void;
 }
 
 export const ScreenHeader = ({ 
@@ -39,6 +41,8 @@ export const ScreenHeader = ({
     style,
     isRefreshing = false,
     refreshText = 'Refreshing…',
+    showMenuButton = false,
+    onMenuPress,
 }: ScreenHeaderProps) => {
     const router = useRouter();
     const colors = useColors();
@@ -69,7 +73,17 @@ export const ScreenHeader = ({
             style
         ]}>
             {/* Left section */}
-            <View style={[s.leftContainer, centerTitle && s.leftContainerCentered]}>
+            <View style={[s.leftContainer, centerTitle && s.leftContainerCentered, showMenuButton && s.leftContainerWithMenu]}>
+                {showMenuButton && (
+                    <TouchableOpacity 
+                        onPress={onMenuPress}
+                        style={s.menuButton}
+                        accessibilityLabel="Open menu"
+                        accessibilityRole="button"
+                    >
+                        <Menu size={24} color={colors.text.primary} />
+                    </TouchableOpacity>
+                )}
                 {showBackButton && (
                     <TouchableOpacity 
                         onPress={handleBack}
@@ -80,7 +94,7 @@ export const ScreenHeader = ({
                         <BackIcon size={24} color={colors.text.primary} />
                     </TouchableOpacity>
                 )}
-                <View style={s.titleContainer}>
+                <View style={[s.titleContainer, showMenuButton && s.titleContainerWithMenu]}>
                     <Text 
                         style={[
                             s.headerTitle, 
@@ -160,6 +174,17 @@ const styles = (colors: any) => StyleSheet.create({
         right: spacing.lg,
         flex: undefined,
         zIndex: 1,
+    },
+    leftContainerWithMenu: {
+        marginLeft: 0,
+    },
+    menuButton: {
+        padding: spacing.sm,
+        marginLeft: -spacing.sm,
+        borderRadius: borderRadius.full,
+    },
+    titleContainerWithMenu: {
+        marginLeft: spacing.sm,
     },
     titleContainer: {
         flexDirection: 'row',
