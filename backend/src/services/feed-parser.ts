@@ -252,7 +252,15 @@ function extractChannelIdFromUrl(url: string, youtubeChannelId: string | null): 
     } catch {}
 
     if (!channelId && youtubeChannelId) {
-        channelId = youtubeChannelId.startsWith('UC') ? youtubeChannelId : 'UC' + youtubeChannelId;
+        // Handle both traditional UC... channel IDs and newer handle-based IDs (@username)
+        if (youtubeChannelId.startsWith('UC') || youtubeChannelId.startsWith('@')) {
+            channelId = youtubeChannelId;
+        } else if (youtubeChannelId.length === 22) {
+            // Legacy: 22-char ID without UC prefix
+            channelId = 'UC' + youtubeChannelId;
+        } else {
+            channelId = youtubeChannelId;
+        }
     }
 
     return channelId;

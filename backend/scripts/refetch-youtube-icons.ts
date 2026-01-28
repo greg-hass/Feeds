@@ -19,16 +19,29 @@ interface Feed {
 
 // Same scraping logic as in feed-parser.ts
 async function fetchYouTubeIcon(channelId: string): Promise<string | null> {
-    // Validate channel ID format
-    if (!channelId || !channelId.startsWith('UC') || channelId.length !== 24) {
-        console.log(`  ⚠️  Invalid channel ID format: "${channelId}"`);
+    // Validate channel ID format - support both UC... and @handle formats
+    if (!channelId) {
+        console.log(`  ⚠️  Invalid channel ID: "${channelId}"`);
         return null;
     }
+    
+    const isTraditionalChannelId = channelId.startsWith('UC') && channelId.length === 24;
+    const isHandle = channelId.startsWith('@');
+    
+    if (!isTraditionalChannelId && !isHandle) {
+        console.log(`  ⚠️  Unrecognized channel ID format: "${channelId}"`);
+        return null;
+    }
+    
+    // Determine the correct URL path
+    const channelUrl = isHandle 
+        ? `https://www.youtube.com/${channelId}`
+        : `https://www.youtube.com/channel/${channelId}`;
     
     console.log(`  🔍 Fetching icon for channel: ${channelId}`);
     
     try {
-        const response = await fetch(`https://www.youtube.com/channel/${channelId}`, {
+        const response = await fetch(channelUrl, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept-Language': 'en-US,en;q=0.9',

@@ -325,7 +325,16 @@ export class FeedsController {
                 // Try to get from metadata
                 const detectedType = detectFeedType(feed.url, feedData);
                 if (detectedType === 'youtube' && feedData.youtubeChannelId) {
-                    channelId = feedData.youtubeChannelId.startsWith('UC') ? feedData.youtubeChannelId : 'UC' + feedData.youtubeChannelId;
+                    // Handle both traditional UC... channel IDs and newer handle-based IDs (@username)
+                    const ytId = feedData.youtubeChannelId;
+                    if (ytId.startsWith('UC') || ytId.startsWith('@')) {
+                        channelId = ytId;
+                    } else if (ytId.length === 22) {
+                        // Legacy: 22-char ID without UC prefix
+                        channelId = 'UC' + ytId;
+                    } else {
+                        channelId = ytId;
+                    }
                 }
             }
             

@@ -5,16 +5,30 @@ const YOUTUBE_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKi
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 
 export async function fetchYouTubeIcon(channelId: string | null | undefined): Promise<string | null> {
-    if (!channelId || typeof channelId !== 'string' || !channelId.startsWith('UC') || channelId.length !== 24) {
-        console.log(`[YouTube Icon] Invalid channel ID format: "${channelId}" (expected UC + 22 chars)`);
+    if (!channelId || typeof channelId !== 'string') {
+        console.log(`[YouTube Icon] Invalid channel ID: "${channelId}"`);
+        return null;
+    }
+    
+    // Support both traditional UC... channel IDs and newer handle-based IDs
+    const isTraditionalChannelId = channelId.startsWith('UC') && channelId.length === 24;
+    const isHandle = channelId.startsWith('@');
+    
+    if (!isTraditionalChannelId && !isHandle) {
+        console.log(`[YouTube Icon] Unrecognized channel ID format: "${channelId}"`);
         return null;
     }
     
     console.log(`[YouTube Icon] Fetching icon for channel: ${channelId}`);
     
+    // Determine the correct URL path based on ID type
+    const channelUrl = isHandle 
+        ? `https://www.youtube.com/${channelId}`
+        : `https://www.youtube.com/channel/${channelId}`;
+    
     try {
-        console.log(`[YouTube Icon] Making request to YouTube...`);
-        const response = await fetchWithRetry(`https://www.youtube.com/channel/${channelId}`, () => ({
+        console.log(`[YouTube Icon] Making request to YouTube: ${channelUrl}`);
+        const response = await fetchWithRetry(channelUrl, () => ({
             headers: {
                 'User-Agent': YOUTUBE_USER_AGENT,
                 'Accept-Language': 'en-US,en;q=0.9',

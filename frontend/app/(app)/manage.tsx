@@ -563,7 +563,7 @@ export default function ManageScreen() {
 
                     <View style={s.inputRow}>
                         <Input
-                            style={{ flex: 1 }}
+                            style={{ flex: 1, minWidth: 0 }}
                             placeholder={`Search ${discoveryPlaceholder}…`}
                             value={urlInput}
                             onChangeText={setUrlInput}
@@ -612,7 +612,7 @@ export default function ManageScreen() {
                     <SectionHeader title="Create Folder" />
                     <View style={s.inputRow}>
                         <Input
-                            style={{ flex: 1 }}
+                            style={{ flex: 1, minWidth: 0 }}
                             placeholder="Folder name…"
                             value={newFolderName}
                             onChangeText={setNewFolderName}
@@ -1030,6 +1030,7 @@ const styles = (colors: any) => StyleSheet.create({
     },
     inputRow: {
         flexDirection: 'row',
+        flexWrap: 'wrap',
         gap: spacing.sm,
         alignItems: 'center',
     },
