@@ -1,11 +1,21 @@
-import { DiscoveryPage } from '@/components/DiscoveryPage';
-import { Stack } from 'expo-router';
+import { useEffect } from 'react';
+import { useRouter } from 'expo-router';
+import { View, ActivityIndicator } from 'react-native';
+import { useColors } from '@/theme';
 
-export default function DiscoveryScreen() {
+// Discovery has been merged into Manage page
+export default function DiscoveryRedirect() {
+    const router = useRouter();
+    const colors = useColors();
+
+    useEffect(() => {
+        // Redirect to manage page
+        router.replace('/manage');
+    }, [router]);
+
     return (
-        <>
-            <Stack.Screen options={{ title: 'Discover' }} />
-            <DiscoveryPage />
-        </>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background.primary }}>
+            <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
+        </View>
     );
 }

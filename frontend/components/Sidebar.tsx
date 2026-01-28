@@ -4,7 +4,7 @@ import { useFeedStore, useArticleStore } from '@/stores';
 import {
     Rss, Youtube, MessageSquare, Headphones,
     Folder, Search, Settings,
-    Plus, RefreshCw, Bookmark, Sparkles, BookOpen, Pause, BarChart3, Zap
+    Plus, RefreshCw, Bookmark, BookOpen, Pause, BarChart3, Zap
 } from 'lucide-react-native';
 import { useColors, borderRadius, spacing, shadows } from '@/theme';
 import { useIsDesktop } from '@/hooks/useBreakpoint';
@@ -123,17 +123,6 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 >
                     <Bookmark size={18} color={pathname === '/bookmarks' ? colors.text.inverse : colors.primary.DEFAULT} />
                     <Text style={[s.navItemText, pathname === '/bookmarks' && s.navItemTextActive]}>Bookmarks</Text>
-                </TouchableOpacity>
-
-                {/* AI Discovery */}
-                <TouchableOpacity
-                    style={[s.navItem, pathname === '/discovery' && s.navItemActive]}
-                    onPress={() => { onNavigate?.(); router.push('/discovery'); }}
-                    accessibilityLabel="Explore new feeds"
-                    accessibilityRole="link"
-                >
-                    <Sparkles size={18} color={pathname === '/discovery' ? colors.text.inverse : colors.warning} />
-                    <Text style={[s.navItemText, pathname === '/discovery' && s.navItemTextActive]}>Discover</Text>
                 </TouchableOpacity>
 
                 {/* Daily Digest */}

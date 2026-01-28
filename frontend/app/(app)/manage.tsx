@@ -1,14 +1,15 @@
 import * as DocumentPicker from 'expo-document-picker';
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, Modal, Image, Platform, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFeedStore, useToastStore, useArticleStore, useSettingsStore } from '@/stores';
-import { api, DiscoveredFeed, Feed, Folder } from '@/services/api';
+import { api, DiscoveredFeed, Feed, Folder, Recommendation } from '@/services/api';
 import {
     ArrowLeft, Plus, Search, Rss, Youtube, Headphones, MessageSquare,
     Folder as FolderIcon, Trash2, Edit2, FolderInput,
     Check, FileUp, FileDown, AlertTriangle, RefreshCw, RefreshCcw,
-    Info, Pause, Clock, Skull, X, Globe, AlertCircle, ChevronRight
+    Info, Pause, Clock, Skull, X, Globe, AlertCircle, ChevronRight,
+    Sparkles
 } from 'lucide-react-native';
 import { FeedInfoSheet } from '@/components/FeedInfoSheet';
 import { useColors, borderRadius, spacing } from '@/theme';
@@ -29,6 +30,7 @@ import { openExternalLink } from '@/utils/externalLink';
 type ModalType = 'edit_feed' | 'rename_folder' | 'move_feed' | 'view_folder' | null;
 
 type DiscoveryType = 'all' | 'rss' | 'youtube' | 'reddit' | 'podcast';
+type AddFeedTab = 'search' | 'foryou';
 
 const discoveryTypes: DiscoveryType[] = ['all', 'rss', 'youtube', 'reddit', 'podcast'];
 
@@ -56,9 +58,16 @@ export default function ManageScreen() {
     });
 
     const [discoveryType, setDiscoveryType] = useState<DiscoveryType>('all');
+    const [activeTab, setActiveTab] = useState<AddFeedTab>('search');
     const [isAdding, setIsAdding] = useState(false);
     const [addingId, setAddingId] = useState<string | null>(null);
+    const [addingRecId, setAddingRecId] = useState<number | null>(null);
     const [newFolderName, setNewFolderName] = useState('');
+    
+    // AI Recommendations state
+    const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+    const [isLoadingRecs, setIsLoadingRecs] = useState(false);
+    const [recsError, setRecsError] = useState<string | null>(null);
 
     // Modal states
     const [modalType, setModalType] = useState<ModalType>(null);
@@ -134,6 +143,77 @@ export default function ManageScreen() {
         const typeParam = discoveryType === 'all' ? undefined : discoveryType;
         await triggerDiscovery(urlInput, typeParam);
     }, [urlInput, discoveryType, triggerDiscovery]);
+
+    // Fetch AI recommendations
+    const fetchRecommendations = useCallback(async () => {
+        setIsLoadingRecs(true);
+        setRecsError(null);
+        try {
+            const res = await api.getRecommendations();
+            setRecommendations(res.recommendations.filter(r => r.status === 'pending'));
+        } catch (err) {
+            console.error('Failed to fetch recommendations:', err);
+            setRecsError('Failed to load recommendations');
+        } finally {
+            setIsLoadingRecs(false);
+        }
+    }, []);
+
+    // Load recommendations when tab changes to 'foryou'
+    useEffect(() => {
+        if (activeTab === 'foryou' && recommendations.length === 0) {
+            fetchRecommendations();
+        }
+    }, [activeTab, fetchRecommendations, recommendations.length]);
+
+    // Convert Recommendation to DiscoveredFeed format for DiscoveryCard
+    const convertRecommendationToDiscovery = (rec: Recommendation): DiscoveredFeed => {
+        const metadata = JSON.parse(rec.metadata || '{}');
+        return {
+            feed_url: rec.feed_url,
+            title: rec.title,
+            description: rec.description,
+            type: rec.feed_type,
+            site_url: metadata.site_url || rec.feed_url,
+            icon_url: metadata.thumbnail || null,
+            confidence: rec.relevance_score / 100, // Convert percentage to 0-1
+        };
+    };
+
+    // Handle subscribe to recommendation
+    const handleSubscribeRecommendation = async (rec: Recommendation) => {
+        if (addingRecId === rec.id) return;
+        
+        setAddingRecId(rec.id);
+        show(`Subscribing to ${rec.title}…`, 'success');
+
+        try {
+            await addFeed(rec.feed_url, undefined, settings?.refresh_interval_minutes, false);
+            // Remove from list after successful subscription
+            setRecommendations(prev => prev.filter(r => r.id !== rec.id));
+            show(`Subscribed to ${rec.title}`, 'success');
+        } catch (err) {
+            if (err instanceof Error && 'status' in err && (err as any).status === 409) {
+                setRecommendations(prev => prev.filter(r => r.id !== rec.id));
+                show(`Already subscribed to ${rec.title}`, 'info');
+            } else {
+                const message = err instanceof Error ? err.message : 'Failed to subscribe';
+                show(message, 'error');
+            }
+        } finally {
+            setAddingRecId(null);
+        }
+    };
+
+    // Handle dismiss recommendation
+    const handleDismissRecommendation = async (id: number) => {
+        try {
+            await api.dismissRecommendation(id);
+            setRecommendations(prev => prev.filter(r => r.id !== id));
+        } catch (err) {
+            show('Failed to dismiss', 'error');
+        }
+    };
 
     // Handle add feed with smart folder suggestion
     const handleAddFeed = useCallback(async (discovery: DiscoveredFeed) => {
@@ -579,31 +659,56 @@ export default function ManageScreen() {
                 <View style={s.section}>
                     <SectionHeader title="Add Feed" />
 
-                    {/* Type Filter Pills */}
-                    <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={s.filterPillsContainer}
-                        style={s.filterPillsScroll}
-                    >
-                        {discoveryTypes.map((type) => (
-                            <TouchableOpacity
-                                key={type}
-                                style={[
-                                    s.filterPill,
-                                    discoveryType === type && s.filterPillActive,
-                                ]}
-                                onPress={() => setDiscoveryType(type)}
+                    {/* Tab Switcher: Search / For You */}
+                    <View style={s.tabContainer}>
+                        <TouchableOpacity
+                            style={[s.tab, activeTab === 'search' && s.tabActive]}
+                            onPress={() => setActiveTab('search')}
+                        >
+                            <Search size={16} color={activeTab === 'search' ? colors.primary?.DEFAULT ?? colors.primary : colors.text.secondary} />
+                            <Text style={[s.tabText, activeTab === 'search' && s.tabTextActive]}>
+                                Search
+                            </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[s.tab, activeTab === 'foryou' && s.tabActive]}
+                            onPress={() => setActiveTab('foryou')}
+                        >
+                            <Sparkles size={16} color={activeTab === 'foryou' ? colors.primary?.DEFAULT ?? colors.primary : colors.text.secondary} />
+                            <Text style={[s.tabText, activeTab === 'foryou' && s.tabTextActive]}>
+                                For You
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Search Tab Content */}
+                    {activeTab === 'search' && (
+                        <>
+                            {/* Type Filter Pills */}
+                            <ScrollView
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={s.filterPillsContainer}
+                                style={s.filterPillsScroll}
                             >
-                                <Text style={[
-                                    s.filterPillText,
-                                    discoveryType === type && s.filterPillTextActive
-                                ]}>
-                                    {type.charAt(0).toUpperCase() + type.slice(1)}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
+                                {discoveryTypes.map((type) => (
+                                    <TouchableOpacity
+                                        key={type}
+                                        style={[
+                                            s.filterPill,
+                                            discoveryType === type && s.filterPillActive,
+                                        ]}
+                                        onPress={() => setDiscoveryType(type)}
+                                    >
+                                        <Text style={[
+                                            s.filterPillText,
+                                            discoveryType === type && s.filterPillTextActive
+                                        ]}>
+                                            {type.charAt(0).toUpperCase() + type.slice(1)}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
 
                     {/* Search Input with Clear Button */}
                     <View style={s.inputRow}>
@@ -704,6 +809,49 @@ export default function ManageScreen() {
                             <Text style={s.emptySubtitle}>
                                 Try a different URL or search term
                             </Text>
+                        </View>
+                    )}
+                        </>
+                    )}
+
+                    {/* For You Tab Content - AI Recommendations */}
+                    {activeTab === 'foryou' && (
+                        <View style={s.discoveries}>
+                            {isLoadingRecs ? (
+                                <AddFeedShimmer />
+                            ) : recsError ? (
+                                <View style={s.emptyDiscoveries}>
+                                    <AlertCircle size={48} color={colors.status.error} />
+                                    <Text style={s.emptyTitle}>{recsError}</Text>
+                                    <TouchableOpacity onPress={fetchRecommendations} style={s.retryButton}>
+                                        <Text style={s.retryButtonText}>Try Again</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            ) : recommendations.length === 0 ? (
+                                <View style={s.emptyDiscoveries}>
+                                    <Sparkles size={48} color={colors.text.tertiary} />
+                                    <Text style={s.emptyTitle}>All caught up!</Text>
+                                    <Text style={s.emptySubtitle}>
+                                        Check back later for personalized recommendations
+                                    </Text>
+                                </View>
+                            ) : (
+                                <>
+                                    <Text style={s.discoveriesTitle}>
+                                        {recommendations.length} {recommendations.length === 1 ? 'recommendation' : 'recommendations'}
+                                    </Text>
+                                    {recommendations.map((rec) => (
+                                        <DiscoveryCard
+                                            key={rec.id}
+                                            discovery={convertRecommendationToDiscovery(rec)}
+                                            isAdding={addingRecId === rec.id}
+                                            isDuplicate={false}
+                                            onPreview={() => handlePreview(convertRecommendationToDiscovery(rec))}
+                                            onAdd={() => handleSubscribeRecommendation(rec)}
+                                        />
+                                    ))}
+                                </>
+                            )}
                         </View>
                     )}
                 </View>
@@ -1917,5 +2065,62 @@ const styles = (colors: any) => StyleSheet.create({
         paddingTop: spacing.md,
         borderTopWidth: 1,
         borderTopColor: colors.border.DEFAULT,
+    },
+    // Tab Switcher styles
+    tabContainer: {
+        flexDirection: 'row',
+        backgroundColor: colors.background.secondary,
+        borderRadius: borderRadius.lg,
+        padding: 4,
+        marginBottom: spacing.md,
+        borderWidth: 1,
+        borderColor: colors.border.DEFAULT,
+    },
+    tab: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: spacing.xs,
+        paddingVertical: spacing.sm,
+        borderRadius: borderRadius.md,
+    },
+    tabActive: {
+        backgroundColor: colors.background.elevated,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.1,
+                shadowRadius: 2,
+            },
+            android: {
+                elevation: 2,
+            },
+            web: {
+                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            },
+        }),
+    },
+    tabText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: colors.text.secondary,
+    },
+    tabTextActive: {
+        color: colors.primary?.DEFAULT ?? colors.primary,
+        fontWeight: '700',
+    },
+    retryButton: {
+        backgroundColor: colors.primary?.DEFAULT ?? colors.primary,
+        paddingHorizontal: spacing.lg,
+        paddingVertical: spacing.sm,
+        borderRadius: borderRadius.md,
+        marginTop: spacing.md,
+    },
+    retryButtonText: {
+        color: colors.text.inverse,
+        fontWeight: '700',
+        fontSize: 14,
     },
 });
