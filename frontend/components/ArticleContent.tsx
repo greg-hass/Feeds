@@ -302,13 +302,26 @@ export default function ArticleContent({ html }: ArticleContentProps) {
                         }
 
                         if (url.startsWith('http')) {
-                            // Use WebBrowser for in-app browser experience
-                            // This prevents blank Safari pages when apps redirect
-                            WebBrowser.openBrowserAsync(url, {
-                                dismissButtonStyle: 'close',
-                                presentationStyle: WebBrowser.WebBrowserPresentationStyle.AUTOMATIC,
-                                readerMode: false,
-                            }).catch(() => { });
+                            // Check if this is a URL that might have a native app
+                            const hasNativeApp = url.includes('reddit.com') || url.includes('youtube.com') || url.includes('youtu.be');
+                            
+                            if (hasNativeApp) {
+                                // For URLs with native apps, try opening directly
+                                // This avoids the blank Safari page issue
+                                WebBrowser.openBrowserAsync(url, {
+                                    dismissButtonStyle: 'close',
+                                    presentationStyle: WebBrowser.WebBrowserPresentationStyle.AUTOMATIC,
+                                    readerMode: false,
+                                    enableBarCollapsing: true,
+                                }).catch(() => { });
+                            } else {
+                                // For other URLs, use standard browser
+                                WebBrowser.openBrowserAsync(url, {
+                                    dismissButtonStyle: 'close',
+                                    presentationStyle: WebBrowser.WebBrowserPresentationStyle.AUTOMATIC,
+                                    readerMode: false,
+                                }).catch(() => { });
+                            }
                         }
                         return false;
                     }}
