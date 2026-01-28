@@ -172,7 +172,8 @@ export default function ManageScreen() {
 
     // Handle quick add from popular feeds
     const handleQuickAdd = useCallback((url: string, type: string) => {
-        setUrlInput(url);
+        // Pass true as second arg to skip the debounce effect
+        setUrlInput(url, true);
         triggerDiscovery(url, type);
     }, [setUrlInput, triggerDiscovery]);
 

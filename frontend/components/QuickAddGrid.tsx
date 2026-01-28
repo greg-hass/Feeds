@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
 import { Youtube, MessageSquare, Rss, Newspaper, TrendingUp, Zap, Code, Coffee } from 'lucide-react-native';
@@ -67,7 +67,9 @@ interface QuickAddGridProps {
     onSelect: (url: string, type: string) => void;
 }
 
-export const QuickAddGrid = ({ onSelect }: QuickAddGridProps) => {
+import React, { memo } from 'react';
+
+export const QuickAddGrid = memo(({ onSelect }: QuickAddGridProps) => {
     const colors = useColors();
     const s = styles(colors);
 
@@ -94,7 +96,7 @@ export const QuickAddGrid = ({ onSelect }: QuickAddGridProps) => {
             </View>
         </View>
     );
-};
+});
 
 const styles = (colors: any) => StyleSheet.create({
     container: {
