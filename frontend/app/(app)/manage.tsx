@@ -1,6 +1,6 @@
 import * as DocumentPicker from 'expo-document-picker';
 import { useMemo, useState, useCallback } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, Modal, Image, Platform, useWindowDimensions } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, Modal, Image, Platform, useWindowDimensions, Linking } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFeedStore, useToastStore, useArticleStore, useSettingsStore } from '@/stores';
 import { api, DiscoveredFeed, Feed, Folder } from '@/services/api';
@@ -1249,9 +1249,13 @@ export default function ManageScreen() {
                                         <Text style={s.previewTitle} numberOfLines={2}>
                                             {previewFeed.title}
                                         </Text>
-                                        <Text style={s.previewUrl} numberOfLines={1}>
-                                            {new URL(previewFeed.site_url || previewFeed.feed_url).hostname}
-                                        </Text>
+                                        <TouchableOpacity
+                                            onPress={() => Linking.openURL(previewFeed.site_url || previewFeed.feed_url)}
+                                        >
+                                            <Text style={[s.previewUrl, s.previewLinkText]} numberOfLines={1}>
+                                                {new URL(previewFeed.site_url || previewFeed.feed_url).hostname}
+                                            </Text>
+                                        </TouchableOpacity>
                                     </View>
                                     <TouchableOpacity
                                         onPress={() => setPreviewFeed(null)}
@@ -1284,9 +1288,14 @@ export default function ManageScreen() {
                                     {previewFeed.site_url && (
                                         <View style={s.previewMetaRow}>
                                             <Text style={s.previewMetaLabel}>Website</Text>
-                                            <Text style={[s.previewMetaValue, { fontSize: 11 }]} numberOfLines={1}>
-                                                {previewFeed.site_url}
-                                            </Text>
+                                            <TouchableOpacity
+                                                onPress={() => Linking.openURL(previewFeed.site_url!)}
+                                                style={s.previewLink}
+                                            >
+                                                <Text style={[s.previewMetaValue, s.previewLinkText]} numberOfLines={1}>
+                                                    {previewFeed.site_url}
+                                                </Text>
+                                            </TouchableOpacity>
                                         </View>
                                     )}
                                 </View>
@@ -1741,6 +1750,13 @@ const styles = (colors: any) => StyleSheet.create({
         fontSize: 13,
         fontWeight: '600',
         color: colors.status.warning,
+    },
+    previewLink: {
+        flex: 1,
+    },
+    previewLinkText: {
+        color: colors.primary?.DEFAULT ?? colors.primary,
+        textDecorationLine: 'underline',
     },
     // View Folder Modal styles
     viewFolderModal: {
