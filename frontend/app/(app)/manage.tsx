@@ -8,7 +8,7 @@ import {
     ArrowLeft, Plus, Search, Rss, Youtube, Headphones, MessageSquare,
     Folder as FolderIcon, Trash2, Edit2, FolderInput,
     Check, FileUp, FileDown, AlertTriangle, RefreshCw, RefreshCcw,
-    Info, Pause, Clock, Skull, X, Globe, AlertCircle
+    Info, Pause, Clock, Skull, X, Globe, AlertCircle, ChevronRight
 } from 'lucide-react-native';
 import { FeedInfoSheet } from '@/components/FeedInfoSheet';
 import { useColors, borderRadius, spacing } from '@/theme';
@@ -25,7 +25,7 @@ import { QuickAddGrid } from '@/components/QuickAddGrid';
 import { useDebouncedDiscovery } from '@/hooks/useDebouncedDiscovery';
 import { isDuplicateFeed, suggestFolderName } from '@/utils/feedUtils';
 
-type ModalType = 'edit_feed' | 'rename_folder' | 'move_feed' | null;
+type ModalType = 'edit_feed' | 'rename_folder' | 'move_feed' | 'view_folder' | null;
 
 type DiscoveryType = 'all' | 'rss' | 'youtube' | 'reddit' | 'podcast';
 
@@ -228,6 +228,11 @@ export default function ManageScreen() {
         setSelectedFolder(folder);
         setRenameValue(folder.name);
         setModalType('rename_folder');
+    };
+
+    const handleViewFolder = (folder: Folder) => {
+        setSelectedFolder(folder);
+        setModalType('view_folder');
     };
 
     const handleMoveFeed = (feed: Feed) => {
@@ -705,7 +710,11 @@ export default function ManageScreen() {
                         <SectionHeader title={`Folders (${folders.length})`} />
                         {folders.map((folder: Folder) => (
                             <View key={folder.id} style={s.feedItem}>
-                                <View style={s.folderContent}>
+                                <TouchableOpacity
+                                    style={s.folderContent}
+                                    onPress={() => handleViewFolder(folder)}
+                                    activeOpacity={0.7}
+                                >
                                     <FolderIcon size={18} color={colors.secondary.DEFAULT} />
                                     <View style={s.feedInfo}>
                                         <Text style={s.feedTitle}>{folder.name}</Text>
@@ -713,7 +722,7 @@ export default function ManageScreen() {
                                             {feedCountByFolderId.get(folder.id) ?? 0} feeds
                                         </Text>
                                     </View>
-                                </View>
+                                </TouchableOpacity>
                                 <TouchableOpacity
                                     onPress={() => handleRenameFolder(folder)}
                                     style={s.actionButton}
@@ -1050,6 +1059,77 @@ export default function ManageScreen() {
                                 style={{ flex: 1 }}
                             />
                         </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* View Folder Modal */}
+            <Modal
+                visible={modalType === 'view_folder'}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setModalType(null)}
+            >
+                <View style={s.modalOverlay}>
+                    <View style={s.viewFolderModal}>
+                        {selectedFolder && (
+                            <>
+                                <View style={s.viewFolderHeader}>
+                                    <FolderIcon size={24} color={colors.secondary.DEFAULT} />
+                                    <Text style={s.viewFolderTitle}>{selectedFolder.name}</Text>
+                                    <TouchableOpacity
+                                        onPress={() => setModalType(null)}
+                                        style={s.viewFolderClose}
+                                    >
+                                        <X size={20} color={colors.text.secondary} />
+                                    </TouchableOpacity>
+                                </View>
+                                
+                                <Text style={s.viewFolderSubtitle}>
+                                    {feeds.filter((f: Feed) => f.folder_id === selectedFolder.id).length} feeds
+                                </Text>
+
+                                <ScrollView style={s.viewFolderList} showsVerticalScrollIndicator={false}>
+                                    {feeds
+                                        .filter((f: Feed) => f.folder_id === selectedFolder.id)
+                                        .map((feed: Feed) => (
+                                            <TouchableOpacity
+                                                key={feed.id}
+                                                style={s.viewFolderFeedItem}
+                                                onPress={() => {
+                                                    setModalType(null);
+                                                    setFilter({ feed_id: feed.id, type: undefined, folder_id: undefined });
+                                                    router.push('/(app)');
+                                                }}
+                                            >
+                                                {feed.icon_url ? (
+                                                    <Image source={{ uri: feed.icon_url }} style={s.viewFolderFeedIcon} />
+                                                ) : (
+                                                    <View style={[s.viewFolderFeedIconPlaceholder, { backgroundColor: colors.background.tertiary }]}>
+                                                        <Rss size={16} color={colors.text.tertiary} />
+                                                    </View>
+                                                )}
+                                                <View style={s.viewFolderFeedInfo}>
+                                                    <Text style={s.viewFolderFeedTitle} numberOfLines={1}>
+                                                        {feed.title}
+                                                    </Text>
+                                                    <Text style={s.viewFolderFeedType}>
+                                                        {feed.type}
+                                                    </Text>
+                                                </View>
+                                                <ChevronRight size={16} color={colors.text.tertiary} />
+                                            </TouchableOpacity>
+                                        ))}
+                                </ScrollView>
+
+                                <Button
+                                    title="Close"
+                                    variant="secondary"
+                                    onPress={() => setModalType(null)}
+                                    style={{ marginTop: spacing.md }}
+                                />
+                            </>
+                        )}
                     </View>
                 </View>
             </Modal>
@@ -1592,5 +1672,74 @@ const styles = (colors: any) => StyleSheet.create({
         fontSize: 13,
         fontWeight: '600',
         color: colors.status.warning,
+    },
+    // View Folder Modal styles
+    viewFolderModal: {
+        backgroundColor: colors.background.secondary,
+        borderRadius: borderRadius.xl,
+        padding: spacing.xl,
+        maxHeight: '80%',
+        width: '90%',
+        maxWidth: 400,
+    },
+    viewFolderHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: spacing.sm,
+    },
+    viewFolderTitle: {
+        flex: 1,
+        fontSize: 20,
+        fontWeight: '700',
+        color: colors.text.primary,
+        marginLeft: spacing.md,
+    },
+    viewFolderClose: {
+        padding: spacing.sm,
+    },
+    viewFolderSubtitle: {
+        fontSize: 14,
+        color: colors.text.tertiary,
+        marginBottom: spacing.lg,
+        marginLeft: spacing.xl + 24, // Align with title
+    },
+    viewFolderList: {
+        maxHeight: 300,
+        marginBottom: spacing.md,
+    },
+    viewFolderFeedItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: spacing.md,
+        backgroundColor: colors.background.tertiary,
+        borderRadius: borderRadius.md,
+        marginBottom: spacing.sm,
+    },
+    viewFolderFeedIcon: {
+        width: 32,
+        height: 32,
+        borderRadius: borderRadius.md,
+    },
+    viewFolderFeedIconPlaceholder: {
+        width: 32,
+        height: 32,
+        borderRadius: borderRadius.md,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    viewFolderFeedInfo: {
+        flex: 1,
+        marginLeft: spacing.md,
+    },
+    viewFolderFeedTitle: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: colors.text.primary,
+    },
+    viewFolderFeedType: {
+        fontSize: 12,
+        color: colors.text.tertiary,
+        textTransform: 'capitalize',
+        marginTop: 2,
     },
 });
