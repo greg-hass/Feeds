@@ -755,7 +755,7 @@ export default function ManageScreen() {
                     </View>
 
                     {/* Loading Shimmer */}
-                    {isDiscovering && <LoadingState variant="skeleton" count={2} /}
+                    {isDiscovering && <LoadingState variant="skeleton" count={2} />}
 
                     {/* Discovery Results */}
                     {!isDiscovering && discoveries.length > 0 && (
