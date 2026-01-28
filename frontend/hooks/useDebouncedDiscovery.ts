@@ -17,6 +17,8 @@ export const useDebouncedDiscovery = (options: UseDebouncedDiscoveryOptions = {}
     
     const timeoutRef = useRef<NodeJS.Timeout | null>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
+    // Track if discovery was just triggered manually (to skip debounce effect)
+    const justTriggeredRef = useRef(false);
 
     const clearDiscovery = useCallback(() => {
         setDiscoveries([]);
@@ -29,6 +31,15 @@ export const useDebouncedDiscovery = (options: UseDebouncedDiscoveryOptions = {}
             return;
         }
 
+        // Mark that we just triggered manually
+        justTriggeredRef.current = true;
+        
+        // Clear any pending auto-discovery
+        if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
+            timeoutRef.current = null;
+        }
+        
         // Cancel any pending request
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
@@ -49,11 +60,20 @@ export const useDebouncedDiscovery = (options: UseDebouncedDiscoveryOptions = {}
             setDiscoveries([]);
         } finally {
             setIsDiscovering(false);
+            // Reset the flag after a short delay (longer than the effect cycle)
+            setTimeout(() => {
+                justTriggeredRef.current = false;
+            }, 100);
         }
     }, [clearDiscovery, onError, onSuccess]);
 
     // Debounced auto-discovery for URL-like inputs
     useEffect(() => {
+        // Skip if we just triggered manually
+        if (justTriggeredRef.current) {
+            return;
+        }
+        
         // Clear previous timeout
         if (timeoutRef.current) {
             clearTimeout(timeoutRef.current);
