@@ -91,6 +91,7 @@ const styles = (colors: any) => StyleSheet.create({
     filterWrapper: {
         borderBottomWidth: 1,
         borderBottomColor: colors.border.DEFAULT,
+        paddingTop: spacing.md,
         paddingBottom: spacing.md,
     },
     filterScroll: {

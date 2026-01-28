@@ -1,6 +1,6 @@
 import * as DocumentPicker from 'expo-document-picker';
 import { useMemo, useState, useCallback, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, Modal, Image, Platform, useWindowDimensions } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, Modal, Image, Platform, useWindowDimensions, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFeedStore, useToastStore, useArticleStore, useSettingsStore } from '@/stores';
 import { api, DiscoveredFeed, Feed, Folder, Recommendation } from '@/services/api';
@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/Button';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { Input } from '@/components/ui/Input';
 import { DiscoveryCard } from '@/components/DiscoveryCard';
+import Sidebar from '@/components/Sidebar';
 import { QuickAddGrid } from '@/components/QuickAddGrid';
 import { useDebouncedDiscovery } from '@/hooks/useDebouncedDiscovery';
 import { isDuplicateFeed, suggestFolderName } from '@/utils/feedUtils';
@@ -33,6 +34,8 @@ type DiscoveryType = 'all' | 'rss' | 'youtube' | 'reddit' | 'podcast';
 type AddFeedTab = 'search' | 'foryou';
 
 const discoveryTypes: DiscoveryType[] = ['all', 'rss', 'youtube', 'reddit', 'podcast'];
+
+type ItemStatus = 'pending' | 'processing' | 'success' | 'skipped' | 'error';
 
 export default function ManageScreen() {
     const router = useRouter();
@@ -63,7 +66,9 @@ export default function ManageScreen() {
     const [addingId, setAddingId] = useState<string | null>(null);
     const [addingRecId, setAddingRecId] = useState<number | null>(null);
     const [newFolderName, setNewFolderName] = useState('');
-    
+    const [showMenu, setShowMenu] = useState(false);
+    const [sidebarAnim] = useState(new Animated.Value(-300));
+
     // AI Recommendations state
     const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
     const [isLoadingRecs, setIsLoadingRecs] = useState(false);
@@ -185,7 +190,7 @@ export default function ManageScreen() {
     // Handle subscribe to recommendation
     const handleSubscribeRecommendation = async (rec: Recommendation) => {
         if (addingRecId === rec.id) return;
-        
+
         setAddingRecId(rec.id);
         show(`Subscribing to ${rec.title}…`, 'success');
 
@@ -221,24 +226,24 @@ export default function ManageScreen() {
     const handleAddFeed = useCallback(async (discovery: DiscoveredFeed) => {
         setAddingId(discovery.feed_url);
         setIsAdding(true);
-        
+
         try {
             // Check for suggested folder
             const suggestedFolder = suggestFolderName(discovery.type, discovery.title);
             let folderId: number | undefined;
-            
+
             if (suggestedFolder) {
-                const existingFolder = folders.find((f) => 
+                const existingFolder = folders.find((f) =>
                     f.name.toLowerCase() === suggestedFolder.toLowerCase()
                 );
                 if (existingFolder) {
                     folderId = existingFolder.id;
                 }
             }
-            
+
             await addFeed(discovery.feed_url, folderId, settings?.refresh_interval_minutes);
             setDiscoveries((prev) => prev.filter((d) => d.feed_url !== discovery.feed_url));
-            
+
             if (folderId) {
                 show(`Added "${discovery.title}" to ${suggestFolderName(discovery.type, discovery.title)}`, 'success');
             } else {
@@ -646,14 +651,23 @@ export default function ManageScreen() {
             {/* Header */}
             <ScreenHeader
                 title="Feed Manager"
-                rightAction={
-                    <TouchableOpacity
-                        style={[s.headerButton, isBulkMode && { backgroundColor: (colors.primary?.DEFAULT ?? colors.primary) + '22' }]}
-                        onPress={toggleBulkMode}
-                    >
-                        <Check size={18} color={isBulkMode ? (colors.primary?.DEFAULT ?? colors.primary) : colors.text.secondary} />
-                    </TouchableOpacity>
-                }
+                showMenuButton={!isDesktop}
+                onMenuPress={() => {
+                    setShowMenu(true);
+                    Animated.timing(sidebarAnim, {
+                        toValue: 0,
+                        duration: 250,
+                        useNativeDriver: true,
+                    }).start();
+                }}
+                rightActions={[
+                    {
+                        icon: <Check size={18} color={isBulkMode ? (colors.primary?.DEFAULT ?? colors.primary) : colors.text.secondary} />,
+                        onPress: toggleBulkMode,
+                        accessibilityLabel: 'Bulk mode',
+                        variant: isBulkMode ? 'primary' : 'default',
+                    }
+                ]}
             />
 
             <ScrollView style={s.scrollView} contentContainerStyle={s.content}>
@@ -686,208 +700,208 @@ export default function ManageScreen() {
                     {/* Tab Content Container - fixed minHeight prevents layout shift */}
                     <View style={s.tabContentContainer}>
 
-                    {/* Search Tab Content */}
-                    {activeTab === 'search' && (
-                        <>
-                            {/* Type Filter Pills */}
-                            <ScrollView
-                                horizontal
-                                showsHorizontalScrollIndicator={false}
-                                contentContainerStyle={s.filterPillsContainer}
-                                style={s.filterPillsScroll}
-                            >
-                                {discoveryTypes.map((type) => (
-                                    <TouchableOpacity
-                                        key={type}
-                                        style={[
-                                            s.filterPill,
-                                            discoveryType === type && s.filterPillActive,
-                                        ]}
-                                        onPress={() => setDiscoveryType(type)}
-                                    >
-                                        <Text style={[
-                                            s.filterPillText,
-                                            discoveryType === type && s.filterPillTextActive
-                                        ]}>
-                                            {type.charAt(0).toUpperCase() + type.slice(1)}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </ScrollView>
-
-                    {/* Search Input with Clear Button */}
-                    <View style={s.inputRow}>
-                        <View style={{ flex: 1, minWidth: 0, position: 'relative' }}>
-                            <Input
-                                style={{ 
-                                    flex: 1, 
-                                    minWidth: 0,
-                                    paddingRight: urlInput ? 40 : spacing.md,
-                                }}
-                                placeholder={`Paste URL or search ${discoveryPlaceholder}…`}
-                                value={urlInput}
-                                onChangeText={setUrlInput}
-                                autoCapitalize="none"
-                                autoCorrect={false}
-                                keyboardType="default"
-                                returnKeyType="search"
-                                onSubmitEditing={handleDiscover}
-                                accessibilityLabel={`Search ${discoveryPlaceholder}`}
-                            />
-                            {urlInput.length > 0 && (
-                                <TouchableOpacity
-                                    style={s.clearButton}
-                                    onPress={() => {
-                                        setUrlInput('');
-                                        clearDiscovery();
-                                    }}
-                                    hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+                        {/* Search Tab Content */}
+                        {activeTab === 'search' && (
+                            <>
+                                {/* Type Filter Pills */}
+                                <ScrollView
+                                    horizontal
+                                    showsHorizontalScrollIndicator={false}
+                                    contentContainerStyle={s.filterPillsContainer}
+                                    style={s.filterPillsScroll}
                                 >
-                                    <X size={16} color={colors.text.tertiary} />
-                                </TouchableOpacity>
-                            )}
-                        </View>
-                        <Button
-                            onPress={handleDiscover}
-                            disabled={isDiscovering || !urlInput.trim()}
-                            loading={isDiscovering}
-                            icon={!isDiscovering ? <Search size={20} color={colors.text.inverse} /> : undefined}
-                            style={{ width: 44, height: 44, paddingHorizontal: 0 }}
-                        />
-                    </View>
-
-                    {/* Loading Shimmer */}
-                    {isDiscovering && <LoadingState variant="skeleton" count={2} />}
-
-                    {/* Discovery Results */}
-                    {!isDiscovering && discoveries.length > 0 && (
-                        <View style={s.discoveries}>
-                            {(() => {
-                                // Filter out feeds that are already subscribed
-                                const newDiscoveries = discoveries.filter(
-                                    (d) => !isDuplicateFeed(d, feeds)
-                                );
-                                
-                                if (newDiscoveries.length === 0) {
-                                    return (
-                                        <View style={s.emptyDiscoveries}>
-                                            <Check size={48} color={colors.status.success} />
-                                            <Text style={s.emptyTitle}>Already subscribed!</Text>
-                                            <Text style={s.emptySubtitle}>
-                                                You&apos;re already following all feeds from this source
+                                    {discoveryTypes.map((type) => (
+                                        <TouchableOpacity
+                                            key={type}
+                                            style={[
+                                                s.filterPill,
+                                                discoveryType === type && s.filterPillActive,
+                                            ]}
+                                            onPress={() => setDiscoveryType(type)}
+                                        >
+                                            <Text style={[
+                                                s.filterPillText,
+                                                discoveryType === type && s.filterPillTextActive
+                                            ]}>
+                                                {type.charAt(0).toUpperCase() + type.slice(1)}
                                             </Text>
-                                        </View>
-                                    );
-                                }
-                                
-                                return (
-                                    <>
-                                        <Text style={s.discoveriesTitle}>
-                                            {newDiscoveries.length} {newDiscoveries.length === 1 ? 'feed' : 'feeds'} found
-                                        </Text>
-                                        {newDiscoveries.map((discovery: DiscoveredFeed, i: number) => (
-                                            <DiscoveryCard
-                                                key={`${discovery.feed_url}-${i}`}
-                                                discovery={discovery}
-                                                isAdding={addingId === discovery.feed_url}
-                                                isDuplicate={false}
-                                                onPreview={() => handlePreview(discovery)}
-                                                onAdd={() => handleAddFeed(discovery)}
-                                            />
-                                        ))}
-                                    </>
-                                );
-                            })()}
-                        </View>
-                    )}
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
 
-                    {/* Empty State with Quick Add */}
-                    {!isDiscovering && !hasAttempted && !urlInput && (
-                        <QuickAddGrid onSelect={handleQuickAdd} />
-                    )}
-
-                    {/* No Results State */}
-                    {!isDiscovering && hasAttempted && discoveries.length === 0 && urlInput && (
-                        <View style={s.emptyDiscoveries}>
-                            <Globe size={48} color={colors.text.tertiary} />
-                            <Text style={s.emptyTitle}>No feeds found</Text>
-                            <Text style={s.emptySubtitle}>
-                                Try a different URL or search term
-                            </Text>
-                        </View>
-                    )}
-                        </>
-                    )}
-
-                    {/* For You Tab Content - AI Recommendations */}
-                    {activeTab === 'foryou' && (
-                        <View style={s.discoveries}>
-                            {/* Refresh Button Row */}
-                            <View style={s.refreshRow}>
-                                <Text style={s.discoveriesTitle}>
-                                    {isLoadingRecs ? 'Finding recommendations…' : 
-                                     recommendations.length > 0 ? `${recommendations.length} recommendation${recommendations.length === 1 ? '' : 's'}` : 
-                                     'Personalized for you'}
-                                </Text>
-                                <TouchableOpacity
-                                    onPress={() => {
-                                        setHasFetchedRecs(false);
-                                        fetchRecommendations();
-                                    }}
-                                    disabled={isLoadingRecs}
-                                    style={[s.refreshButton, isLoadingRecs && s.refreshButtonDisabled]}
-                                >
-                                    {isLoadingRecs ? (
-                                        <ActivityIndicator size={14} color={colors.primary?.DEFAULT ?? colors.primary} />
-                                    ) : (
-                                        <RefreshCw size={14} color={colors.primary?.DEFAULT ?? colors.primary} />
-                                    )}
-                                    <Text style={s.refreshButtonText}>
-                                        {isLoadingRecs ? 'Refreshing…' : 'Refresh'}
-                                    </Text>
-                                </TouchableOpacity>
-                            </View>
-
-                            {isLoadingRecs && recommendations.length === 0 ? (
-                                <LoadingState variant="skeleton" count={2} />
-                            ) : recsError ? (
-                                <View style={s.emptyDiscoveries}>
-                                    <AlertCircle size={48} color={colors.status.error} />
-                                    <Text style={s.emptyTitle}>{recsError}</Text>
+                                {/* Search Input with Clear Button */}
+                                <View style={s.inputRow}>
+                                    <View style={{ flex: 1, minWidth: 0, position: 'relative' }}>
+                                        <Input
+                                            style={{
+                                                flex: 1,
+                                                minWidth: 0,
+                                                paddingRight: urlInput ? 40 : spacing.md,
+                                            }}
+                                            placeholder={`Paste URL or search ${discoveryPlaceholder}…`}
+                                            value={urlInput}
+                                            onChangeText={setUrlInput}
+                                            autoCapitalize="none"
+                                            autoCorrect={false}
+                                            keyboardType="default"
+                                            returnKeyType="search"
+                                            onSubmitEditing={handleDiscover}
+                                            accessibilityLabel={`Search ${discoveryPlaceholder}`}
+                                        />
+                                        {urlInput.length > 0 && (
+                                            <TouchableOpacity
+                                                style={s.clearButton}
+                                                onPress={() => {
+                                                    setUrlInput('');
+                                                    clearDiscovery();
+                                                }}
+                                                hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+                                            >
+                                                <X size={16} color={colors.text.tertiary} />
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
                                     <Button
-                                        title="Try Again"
+                                        onPress={handleDiscover}
+                                        disabled={isDiscovering || !urlInput.trim()}
+                                        loading={isDiscovering}
+                                        icon={!isDiscovering ? <Search size={20} color={colors.text.inverse} /> : undefined}
+                                        style={{ width: 44, height: 44, paddingHorizontal: 0 }}
+                                    />
+                                </View>
+
+                                {/* Loading Shimmer */}
+                                {isDiscovering && <LoadingState variant="skeleton" count={2} />}
+
+                                {/* Discovery Results */}
+                                {!isDiscovering && discoveries.length > 0 && (
+                                    <View style={s.discoveries}>
+                                        {(() => {
+                                            // Filter out feeds that are already subscribed
+                                            const newDiscoveries = discoveries.filter(
+                                                (d) => !isDuplicateFeed(d, feeds)
+                                            );
+
+                                            if (newDiscoveries.length === 0) {
+                                                return (
+                                                    <View style={s.emptyDiscoveries}>
+                                                        <Check size={48} color={colors.status.success} />
+                                                        <Text style={s.emptyTitle}>Already subscribed!</Text>
+                                                        <Text style={s.emptySubtitle}>
+                                                            You&apos;re already following all feeds from this source
+                                                        </Text>
+                                                    </View>
+                                                );
+                                            }
+
+                                            return (
+                                                <>
+                                                    <Text style={s.discoveriesTitle}>
+                                                        {newDiscoveries.length} {newDiscoveries.length === 1 ? 'feed' : 'feeds'} found
+                                                    </Text>
+                                                    {newDiscoveries.map((discovery: DiscoveredFeed, i: number) => (
+                                                        <DiscoveryCard
+                                                            key={`${discovery.feed_url}-${i}`}
+                                                            discovery={discovery}
+                                                            isAdding={addingId === discovery.feed_url}
+                                                            isDuplicate={false}
+                                                            onPreview={() => handlePreview(discovery)}
+                                                            onAdd={() => handleAddFeed(discovery)}
+                                                        />
+                                                    ))}
+                                                </>
+                                            );
+                                        })()}
+                                    </View>
+                                )}
+
+                                {/* Empty State with Quick Add */}
+                                {!isDiscovering && !hasAttempted && !urlInput && (
+                                    <QuickAddGrid onSelect={handleQuickAdd} />
+                                )}
+
+                                {/* No Results State */}
+                                {!isDiscovering && hasAttempted && discoveries.length === 0 && urlInput && (
+                                    <View style={s.emptyDiscoveries}>
+                                        <Globe size={48} color={colors.text.tertiary} />
+                                        <Text style={s.emptyTitle}>No feeds found</Text>
+                                        <Text style={s.emptySubtitle}>
+                                            Try a different URL or search term
+                                        </Text>
+                                    </View>
+                                )}
+                            </>
+                        )}
+
+                        {/* For You Tab Content - AI Recommendations */}
+                        {activeTab === 'foryou' && (
+                            <View style={s.discoveries}>
+                                {/* Refresh Button Row */}
+                                <View style={s.refreshRow}>
+                                    <Text style={s.discoveriesTitle}>
+                                        {isLoadingRecs ? 'Finding recommendations…' :
+                                            recommendations.length > 0 ? `${recommendations.length} recommendation${recommendations.length === 1 ? '' : 's'}` :
+                                                'Personalized for you'}
+                                    </Text>
+                                    <TouchableOpacity
                                         onPress={() => {
                                             setHasFetchedRecs(false);
                                             fetchRecommendations();
                                         }}
-                                        variant="primary"
-                                        icon={<RefreshCw size={16} color={colors.text.inverse} />}
-                                    />
+                                        disabled={isLoadingRecs}
+                                        style={[s.refreshButton, isLoadingRecs && s.refreshButtonDisabled]}
+                                    >
+                                        {isLoadingRecs ? (
+                                            <ActivityIndicator size={14} color={colors.primary?.DEFAULT ?? colors.primary} />
+                                        ) : (
+                                            <RefreshCw size={14} color={colors.primary?.DEFAULT ?? colors.primary} />
+                                        )}
+                                        <Text style={s.refreshButtonText}>
+                                            {isLoadingRecs ? 'Refreshing…' : 'Refresh'}
+                                        </Text>
+                                    </TouchableOpacity>
                                 </View>
-                            ) : recommendations.length === 0 ? (
-                                <View style={s.emptyDiscoveries}>
-                                    <Sparkles size={48} color={colors.text.tertiary} />
-                                    <Text style={s.emptyTitle}>All caught up!</Text>
-                                    <Text style={s.emptySubtitle}>
-                                        Check back later for personalized recommendations
-                                    </Text>
-                                </View>
-                            ) : (
-                                <>
-                                    {recommendations.map((rec) => (
-                                        <DiscoveryCard
-                                            key={rec.id}
-                                            discovery={convertRecommendationToDiscovery(rec)}
-                                            isAdding={addingRecId === rec.id}
-                                            isDuplicate={false}
-                                            onPreview={() => handlePreview(convertRecommendationToDiscovery(rec))}
-                                            onAdd={() => handleSubscribeRecommendation(rec)}
+
+                                {isLoadingRecs && recommendations.length === 0 ? (
+                                    <LoadingState variant="skeleton" count={2} />
+                                ) : recsError ? (
+                                    <View style={s.emptyDiscoveries}>
+                                        <AlertCircle size={48} color={colors.status.error} />
+                                        <Text style={s.emptyTitle}>{recsError}</Text>
+                                        <Button
+                                            title="Try Again"
+                                            onPress={() => {
+                                                setHasFetchedRecs(false);
+                                                fetchRecommendations();
+                                            }}
+                                            variant="primary"
+                                            icon={<RefreshCw size={16} color={colors.text.inverse} />}
                                         />
-                                    ))}
-                                </>
-                            )}
-                        </View>
-                    )}
+                                    </View>
+                                ) : recommendations.length === 0 ? (
+                                    <View style={s.emptyDiscoveries}>
+                                        <Sparkles size={48} color={colors.text.tertiary} />
+                                        <Text style={s.emptyTitle}>All caught up!</Text>
+                                        <Text style={s.emptySubtitle}>
+                                            Check back later for personalized recommendations
+                                        </Text>
+                                    </View>
+                                ) : (
+                                    <>
+                                        {recommendations.map((rec) => (
+                                            <DiscoveryCard
+                                                key={rec.id}
+                                                discovery={convertRecommendationToDiscovery(rec)}
+                                                isAdding={addingRecId === rec.id}
+                                                isDuplicate={false}
+                                                onPreview={() => handlePreview(convertRecommendationToDiscovery(rec))}
+                                                onAdd={() => handleSubscribeRecommendation(rec)}
+                                            />
+                                        ))}
+                                    </>
+                                )}
+                            </View>
+                        )}
                     </View>
                 </View>
 
@@ -971,144 +985,144 @@ export default function ManageScreen() {
                         const isDead = healthStatus === 'dead';
 
                         return (
-                        <View
-                            key={feed.id}
-                            style={[
-                                s.feedItem,
-                                feed.error_count > 0 && s.feedItemError,
-                                feed.paused_at && s.feedItemPaused,
-                                isStale && s.feedItemStale,
-                                isDead && s.feedItemDead,
-                                isBulkMode && selectedFeedIds.has(feed.id) && { backgroundColor: (colors.primary?.DEFAULT ?? colors.primary) + '11', borderColor: (colors.primary?.DEFAULT ?? colors.primary) + '44' }
-                            ]}
-                        >
-                            <TouchableOpacity
-                                style={s.feedContentClickable}
-                                onPress={() => {
-                                    if (isBulkMode) {
-                                        toggleSelectFeed(feed.id);
-                                    } else {
-                                        setFilter({ feed_id: feed.id, type: undefined, folder_id: undefined });
-                                        router.push('/(app)');
-                                    }
-                                }}
-                                onLongPress={() => {
-                                    if (!isBulkMode) {
-                                        setFeedInfoId(feed.id);
-                                        setFeedInfoVisible(true);
-                                    }
-                                }}
-                                activeOpacity={0.7}
+                            <View
+                                key={feed.id}
+                                style={[
+                                    s.feedItem,
+                                    feed.error_count > 0 && s.feedItemError,
+                                    feed.paused_at && s.feedItemPaused,
+                                    isStale && s.feedItemStale,
+                                    isDead && s.feedItemDead,
+                                    isBulkMode && selectedFeedIds.has(feed.id) && { backgroundColor: (colors.primary?.DEFAULT ?? colors.primary) + '11', borderColor: (colors.primary?.DEFAULT ?? colors.primary) + '44' }
+                                ]}
                             >
-                                {isBulkMode ? (
-                                    <View style={[
-                                        s.checkbox,
-                                        selectedFeedIds.has(feed.id) && s.checkboxSelected
-                                    ]}>
-                                        {selectedFeedIds.has(feed.id) && <Check size={12} color={colors.text.inverse} />}
-                                    </View>
-                                ) : (
-                                    <View style={s.feedIconContainer}>
-                                        {feed.icon_url ? (
-                                            <Image source={{ uri: feed.icon_url }} style={[s.feedIcon, feed.paused_at && s.feedIconPaused]} />
-                                        ) : (
-                                            getTypeIcon(feed.type)
-                                        )}
-                                        {feed.paused_at && (
-                                            <View style={s.pausedOverlay}>
-                                                <Pause size={10} color={colors.text.inverse} />
-                                            </View>
-                                        )}
-                                    </View>
-                                )}
-
-                                <View style={s.feedInfo}>
-                                    <View style={s.feedTitleRow}>
-                                        <Text style={[s.feedTitle, feed.paused_at && s.feedTitlePaused]} numberOfLines={1}>{feed.title}</Text>
-                                        {feed.paused_at && (
-                                            <Pause size={14} color={colors.warning} style={s.statusIcon} />
-                                        )}
-                                        {feed.error_count > 0 && !feed.paused_at && (
-                                            <AlertTriangle size={14} color={colors.error} style={s.statusIcon} />
-                                        )}
-                                    </View>
-                                    <Text style={s.feedUrl} numberOfLines={1}>
-                                        {feed.folder_id ? folderNameById.get(feed.folder_id) || 'No folder' : 'No folder'}
-                                    </Text>
-                                    {feed.paused_at && (
-                                        <View style={s.pausedBadge}>
-                                            <Pause size={10} color={colors.warning} />
-                                            <Text style={s.pausedBadgeText}>Paused</Text>
-                                        </View>
-                                    )}
-                                    {feed.error_count > 0 && !feed.paused_at && (
-                                        <View style={s.errorBadge}>
-                                            <AlertTriangle size={10} color={colors.error} />
-                                            <Text style={s.errorBadgeText}>Connection Issue</Text>
-                                        </View>
-                                    )}
-                                    {isStale && !feed.paused_at && feed.error_count === 0 && (
-                                        <View style={s.staleBadge}>
-                                            <Clock size={10} color={colors.warning} />
-                                            <Text style={s.staleBadgeText}>Stale</Text>
-                                        </View>
-                                    )}
-                                    {isDead && !feed.paused_at && (
-                                        <View style={s.deadBadge}>
-                                            <Skull size={10} color="#6b7280" />
-                                            <Text style={s.deadBadgeText}>Dead</Text>
-                                        </View>
-                                    )}
-                                    <Text style={s.healthTime}>{healthInfo.lastFetched}</Text>
-                                </View>
-                            </TouchableOpacity>
-
-                            {!isBulkMode && (
-                                <View style={s.feedActions}>
-                                    <TouchableOpacity
-                                        onPress={() => {
+                                <TouchableOpacity
+                                    style={s.feedContentClickable}
+                                    onPress={() => {
+                                        if (isBulkMode) {
+                                            toggleSelectFeed(feed.id);
+                                        } else {
+                                            setFilter({ feed_id: feed.id, type: undefined, folder_id: undefined });
+                                            router.push('/(app)');
+                                        }
+                                    }}
+                                    onLongPress={() => {
+                                        if (!isBulkMode) {
                                             setFeedInfoId(feed.id);
                                             setFeedInfoVisible(true);
-                                        }}
-                                        style={s.actionButton}
-                                        accessibilityLabel={`View details for ${feed.title}`}
-                                    >
-                                        <Info size={16} color={colors.text.tertiary} />
-                                    </TouchableOpacity>
-                                    {feed.error_count > 0 ? (
-                                        <TouchableOpacity
-                                            onPress={() => handleRetryFeed(feed.id, feed.title)}
-                                            style={s.actionButton}
-                                            accessibilityLabel={`Retry ${feed.title}`}
-                                        >
-                                            <RefreshCw size={16} color={colors.error} />
-                                        </TouchableOpacity>
+                                        }
+                                    }}
+                                    activeOpacity={0.7}
+                                >
+                                    {isBulkMode ? (
+                                        <View style={[
+                                            s.checkbox,
+                                            selectedFeedIds.has(feed.id) && s.checkboxSelected
+                                        ]}>
+                                            {selectedFeedIds.has(feed.id) && <Check size={12} color={colors.text.inverse} />}
+                                        </View>
                                     ) : (
-                                        <TouchableOpacity
-                                            onPress={() => handleMoveFeed(feed)}
-                                            style={s.actionButton}
-                                            accessibilityLabel={`Move ${feed.title}`}
-                                        >
-                                            <FolderInput size={16} color={colors.text.tertiary} />
-                                        </TouchableOpacity>
+                                        <View style={s.feedIconContainer}>
+                                            {feed.icon_url ? (
+                                                <Image source={{ uri: feed.icon_url }} style={[s.feedIcon, feed.paused_at && s.feedIconPaused]} />
+                                            ) : (
+                                                getTypeIcon(feed.type)
+                                            )}
+                                            {feed.paused_at && (
+                                                <View style={s.pausedOverlay}>
+                                                    <Pause size={10} color={colors.text.inverse} />
+                                                </View>
+                                            )}
+                                        </View>
                                     )}
-                                    <TouchableOpacity
-                                        onPress={() => handleEditFeed(feed)}
-                                        style={s.actionButton}
-                                        accessibilityLabel={`Edit ${feed.title}`}
-                                    >
-                                        <Edit2 size={16} color={colors.text.tertiary} />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        onPress={() => handleDeleteFeed(feed.id, feed.title)}
-                                        style={s.actionButton}
-                                        accessibilityLabel={`Delete ${feed.title}`}
-                                    >
-                                        <Trash2 size={16} color={colors.text.tertiary} />
-                                    </TouchableOpacity>
-                                </View>
-                            )}
-                        </View>
+
+                                    <View style={s.feedInfo}>
+                                        <View style={s.feedTitleRow}>
+                                            <Text style={[s.feedTitle, feed.paused_at && s.feedTitlePaused]} numberOfLines={1}>{feed.title}</Text>
+                                            {feed.paused_at && (
+                                                <Pause size={14} color={colors.warning} style={s.statusIcon} />
+                                            )}
+                                            {feed.error_count > 0 && !feed.paused_at && (
+                                                <AlertTriangle size={14} color={colors.error} style={s.statusIcon} />
+                                            )}
+                                        </View>
+                                        <Text style={s.feedUrl} numberOfLines={1}>
+                                            {feed.folder_id ? folderNameById.get(feed.folder_id) || 'No folder' : 'No folder'}
+                                        </Text>
+                                        {feed.paused_at && (
+                                            <View style={s.pausedBadge}>
+                                                <Pause size={10} color={colors.warning} />
+                                                <Text style={s.pausedBadgeText}>Paused</Text>
+                                            </View>
+                                        )}
+                                        {feed.error_count > 0 && !feed.paused_at && (
+                                            <View style={s.errorBadge}>
+                                                <AlertTriangle size={10} color={colors.error} />
+                                                <Text style={s.errorBadgeText}>Connection Issue</Text>
+                                            </View>
+                                        )}
+                                        {isStale && !feed.paused_at && feed.error_count === 0 && (
+                                            <View style={s.staleBadge}>
+                                                <Clock size={10} color={colors.warning} />
+                                                <Text style={s.staleBadgeText}>Stale</Text>
+                                            </View>
+                                        )}
+                                        {isDead && !feed.paused_at && (
+                                            <View style={s.deadBadge}>
+                                                <Skull size={10} color="#6b7280" />
+                                                <Text style={s.deadBadgeText}>Dead</Text>
+                                            </View>
+                                        )}
+                                        <Text style={s.healthTime}>{healthInfo.lastFetched}</Text>
+                                    </View>
+                                </TouchableOpacity>
+
+                                {!isBulkMode && (
+                                    <View style={s.feedActions}>
+                                        <TouchableOpacity
+                                            onPress={() => {
+                                                setFeedInfoId(feed.id);
+                                                setFeedInfoVisible(true);
+                                            }}
+                                            style={s.actionButton}
+                                            accessibilityLabel={`View details for ${feed.title}`}
+                                        >
+                                            <Info size={16} color={colors.text.tertiary} />
+                                        </TouchableOpacity>
+                                        {feed.error_count > 0 ? (
+                                            <TouchableOpacity
+                                                onPress={() => handleRetryFeed(feed.id, feed.title)}
+                                                style={s.actionButton}
+                                                accessibilityLabel={`Retry ${feed.title}`}
+                                            >
+                                                <RefreshCw size={16} color={colors.error} />
+                                            </TouchableOpacity>
+                                        ) : (
+                                            <TouchableOpacity
+                                                onPress={() => handleMoveFeed(feed)}
+                                                style={s.actionButton}
+                                                accessibilityLabel={`Move ${feed.title}`}
+                                            >
+                                                <FolderInput size={16} color={colors.text.tertiary} />
+                                            </TouchableOpacity>
+                                        )}
+                                        <TouchableOpacity
+                                            onPress={() => handleEditFeed(feed)}
+                                            style={s.actionButton}
+                                            accessibilityLabel={`Edit ${feed.title}`}
+                                        >
+                                            <Edit2 size={16} color={colors.text.tertiary} />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            onPress={() => handleDeleteFeed(feed.id, feed.title)}
+                                            style={s.actionButton}
+                                            accessibilityLabel={`Delete ${feed.title}`}
+                                        >
+                                            <Trash2 size={16} color={colors.text.tertiary} />
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+                            </View>
                         );
                     })}
                 </View>
@@ -1248,7 +1262,7 @@ export default function ManageScreen() {
                         </View>
 
                         {/* Folder List */}
-                        <ScrollView 
+                        <ScrollView
                             style={s.moveModalList}
                             showsVerticalScrollIndicator={false}
                             contentContainerStyle={s.moveModalListContent}
@@ -1337,7 +1351,7 @@ export default function ManageScreen() {
                                         <X size={20} color={colors.text.secondary} />
                                     </TouchableOpacity>
                                 </View>
-                                
+
                                 <Text style={s.viewFolderSubtitle}>
                                     {feeds.filter((f: Feed) => f.folder_id === selectedFolder.id).length} feeds
                                 </Text>
@@ -1515,7 +1529,61 @@ export default function ManageScreen() {
                     </View>
                 </View>
             </Modal>
-
+            {/* Mobile Sidebar */}
+            {!isDesktop && (
+                <>
+                    {/* Backdrop */}
+                    {showMenu && (
+                        <TouchableOpacity
+                            style={s.sidebarBackdrop}
+                            activeOpacity={1}
+                            onPress={() => {
+                                setShowMenu(false);
+                                Animated.timing(sidebarAnim, {
+                                    toValue: -300,
+                                    duration: 250,
+                                    useNativeDriver: true,
+                                }).start();
+                            }}
+                        />
+                    )}
+                    {/* Sidebar */}
+                    <Animated.View
+                        style={[
+                            s.sidebarContainer,
+                            {
+                                transform: [{ translateX: sidebarAnim }],
+                                width: 280,
+                            },
+                        ]}
+                    >
+                        <View style={{ alignItems: 'flex-end', padding: spacing.md }}>
+                            <TouchableOpacity
+                                onPress={() => {
+                                    setShowMenu(false);
+                                    Animated.timing(sidebarAnim, {
+                                        toValue: -300,
+                                        duration: 250,
+                                        useNativeDriver: true,
+                                    }).start();
+                                }}
+                                style={{ padding: spacing.sm }}
+                                accessibilityLabel="Close menu"
+                            >
+                                <X size={24} color={colors.text.primary} />
+                            </TouchableOpacity>
+                        </View>
+                        <Sidebar onNavigate={() => {
+                            setShowMenu(false);
+                            Animated.timing(sidebarAnim, {
+                                toValue: -300,
+                                duration: 250,
+                                useNativeDriver: true,
+                            }).start();
+                        }} />
+                    </Animated.View>
+                </>
+            )}
         </View>
     );
 }
@@ -2173,5 +2241,173 @@ const styles = (colors: any) => StyleSheet.create({
         fontSize: 13,
         fontWeight: '600',
         color: colors.primary?.DEFAULT ?? colors.primary,
+    },
+    // Missing Health Styles
+    staleBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        marginTop: 4,
+        alignSelf: 'flex-start',
+        backgroundColor: '#f59e0b22',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: borderRadius.sm,
+    },
+    staleBadgeText: {
+        fontSize: 11,
+        color: '#f59e0b',
+        fontWeight: '600',
+    },
+    deadBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        marginTop: 4,
+        alignSelf: 'flex-start',
+        backgroundColor: '#6b728022',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: borderRadius.sm,
+    },
+    deadBadgeText: {
+        fontSize: 11,
+        color: '#6b7280',
+        fontWeight: '600',
+    },
+    healthTime: {
+        fontSize: 11,
+        color: colors.text.tertiary,
+        marginTop: 4,
+    },
+    // Missing Filter Styles
+    filterPillsContainer: {
+        flexDirection: 'row',
+        gap: spacing.sm,
+        paddingBottom: spacing.sm,
+    },
+    filterPillsScroll: {
+        flexGrow: 0,
+        marginBottom: spacing.sm,
+    },
+    filterPill: {
+        paddingHorizontal: spacing.md,
+        paddingVertical: 6,
+        borderRadius: borderRadius.full,
+        backgroundColor: colors.background.tertiary,
+        borderWidth: 1,
+        borderColor: colors.border.DEFAULT,
+    },
+    filterPillActive: {
+        backgroundColor: colors.primary.DEFAULT,
+        borderColor: colors.primary.DEFAULT,
+    },
+    filterPillText: {
+        fontSize: 13,
+        color: colors.text.secondary,
+        fontWeight: '500',
+    },
+    filterPillTextActive: {
+        color: colors.text.inverse,
+    },
+    // Missing Bulk Styles
+    bulkToolbar: {
+        position: 'absolute',
+        bottom: spacing.xl,
+        left: spacing.xl,
+        right: spacing.xl,
+        backgroundColor: colors.background.secondary,
+        borderRadius: borderRadius.lg,
+        padding: spacing.md,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.lg,
+        borderWidth: 1,
+        borderColor: colors.border.DEFAULT,
+        // Shadow
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+            },
+            android: {
+                elevation: 8,
+            },
+            web: {
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+            },
+        }),
+    },
+    bulkText: {
+        flex: 1,
+        fontSize: 14,
+        fontWeight: '600',
+        color: colors.text.primary,
+        marginLeft: spacing.sm,
+    },
+    bulkActions: {
+        flexDirection: 'row',
+        gap: spacing.sm,
+    },
+    bulkButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.sm,
+        borderRadius: borderRadius.md,
+        gap: spacing.xs,
+    },
+    bulkButtonText: {
+        fontSize: 13,
+        fontWeight: '600',
+    },
+    // Mobile Sidebar
+    checkbox: {
+        width: 20,
+        height: 20,
+        borderRadius: 4,
+        borderWidth: 2,
+        borderColor: colors.border.DEFAULT,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    checkboxSelected: {
+        backgroundColor: colors.primary.DEFAULT,
+        borderColor: colors.primary.DEFAULT,
+    },
+    feedItemStale: {
+        borderLeftWidth: 3,
+        borderLeftColor: '#f59e0b', // warning orange
+    },
+    feedItemDead: {
+        borderLeftWidth: 3,
+        borderLeftColor: '#6b7280', // gray
+        opacity: 0.7,
+    },
+    sidebarBackdrop: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        zIndex: 900,
+    },
+    sidebarContainer: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        bottom: 0,
+        backgroundColor: colors.background.elevated,
+        borderRightWidth: 1,
+        borderRightColor: colors.border.DEFAULT,
+        zIndex: 1000,
+        shadowColor: '#000',
+        shadowOffset: { width: 2, height: 0 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+        elevation: 5,
     },
 });
