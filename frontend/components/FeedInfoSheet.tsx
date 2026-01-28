@@ -8,7 +8,6 @@ import {
     ScrollView,
     ActivityIndicator,
     Alert,
-    Linking,
 } from 'react-native';
 import {
     X,
@@ -145,7 +144,8 @@ export const FeedInfoSheet = ({ feedId, visible, onClose, onEdit, onDelete }: Fe
 
     const handleOpenUrl = async (url: string | null) => {
         if (url) {
-            await Linking.openURL(url);
+            const { openExternalLink } = await import('@/utils/externalLink');
+            await openExternalLink(url);
         }
     };
 

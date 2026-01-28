@@ -1,6 +1,6 @@
 import * as DocumentPicker from 'expo-document-picker';
 import { useMemo, useState, useCallback } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, Modal, Image, Platform, useWindowDimensions, Linking } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, Modal, Image, Platform, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFeedStore, useToastStore, useArticleStore, useSettingsStore } from '@/stores';
 import { api, DiscoveredFeed, Feed, Folder } from '@/services/api';
@@ -24,6 +24,7 @@ import { AddFeedShimmer } from '@/components/AddFeedShimmer';
 import { QuickAddGrid } from '@/components/QuickAddGrid';
 import { useDebouncedDiscovery } from '@/hooks/useDebouncedDiscovery';
 import { isDuplicateFeed, suggestFolderName } from '@/utils/feedUtils';
+import { openExternalLink } from '@/utils/externalLink';
 
 type ModalType = 'edit_feed' | 'rename_folder' | 'move_feed' | 'view_folder' | null;
 
@@ -1250,7 +1251,7 @@ export default function ManageScreen() {
                                             {previewFeed.title}
                                         </Text>
                                         <TouchableOpacity
-                                            onPress={() => Linking.openURL(previewFeed.site_url || previewFeed.feed_url)}
+                                            onPress={() => openExternalLink(previewFeed.site_url || previewFeed.feed_url)}
                                         >
                                             <Text style={[s.previewUrl, s.previewLinkText]} numberOfLines={1}>
                                                 {new URL(previewFeed.site_url || previewFeed.feed_url).hostname}
@@ -1289,7 +1290,7 @@ export default function ManageScreen() {
                                         <View style={s.previewMetaRow}>
                                             <Text style={s.previewMetaLabel}>Website</Text>
                                             <TouchableOpacity
-                                                onPress={() => Linking.openURL(previewFeed.site_url!)}
+                                                onPress={() => openExternalLink(previewFeed.site_url!)}
                                                 style={s.previewLink}
                                             >
                                                 <Text style={[s.previewMetaValue, s.previewLinkText]} numberOfLines={1}>
