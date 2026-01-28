@@ -367,19 +367,48 @@ export class FeedsController {
         }
     }
 
-    // One-time fix to refetch YouTube channel icons
-    static async refetchYouTubeIcons(request: FastifyRequest, reply: FastifyReply) {
+    // Fix YouTube channel icons - targets generic/missing icons by default
+    static async refetchYouTubeIcons(request: FastifyRequest<{ Querystring: { all?: string } }>, reply: FastifyReply) {
         const userId = 1;
+        const targetAll = request.query.all === 'true';
         
-        // Get all YouTube feeds
-        const feeds = queryAll<Feed>(`
-            SELECT * FROM feeds 
-            WHERE user_id = ? AND deleted_at IS NULL 
-            AND (type = 'youtube' OR url LIKE '%youtube.com/feeds%')
-        `, [userId]);
+        // Import the improved fetch function
+        const { fetchYouTubeIcon } = await import('../services/youtube-parser.js');
+        
+        // Get YouTube feeds - either all or just those with generic/missing icons
+        let feeds: Feed[];
+        if (targetAll) {
+            feeds = queryAll<Feed>(`
+                SELECT * FROM feeds 
+                WHERE user_id = ? AND deleted_at IS NULL 
+                AND (type = 'youtube' OR url LIKE '%youtube.com/feeds%')
+            `, [userId]);
+        } else {
+            // Only feeds with generic or missing icons
+            feeds = queryAll<Feed>(`
+                SELECT * FROM feeds 
+                WHERE user_id = ? AND deleted_at IS NULL 
+                AND (type = 'youtube' OR url LIKE '%youtube.com/feeds%')
+                AND (
+                    icon_url IS NULL 
+                    OR icon_url LIKE '%google.com/s2/favicons%'
+                    OR icon_url LIKE '%youtube.com/favicon%'
+                    OR icon_url LIKE '%yt3.ggpht.com/favicon%'
+                    OR icon_url LIKE '%/favicon.ico'
+                )
+            `, [userId]);
+        }
 
-        const results: { updated: number; failed: number; details: string[] } = {
+        const results: { 
+            total: number; 
+            updated: number; 
+            skipped: number;
+            failed: number; 
+            details: string[] 
+        } = {
+            total: feeds.length,
             updated: 0,
+            skipped: 0,
             failed: 0,
             details: []
         };
@@ -388,66 +417,53 @@ export class FeedsController {
             try {
                 // Extract channel ID from URL
                 const urlObj = new URL(feed.url);
-                const channelId = urlObj.searchParams.get('channel_id');
+                let channelId = urlObj.searchParams.get('channel_id');
+                
+                // Try to get from feed metadata if not in URL
+                if (!channelId) {
+                    try {
+                        const feedData = await parseFeed(feed.url, { skipIconFetch: true });
+                        const detectedType = detectFeedType(feed.url, feedData);
+                        if (detectedType === 'youtube' && feedData.youtubeChannelId) {
+                            const ytId = feedData.youtubeChannelId;
+                            if (ytId.startsWith('UC') || ytId.startsWith('@')) {
+                                channelId = ytId;
+                            } else if (ytId.length === 22) {
+                                channelId = 'UC' + ytId;
+                            } else {
+                                channelId = ytId;
+                            }
+                        }
+                    } catch {
+                        // Ignore parse errors
+                    }
+                }
                 
                 if (!channelId) {
                     results.failed++;
-                    results.details.push(`[${feed.id}] ${feed.title}: No channel_id in URL`);
+                    results.details.push(`[${feed.id}] ${feed.title}: No channel_id found`);
                     continue;
                 }
 
-                // Validate channel ID format
-                if (!channelId.startsWith('UC') || channelId.length !== 24) {
-                    results.failed++;
-                    results.details.push(`[${feed.id}] ${feed.title}: Invalid channel ID format: ${channelId}`);
-                    continue;
-                }
+                // Use the improved fetch function with all patterns + API fallback
+                const avatarUrl = await fetchYouTubeIcon(channelId);
 
-                // Fetch channel icon
-                const response = await fetch(`https://www.youtube.com/channel/${channelId}`, {
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                        'Accept-Language': 'en-US,en;q=0.9',
-                    }
-                });
-
-                if (!response.ok) {
-                    results.failed++;
-                    results.details.push(`[${feed.id}] ${feed.title}: HTTP ${response.status}`);
-                    continue;
-                }
-
-                const html = await response.text();
-                const avatarPatterns = [
-                    /"avatar":\{"thumbnails":\[\{"url":"([^"]+)"/,
-                    /"channelMetadataRenderer".*?"avatar".*?"url":"([^"]+)"/,
-                    /yt-img-shadow.*?src="(https:\/\/yt3\.googleusercontent\.com\/[^"]+)"/,
-                    /<meta property="og:image" content="([^"]+)"/
-                ];
-
-                let avatarUrl: string | null = null;
-                for (const pattern of avatarPatterns) {
-                    const match = html.match(pattern);
-                    if (match && match[1]) {
-                        avatarUrl = match[1].replace(/\\u0026/g, '&').replace(/\\/g, '');
-                        if (avatarUrl.includes('=s')) {
-                            avatarUrl = avatarUrl.replace(/=s\d+.*/, '=s176-c-k-c0x00ffffff-no-rj-mo');
-                        }
-                        break;
-                    }
-                }
-
-                if (avatarUrl) {
-                    run(`UPDATE feeds SET icon_url = ?, icon_cached_path = NULL, icon_cached_content_type = NULL WHERE id = ?`, [avatarUrl, feed.id]);
+                if (avatarUrl && !avatarUrl.includes('google.com/s2/favicons')) {
+                    // Cache the icon locally
+                    const cachedIcon = await cacheFeedIcon(feed.id, avatarUrl);
+                    
+                    run(`UPDATE feeds SET icon_url = ?, icon_cached_path = ?, icon_cached_content_type = ? WHERE id = ?`, 
+                        [avatarUrl, cachedIcon?.fileName ?? null, cachedIcon?.mime ?? null, feed.id]);
+                    
                     results.updated++;
-                    results.details.push(`[${feed.id}] ${feed.title}: ✓ Updated`);
+                    results.details.push(`[${feed.id}] ${feed.title}: ✓ Updated${cachedIcon ? ' & cached' : ''}`);
                 } else {
                     results.failed++;
-                    results.details.push(`[${feed.id}] ${feed.title}: No avatar pattern matched`);
+                    results.details.push(`[${feed.id}] ${feed.title}: No avatar found${avatarUrl ? ' (got generic)' : ''}`);
                 }
 
-                // Rate limit
-                await new Promise(resolve => setTimeout(resolve, 300));
+                // Rate limit to avoid being blocked
+                await new Promise(resolve => setTimeout(resolve, 500));
             } catch (e) {
                 results.failed++;
                 results.details.push(`[${feed.id}] ${feed.title}: Error - ${e}`);
@@ -455,8 +471,10 @@ export class FeedsController {
         }
 
         return {
-            total: feeds.length,
+            mode: targetAll ? 'all' : 'generic-only',
+            total: results.total,
             updated: results.updated,
+            skipped: results.skipped,
             failed: results.failed,
             details: results.details
         };
