@@ -40,7 +40,7 @@ export function isUniversalLink(url: string): boolean {
  * Initialize WebBrowser (no-op for compatiblity)
  * Kept for backward compatibility with existing code
  */
-export async function initWebBrowser(): Promise<void> {
+export function initWebBrowser(): void {
     if (Platform.OS === 'web' || isInitialized) return;
     // Warm up is no longer needed since we don't use WebBrowser for Universal Links
     isInitialized = true;
@@ -50,7 +50,7 @@ export async function initWebBrowser(): Promise<void> {
  * Clean up WebBrowser (no-op for compatibility)
  * Kept for backward compatibility with existing code
  */
-export async function cleanupWebBrowser(): Promise<void> {
+export function cleanupWebBrowser(): void {
     // No cleanup needed with current implementation
 }
 
