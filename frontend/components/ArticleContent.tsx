@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, Platform, useWindowDimensions, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, Platform, useWindowDimensions, ActivityIndicator, Linking } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { useColors, spacing, borderRadius, typography } from '@/theme';
 import { extractVideoId } from '@/utils/youtube';
 import { useVideoStore, useSettingsStore } from '@/stores';
-import { openExternalLink } from '@/utils/externalLink';
+import { openExternalLink, isUniversalLink as checkUniversalLink } from '@/utils/externalLink';
 
 // Lazy load WebView only on native platforms
 const NativeWebView = Platform.OS !== 'web'
@@ -303,13 +303,18 @@ export default function ArticleContent({ html }: ArticleContentProps) {
                         }
 
                         if (url.startsWith('http')) {
-                            // Use WebBrowser with FORM_SHEET to avoid blank page issues
-                            WebBrowser.openBrowserAsync(url, {
-                                dismissButtonStyle: 'close',
-                                presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,
-                                readerMode: false,
-                                enableBarCollapsing: true,
-                            }).catch(() => { });
+                            // For Universal Links, use Linking.openURL to avoid blank Safari page
+                            if (checkUniversalLink(url)) {
+                                Linking.openURL(url).catch(() => { });
+                            } else {
+                                // Use WebBrowser for regular links
+                                WebBrowser.openBrowserAsync(url, {
+                                    dismissButtonStyle: 'close',
+                                    presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,
+                                    readerMode: false,
+                                    enableBarCollapsing: true,
+                                }).catch(() => { });
+                            }
                         }
                         return false;
                     }}
