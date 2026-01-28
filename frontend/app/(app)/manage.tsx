@@ -643,7 +643,7 @@ export default function ManageScreen() {
         <View style={s.container}>
             {/* Header */}
             <ScreenHeader
-                title="Manage Feeds"
+                title="Feed Manager"
                 rightAction={
                     <TouchableOpacity
                         style={[s.headerButton, isBulkMode && { backgroundColor: (colors.primary?.DEFAULT ?? colors.primary) + '22' }]}
