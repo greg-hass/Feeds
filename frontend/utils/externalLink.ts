@@ -17,6 +17,8 @@ export async function openExternalLink(url: string): Promise<void> {
     try {
         await WebBrowser.openBrowserAsync(url, {
             dismissButtonStyle: 'close',
+            presentationStyle: WebBrowser.WebBrowserPresentationStyle.AUTOMATIC,
+            readerMode: false,
         });
     } catch (error) {
         console.error('WebBrowser error:', error);

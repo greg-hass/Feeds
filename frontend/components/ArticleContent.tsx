@@ -306,7 +306,8 @@ export default function ArticleContent({ html }: ArticleContentProps) {
                             // This prevents blank Safari pages when apps redirect
                             WebBrowser.openBrowserAsync(url, {
                                 dismissButtonStyle: 'close',
-                                controlsColor: colors.primary.DEFAULT,
+                                presentationStyle: WebBrowser.WebBrowserPresentationStyle.AUTOMATIC,
+                                readerMode: false,
                             }).catch(() => { });
                         }
                         return false;
