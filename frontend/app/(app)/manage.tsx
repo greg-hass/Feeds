@@ -651,6 +651,7 @@ export default function ManageScreen() {
             {/* Header */}
             <ScreenHeader
                 title="Feed Manager"
+                showBackButton={false}
                 showMenuButton={!isDesktop}
                 onMenuPress={() => {
                     setShowMenu(true);
