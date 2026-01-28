@@ -8,7 +8,7 @@ import {
     ArrowLeft, Plus, Search, Rss, Youtube, Headphones, MessageSquare,
     Folder as FolderIcon, Trash2, Edit2, FolderInput,
     Check, FileUp, FileDown, AlertTriangle, RefreshCw, RefreshCcw,
-    Info, Pause, Clock, Skull, X, Globe
+    Info, Pause, Clock, Skull, X, Globe, AlertCircle
 } from 'lucide-react-native';
 import { FeedInfoSheet } from '@/components/FeedInfoSheet';
 import { useColors, borderRadius, spacing } from '@/theme';
@@ -92,8 +92,6 @@ export default function ManageScreen() {
 
     // Preview modal state
     const [previewFeed, setPreviewFeed] = useState<DiscoveredFeed | null>(null);
-    const [previewArticles, setPreviewArticles] = useState<any[]>([]);
-    const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
     const handleProgressEvent = useProgressHandler(setProgressState, {
         onFolderCreated: fetchFolders,
@@ -179,28 +177,9 @@ export default function ManageScreen() {
     }, [setUrlInput, triggerDiscovery]);
 
     // Handle preview
-    const handlePreview = useCallback(async (discovery: DiscoveredFeed) => {
+    const handlePreview = useCallback((discovery: DiscoveredFeed) => {
         setPreviewFeed(discovery);
-        setIsLoadingPreview(true);
-        setPreviewArticles([]);
-        
-        try {
-            // Try to fetch a preview of the feed content
-            const result = await api.discoverFromUrl(discovery.feed_url);
-            if (result.discoveries?.[0]) {
-                // In a real implementation, you'd fetch sample articles here
-                setPreviewArticles([
-                    { title: 'Sample Article 1', date: '2 hours ago' },
-                    { title: 'Sample Article 2', date: '5 hours ago' },
-                    { title: 'Sample Article 3', date: '1 day ago' },
-                ]);
-            }
-        } catch (err) {
-            show('Could not load preview', 'error');
-        } finally {
-            setIsLoadingPreview(false);
-        }
-    }, [show]);
+    }, []);
 
     const handleDeleteFeed = (feedId: number, feedTitle: string) => {
         if (Platform.OS === 'web') {
@@ -1132,23 +1111,43 @@ export default function ManageScreen() {
                                     </TouchableOpacity>
                                 </View>
 
-                                <Text style={s.previewSectionTitle}>Recent Articles</Text>
-                                
-                                {isLoadingPreview ? (
-                                    <ActivityIndicator style={s.previewLoader} color={colors.primary?.DEFAULT ?? colors.primary} />
-                                ) : previewArticles.length > 0 ? (
-                                    <View style={s.previewArticles}>
-                                        {previewArticles.map((article, i) => (
-                                            <View key={i} style={s.previewArticle}>
-                                                <Text style={s.previewArticleTitle} numberOfLines={1}>
-                                                    {article.title}
-                                                </Text>
-                                                <Text style={s.previewArticleDate}>{article.date}</Text>
-                                            </View>
-                                        ))}
+                                {/* Feed Metadata */}
+                                <View style={s.previewMeta}>
+                                    <View style={s.previewMetaRow}>
+                                        <Text style={s.previewMetaLabel}>Feed Type</Text>
+                                        <Text style={[s.previewMetaValue, { textTransform: 'capitalize' }]}>
+                                            {previewFeed.type}
+                                        </Text>
                                     </View>
-                                ) : (
-                                    <Text style={s.previewEmpty}>No preview available</Text>
+                                    <View style={s.previewMetaRow}>
+                                        <Text style={s.previewMetaLabel}>Confidence</Text>
+                                        <Text style={s.previewMetaValue}>
+                                            {Math.round(previewFeed.confidence * 100)}%
+                                        </Text>
+                                    </View>
+                                    <View style={s.previewMetaRow}>
+                                        <Text style={s.previewMetaLabel}>Feed URL</Text>
+                                        <Text style={[s.previewMetaValue, { fontSize: 11 }]} numberOfLines={2}>
+                                            {previewFeed.feed_url}
+                                        </Text>
+                                    </View>
+                                    {previewFeed.site_url && (
+                                        <View style={s.previewMetaRow}>
+                                            <Text style={s.previewMetaLabel}>Website</Text>
+                                            <Text style={[s.previewMetaValue, { fontSize: 11 }]} numberOfLines={1}>
+                                                {previewFeed.site_url}
+                                            </Text>
+                                        </View>
+                                    )}
+                                </View>
+
+                                {isDuplicateFeed(previewFeed, feeds) && (
+                                    <View style={s.previewDuplicateBanner}>
+                                        <AlertCircle size={16} color={colors.status.warning} />
+                                        <Text style={s.previewDuplicateText}>
+                                            You&apos;re already subscribed to this feed
+                                        </Text>
+                                    </View>
                                 )}
 
                                 <View style={s.previewActions}>
@@ -1552,5 +1551,45 @@ const styles = (colors: any) => StyleSheet.create({
     previewActions: {
         flexDirection: 'row',
         gap: spacing.md,
+    },
+    previewMeta: {
+        backgroundColor: colors.background.tertiary,
+        borderRadius: borderRadius.lg,
+        padding: spacing.md,
+        marginBottom: spacing.lg,
+        gap: spacing.sm,
+    },
+    previewMetaRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+    },
+    previewMetaLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: colors.text.tertiary,
+        width: 80,
+    },
+    previewMetaValue: {
+        flex: 1,
+        fontSize: 13,
+        fontWeight: '500',
+        color: colors.text.primary,
+        textAlign: 'right',
+    },
+    previewDuplicateBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: spacing.xs,
+        backgroundColor: colors.status.warning + '15',
+        padding: spacing.md,
+        borderRadius: borderRadius.md,
+        marginBottom: spacing.lg,
+    },
+    previewDuplicateText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: colors.status.warning,
     },
 });

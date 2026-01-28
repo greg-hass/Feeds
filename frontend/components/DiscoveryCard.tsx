@@ -2,13 +2,13 @@ import React from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { DiscoveredFeed } from '@/services/api';
 import { useColors, borderRadius, spacing } from '@/theme';
-import { Youtube, Rss, MessageSquare, Headphones, ExternalLink, Plus, Check, AlertCircle } from 'lucide-react-native';
+import { Youtube, Rss, MessageSquare, Headphones, Globe, Plus, Check, AlertCircle } from 'lucide-react-native';
 
 interface DiscoveryCardProps {
     discovery: DiscoveredFeed;
     isAdding?: boolean;
     isDuplicate?: boolean;
-    onPreview?: () => void;
+    onPreview: () => void;
     onAdd: () => void;
 }
 
@@ -66,9 +66,15 @@ export const DiscoveryCard = ({
 
             {/* URL hint */}
             <View style={s.urlContainer}>
-                <ExternalLink size={12} color={colors.text.tertiary} />
+                <Globe size={12} color={colors.text.tertiary} />
                 <Text style={s.url} numberOfLines={1}>
-                    {new URL(discovery.site_url || discovery.feed_url).hostname}
+                    {(() => {
+                        try {
+                            return new URL(discovery.site_url || discovery.feed_url).hostname;
+                        } catch {
+                            return discovery.feed_url;
+                        }
+                    })()}
                 </Text>
             </View>
 
@@ -84,17 +90,15 @@ export const DiscoveryCard = ({
 
             {/* Actions */}
             <View style={s.actions}>
-                {onPreview && (
-                    <TouchableOpacity
-                        style={[s.button, s.previewButton, { borderColor: colors.border.DEFAULT }]}
-                        onPress={onPreview}
-                        disabled={isAdding}
-                    >
-                        <Text style={[s.buttonText, { color: colors.text.secondary }]}>
-                            Preview
-                        </Text>
-                    </TouchableOpacity>
-                )}
+                <TouchableOpacity
+                    style={[s.button, s.previewButton, { borderColor: colors.border.DEFAULT }]}
+                    onPress={onPreview}
+                    disabled={isAdding}
+                >
+                    <Text style={[s.buttonText, { color: colors.text.secondary }]}>
+                        Preview
+                    </Text>
+                </TouchableOpacity>
                 <TouchableOpacity
                     style={[
                         s.button,
