@@ -5,6 +5,7 @@ import { Save, TestTube } from 'lucide-react-native';
 import { useColors, spacing, typography, borderRadius } from '@/theme';
 import { useRulesStore, RuleCondition, RuleAction, AutomationRule } from '@/stores/rulesStore';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { SectionHeader } from '@/components/ui/SectionHeader';
 import { Input } from '@/components/ui/Input';
 import { RuleBuilder } from '@/components/rules/RuleBuilder';
 
@@ -118,7 +119,7 @@ export default function CreateRuleScreen() {
             <ScrollView style={s.scrollView} showsVerticalScrollIndicator={false}>
                 {/* Basic Info */}
                 <View style={s.section}>
-                    <Text style={s.sectionTitle}>Basic Information</Text>
+                    <SectionHeader title="Basic Information" />
 
                     <View style={s.field}>
                         <Input
@@ -213,10 +214,6 @@ const styles = (colors: any) =>
             gap: spacing.md,
             borderBottomWidth: 1,
             borderBottomColor: colors.border.light,
-        },
-        sectionTitle: {
-            ...typography.h3,
-            color: colors.text.primary,
         },
         field: {
             gap: spacing.xs,
