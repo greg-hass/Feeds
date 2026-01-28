@@ -42,8 +42,52 @@ export const DigestView = () => {
 
     const s = styles(colors, settings?.reader_text_size || 'medium', isMobile);
 
+    // Render header wrapper for non-digest states
+    const renderWithHeader = (content: React.ReactNode) => (
+        <View style={s.container}>
+            <ScreenHeader
+                title="Daily Digest"
+                showBackButton={false}
+                showMenuButton={isMobile}
+                onMenuPress={toggleMenu}
+            />
+            {content}
+            
+            {/* Mobile Sidebar */}
+            {isMobile && (
+                <>
+                    {/* Backdrop */}
+                    {showMenu && (
+                        <TouchableOpacity
+                            style={s.sidebarBackdrop}
+                            activeOpacity={1}
+                            onPress={toggleMenu}
+                        />
+                    )}
+                    {/* Sidebar */}
+                    <Animated.View
+                        style={[
+                            s.sidebarContainer,
+                            {
+                                transform: [{ translateX: sidebarAnim }],
+                                width: 280,
+                            },
+                        ]}
+                    >
+                        <View style={{ alignItems: 'flex-end', padding: spacing.md }}>
+                            <TouchableOpacity onPress={toggleMenu} style={{ padding: spacing.sm }} accessibilityLabel="Close menu">
+                                <X size={24} color={colors.text.primary} />
+                            </TouchableOpacity>
+                        </View>
+                        <Sidebar onNavigate={toggleMenu} />
+                    </Animated.View>
+                </>
+            )}
+        </View>
+    );
+
     if (isLoading && !latestDigest) {
-        return (
+        return renderWithHeader(
             <View style={s.center}>
                 <RefreshCw size={48} color={colors.primary.DEFAULT} style={s.spinIcon} />
                 <Text style={s.loadingText}>Curating your personalized digest…</Text>
@@ -52,7 +96,7 @@ export const DigestView = () => {
     }
 
     if (error && !latestDigest) {
-        return (
+        return renderWithHeader(
             <View style={s.center}>
                 <AlertCircle size={48} color={colors.error} />
                 <Text style={s.errorText}>{error}</Text>
@@ -67,7 +111,7 @@ export const DigestView = () => {
     }
 
     if (!latestDigest) {
-        return (
+        return renderWithHeader(
             <View style={s.center}>
                 <Sparkles size={64} color={colors.text.tertiary} />
                 <Text style={s.emptySubtitle}>STAY INFORMED</Text>

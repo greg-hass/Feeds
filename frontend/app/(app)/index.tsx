@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
-import { View, TouchableOpacity, StyleSheet, useWindowDimensions, Animated } from 'react-native';
-import { Menu, X } from 'lucide-react-native';
-import { useColors, borderRadius, spacing } from '@/theme';
-import Sidebar from '@/components/Sidebar';
+import { View, StyleSheet, useWindowDimensions } from 'react-native';
+import { useColors } from '@/theme';
 import Timeline from '@/components/Timeline';
 import { DigestView } from '@/components/DigestView';
 
@@ -12,19 +10,6 @@ export default function ArticleListScreen() {
     const colors = useColors();
     const { width } = useWindowDimensions();
     const isMobile = width < 1024;
-    const [showMenu, setShowMenu] = useState(false);
-
-    // Animated value for sidebar slide-in from left
-    const [sidebarAnim] = useState(new Animated.Value(-300));
-
-    const toggleMenu = () => {
-        setShowMenu(!showMenu);
-        Animated.timing(sidebarAnim, {
-            toValue: showMenu ? -300 : 0,
-            duration: 250,
-            useNativeDriver: true,
-        }).start();
-    };
 
     const s = styles(colors, isMobile);
 
@@ -39,9 +24,6 @@ export default function ArticleListScreen() {
                 {isMobile ? (
                     <View style={s.fullPane}>
                         <Timeline />
-                        <TouchableOpacity onPress={toggleMenu} style={s.mobileMenuButton} accessibilityLabel="Open menu">
-                            <Menu size={24} color={colors.text.primary} />
-                        </TouchableOpacity>
                     </View>
                 ) : (
                     <View style={s.readerPane}>
@@ -49,36 +31,6 @@ export default function ArticleListScreen() {
                     </View>
                 )}
             </View>
-
-            {isMobile && (
-                <>
-                    {/* Backdrop */}
-                    {showMenu && (
-                        <TouchableOpacity
-                            style={s.sidebarBackdrop}
-                            activeOpacity={1}
-                            onPress={toggleMenu}
-                        />
-                    )}
-                    {/* Sidebar */}
-                    <Animated.View
-                        style={[
-                            s.sidebarContainer,
-                            {
-                                transform: [{ translateX: sidebarAnim }],
-                                width: 280,
-                            },
-                        ]}
-                    >
-                        <View style={{ alignItems: 'flex-end', padding: spacing.md }}>
-                            <TouchableOpacity onPress={toggleMenu} style={{ padding: spacing.sm }} accessibilityLabel="Close menu">
-                                <X size={24} color={colors.text.primary} />
-                            </TouchableOpacity>
-                        </View>
-                        <Sidebar onNavigate={toggleMenu} />
-                    </Animated.View>
-                </>
-            )}
         </View>
     );
 }
@@ -102,43 +54,5 @@ const styles = (colors: any, isMobile: boolean) => StyleSheet.create({
         backgroundColor: colors.background.secondary,
         justifyContent: 'center',
         alignItems: 'center',
-    },
-    mobileMenuButton: {
-        position: 'absolute',
-        top: spacing.md,
-        left: spacing.md,
-        zIndex: 100,
-        padding: 8,
-        backgroundColor: colors.background.elevated,
-        borderRadius: borderRadius.full,
-        shadowColor: '#000',
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 2,
-    },
-    // Slide-from-left sidebar (iOS PWA style)
-    sidebarBackdrop: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        zIndex: 900,
-    },
-    sidebarContainer: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        bottom: 0,
-        backgroundColor: colors.background.elevated,
-        borderRightWidth: 1,
-        borderRightColor: colors.border.DEFAULT,
-        zIndex: 1000,
-        shadowColor: '#000',
-        shadowOffset: { width: 2, height: 0 },
-        shadowOpacity: 0.25,
-        shadowRadius: 8,
-        elevation: 5,
     },
 });

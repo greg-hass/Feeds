@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { View, FlatList, RefreshControl, ActivityIndicator, Platform, LayoutAnimation, UIManager, InteractionManager } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, FlatList, RefreshControl, ActivityIndicator, Platform, LayoutAnimation, UIManager, InteractionManager, Animated, TouchableOpacity } from 'react-native';
 import { Article } from '@/services/api';
 import { useColors } from '@/theme';
 import { useTimeline } from '@/hooks/useTimeline';
@@ -7,13 +7,15 @@ import { useTimelineScroll } from '@/hooks/useTimelineScroll';
 import { useIsDesktop } from '@/hooks/useBreakpoint';
 import { TimelineSkeleton } from './Skeleton';
 import FilterPills from './FilterPills';
-import TimelineHeader from './TimelineHeader';
 import TimelineArticle from './TimelineArticle';
 import NewArticlesPill from './NewArticlesPill';
 import { TimelineEmptyState } from './TimelineEmptyState';
 import { DigestCard } from './DigestCard';
 import { timelineStyles } from './Timeline.styles';
 import { scheduleIdle, canPrefetch } from '@/utils/scheduler';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import Sidebar from '@/components/Sidebar';
+import { RefreshCw, CircleCheck, X } from 'lucide-react-native';
 
 interface TimelineProps {
     onArticlePress?: (article: Article) => void;
@@ -29,6 +31,8 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     const isDesktop = useIsDesktop();
     const isMobile = !isDesktop;
     const styles = timelineStyles(colors, isMobile);
+    const [showMenu, setShowMenu] = useState(false);
+    const [sidebarAnim] = useState(new Animated.Value(-300));
 
     const {
         articles, isLoading, hasMore, filter, isFeedLoading, headerTitle, timeLeft, isRefreshing, refreshProgress,
@@ -37,6 +41,15 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
         handleArticlePress, handlePlayPress, handleVideoPress,
         getBookmarkScale, getBookmarkRotation,
     } = useTimeline(onArticlePress);
+
+    const toggleMenu = () => {
+        setShowMenu(!showMenu);
+        Animated.timing(sidebarAnim, {
+            toValue: showMenu ? -300 : 0,
+            duration: 250,
+            useNativeDriver: true,
+        }).start();
+    };
 
     const prevArticleCount = useRef(articles.length);
     const prefetchedRef = useRef<Set<number>>(new Set());
@@ -108,14 +121,25 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     return (
         <View style={styles.container}>
             <NewArticlesPill />
-            <TimelineHeader
+            <ScreenHeader
                 title={headerTitle}
-                timeLeft={timeLeft}
-                isFeedLoading={isFeedLoading}
+                showBackButton={false}
+                showMenuButton={isMobile}
+                onMenuPress={toggleMenu}
                 isRefreshing={isRefreshing}
-                isMobile={isMobile}
-                onRefresh={refreshAllFeeds}
-                onMarkAllRead={handleMarkAllRead}
+                rightActions={[
+                    {
+                        icon: <RefreshCw size={20} color={colors.text.secondary} />,
+                        onPress: refreshAllFeeds,
+                        loading: isFeedLoading,
+                        accessibilityLabel: 'Refresh feeds',
+                    },
+                    {
+                        icon: <CircleCheck size={20} color={colors.text.secondary} />,
+                        onPress: handleMarkAllRead,
+                        accessibilityLabel: 'Mark all as read',
+                    },
+                ]}
             />
 
 
@@ -174,6 +198,37 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                         updateCellsBatchingPeriod={50}
                     />
                 </View>
+            )}
+
+            {/* Mobile Sidebar */}
+            {isMobile && (
+                <>
+                    {/* Backdrop */}
+                    {showMenu && (
+                        <TouchableOpacity
+                            style={styles.sidebarBackdrop}
+                            activeOpacity={1}
+                            onPress={toggleMenu}
+                        />
+                    )}
+                    {/* Sidebar */}
+                    <Animated.View
+                        style={[
+                            styles.sidebarContainer,
+                            {
+                                transform: [{ translateX: sidebarAnim }],
+                                width: 280,
+                            },
+                        ]}
+                    >
+                        <View style={{ alignItems: 'flex-end', padding: spacing.md }}>
+                            <TouchableOpacity onPress={toggleMenu} style={{ padding: spacing.sm }} accessibilityLabel="Close menu">
+                                <X size={24} color={colors.text.primary} />
+                            </TouchableOpacity>
+                        </View>
+                        <Sidebar onNavigate={toggleMenu} />
+                    </Animated.View>
+                </>
             )}
         </View>
     );
