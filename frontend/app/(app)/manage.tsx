@@ -68,6 +68,7 @@ export default function ManageScreen() {
     const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
     const [isLoadingRecs, setIsLoadingRecs] = useState(false);
     const [recsError, setRecsError] = useState<string | null>(null);
+    const [hasFetchedRecs, setHasFetchedRecs] = useState(false);
 
     // Modal states
     const [modalType, setModalType] = useState<ModalType>(null);
@@ -151,6 +152,7 @@ export default function ManageScreen() {
         try {
             const res = await api.getRecommendations();
             setRecommendations(res.recommendations.filter(r => r.status === 'pending'));
+            setHasFetchedRecs(true);
         } catch (err) {
             console.error('Failed to fetch recommendations:', err);
             setRecsError('Failed to load recommendations');
@@ -161,10 +163,10 @@ export default function ManageScreen() {
 
     // Load recommendations when tab changes to 'foryou'
     useEffect(() => {
-        if (activeTab === 'foryou' && recommendations.length === 0) {
+        if (activeTab === 'foryou' && !hasFetchedRecs && !isLoadingRecs) {
             fetchRecommendations();
         }
-    }, [activeTab, fetchRecommendations, recommendations.length]);
+    }, [activeTab, fetchRecommendations, hasFetchedRecs, isLoadingRecs]);
 
     // Convert Recommendation to DiscoveredFeed format for DiscoveryCard
     const convertRecommendationToDiscovery = (rec: Recommendation): DiscoveredFeed => {
@@ -828,7 +830,10 @@ export default function ManageScreen() {
                                      'Personalized for you'}
                                 </Text>
                                 <TouchableOpacity
-                                    onPress={fetchRecommendations}
+                                    onPress={() => {
+                                        setHasFetchedRecs(false);
+                                        fetchRecommendations();
+                                    }}
                                     disabled={isLoadingRecs}
                                     style={[s.refreshButton, isLoadingRecs && s.refreshButtonDisabled]}
                                 >
@@ -851,7 +856,10 @@ export default function ManageScreen() {
                                     <Text style={s.emptyTitle}>{recsError}</Text>
                                     <Button
                                         title="Try Again"
-                                        onPress={fetchRecommendations}
+                                        onPress={() => {
+                                            setHasFetchedRecs(false);
+                                            fetchRecommendations();
+                                        }}
                                         variant="primary"
                                         icon={<RefreshCw size={16} color={colors.text.inverse} />}
                                     />
