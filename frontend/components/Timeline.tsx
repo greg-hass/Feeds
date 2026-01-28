@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, FlatList, RefreshControl, ActivityIndicator, Platform, LayoutAnimation, UIManager, InteractionManager, Animated, TouchableOpacity } from 'react-native';
 import { Article } from '@/services/api';
-import { useColors } from '@/theme';
+import { useColors, spacing } from '@/theme';
 import { useTimeline } from '@/hooks/useTimeline';
 import { useTimelineScroll } from '@/hooks/useTimelineScroll';
 import { useIsDesktop } from '@/hooks/useBreakpoint';
@@ -154,7 +154,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                     }
                 }}
             />
-            
+
             <DigestCard />
 
             {isLoading && articles.length === 0 ? (
@@ -179,7 +179,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                         ListFooterComponent={isLoading ? <ActivityIndicator style={styles.loader} color={colors.primary?.DEFAULT ?? colors.primary} /> : null}
                         ListEmptyComponent={
                             !isLoading ? (
-                                <TimelineEmptyState 
+                                <TimelineEmptyState
                                     hasFeeds={feeds.length > 0}
                                     isFiltered={filter.unread_only || !!filter.feed_id || !!filter.folder_id || !!filter.type}
                                     onClearFilter={() => setFilter({ unread_only: false })}

@@ -7,6 +7,7 @@ import Sidebar from '@/components/Sidebar';
 import { enableSync, fetchChanges } from '@/lib/sync';
 import MobileNav from '@/components/MobileNav';
 import Timeline from '@/components/Timeline';
+import BookmarksList from '@/components/BookmarksList';
 import { RefreshProgressDialog } from '@/components/RefreshProgressDialog';
 import { usePathname } from 'expo-router';
 import { FloatingPlayer } from '@/components/FloatingPlayer';
@@ -131,28 +132,28 @@ export default function AppLayout() {
                             : null,
                     }));
 
-                if (event.type === 'feed_complete') {
-                    const feedStore = useFeedStore.getState();
-                    const existing = feedStore.feeds.find((feed) => feed.id === event.id);
-                    const unreadCount = (existing?.unread_count ?? 0) + event.new_articles;
-                    feedStore.updateLocalFeed(event.id, {
-                        title: event.feed ? event.feed.title : existing?.title,
-                        icon_url: event.feed ? event.feed.icon_url : existing?.icon_url,
-                        type: event.feed ? event.feed.type : existing?.type,
-                        unread_count: unreadCount,
-                        last_fetched_at: new Date().toISOString(),
-                        next_fetch_at: event.next_fetch_at ?? existing?.next_fetch_at ?? null,
-                    });
-
-                    if (event.feed) {
-                        const articleStore = useArticleStore.getState();
-                        articleStore.updateFeedMetadata(event.feed.id, {
-                            feed_title: event.feed.title,
-                            feed_icon_url: event.feed.icon_url,
-                            feed_type: event.feed.type,
+                    if (event.type === 'feed_complete') {
+                        const feedStore = useFeedStore.getState();
+                        const existing = feedStore.feeds.find((feed) => feed.id === event.id);
+                        const unreadCount = (existing?.unread_count ?? 0) + event.new_articles;
+                        feedStore.updateLocalFeed(event.id, {
+                            title: event.feed ? event.feed.title : existing?.title,
+                            icon_url: event.feed ? event.feed.icon_url : existing?.icon_url,
+                            type: event.feed ? event.feed.type : existing?.type,
+                            unread_count: unreadCount,
+                            last_fetched_at: new Date().toISOString(),
+                            next_fetch_at: event.next_fetch_at ?? existing?.next_fetch_at ?? null,
                         });
+
+                        if (event.feed) {
+                            const articleStore = useArticleStore.getState();
+                            articleStore.updateFeedMetadata(event.feed.id, {
+                                feed_title: event.feed.title,
+                                feed_icon_url: event.feed.icon_url,
+                                feed_type: event.feed.type,
+                            });
+                        }
                     }
-                }
                     return;
                 }
 
@@ -237,7 +238,8 @@ export default function AppLayout() {
     const isHome = pathname === '/' || pathname.endsWith('/index');
     const isArticle = pathname.includes('/article/');
     const isDigest = pathname.includes('/digest');
-    const isReaderRoute = isHome || isArticle || isDigest;
+    const isBookmarks = pathname.includes('/bookmarks');
+    const isReaderRoute = isHome || isArticle || isDigest || isBookmarks;
 
     const activeArticleId = isArticle ? parseInt(pathname.split('/').pop() || '') : null;
 
@@ -249,10 +251,17 @@ export default function AppLayout() {
         <ErrorBoundary>
             <View style={s.container}>
                 {isDesktop && <Sidebar />}
-                {isDesktop && isReaderRoute && !isDigest && (
+                {isDesktop && isReaderRoute && !isDigest && !isBookmarks && (
                     <View style={s.timelinePane}>
                         <ErrorBoundary>
                             <Timeline activeArticleId={activeArticleId} />
+                        </ErrorBoundary>
+                    </View>
+                )}
+                {isDesktop && isBookmarks && (
+                    <View style={s.timelinePane}>
+                        <ErrorBoundary>
+                            <BookmarksList activeArticleId={activeArticleId} />
                         </ErrorBoundary>
                     </View>
                 )}
