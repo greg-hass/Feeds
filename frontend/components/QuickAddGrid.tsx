@@ -67,8 +67,6 @@ interface QuickAddGridProps {
     onSelect: (url: string, type: string) => void;
 }
 
-import React, { memo } from 'react';
-
 export const QuickAddGrid = memo(({ onSelect }: QuickAddGridProps) => {
     const colors = useColors();
     const s = styles(colors);
