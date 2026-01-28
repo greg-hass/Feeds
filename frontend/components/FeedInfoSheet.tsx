@@ -10,7 +10,6 @@ import {
     Alert,
 } from 'react-native';
 import {
-    X,
     Rss,
     Youtube,
     Radio,
@@ -27,6 +26,7 @@ import {
     Pencil,
 } from 'lucide-react-native';
 import { useColors, spacing, borderRadius, shadows } from '@/theme';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { api, Feed, FeedInfo } from '@/services/api';
 import { useFeedStore } from '@/stores/feedStore';
 
@@ -203,13 +203,12 @@ export const FeedInfoSheet = ({ feedId, visible, onClose, onEdit, onDelete }: Fe
         <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
             <View style={s.overlay}>
                 <View style={s.sheet}>
-                    {/* Header */}
-                    <View style={s.header}>
-                        <Text style={s.headerTitle}>Feed Info</Text>
-                        <TouchableOpacity onPress={onClose} style={s.closeButton} accessibilityLabel="Close feed info">
-                            <X size={24} color={colors.text.primary} />
-                        </TouchableOpacity>
-                    </View>
+                    <ScreenHeader
+                        title="Feed Info"
+                        backButtonVariant="close"
+                        onBackPress={onClose}
+                        showBorder={false}
+                    />
 
                     {loading ? (
                         <View style={s.loadingContainer}>
@@ -399,22 +398,6 @@ const styles = (colors: any) =>
             maxWidth: 480,
             maxHeight: '90%',
             ...shadows.xl,
-        },
-        header: {
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: spacing.lg,
-            borderBottomWidth: 1,
-            borderBottomColor: colors.border.DEFAULT,
-        },
-        headerTitle: {
-            fontSize: 18,
-            fontWeight: '600',
-            color: colors.text.primary,
-        },
-        closeButton: {
-            padding: spacing.xs,
         },
         loadingContainer: {
             padding: spacing.xxl,

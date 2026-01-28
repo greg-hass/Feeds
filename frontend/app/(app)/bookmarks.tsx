@@ -7,6 +7,7 @@ import { Article, api } from '@/services/api';
 import { Circle, Bookmark, Headphones, Play, RefreshCw, CircleCheck, Menu, X } from 'lucide-react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
 import { extractVideoId, getThumbnailUrl } from '@/utils/youtube';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import Sidebar from '@/components/Sidebar';
 
 export default function BookmarksScreen() {
@@ -139,35 +140,24 @@ export default function BookmarksScreen() {
 
     return (
         <View style={s.container}>
-            {/* Header matching Timeline style */}
-            <View style={s.header}>
-                <View style={s.headerLeft}>
-                    <Text style={s.headerTitle}>Bookmarks</Text>
-                </View>
-                <View style={s.headerActions}>
-                    <TouchableOpacity
-                        onPress={handleRefresh}
-                        style={s.iconButton}
-                        disabled={isRefreshing}
-                        accessibilityLabel="Refresh bookmarks"
-                        accessibilityRole="button"
-                    >
-                        {isRefreshing ? (
-                            <ActivityIndicator size={18} color={colors.primary.DEFAULT} />
-                        ) : (
-                            <RefreshCw size={20} color={colors.text.secondary} />
-                        )}
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        onPress={handleMarkAllRead}
-                        style={s.iconButton}
-                        accessibilityLabel="Mark all as read"
-                        accessibilityRole="button"
-                    >
-                        <CircleCheck size={20} color={colors.text.secondary} />
-                    </TouchableOpacity>
-                </View>
-            </View>
+            <ScreenHeader
+                title="Bookmarks"
+                showBackButton={false}
+                isRefreshing={isRefreshing}
+                rightActions={[
+                    {
+                        icon: <RefreshCw size={20} color={colors.text.secondary} />,
+                        onPress: handleRefresh,
+                        loading: isRefreshing,
+                        accessibilityLabel: 'Refresh bookmarks',
+                    },
+                    {
+                        icon: <CircleCheck size={20} color={colors.text.secondary} />,
+                        onPress: handleMarkAllRead,
+                        accessibilityLabel: 'Mark all as read',
+                    },
+                ]}
+            />
 
             <FlatList
                 data={bookmarkedArticles}
@@ -240,25 +230,6 @@ const styles = (colors: any, isMobile: boolean = false) => StyleSheet.create({
         paddingHorizontal: spacing.lg,
         paddingTop: spacing.lg,
         paddingBottom: spacing.md,
-    },
-    headerLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.sm,
-        marginLeft: isMobile ? 40 : 0,
-    },
-    headerTitle: {
-        fontSize: 22,
-        fontWeight: '900',
-        color: colors.text.primary,
-        letterSpacing: -0.5,
-    },
-    headerActions: {
-        flexDirection: 'row',
-        gap: spacing.sm,
-    },
-    iconButton: {
-        padding: spacing.sm,
     },
     list: {
         padding: spacing.lg,

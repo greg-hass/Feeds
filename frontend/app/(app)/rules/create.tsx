@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable, TextInput, Alert } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TextInput, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
-import { X, Save, TestTube } from 'lucide-react-native';
+import { Save, TestTube } from 'lucide-react-native';
 import { useColors, spacing, typography, borderRadius } from '@/theme';
 import { useRulesStore, RuleCondition, RuleAction, AutomationRule } from '@/stores/rulesStore';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { RuleBuilder } from '@/components/rules/RuleBuilder';
 
 /**
@@ -98,22 +99,20 @@ export default function CreateRuleScreen() {
 
     return (
         <View style={s.container}>
-            {/* Header */}
-            <View style={s.header}>
-                <Pressable style={s.iconButton} onPress={handleCancel}>
-                    <X size={24} color={colors.text.primary} />
-                </Pressable>
-                <View style={s.headerCenter}>
-                    <Text style={s.headerTitle}>Create Rule</Text>
-                </View>
-                <Pressable
-                    style={[s.iconButton, s.saveButton]}
-                    onPress={handleSave}
-                    disabled={saving}
-                >
-                    <Save size={24} color={colors.background.DEFAULT} />
-                </Pressable>
-            </View>
+            <ScreenHeader
+                title="Create Rule"
+                backButtonVariant="close"
+                onBackPress={handleCancel}
+                rightActions={[
+                    {
+                        icon: <Save size={20} color={colors.text.inverse} />,
+                        onPress: handleSave,
+                        loading: saving,
+                        accessibilityLabel: 'Save rule',
+                        variant: 'primary',
+                    },
+                ]}
+            />
 
             <ScrollView style={s.scrollView} showsVerticalScrollIndicator={false}>
                 {/* Basic Info */}
@@ -208,30 +207,6 @@ const styles = (colors: any) =>
         container: {
             flex: 1,
             backgroundColor: colors.background.DEFAULT,
-        },
-        header: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingHorizontal: spacing.lg,
-            paddingVertical: spacing.md,
-            borderBottomWidth: 1,
-            borderBottomColor: colors.border.DEFAULT,
-        },
-        headerCenter: {
-            flex: 1,
-            alignItems: 'center',
-        },
-        headerTitle: {
-            ...typography.h3,
-            color: colors.text.primary,
-        },
-        iconButton: {
-            padding: spacing.sm,
-            borderRadius: borderRadius.full,
-        },
-        saveButton: {
-            backgroundColor: colors.primary.DEFAULT,
         },
         scrollView: {
             flex: 1,
