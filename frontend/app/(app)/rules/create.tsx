@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, TextInput, Alert } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Save, TestTube } from 'lucide-react-native';
 import { useColors, spacing, typography, borderRadius } from '@/theme';
 import { useRulesStore, RuleCondition, RuleAction, AutomationRule } from '@/stores/rulesStore';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { Input } from '@/components/ui/Input';
 import { RuleBuilder } from '@/components/rules/RuleBuilder';
 
 /**
@@ -120,24 +121,20 @@ export default function CreateRuleScreen() {
                     <Text style={s.sectionTitle}>Basic Information</Text>
 
                     <View style={s.field}>
-                        <Text style={s.fieldLabel}>Rule Name *</Text>
-                        <TextInput
-                            style={s.input}
+                        <Input
+                            label="Rule Name *"
                             value={name}
                             onChangeText={setName}
                             placeholder="e.g., Mark AI articles as read"
-                            placeholderTextColor={colors.text.tertiary}
                         />
                     </View>
 
                     <View style={s.field}>
-                        <Text style={s.fieldLabel}>Description (Optional)</Text>
-                        <TextInput
-                            style={[s.input, s.textArea]}
+                        <Input
+                            label="Description (Optional)"
                             value={description}
                             onChangeText={setDescription}
                             placeholder="Briefly describe what this rule does"
-                            placeholderTextColor={colors.text.tertiary}
                             multiline
                             numberOfLines={3}
                         />
@@ -224,27 +221,9 @@ const styles = (colors: any) =>
         field: {
             gap: spacing.xs,
         },
-        fieldLabel: {
-            ...typography.body,
-            color: colors.text.secondary,
-            fontWeight: '600',
-        },
         fieldHint: {
             ...typography.caption,
             color: colors.text.tertiary,
-        },
-        input: {
-            ...typography.body,
-            color: colors.text.primary,
-            backgroundColor: colors.background.elevated,
-            borderWidth: 1,
-            borderColor: colors.border.DEFAULT,
-            borderRadius: borderRadius.md,
-            padding: spacing.md,
-        },
-        textArea: {
-            minHeight: 80,
-            textAlignVertical: 'top',
         },
         priorityButtons: {
             flexDirection: 'row',
