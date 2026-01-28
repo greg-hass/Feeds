@@ -17,12 +17,25 @@ export const useDebouncedDiscovery = (options: UseDebouncedDiscoveryOptions = {}
     
     const timeoutRef = useRef<NodeJS.Timeout | null>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
-    // Track if discovery was just triggered manually (to skip debounce effect)
-    const justTriggeredRef = useRef(false);
+    // Track if next input change should skip debounce (for programmatic sets)
+    const skipNextDebounceRef = useRef(false);
 
     const clearDiscovery = useCallback(() => {
         setDiscoveries([]);
         setHasAttempted(false);
+    }, []);
+
+    // Wrap setInput to allow skipping debounce
+    const setInputWithSkip = useCallback((value: string, skipDebounce = false) => {
+        if (skipDebounce) {
+            skipNextDebounceRef.current = true;
+            // Clear any pending auto-discovery
+            if (timeoutRef.current) {
+                clearTimeout(timeoutRef.current);
+                timeoutRef.current = null;
+            }
+        }
+        setInput(value);
     }, []);
 
     const triggerDiscovery = useCallback(async (query: string, type?: string) => {
@@ -30,9 +43,6 @@ export const useDebouncedDiscovery = (options: UseDebouncedDiscoveryOptions = {}
             clearDiscovery();
             return;
         }
-
-        // Mark that we just triggered manually
-        justTriggeredRef.current = true;
         
         // Clear any pending auto-discovery
         if (timeoutRef.current) {
@@ -60,17 +70,14 @@ export const useDebouncedDiscovery = (options: UseDebouncedDiscoveryOptions = {}
             setDiscoveries([]);
         } finally {
             setIsDiscovering(false);
-            // Reset the flag after a short delay (longer than the effect cycle)
-            setTimeout(() => {
-                justTriggeredRef.current = false;
-            }, 100);
         }
     }, [clearDiscovery, onError, onSuccess]);
 
     // Debounced auto-discovery for URL-like inputs
     useEffect(() => {
-        // Skip if we just triggered manually
-        if (justTriggeredRef.current) {
+        // Skip if this input change was programmatic (from setInputWithSkip)
+        if (skipNextDebounceRef.current) {
+            skipNextDebounceRef.current = false;
             return;
         }
         
@@ -116,7 +123,7 @@ export const useDebouncedDiscovery = (options: UseDebouncedDiscoveryOptions = {}
 
     return {
         input,
-        setInput,
+        setInput: setInputWithSkip,
         discoveries,
         setDiscoveries,
         isDiscovering,

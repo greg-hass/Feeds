@@ -22,11 +22,11 @@ const quickFeeds: QuickFeed[] = [
         type: 'rss',
     },
     {
-        id: 'reddit-technology',
-        name: 'r/Technology',
+        id: 'reddit-frontpage',
+        name: 'Reddit',
         icon: <MessageSquare size={20} color="#f97316" />,
         color: '#f97316',
-        url: 'https://www.reddit.com/r/technology.rss',
+        url: 'https://www.reddit.com/.rss',
         type: 'reddit',
     },
     {
@@ -76,19 +76,20 @@ export const QuickAddGrid = ({ onSelect }: QuickAddGridProps) => {
             <Text style={s.sectionTitle}>Popular Feeds</Text>
             <View style={s.grid}>
                 {quickFeeds.map((feed) => (
-                    <TouchableOpacity
-                        key={feed.id}
-                        style={s.item}
-                        onPress={() => onSelect(feed.url, feed.type)}
-                        activeOpacity={0.7}
-                    >
-                        <View style={[s.iconContainer, { backgroundColor: feed.color + '15' }]}>
-                            {feed.icon}
-                        </View>
-                        <Text style={s.name} numberOfLines={1}>
-                            {feed.name}
-                        </Text>
-                    </TouchableOpacity>
+                    <View key={feed.id} style={s.item}>
+                        <TouchableOpacity
+                            style={s.itemInner}
+                            onPress={() => onSelect(feed.url, feed.type)}
+                            activeOpacity={0.7}
+                        >
+                            <View style={[s.iconContainer, { backgroundColor: feed.color + '15' }]}>
+                                {feed.icon}
+                            </View>
+                            <Text style={s.name} numberOfLines={1}>
+                                {feed.name}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
                 ))}
             </View>
         </View>
@@ -110,11 +111,13 @@ const styles = (colors: any) => StyleSheet.create({
     grid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: spacing.sm,
+        marginHorizontal: -spacing.xs,
     },
     item: {
-        width: '30%',
-        flexGrow: 1,
+        width: '33.33%',
+        padding: spacing.xs,
+    },
+    itemInner: {
         alignItems: 'center',
         padding: spacing.md,
         backgroundColor: colors.background.elevated,
