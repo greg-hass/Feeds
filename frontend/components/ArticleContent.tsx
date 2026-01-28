@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, Platform, useWindowDimensions, ActivityIndicator, Linking } from 'react-native';
+import { View, StyleSheet, Platform, useWindowDimensions, ActivityIndicator } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import { useColors, spacing, borderRadius, typography } from '@/theme';
 import { extractVideoId } from '@/utils/youtube';
 import { useVideoStore, useSettingsStore } from '@/stores';
@@ -29,6 +30,16 @@ export default function ArticleContent({ html }: ArticleContentProps) {
     const readerTheme = settings?.reader_theme || 'default';
     const customLineHeight = settings?.reader_line_height;
     const showImages = settings?.show_images ?? true;
+
+    // Warm up WebBrowser for faster link opening
+    useEffect(() => {
+        if (Platform.OS !== 'web') {
+            WebBrowser.warmUpAsync();
+            return () => {
+                WebBrowser.coolDownAsync();
+            };
+        }
+    }, []);
 
     const sizes = fontSizes[fontSize];
 
@@ -291,7 +302,12 @@ export default function ArticleContent({ html }: ArticleContentProps) {
                         }
 
                         if (url.startsWith('http')) {
-                            Linking.openURL(url).catch(() => { });
+                            // Use WebBrowser for in-app browser experience
+                            // This prevents blank Safari pages when apps redirect
+                            WebBrowser.openBrowserAsync(url, {
+                                dismissButtonStyle: 'close',
+                                controlsColor: colors.primary.DEFAULT,
+                            }).catch(() => { });
                         }
                         return false;
                     }}
