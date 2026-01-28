@@ -681,6 +681,9 @@ export default function ManageScreen() {
                         </TouchableOpacity>
                     </View>
 
+                    {/* Tab Content Container - fixed minHeight prevents layout shift */}
+                    <View style={s.tabContentContainer}>
+
                     {/* Search Tab Content */}
                     {activeTab === 'search' && (
                         <>
@@ -817,7 +820,30 @@ export default function ManageScreen() {
                     {/* For You Tab Content - AI Recommendations */}
                     {activeTab === 'foryou' && (
                         <View style={s.discoveries}>
-                            {isLoadingRecs ? (
+                            {/* Refresh Button Row */}
+                            <View style={s.refreshRow}>
+                                <Text style={s.discoveriesTitle}>
+                                    {isLoadingRecs ? 'Finding recommendations…' : 
+                                     recommendations.length > 0 ? `${recommendations.length} recommendation${recommendations.length === 1 ? '' : 's'}` : 
+                                     'Personalized for you'}
+                                </Text>
+                                <TouchableOpacity
+                                    onPress={fetchRecommendations}
+                                    disabled={isLoadingRecs}
+                                    style={[s.refreshButton, isLoadingRecs && s.refreshButtonDisabled]}
+                                >
+                                    {isLoadingRecs ? (
+                                        <ActivityIndicator size={14} color={colors.primary?.DEFAULT ?? colors.primary} />
+                                    ) : (
+                                        <RefreshCw size={14} color={colors.primary?.DEFAULT ?? colors.primary} />
+                                    )}
+                                    <Text style={s.refreshButtonText}>
+                                        {isLoadingRecs ? 'Refreshing…' : 'Refresh'}
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            {isLoadingRecs && recommendations.length === 0 ? (
                                 <AddFeedShimmer />
                             ) : recsError ? (
                                 <View style={s.emptyDiscoveries}>
@@ -837,9 +863,6 @@ export default function ManageScreen() {
                                 </View>
                             ) : (
                                 <>
-                                    <Text style={s.discoveriesTitle}>
-                                        {recommendations.length} {recommendations.length === 1 ? 'recommendation' : 'recommendations'}
-                                    </Text>
                                     {recommendations.map((rec) => (
                                         <DiscoveryCard
                                             key={rec.id}
@@ -854,6 +877,7 @@ export default function ManageScreen() {
                             )}
                         </View>
                     )}
+                    </View>
                 </View>
 
                 {/* Create Folder */}
@@ -2110,6 +2134,34 @@ const styles = (colors: any) => StyleSheet.create({
     tabTextActive: {
         color: colors.primary?.DEFAULT ?? colors.primary,
         fontWeight: '700',
+    },
+    tabContentContainer: {
+        minHeight: 200,
+    },
+    refreshRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: spacing.sm,
+    },
+    refreshButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.xs,
+        borderRadius: borderRadius.md,
+        backgroundColor: colors.background.secondary,
+        borderWidth: 1,
+        borderColor: colors.border.DEFAULT,
+    },
+    refreshButtonDisabled: {
+        opacity: 0.6,
+    },
+    refreshButtonText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: colors.primary?.DEFAULT ?? colors.primary,
     },
     retryButton: {
         backgroundColor: colors.primary?.DEFAULT ?? colors.primary,
