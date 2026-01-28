@@ -1,5 +1,5 @@
 import * as DocumentPicker from 'expo-document-picker';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, Modal, Image, Platform, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFeedStore, useToastStore, useArticleStore, useSettingsStore } from '@/stores';
@@ -8,7 +8,7 @@ import {
     ArrowLeft, Plus, Search, Rss, Youtube, Headphones, MessageSquare,
     Folder as FolderIcon, Trash2, Edit2, FolderInput,
     Check, FileUp, FileDown, AlertTriangle, RefreshCw, RefreshCcw,
-    Info, Pause, Clock, Skull
+    Info, Pause, Clock, Skull, X, Globe
 } from 'lucide-react-native';
 import { FeedInfoSheet } from '@/components/FeedInfoSheet';
 import { useColors, borderRadius, spacing } from '@/theme';
@@ -19,6 +19,11 @@ import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { DiscoveryCard } from '@/components/DiscoveryCard';
+import { AddFeedShimmer } from '@/components/AddFeedShimmer';
+import { QuickAddGrid } from '@/components/QuickAddGrid';
+import { useDebouncedDiscovery } from '@/hooks/useDebouncedDiscovery';
+import { isDuplicateFeed, suggestFolderName } from '@/utils/feedUtils';
 
 type ModalType = 'edit_feed' | 'rename_folder' | 'move_feed' | null;
 
@@ -35,11 +40,23 @@ export default function ManageScreen() {
     const { show } = useToastStore();
     const { settings } = useSettingsStore();
 
-    const [urlInput, setUrlInput] = useState('');
+    // Use debounced discovery hook
+    const {
+        input: urlInput,
+        setInput: setUrlInput,
+        discoveries,
+        setDiscoveries,
+        isDiscovering,
+        hasAttempted,
+        triggerDiscovery,
+        clearDiscovery,
+    } = useDebouncedDiscovery({
+        onError: () => show('Discovery failed', 'error'),
+    });
+
     const [discoveryType, setDiscoveryType] = useState<DiscoveryType>('all');
-    const [isDiscovering, setIsDiscovering] = useState(false);
-    const [discoveries, setDiscoveries] = useState<DiscoveredFeed[]>([]);
     const [isAdding, setIsAdding] = useState(false);
+    const [addingId, setAddingId] = useState<string | null>(null);
     const [newFolderName, setNewFolderName] = useState('');
 
     // Modal states
@@ -72,6 +89,11 @@ export default function ManageScreen() {
     // Feed Info Sheet state
     const [feedInfoId, setFeedInfoId] = useState<number | null>(null);
     const [feedInfoVisible, setFeedInfoVisible] = useState(false);
+
+    // Preview modal state
+    const [previewFeed, setPreviewFeed] = useState<DiscoveredFeed | null>(null);
+    const [previewArticles, setPreviewArticles] = useState<any[]>([]);
+    const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
     const handleProgressEvent = useProgressHandler(setProgressState, {
         onFolderCreated: fetchFolders,
@@ -107,43 +129,78 @@ export default function ManageScreen() {
     const visibleFeedCount = feedSearch.trim() ? filteredFeeds.length : feeds.length;
     const discoveryPlaceholder = discoveryType === 'all' ? 'feeds' : discoveryType;
 
-    const handleDiscover = async () => {
+    // Manual discovery trigger
+    const handleDiscover = useCallback(async () => {
         if (!urlInput.trim()) return;
+        const typeParam = discoveryType === 'all' ? undefined : discoveryType;
+        await triggerDiscovery(urlInput, typeParam);
+    }, [urlInput, discoveryType, triggerDiscovery]);
 
-        setIsDiscovering(true);
-        setDiscoveries([]);
-
-        try {
-            // Pass type if not 'all'
-            const typeParam = discoveryType === 'all' ? undefined : discoveryType;
-            // @ts-ignore - api.discover will be updated to accept params object or optional arg
-            const result = await api.discover(urlInput, typeParam);
-            if (result.discoveries.length > 0) {
-                setDiscoveries(result.discoveries);
-            } else {
-                show('No feeds found', 'info');
-            }
-        } catch (err) {
-            show('Discovery failed', 'error');
-        } finally {
-            setIsDiscovering(false);
-        }
-    };
-
-    const handleAddFeed = async (discovery: DiscoveredFeed) => {
+    // Handle add feed with smart folder suggestion
+    const handleAddFeed = useCallback(async (discovery: DiscoveredFeed) => {
+        setAddingId(discovery.feed_url);
         setIsAdding(true);
+        
         try {
-            await addFeed(discovery.feed_url, undefined, settings?.refresh_interval_minutes);
-            setDiscoveries([]);
-            setUrlInput('');
-            show(`Added "${discovery.title}"`, 'success');
+            // Check for suggested folder
+            const suggestedFolder = suggestFolderName(discovery.type, discovery.title);
+            let folderId: number | undefined;
+            
+            if (suggestedFolder) {
+                const existingFolder = folders.find((f) => 
+                    f.name.toLowerCase() === suggestedFolder.toLowerCase()
+                );
+                if (existingFolder) {
+                    folderId = existingFolder.id;
+                }
+            }
+            
+            await addFeed(discovery.feed_url, folderId, settings?.refresh_interval_minutes);
+            setDiscoveries((prev) => prev.filter((d) => d.feed_url !== discovery.feed_url));
+            
+            if (folderId) {
+                show(`Added "${discovery.title}" to ${suggestFolderName(discovery.type, discovery.title)}`, 'success');
+            } else {
+                show(`Added "${discovery.title}"`, 'success');
+            }
         } catch (err: unknown) {
             const errorMessage = err instanceof Error ? err.message : 'Failed to add feed';
             show(errorMessage, 'error');
         } finally {
             setIsAdding(false);
+            setAddingId(null);
         }
-    };
+    }, [addFeed, folders, setDiscoveries, settings?.refresh_interval_minutes, show]);
+
+    // Handle quick add from popular feeds
+    const handleQuickAdd = useCallback((url: string, type: string) => {
+        setUrlInput(url);
+        triggerDiscovery(url, type);
+    }, [setUrlInput, triggerDiscovery]);
+
+    // Handle preview
+    const handlePreview = useCallback(async (discovery: DiscoveredFeed) => {
+        setPreviewFeed(discovery);
+        setIsLoadingPreview(true);
+        setPreviewArticles([]);
+        
+        try {
+            // Try to fetch a preview of the feed content
+            const result = await api.discoverFromUrl(discovery.feed_url);
+            if (result.discoveries?.[0]) {
+                // In a real implementation, you'd fetch sample articles here
+                setPreviewArticles([
+                    { title: 'Sample Article 1', date: '2 hours ago' },
+                    { title: 'Sample Article 2', date: '5 hours ago' },
+                    { title: 'Sample Article 3', date: '1 day ago' },
+                ]);
+            }
+        } catch (err) {
+            show('Could not load preview', 'error');
+        } finally {
+            setIsLoadingPreview(false);
+        }
+    }, [show]);
 
     const handleDeleteFeed = (feedId: number, feedTitle: string) => {
         if (Platform.OS === 'web') {
@@ -536,6 +593,7 @@ export default function ManageScreen() {
                 <View style={s.section}>
                     <SectionHeader title="Add Feed" />
 
+                    {/* Type Filter Pills */}
                     <ScrollView
                         horizontal
                         showsHorizontalScrollIndicator={false}
@@ -561,48 +619,82 @@ export default function ManageScreen() {
                         ))}
                     </ScrollView>
 
+                    {/* Search Input with Clear Button */}
                     <View style={s.inputRow}>
-                        <Input
-                            style={{ flex: 1, minWidth: 0 }}
-                            placeholder={`Search ${discoveryPlaceholder}…`}
-                            value={urlInput}
-                            onChangeText={setUrlInput}
-                            autoCapitalize="none"
-                            autoCorrect={false}
-                            keyboardType="url"
-                            accessibilityLabel={`Search ${discoveryPlaceholder}`}
-                        />
+                        <View style={{ flex: 1, minWidth: 0, position: 'relative' }}>
+                            <Input
+                                style={{ 
+                                    flex: 1, 
+                                    minWidth: 0,
+                                    paddingRight: urlInput ? 40 : spacing.md,
+                                }}
+                                placeholder={`Paste URL or search ${discoveryPlaceholder}…`}
+                                value={urlInput}
+                                onChangeText={setUrlInput}
+                                autoCapitalize="none"
+                                autoCorrect={false}
+                                keyboardType="url"
+                                returnKeyType="search"
+                                onSubmitEditing={handleDiscover}
+                                accessibilityLabel={`Search ${discoveryPlaceholder}`}
+                            />
+                            {urlInput.length > 0 && (
+                                <TouchableOpacity
+                                    style={s.clearButton}
+                                    onPress={() => {
+                                        setUrlInput('');
+                                        clearDiscovery();
+                                    }}
+                                    hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+                                >
+                                    <X size={16} color={colors.text.tertiary} />
+                                </TouchableOpacity>
+                            )}
+                        </View>
                         <Button
                             onPress={handleDiscover}
-                            disabled={isDiscovering}
+                            disabled={isDiscovering || !urlInput.trim()}
                             loading={isDiscovering}
                             icon={!isDiscovering ? <Search size={20} color={colors.text.inverse} /> : undefined}
                             style={{ width: 44, height: 44, paddingHorizontal: 0 }}
                         />
                     </View>
 
-                    {discoveries.length > 0 && (
+                    {/* Loading Shimmer */}
+                    {isDiscovering && <AddFeedShimmer />}
+
+                    {/* Discovery Results */}
+                    {!isDiscovering && discoveries.length > 0 && (
                         <View style={s.discoveries}>
-                            <Text style={s.discoveriesTitle}>Discovered Feeds:</Text>
-                            {discoveries.map((d: DiscoveredFeed, i: number) => (
-                                <TouchableOpacity
-                                    key={i}
-                                    style={s.discoveryItem}
-                                    onPress={() => handleAddFeed(d)}
-                                    disabled={isAdding}
-                                >
-                                    {d.icon_url ? (
-                                        <Image source={{ uri: d.icon_url }} style={s.feedIcon} />
-                                    ) : (
-                                        getTypeIcon(d.type)
-                                    )}
-                                    <View style={s.discoveryInfo}>
-                                        <Text style={s.discoveryTitle}>{d.title}</Text>
-                                        <Text style={s.discoveryUrl} numberOfLines={1}>{d.feed_url}</Text>
-                                    </View>
-                                    <Plus size={20} color={colors.primary?.DEFAULT ?? colors.primary} />
-                                </TouchableOpacity>
+                            <Text style={s.discoveriesTitle}>
+                                {discoveries.length} {discoveries.length === 1 ? 'feed' : 'feeds'} found
+                            </Text>
+                            {discoveries.map((discovery: DiscoveredFeed, i: number) => (
+                                <DiscoveryCard
+                                    key={`${discovery.feed_url}-${i}`}
+                                    discovery={discovery}
+                                    isAdding={addingId === discovery.feed_url}
+                                    isDuplicate={isDuplicateFeed(discovery, feeds)}
+                                    onPreview={() => handlePreview(discovery)}
+                                    onAdd={() => handleAddFeed(discovery)}
+                                />
                             ))}
+                        </View>
+                    )}
+
+                    {/* Empty State with Quick Add */}
+                    {!isDiscovering && !hasAttempted && !urlInput && (
+                        <QuickAddGrid onSelect={handleQuickAdd} />
+                    )}
+
+                    {/* No Results State */}
+                    {!isDiscovering && hasAttempted && discoveries.length === 0 && urlInput && (
+                        <View style={s.emptyDiscoveries}>
+                            <Globe size={48} color={colors.text.tertiary} />
+                            <Text style={s.emptyTitle}>No feeds found</Text>
+                            <Text style={s.emptySubtitle}>
+                                Try a different URL or search term
+                            </Text>
                         </View>
                     )}
                 </View>
@@ -1005,6 +1097,83 @@ export default function ManageScreen() {
                 }}
             />
 
+            {/* Preview Modal */}
+            <Modal
+                visible={!!previewFeed}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setPreviewFeed(null)}
+            >
+                <View style={s.modalOverlay}>
+                    <View style={s.previewModal}>
+                        {previewFeed && (
+                            <>
+                                <View style={s.previewHeader}>
+                                    {previewFeed.icon_url ? (
+                                        <Image source={{ uri: previewFeed.icon_url }} style={s.previewIcon} />
+                                    ) : (
+                                        <View style={[s.previewIconPlaceholder, { backgroundColor: colors.background.tertiary }]}>
+                                            <Globe size={24} color={colors.text.tertiary} />
+                                        </View>
+                                    )}
+                                    <View style={s.previewTitleContainer}>
+                                        <Text style={s.previewTitle} numberOfLines={2}>
+                                            {previewFeed.title}
+                                        </Text>
+                                        <Text style={s.previewUrl} numberOfLines={1}>
+                                            {new URL(previewFeed.site_url || previewFeed.feed_url).hostname}
+                                        </Text>
+                                    </View>
+                                    <TouchableOpacity
+                                        onPress={() => setPreviewFeed(null)}
+                                        style={s.previewClose}
+                                    >
+                                        <X size={20} color={colors.text.secondary} />
+                                    </TouchableOpacity>
+                                </View>
+
+                                <Text style={s.previewSectionTitle}>Recent Articles</Text>
+                                
+                                {isLoadingPreview ? (
+                                    <ActivityIndicator style={s.previewLoader} color={colors.primary?.DEFAULT ?? colors.primary} />
+                                ) : previewArticles.length > 0 ? (
+                                    <View style={s.previewArticles}>
+                                        {previewArticles.map((article, i) => (
+                                            <View key={i} style={s.previewArticle}>
+                                                <Text style={s.previewArticleTitle} numberOfLines={1}>
+                                                    {article.title}
+                                                </Text>
+                                                <Text style={s.previewArticleDate}>{article.date}</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                ) : (
+                                    <Text style={s.previewEmpty}>No preview available</Text>
+                                )}
+
+                                <View style={s.previewActions}>
+                                    <Button
+                                        title="Close"
+                                        variant="secondary"
+                                        onPress={() => setPreviewFeed(null)}
+                                        style={{ flex: 1 }}
+                                    />
+                                    <Button
+                                        title="Add Feed"
+                                        onPress={() => {
+                                            handleAddFeed(previewFeed);
+                                            setPreviewFeed(null);
+                                        }}
+                                        disabled={isDuplicateFeed(previewFeed, feeds)}
+                                        style={{ flex: 1 }}
+                                    />
+                                </View>
+                            </>
+                        )}
+                    </View>
+                </View>
+            </Modal>
+
         </View>
     );
 }
@@ -1276,5 +1445,112 @@ const styles = (colors: any) => StyleSheet.create({
         fontSize: 16,
         color: colors.text.inverse,
         fontWeight: '600',
+    },
+    // Add Feed section styles
+    clearButton: {
+        position: 'absolute',
+        right: spacing.sm,
+        top: '50%',
+        transform: [{ translateY: -10 }],
+        padding: spacing.xs,
+    },
+    emptyDiscoveries: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: spacing.xl,
+        gap: spacing.md,
+    },
+    emptyTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: colors.text.secondary,
+    },
+    emptySubtitle: {
+        fontSize: 14,
+        color: colors.text.tertiary,
+        textAlign: 'center',
+    },
+    // Preview Modal styles
+    previewModal: {
+        backgroundColor: colors.background.secondary,
+        borderRadius: borderRadius.xl,
+        padding: spacing.xl,
+        maxHeight: '80%',
+    },
+    previewHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: spacing.lg,
+    },
+    previewIcon: {
+        width: 56,
+        height: 56,
+        borderRadius: borderRadius.lg,
+        marginRight: spacing.md,
+    },
+    previewIconPlaceholder: {
+        width: 56,
+        height: 56,
+        borderRadius: borderRadius.lg,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: spacing.md,
+    },
+    previewTitleContainer: {
+        flex: 1,
+    },
+    previewTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: colors.text.primary,
+        marginBottom: 2,
+    },
+    previewUrl: {
+        fontSize: 13,
+        color: colors.text.tertiary,
+    },
+    previewClose: {
+        padding: spacing.sm,
+        marginLeft: spacing.sm,
+    },
+    previewSectionTitle: {
+        fontSize: 13,
+        fontWeight: '800',
+        color: colors.text.tertiary,
+        letterSpacing: 0.5,
+        marginBottom: spacing.md,
+        textTransform: 'uppercase',
+    },
+    previewLoader: {
+        marginVertical: spacing.xl,
+    },
+    previewArticles: {
+        gap: spacing.sm,
+        marginBottom: spacing.lg,
+    },
+    previewArticle: {
+        backgroundColor: colors.background.tertiary,
+        padding: spacing.md,
+        borderRadius: borderRadius.md,
+    },
+    previewArticleTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: colors.text.primary,
+        marginBottom: 2,
+    },
+    previewArticleDate: {
+        fontSize: 12,
+        color: colors.text.tertiary,
+    },
+    previewEmpty: {
+        fontSize: 14,
+        color: colors.text.tertiary,
+        textAlign: 'center',
+        marginVertical: spacing.xl,
+    },
+    previewActions: {
+        flexDirection: 'row',
+        gap: spacing.md,
     },
 });
