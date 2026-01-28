@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Image, useWindowDimensions, Animated, Platform } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, useWindowDimensions, Animated, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { formatDistanceToNow } from 'date-fns';
 import { useArticleStore } from '@/stores';
@@ -8,6 +8,7 @@ import { Circle, Bookmark, Headphones, Play, RefreshCw, CircleCheck, Menu, X } f
 import { useColors, borderRadius, spacing } from '@/theme';
 import { extractVideoId, getThumbnailUrl } from '@/utils/youtube';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { LoadingState } from '@/components/ui/LoadingState';
 import Sidebar from '@/components/Sidebar';
 
 export default function BookmarksScreen() {
@@ -132,8 +133,9 @@ export default function BookmarksScreen() {
 
     if (isLoading && bookmarkedArticles.length === 0) {
         return (
-            <View style={s.loading}>
-                <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
+            <View style={s.container}>
+                <ScreenHeader title="Bookmarks" showBackButton={false} />
+                <LoadingState variant="page" message="Loading bookmarks…" />
             </View>
         );
     }
@@ -216,20 +218,6 @@ const styles = (colors: any, isMobile: boolean = false) => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.background.primary,
-    },
-    loading: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: colors.background.primary,
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: spacing.lg,
-        paddingTop: spacing.lg,
-        paddingBottom: spacing.md,
     },
     list: {
         padding: spacing.lg,

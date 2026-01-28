@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSettingsStore, useToastStore, useFeedStore } from '@/stores';
 import { Settings, api } from '@/services/api';
@@ -7,6 +7,7 @@ import { Sun, Moon, Monitor, Check, Trash2 } from 'lucide-react-native';
 import { useColors, spacing, borderRadius, shadows, ACCENT_COLORS, AccentColor } from '@/theme';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { SectionHeader } from '@/components/ui/SectionHeader';
+import { LoadingState } from '@/components/ui/LoadingState';
 
 export default function SettingsScreen() {
     const router = useRouter();
@@ -56,10 +57,7 @@ export default function SettingsScreen() {
         return (
             <View style={s.container}>
                 <ScreenHeader title="Settings" />
-                <View style={s.loading}>
-                    <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
-                    <Text style={s.loadingText}>Loading settings…</Text>
-                </View>
+                <LoadingState variant="inline" message="Loading settings…" />
             </View>
         );
     }
@@ -291,15 +289,6 @@ const styles = (colors: any) => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.background.primary,
-    },
-    loading: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: spacing.md,
-    },
-    loadingText: {
-        color: colors.text.tertiary,
     },
     scrollView: {
         flex: 1,
