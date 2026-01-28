@@ -651,19 +651,42 @@ export default function ManageScreen() {
                     {/* Discovery Results */}
                     {!isDiscovering && discoveries.length > 0 && (
                         <View style={s.discoveries}>
-                            <Text style={s.discoveriesTitle}>
-                                {discoveries.length} {discoveries.length === 1 ? 'feed' : 'feeds'} found
-                            </Text>
-                            {discoveries.map((discovery: DiscoveredFeed, i: number) => (
-                                <DiscoveryCard
-                                    key={`${discovery.feed_url}-${i}`}
-                                    discovery={discovery}
-                                    isAdding={addingId === discovery.feed_url}
-                                    isDuplicate={isDuplicateFeed(discovery, feeds)}
-                                    onPreview={() => handlePreview(discovery)}
-                                    onAdd={() => handleAddFeed(discovery)}
-                                />
-                            ))}
+                            {(() => {
+                                // Filter out feeds that are already subscribed
+                                const newDiscoveries = discoveries.filter(
+                                    (d) => !isDuplicateFeed(d, feeds)
+                                );
+                                
+                                if (newDiscoveries.length === 0) {
+                                    return (
+                                        <View style={s.emptyDiscoveries}>
+                                            <Check size={48} color={colors.status.success} />
+                                            <Text style={s.emptyTitle}>Already subscribed!</Text>
+                                            <Text style={s.emptySubtitle}>
+                                                You&apos;re already following all feeds from this source
+                                            </Text>
+                                        </View>
+                                    );
+                                }
+                                
+                                return (
+                                    <>
+                                        <Text style={s.discoveriesTitle}>
+                                            {newDiscoveries.length} {newDiscoveries.length === 1 ? 'feed' : 'feeds'} found
+                                        </Text>
+                                        {newDiscoveries.map((discovery: DiscoveredFeed, i: number) => (
+                                            <DiscoveryCard
+                                                key={`${discovery.feed_url}-${i}`}
+                                                discovery={discovery}
+                                                isAdding={addingId === discovery.feed_url}
+                                                isDuplicate={false}
+                                                onPreview={() => handlePreview(discovery)}
+                                                onAdd={() => handleAddFeed(discovery)}
+                                            />
+                                        ))}
+                                    </>
+                                );
+                            })()}
                         </View>
                     )}
 
