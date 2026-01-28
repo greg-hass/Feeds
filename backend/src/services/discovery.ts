@@ -193,11 +193,32 @@ async function discoverYouTubeFeed(url: string): Promise<DiscoveredFeed | null> 
         } catch {
             return null;
         }
-    } else {
-        // try extracting icon for channel URL too
+    }
+
+    // Extract channel title from page if we have channelId
+    let channelTitle: string | null = null;
+    if (channelId) {
         try {
             const response = await fetch(url, { headers: { 'User-Agent': USER_AGENT }, signal: AbortSignal.timeout(5000) });
             const html = await response.text();
+            
+            // Try multiple patterns for channel title
+            const titlePatterns = [
+                /<meta property="og:title" content="([^"]+)">/,
+                /<title>([^<]+)<\/title>/,
+                /"channelMetadataRenderer"[^}]*"title":"([^"]+)"/,
+                /"header"[^}]*"title":"([^"]+)"/,
+            ];
+            
+            for (const pattern of titlePatterns) {
+                const match = html.match(pattern);
+                if (match) {
+                    channelTitle = match[1].replace(' - YouTube', '').trim();
+                    if (channelTitle && channelTitle !== 'YouTube') break;
+                }
+            }
+            
+            // Try extracting icon
             const avatarMatch = html.match(/"avatar":{"thumbnails":\[{"url":"([^"]+)"/);
             if (avatarMatch) {
                 iconUrl = avatarMatch[1];
@@ -211,11 +232,11 @@ async function discoverYouTubeFeed(url: string): Promise<DiscoveredFeed | null> 
     if (channelId) {
         return {
             type: 'youtube',
-            title: 'YouTube Channel',
+            title: channelTitle || 'YouTube Channel',
             feed_url: `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`,
             site_url: url,
             icon_url: (await iconService.getYouTubeIcon(channelId)) || iconUrl,
-            confidence: 0.95,
+            confidence: channelTitle ? 0.98 : 0.95,
             method: 'youtube',
         };
     }
