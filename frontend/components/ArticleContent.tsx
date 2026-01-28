@@ -4,6 +4,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { useColors, spacing, borderRadius, typography } from '@/theme';
 import { extractVideoId } from '@/utils/youtube';
 import { useVideoStore, useSettingsStore } from '@/stores';
+import { openExternalLink } from '@/utils/externalLink';
 
 // Lazy load WebView only on native platforms
 const NativeWebView = Platform.OS !== 'web'
@@ -302,26 +303,9 @@ export default function ArticleContent({ html }: ArticleContentProps) {
                         }
 
                         if (url.startsWith('http')) {
-                            // Check if this is a URL that might have a native app
-                            const hasNativeApp = url.includes('reddit.com') || url.includes('youtube.com') || url.includes('youtu.be');
-                            
-                            if (hasNativeApp) {
-                                // For URLs with native apps, try opening directly
-                                // This avoids the blank Safari page issue
-                                WebBrowser.openBrowserAsync(url, {
-                                    dismissButtonStyle: 'close',
-                                    presentationStyle: WebBrowser.WebBrowserPresentationStyle.AUTOMATIC,
-                                    readerMode: false,
-                                    enableBarCollapsing: true,
-                                }).catch(() => { });
-                            } else {
-                                // For other URLs, use standard browser
-                                WebBrowser.openBrowserAsync(url, {
-                                    dismissButtonStyle: 'close',
-                                    presentationStyle: WebBrowser.WebBrowserPresentationStyle.AUTOMATIC,
-                                    readerMode: false,
-                                }).catch(() => { });
-                            }
+                            // Use centralized external link handler
+                            // This properly handles URLs with native apps (Reddit, YouTube)
+                            openExternalLink(url);
                         }
                         return false;
                     }}
