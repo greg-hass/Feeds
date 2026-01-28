@@ -341,7 +341,9 @@ export async function refreshFeed(feed: FeedToRefreshWithCache): Promise<Refresh
     
     try {
         const iconStatus = await getFeedIconStatus(feed.id, feed.hasValidIcon);
-        const feedData = await parseFeed(feed.url, { skipIconFetch: !!iconStatus.hasValidIcon, signal: feed.signal });
+        // For YouTube feeds, always fetch icon if not cached (scraping may find better icons than RSS)
+        const shouldSkipIconFetch = iconStatus.hasValidIcon && !!iconStatus.iconCachedPath;
+        const feedData = await parseFeed(feed.url, { skipIconFetch: shouldSkipIconFetch, signal: feed.signal });
         
         const { userId, refreshIntervalMinutes: updatedInterval } = getFeedSettings(
             feed.id,
@@ -373,7 +375,9 @@ export async function refreshFeed(feed: FeedToRefreshWithCache): Promise<Refresh
             });
         }
         
-        const needsIconCache = !iconStatus.iconCachedPath && feedData.favicon;
+        // Cache icon if: (no cached icon OR current icon is generic) AND we have a favicon from parsing
+        const hasGenericIcon = iconStatus.iconUrl ? isGenericIconUrl(iconStatus.iconUrl) : true;
+        const needsIconCache = (!iconStatus.iconCachedPath || hasGenericIcon) && feedData.favicon && !isGenericIconUrl(feedData.favicon);
         const cachedIcon = needsIconCache ? await cacheFeedIcon(feed.id, feedData.favicon!) : null;
         
         const nextFetchAt = await updateFeedMetadata(

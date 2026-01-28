@@ -49,14 +49,22 @@ export async function fetchYouTubeIcon(channelId: string | null | undefined): Pr
         console.log(`[YouTube Icon] Got HTML (${html.length} chars), searching for avatar...`);
 
         const avatarPatterns = [
-            { name: 'JSON avatar', regex: /"avatar":\{"thumbnails":\[\{"url":"([^"]+)"/ },
+            // ytInitialData JSON patterns (most reliable for modern YouTube)
+            { name: 'ytInitialData avatar', regex: /"avatar":\s*\{\s*"thumbnails":\s*\[\s*\{\s*"url":\s*"([^"]+)"/ },
+            { name: 'ytInitialData v2', regex: /"avatar":\{"thumbnails":\[\{"url":"([^"]+)"/ },
+            { name: 'channelHeader avatar', regex: /"channelHeaderAvatarViewModel"[^}]*"image"[^}]*"sources"[^}]*"url":\s*"([^"]+)"/ },
+            // Metadata patterns
             { name: 'Metadata v2', regex: /"channelMetadataRenderer"\s*:\s*\{[^}]*"avatar":\s*\{"thumbnails":\s*\[\{"url":\s*"([^"]+)"/ },
             { name: 'Metadata', regex: /"channelMetadataRenderer".*?"avatar".*?"url":"([^"]+)"/ },
-            { name: 'yt3 dims', regex: /yt3\.googleusercontent\.com\/[^"]*width=\d+[^"]*height=\d+[^"]*url=([^&"\s]+)/ },
-            { name: 'yt-img-shadow', regex: /yt-img-shadow.*?src="(https:\/\/yt3\.googleusercontent\.com\/[^"]+)"/ },
+            // Direct image URL patterns
+            { name: 'yt3 googleusercontent', regex: /https:\/\/yt3\.googleusercontent\.com\/[^"\s]+/ },
+            { name: 'yt3 ggph', regex: /https:\/\/yt3\.ggpht\.com\/[^"\s]+/ },
+            { name: 'yt-img-shadow', regex: /yt-img-shadow[^>]*src="(https:\/\/yt3\.[^"]+)"/ },
+            // HTML patterns
+            { name: 'og:image', regex: /<meta[^>]+property="og:image"[^>]+content="([^"]+)"/ },
+            { name: 'twitter:image', regex: /<meta[^>]+name="twitter:image"[^>]+content="([^"]+)"/ },
+            // Legacy patterns
             { name: 'channel-icon img', regex: /<img[^>]+class="yt-channel-icon"[^>]+src="([^"]+)"/ },
-            { name: 'og:image', regex: /<meta property="og:image" content="([^"]+)"/ },
-            { name: 'profile', regex: /profile\?uid=\d+[^>]+src="([^"]+)"/ },
         ];
 
         for (const pattern of avatarPatterns) {
@@ -78,6 +86,25 @@ export async function fetchYouTubeIcon(channelId: string | null | undefined): Pr
         console.log(`[YouTube Icon] No patterns matched for ${channelId}`);
     } catch (e) {
         console.error(`[YouTube Icon] Error fetching: ${e}`);
+    }
+
+    // Fallback: Try YouTube Data API if available
+    if (YOUTUBE_API_KEY && isTraditionalChannelId) {
+        try {
+            console.log(`[YouTube Icon] Trying YouTube Data API for ${channelId}`);
+            const apiUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${channelId}&key=${YOUTUBE_API_KEY}`;
+            const response = await fetch(apiUrl);
+            if (response.ok) {
+                const data = await response.json();
+                const thumbnail = data.items?.[0]?.snippet?.thumbnails?.default?.url;
+                if (thumbnail) {
+                    console.log(`[YouTube Icon] ✓ Found icon via API: ${thumbnail.substring(0, 50)}...`);
+                    return thumbnail;
+                }
+            }
+        } catch (apiErr) {
+            console.error(`[YouTube Icon] API fallback failed: ${apiErr}`);
+        }
     }
 
     return null;
