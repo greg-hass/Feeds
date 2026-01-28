@@ -613,7 +613,7 @@ export default function ManageScreen() {
                                 onChangeText={setUrlInput}
                                 autoCapitalize="none"
                                 autoCorrect={false}
-                                keyboardType="url"
+                                keyboardType="default"
                                 returnKeyType="search"
                                 onSubmitEditing={handleDiscover}
                                 accessibilityLabel={`Search ${discoveryPlaceholder}`}
