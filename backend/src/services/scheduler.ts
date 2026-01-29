@@ -394,7 +394,7 @@ async function runCleanupCycle() {
             // Run OPTIMIZE after significant deletions to help query planner
             if (totalDeleted > 10000) {
                 console.log('[Cleanup] Running ANALYZE after large deletion...');
-                queryOne('ANALYZE articles');
+                run('ANALYZE articles');
             }
         } else {
             console.log(`[Cleanup] No articles to clean up`);
