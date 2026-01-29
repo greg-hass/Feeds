@@ -286,7 +286,9 @@ export function normalizeArticle(raw: RawArticle, feedType: FeedType): Normalize
             }
         }
 
-        if (!url && videoId) {
+        // ALWAYS use the constructed watch URL for YouTube videos
+        // Don't trust raw.link which might be a feed URL or malformed
+        if (videoId) {
             url = `https://www.youtube.com/watch?v=${videoId}`;
         }
         if (!thumbnail && videoId) {
