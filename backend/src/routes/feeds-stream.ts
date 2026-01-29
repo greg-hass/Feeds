@@ -36,7 +36,7 @@ export async function feedsStreamRoutes(app: FastifyInstance) {
             'Content-Type': 'text/event-stream',
             'Cache-Control': 'no-cache',
             'Connection': 'keep-alive',
-            'Access-Control-Allow-Origin': process.env.CORS_ORIGIN || (process.env.NODE_ENV === 'development' ? 'http://localhost:8081' : 'http://localhost:8080'),
+            'Access-Control-Allow-Origin': process.env.CORS_ORIGIN || '*',
             'X-Accel-Buffering': 'no',
         });
 
@@ -131,7 +131,7 @@ export async function feedsStreamRoutes(app: FastifyInstance) {
             'Content-Type': 'text/event-stream',
             'Cache-Control': 'no-cache',
             'Connection': 'keep-alive',
-            'Access-Control-Allow-Origin': process.env.CORS_ORIGIN || (process.env.NODE_ENV === 'development' ? 'http://localhost:8081' : 'http://localhost:8080'),
+            'Access-Control-Allow-Origin': process.env.CORS_ORIGIN || '*',
             'X-Accel-Buffering': 'no', // Disable nginx buffering
         });
 
