@@ -1,35 +1,16 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { api, Feed, Folder, RefreshProgressEvent } from '@/services/api';
+import { api, Feed, Folder } from '@/services/api';
 import { applySyncChanges, SyncChanges, fetchChanges } from '@/lib/sync';
 import { handleError } from '@/services/errorHandler';
 import { useArticleStore } from './articleStore';
 import { FeedState } from './types';
 
-const isAbortError = (error: unknown): boolean => {
-    return error instanceof Error && error.name === 'AbortError';
-};
+let refreshAbortController: AbortController | null = null;
 
-const handleRefreshEvent = (
-    event: RefreshProgressEvent,
-    set: any,
-    totalNewArticlesRef: { current: number }
-) => {
-    if (event.type === 'start') {
-        set({ refreshProgress: { total: event.total_feeds, completed: 0, currentTitle: '' } });
-    } else if (event.type === 'feed_refreshing') {
-        set((prev: FeedState) => ({
-            refreshProgress: prev.refreshProgress ? {
-                ...prev.refreshProgress,
-                completed: prev.refreshProgress.completed + 1,
-                currentTitle: event.title
-            } : null
-        }));
-    } else if (event.type === 'feed_complete') {
-        totalNewArticlesRef.current += event.new_articles;
-    }
-};
+const isAbortError = (error: unknown) =>
+    error instanceof Error && error.name === 'AbortError';
 
 export const useFeedStore = create<FeedState>()(
     persist(
@@ -42,7 +23,6 @@ export const useFeedStore = create<FeedState>()(
             isBackgroundRefreshing: false,
             refreshProgress: null,
             lastRefreshNewArticles: null,
-            refreshAbortController: null,
 
             fetchFeeds: async () => {
                 set({ isLoading: true });
@@ -66,16 +46,15 @@ export const useFeedStore = create<FeedState>()(
                 }
             },
 
-            addFeed: async (url: string, folderId?: number, refreshInterval?: number, options: { skipDiscovery?: boolean } = {}) => {
-                const { skipDiscovery = false } = options;
-                const result = await api.addFeed(url, folderId, !skipDiscovery, refreshInterval);
+            addFeed: async (url: string, folderId?: number, refreshInterval?: number, discover: boolean = true) => {
+                const result = await api.addFeed(url, folderId, discover, refreshInterval);
                 set((state: FeedState) => ({ feeds: [...state.feeds, result.feed] }));
                 return result.feed;
             },
 
             deleteFeed: async (id) => {
                 await api.deleteFeed(id);
-                set((state) => ({ feeds: state.feeds.filter((feed) => feed.id !== id) }));
+                set((state) => ({ feeds: state.feeds.filter((f) => f.id !== id) }));
                 // Refresh folders to update counts
                 get().fetchFolders();
             },
@@ -107,33 +86,91 @@ export const useFeedStore = create<FeedState>()(
                 }
             },
 
-            setIsLoading: (loading: boolean) => set({ isLoading: loading }),
-
-            setRefreshProgress: (progress: { total: number; completed: number; currentTitle: string } | null) =>
-                set({ refreshProgress: progress }),
-
-            setLastRefreshNewArticles: (count: number | null) =>
-                set({ lastRefreshNewArticles: count }),
-
-            updateLocalFeeds: (updater: (feeds: Feed[]) => Feed[]) =>
-                set((state) => ({ feeds: updater(state.feeds) })),
-
-            refreshAllFeeds: async (feedIds?: number[]) => {
-                const totalNewArticlesRef = { current: 0 };
-                const articleStore = useArticleStore.getState();
-
+            refreshAllFeeds: async (ids) => {
+                set({ isLoading: true, lastRefreshNewArticles: null });
                 const controller = new AbortController();
-                const { refreshAbortController } = get();
-                if (refreshAbortController) {
-                    refreshAbortController.abort();
-                }
-                set({ refreshAbortController: controller, isLoading: true });
+                refreshAbortController = controller;
+                let totalNewArticles = 0;
+                const articleStore = useArticleStore.getState();
+                const estimatedTotal = ids?.length ?? get().feeds.length;
+                set({
+                    refreshProgress: {
+                        total: estimatedTotal,
+                        completed: 0,
+                        currentTitle: '',
+                    }
+                });
+
+                // Optimized debounce: fetch immediately on first new article, then debounce subsequent
+                let refreshTimeout: ReturnType<typeof setTimeout> | null = null;
+                let hasRefreshedOnce = false;
+                const debouncedRefresh = () => {
+                    if (!hasRefreshedOnce) {
+                        // First new article: refresh immediately for instant feedback
+                        hasRefreshedOnce = true;
+                        articleStore.fetchArticles(true, true);
+                    } else {
+                        // Subsequent updates: debounce to avoid hammering the server
+                        if (refreshTimeout) clearTimeout(refreshTimeout);
+                        refreshTimeout = setTimeout(() => {
+                            articleStore.fetchArticles(true, true);
+                        }, 800);
+                    }
+                };
+
 
                 try {
                     await api.refreshFeedsWithProgress(
-                        feedIds,
-                        (event) => handleRefreshEvent(event, set, totalNewArticlesRef),
+                        ids,
+                        (event) => {
+                            if (event.type === 'start') {
+                                set({ refreshProgress: { total: event.total_feeds, completed: 0, currentTitle: '' } });
+                            } else if (event.type === 'feed_refreshing') {
+                                // Show every feed name as it starts
+                                set((state) => ({
+                                    refreshProgress: state.refreshProgress ? { ...state.refreshProgress, currentTitle: event.title } : null
+                                }));
+                            } else if (event.type === 'feed_complete' || event.type === 'feed_error') {
+                                if (event.type === 'feed_complete' && event.new_articles > 0) {
+                                    totalNewArticles += event.new_articles;
+                                    debouncedRefresh();
+                                }
+
+                                // Update progress and feed list
+                                set((state) => ({
+                                    refreshProgress: state.refreshProgress ? {
+                                        ...state.refreshProgress,
+                                        completed: state.refreshProgress.completed + 1,
+                                        currentTitle: event.title // Show name on completion too
+                                    } : null,
+                                    feeds: state.feeds.map(f =>
+                                        f.id === (event as any).id
+                                            ? {
+                                                ...f,
+                                                title: event.type === 'feed_complete' && event.feed ? event.feed.title : f.title,
+                                                icon_url: event.type === 'feed_complete' && event.feed?.icon_url !== undefined ? event.feed.icon_url : f.icon_url,
+                                                type: event.type === 'feed_complete' && event.feed ? event.feed.type : f.type,
+                                                unread_count: event.type === 'feed_complete' ? (f.unread_count || 0) + event.new_articles : f.unread_count,
+                                                last_fetched_at: new Date().toISOString(),
+                                                next_fetch_at: event.type === 'feed_complete' ? event.next_fetch_at || f.next_fetch_at : f.next_fetch_at
+                                            }
+                                            : f
+                                    )
+                                }));
+
+                                if (event.type === 'feed_complete' && event.feed) {
+                                    const articleStore = useArticleStore.getState();
+                                    articleStore.updateFeedMetadata(event.feed.id, {
+                                        feed_title: event.feed.title,
+                                        feed_icon_url: event.feed.icon_url,
+                                        feed_type: event.feed.type,
+                                    });
+                                }
+                            }
+                        },
                         (error) => {
+                            // Don't show error toast for SSE stream interruptions (e.g., phone lock, app background)
+                            // The final fetches will still get the updated data
                             if (!isAbortError(error)) {
                                 console.error('[RefreshFeeds] SSE stream error:', error);
                             }
@@ -145,6 +182,8 @@ export const useFeedStore = create<FeedState>()(
                         return;
                     }
 
+                    // Final fetch to ensure everything is in sync
+                    if (refreshTimeout) clearTimeout(refreshTimeout);
                     await Promise.all([
                         get().fetchFeeds(),
                         get().fetchFolders(),
@@ -161,23 +200,21 @@ export const useFeedStore = create<FeedState>()(
                         handleError(error, { context: 'refreshAllFeeds' });
                     }
                 } finally {
-                    // Only clear if we are still the active controller
-                    if (get().refreshAbortController === controller) {
-                        set({ refreshAbortController: null });
+                    if (refreshAbortController === controller) {
+                        refreshAbortController = null;
                     }
                     set({
                         isLoading: false,
                         refreshProgress: null,
-                        lastRefreshNewArticles: totalNewArticlesRef.current > 0 ? totalNewArticlesRef.current : null
+                        lastRefreshNewArticles: totalNewArticles > 0 ? totalNewArticles : null
                     });
                 }
             },
 
             cancelRefresh: () => {
-                const { refreshAbortController } = get();
                 if (refreshAbortController) {
                     refreshAbortController.abort();
-                    set({ refreshAbortController: null });
+                    refreshAbortController = null;
                 }
                 set({ isLoading: false, refreshProgress: null });
             },
@@ -186,7 +223,7 @@ export const useFeedStore = create<FeedState>()(
                 try {
                     const result = await api.updateFeed(id, updates as any);
                     set((state) => ({
-                        feeds: state.feeds.map((feed) => (feed.id === id ? result.feed : feed)),
+                        feeds: state.feeds.map((f) => (f.id === id ? result.feed : f)),
                     }));
                 } catch (error) {
                     handleError(error, { context: 'updateFeed' });
@@ -198,7 +235,7 @@ export const useFeedStore = create<FeedState>()(
                 try {
                     const result = await api.pauseFeed(id);
                     set((state) => ({
-                        feeds: state.feeds.map((feed) => (feed.id === id ? { ...feed, paused_at: result.paused ? new Date().toISOString() : null } : feed)),
+                        feeds: state.feeds.map((f) => (f.id === id ? { ...f, paused_at: result.paused ? new Date().toISOString() : null } : f)),
                     }));
                 } catch (error) {
                     handleError(error, { context: 'pauseFeed' });
@@ -207,9 +244,9 @@ export const useFeedStore = create<FeedState>()(
 
             resumeFeed: async (id) => {
                 try {
-                    const result = await api.resumeFeed(id);
+                    await api.resumeFeed(id);
                     set((state) => ({
-                        feeds: state.feeds.map((feed) => (feed.id === id ? { ...feed, paused_at: null } : feed)),
+                        feeds: state.feeds.map((f) => (f.id === id ? { ...f, paused_at: null } : f)),
                     }));
                 } catch (error) {
                     handleError(error, { context: 'resumeFeed' });
@@ -218,7 +255,7 @@ export const useFeedStore = create<FeedState>()(
 
             updateLocalFeed: (id, updates) => {
                 set((state) => ({
-                    feeds: state.feeds.map((feed) => (feed.id === id ? { ...feed, ...updates } : feed)),
+                    feeds: state.feeds.map((f) => (f.id === id ? { ...f, ...updates } : f)),
                 }));
             },
 
@@ -230,10 +267,10 @@ export const useFeedStore = create<FeedState>()(
 
                     // Apply feed changes
                     if (syncData.feedsDeleted.length > 0) {
-                        newFeeds = newFeeds.filter((feed) => !syncData.feedsDeleted.includes(feed.id));
+                        newFeeds = newFeeds.filter((f) => !syncData.feedsDeleted.includes(f.id));
                     }
                     if (syncData.feedsCreated.length > 0) {
-                        const existingIds = new Set(newFeeds.map((feed) => feed.id));
+                        const existingIds = new Set(newFeeds.map((f) => f.id));
                         (syncData.feedsCreated as Feed[]).forEach((feed) => {
                             if (!existingIds.has(feed.id)) {
                                 newFeeds.push(feed);
@@ -241,16 +278,16 @@ export const useFeedStore = create<FeedState>()(
                         });
                     }
                     if (syncData.feedsUpdated.length > 0) {
-                        const updatedMap = new Map((syncData.feedsUpdated as Feed[]).map((feed) => [feed.id, feed]));
-                        newFeeds = newFeeds.map((feed) => updatedMap.get(feed.id) || feed);
+                        const updatedMap = new Map((syncData.feedsUpdated as Feed[]).map((f) => [f.id, f]));
+                        newFeeds = newFeeds.map((f) => updatedMap.get(f.id) || f);
                     }
 
                     // Apply folder changes
                     if (syncData.foldersDeleted.length > 0) {
-                        newFolders = newFolders.filter((folder) => !syncData.foldersDeleted.includes(folder.id));
+                        newFolders = newFolders.filter((f) => !syncData.foldersDeleted.includes(f.id));
                     }
                     if (syncData.foldersCreated.length > 0) {
-                        const existingIds = new Set(newFolders.map((folder) => folder.id));
+                        const existingIds = new Set(newFolders.map((f) => f.id));
                         (syncData.foldersCreated as Folder[]).forEach((folder) => {
                             if (!existingIds.has(folder.id)) {
                                 newFolders.push(folder);
@@ -258,8 +295,8 @@ export const useFeedStore = create<FeedState>()(
                         });
                     }
                     if (syncData.foldersUpdated.length > 0) {
-                        const updatedMap = new Map((syncData.foldersUpdated as Folder[]).map((folder) => [folder.id, folder]));
-                        newFolders = newFolders.map((folder) => updatedMap.get(folder.id) || folder);
+                        const updatedMap = new Map((syncData.foldersUpdated as Folder[]).map((f) => [f.id, f]));
+                        newFolders = newFolders.map((f) => updatedMap.get(f.id) || f);
                     }
 
                     return {
