@@ -78,11 +78,17 @@ function normalizeArticleResponse(
     if (!thumbnailUrl && videoId) {
         thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
     }
+    
+    // ALWAYS use proper watch URL for YouTube videos, don't trust stored URL
+    const finalUrl = videoId 
+        ? `https://www.youtube.com/watch?v=${videoId}` 
+        : rest.url;
+    
     return {
         ...rest,
         feed_icon_url: iconUrl,
         thumbnail_url: thumbnailUrl,
-        url: rest.url || (videoId ? `https://www.youtube.com/watch?v=${videoId}` : null),
+        url: finalUrl,
         is_read: Boolean(rest.is_read),
         is_bookmarked: Boolean(rest.is_bookmarked),
         has_audio: Boolean(rest.enclosure_url),
@@ -228,9 +234,9 @@ export async function articlesRoutes(app: FastifyInstance) {
 
         const videoId = article ? getYouTubeIdFromGuid(article.guid) : null;
         if (videoId) {
-            if (!article.url) {
-                article.url = `https://www.youtube.com/watch?v=${videoId}`;
-            }
+            // ALWAYS use the proper watch URL for YouTube videos
+            // Don't trust article.url which might be a feed URL or malformed
+            article.url = `https://www.youtube.com/watch?v=${videoId}`;
             if (!article.thumbnail_url) {
                 article.thumbnail_url = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
             }
