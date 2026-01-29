@@ -3,14 +3,13 @@ import * as WebBrowser from 'expo-web-browser';
 
 let isInitialized = false;
 
-// Domains known to have Universal Links that open native apps
-// Using Linking.openURL for these prevents the blank Safari page issue
-const UNIVERSAL_LINK_DOMAINS = [
+// Domains that should use Linking.openURL (native app deep links)
+// NOTE: YouTube is NOT in this list because Linking.openURL causes
+// the chooser dialog and blank Safari page issues. YouTube links
+// should use WebBrowser instead for a reliable experience.
+const DEEP_LINK_DOMAINS = [
     'reddit.com',
     'www.reddit.com',
-    'youtube.com',
-    'www.youtube.com',
-    'youtu.be',
     'twitter.com',
     'x.com',
     'instagram.com',
@@ -22,13 +21,13 @@ const UNIVERSAL_LINK_DOMAINS = [
 ];
 
 /**
- * Check if a URL might trigger a Universal Link to a native app
+ * Check if a URL should use native deep linking
  */
-export function isUniversalLink(url: string): boolean {
+export function isDeepLink(url: string): boolean {
     try {
         const urlObj = new URL(url);
         const hostname = urlObj.hostname.toLowerCase();
-        return UNIVERSAL_LINK_DOMAINS.some(domain => 
+        return DEEP_LINK_DOMAINS.some(domain => 
             hostname === domain || hostname.endsWith('.' + domain)
         );
     } catch {
@@ -42,7 +41,6 @@ export function isUniversalLink(url: string): boolean {
  */
 export function initWebBrowser(): void {
     if (Platform.OS === 'web' || isInitialized) return;
-    // Warm up is no longer needed since we don't use WebBrowser for Universal Links
     isInitialized = true;
 }
 
@@ -57,10 +55,9 @@ export function cleanupWebBrowser(): void {
 /**
  * Open an external URL using the appropriate method for the platform
  * 
- * For URLs that might trigger iOS Universal Links (Reddit, YouTube, etc.),
- * we use Linking.openURL to avoid the blank Safari page bug.
- * 
- * For other URLs, we use expo-web-browser for a better in-app experience.
+ * For YouTube URLs: Uses WebBrowser to avoid the chooser dialog and blank page issues
+ * For other Universal Links (Reddit, etc.): Uses Linking.openURL to open native apps
+ * For regular URLs: Uses WebBrowser for in-app experience
  */
 export async function openExternalLink(url: string): Promise<void> {
     if (Platform.OS === 'web') {
@@ -69,8 +66,8 @@ export async function openExternalLink(url: string): Promise<void> {
         return;
     }
 
-    // For Universal Links, use Linking.openURL to avoid blank Safari page
-    if (isUniversalLink(url)) {
+    // For deep links (non-YouTube), try Linking.openURL first
+    if (isDeepLink(url)) {
         try {
             const canOpen = await Linking.canOpenURL(url);
             if (canOpen) {
@@ -83,7 +80,8 @@ export async function openExternalLink(url: string): Promise<void> {
         }
     }
 
-    // Use expo-web-browser for non-Universal Links
+    // Use WebBrowser for YouTube and all other URLs
+    // This opens in an in-app browser which avoids the Universal Link issues
     try {
         await WebBrowser.openBrowserAsync(url, {
             dismissButtonStyle: 'close',
@@ -93,5 +91,11 @@ export async function openExternalLink(url: string): Promise<void> {
         });
     } catch (error) {
         console.error('WebBrowser error:', error);
+        // Last resort: try Linking.openURL
+        try {
+            await Linking.openURL(url);
+        } catch (e) {
+            console.error('Failed to open URL:', e);
+        }
     }
 }
