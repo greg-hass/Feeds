@@ -4,6 +4,7 @@ import { fetchYouTubeIcon } from './youtube-parser.js';
 import { fetchRedditIcon } from './reddit-parser.js';
 import { getAiSuggestedFeeds } from './ai.js';
 import iconService from './icon-service.js';
+import { checkFeedActivity, checkYouTubeChannelActivity, checkRedditActivity } from './discovery/activity-check.js';
 
 export interface DiscoveredFeed {
     type: FeedType;
@@ -13,6 +14,8 @@ export interface DiscoveredFeed {
     icon_url?: string;
     confidence: number;
     method: 'link_tag' | 'well_known' | 'pattern' | 'redirect' | 'youtube' | 'reddit';
+    isActive?: boolean;
+    lastPostDate?: string;
 }
 
 const USER_AGENT = 'Feeds/1.0 (Feed Reader; +https://github.com/feeds)';
@@ -151,10 +154,29 @@ export async function discoverFeedsFromUrl(url: string): Promise<DiscoveredFeed[
         }
     }
 
-    // Sort by confidence
-    discoveries.sort((a, b) => b.confidence - a.confidence);
+    // 3. Check activity for all RSS/Podcast feeds
+    const feedsWithActivity: DiscoveredFeed[] = [];
+    for (const feed of discoveries) {
+        if (feed.type === 'rss' || feed.type === 'podcast') {
+            try {
+                const activity = await checkFeedActivity(feed.feed_url, feed.type);
+                feedsWithActivity.push({
+                    ...feed,
+                    isActive: activity.isActive,
+                    lastPostDate: activity.lastPostDate?.toISOString()
+                });
+            } catch {
+                feedsWithActivity.push({ ...feed, isActive: true }); // Assume active on error
+            }
+        } else {
+            feedsWithActivity.push(feed);
+        }
+    }
 
-    return discoveries;
+    // Sort by confidence
+    feedsWithActivity.sort((a, b) => b.confidence - a.confidence);
+
+    return feedsWithActivity;
 }
 
 async function discoverYouTubeFeed(url: string): Promise<DiscoveredFeed | null> {
@@ -164,6 +186,8 @@ async function discoverYouTubeFeed(url: string): Promise<DiscoveredFeed | null> 
     let channelId: string | null = null;
     let playlistId: string | null = null;
     let iconUrl = 'https://www.gstatic.com/youtube/img/branding/favicon/favicon_144x144.png'; // Better fallback
+    let isActive = true;
+    let lastPostDate: string | undefined;
 
     // youtube.com/channel/UC...
     const channelMatch = parsedUrl.pathname.match(/\/channel\/(UC[a-zA-Z0-9_-]+)/);
@@ -223,6 +247,15 @@ async function discoverYouTubeFeed(url: string): Promise<DiscoveredFeed | null> 
             if (avatarMatch) {
                 iconUrl = avatarMatch[1];
             }
+
+            // Check channel activity
+            const activity = await checkYouTubeChannelActivity(channelId);
+            isActive = activity.isActive;
+            lastPostDate = activity.lastPostDate?.toISOString();
+            
+            if (!isActive) {
+                console.log(`[YouTube Discovery] Channel ${channelTitle || channelId} is inactive`);
+            }
         } catch { }
     }
 
@@ -238,6 +271,8 @@ async function discoverYouTubeFeed(url: string): Promise<DiscoveredFeed | null> 
             icon_url: (await iconService.getYouTubeIcon(channelId)) || iconUrl,
             confidence: channelTitle ? 0.98 : 0.95,
             method: 'youtube',
+            isActive,
+            lastPostDate,
         };
     }
 
@@ -260,13 +295,14 @@ async function discoverRedditFeed(url: string): Promise<DiscoveredFeed | null> {
     const parsedUrl = new URL(url);
     let feedUrl: string;
     let title = 'Reddit Feed';
+    let subredditName: string | null = null;
 
     // reddit.com/r/subreddit
     const subredditMatch = parsedUrl.pathname.match(/\/r\/([a-zA-Z0-9_]+)/);
     if (subredditMatch) {
-        const subreddit = subredditMatch[1];
-        feedUrl = `https://www.reddit.com/r/${subreddit}/.rss`;
-        title = `r/${subreddit}`;
+        subredditName = subredditMatch[1];
+        feedUrl = `https://www.reddit.com/r/${subredditName}/.rss`;
+        title = `r/${subredditName}`;
     }
     // reddit.com/user/username
     else if (parsedUrl.pathname.includes('/user/')) {
@@ -282,6 +318,20 @@ async function discoverRedditFeed(url: string): Promise<DiscoveredFeed | null> {
         return null;
     }
 
+    // Check subreddit activity
+    let isActive = true;
+    let lastPostDate: string | undefined;
+    
+    if (subredditName) {
+        const activity = await checkRedditActivity(subredditName);
+        isActive = activity.isActive;
+        lastPostDate = activity.lastPostDate?.toISOString();
+        
+        if (!isActive) {
+            console.log(`[Reddit Discovery] Subreddit ${title} is inactive`);
+        }
+    }
+
     return {
         type: 'reddit',
         title,
@@ -290,6 +340,8 @@ async function discoverRedditFeed(url: string): Promise<DiscoveredFeed | null> {
         icon_url: (await iconService.getRedditIcon(title.replace('r/', '').replace('u/', ''))) || 'https://www.redditstatic.com/desktop2x/img/favicon/favicon-32x32.png',
         confidence: 0.9,
         method: 'reddit',
+        isActive,
+        lastPostDate,
     };
 }
 
@@ -324,6 +376,14 @@ async function discoverYouTubeByKeyword(keyword: string, limit: number): Promise
                 const channelId = info.channelId;
                 const title = info.title?.simpleText || info.title?.runs?.[0]?.text || 'YouTube Channel';
 
+                // Check channel activity
+                const activity = await checkYouTubeChannelActivity(channelId);
+                
+                if (!activity.isActive) {
+                    console.log(`[YouTube Discovery] Skipping inactive channel: ${title}`);
+                    continue;
+                }
+
                 const icon = await iconService.getYouTubeIcon(channelId);
 
                 discoveries.push({
@@ -334,6 +394,8 @@ async function discoverYouTubeByKeyword(keyword: string, limit: number): Promise
                     icon_url: icon || `https://www.google.com/s2/favicons?domain=youtube.com&sz=64`,
                     confidence: 0.9,
                     method: 'youtube',
+                    isActive: true,
+                    lastPostDate: activity.lastPostDate?.toISOString()
                 });
 
                 if (discoveries.length >= limit) break;
@@ -361,8 +423,6 @@ export async function discoverByKeyword(keyword: string, limit: number = 10, typ
     }
 
     // Always fetch AI suggestions as a fallback or broad search
-    // Note: Can we hint AI? The prompt in ai.ts is generic.
-    // For now, we fetch all and filter later to be safe, or just rely on post-fetch validation.
     aiSuggestionsList = await getAiSuggestedFeeds(keyword);
 
     // 2. Combine formatted results
@@ -393,9 +453,37 @@ export async function discoverByKeyword(keyword: string, limit: number = 10, typ
         allDiscoveries = allDiscoveries.filter(f => f.type === type);
     }
 
-    // 5. Deduplicate by feed_url
+    // 5. Check activity for RSS/Podcast feeds (YouTube/Reddit already checked)
+    const feedsWithActivity = await Promise.all(
+        allDiscoveries.map(async (feed) => {
+            // Skip activity check for YouTube and Reddit (already checked)
+            if (feed.type === 'youtube' || feed.type === 'reddit') {
+                return feed;
+            }
+            
+            try {
+                const activity = await checkFeedActivity(feed.feed_url, feed.type);
+                return {
+                    ...feed,
+                    isActive: activity.isActive,
+                    lastPostDate: activity.lastPostDate?.toISOString()
+                };
+            } catch {
+                return { ...feed, isActive: true }; // Assume active on error
+            }
+        })
+    );
+
+    // 6. Filter to only active feeds
+    const activeFeeds = feedsWithActivity.filter(f => f.isActive !== false);
+    
+    if (activeFeeds.length < allDiscoveries.length) {
+        console.log(`[Keyword Discovery] Filtered ${allDiscoveries.length - activeFeeds.length} inactive feeds`);
+    }
+
+    // 7. Deduplicate by feed_url
     const seen = new Set<string>();
-    const unique = allDiscoveries.filter(f => {
+    const unique = activeFeeds.filter(f => {
         if (seen.has(f.feed_url)) return false;
         seen.add(f.feed_url);
         return true;
@@ -409,7 +497,7 @@ async function discoverRedditByKeyword(keyword: string, limit: number): Promise<
     const encodedKeyword = encodeURIComponent(keyword);
 
     try {
-        const response = await fetch(`https://www.reddit.com/subreddits/search.json?q=${encodedKeyword}&limit=${limit}`, {
+        const response = await fetch(`https://www.reddit.com/subreddits/search.json?q=${encodedKeyword}&limit=${limit * 2}`, {
             headers: { 'User-Agent': USER_AGENT },
             signal: AbortSignal.timeout(10000),
         });
@@ -418,9 +506,20 @@ async function discoverRedditByKeyword(keyword: string, limit: number): Promise<
             const data = await response.json();
             const subreddits = data.data?.children || [];
 
+            // Check activity for each subreddit
             for (const sub of subreddits) {
                 const info = sub.data;
-                const icon = await iconService.getRedditIcon(info.display_name);
+                const subredditName = info.display_name;
+                
+                // Check if subreddit has recent activity
+                const activity = await checkRedditActivity(subredditName);
+                
+                if (!activity.isActive) {
+                    console.log(`[Reddit Discovery] Skipping inactive subreddit: r/${subredditName}`);
+                    continue;
+                }
+                
+                const icon = await iconService.getRedditIcon(subredditName);
 
                 discoveries.push({
                     type: 'reddit',
@@ -430,7 +529,11 @@ async function discoverRedditByKeyword(keyword: string, limit: number): Promise<
                     icon_url: icon || info.community_icon || info.icon_img || 'https://www.redditstatic.com/desktop2x/img/favicon/favicon-32x32.png',
                     confidence: 0.9,
                     method: 'reddit',
+                    isActive: true,
+                    lastPostDate: activity.lastPostDate?.toISOString()
                 });
+
+                if (discoveries.length >= limit) break;
             }
         }
     } catch (err) {

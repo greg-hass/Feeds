@@ -2,6 +2,7 @@ import { queryAll, queryOne, run } from '../../db/index.js';
 import { GEMINI_API_KEY, GEMINI_API_URL } from '../ai.js';
 import { searchYouTubeChannels } from './youtube.js';
 import { searchRssFeeds } from './rss.js';
+import { checkFeedActivity } from './activity-check.js';
 
 export async function refreshRecommendations(userId: number = 1): Promise<void> {
     if (!GEMINI_API_KEY) return;
@@ -20,6 +21,7 @@ export async function refreshRecommendations(userId: number = 1): Promise<void> 
         }
 
         // 2. Discover from multiple sources for each topic
+        // Note: searchYouTubeChannels and searchRssFeeds now already filter for active feeds
         const allDiscovered: any[] = [];
 
         for (const topic of topics) {
@@ -38,6 +40,8 @@ export async function refreshRecommendations(userId: number = 1): Promise<void> 
                 feedUrl: item.feed_url
             })));
         }
+
+        console.log(`[Discovery Engine] Found ${allDiscovered.length} active feeds for user ${userId}`);
 
         // 3. Filter out already subscribed
         const subscribedUrls = new Set(
@@ -97,7 +101,11 @@ ${candidates.map((c, i) => `${i}: ${c.title} - ${c.description || ''}`).join('\n
                     c.description || '',
                     r.score,
                     r.reason,
-                    JSON.stringify({ thumbnail: c.thumbnailUrl, subs: c.subscriberCount }),
+                    JSON.stringify({ 
+                        thumbnail: c.thumbnailUrl, 
+                        subs: c.subscriberCount,
+                        lastActive: c.lastVideoDate || (c as any).lastPostDate
+                    }),
                     r.score,
                     r.reason
                 ]

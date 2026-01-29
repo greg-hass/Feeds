@@ -100,8 +100,10 @@ export async function discoveryRoutes(app: FastifyInstance) {
             try {
                 const urlToTest = q.startsWith('http') ? q : `https://${q}`;
                 const discoveries = await discoverFeedsFromUrl(urlToTest);
-                if (discoveries.length > 0) {
-                    return { discoveries };
+                // Filter out inactive feeds
+                const activeDiscoveries = discoveries.filter(d => d.isActive !== false);
+                if (activeDiscoveries.length > 0) {
+                    return { discoveries: activeDiscoveries };
                 }
             } catch {
                 // Not a valid URL or fetch failed, fallback to keyword
@@ -109,7 +111,9 @@ export async function discoveryRoutes(app: FastifyInstance) {
         }
 
         const discoveries = await discoverByKeyword(q, query.limit, query.type);
-        return { discoveries };
+        // Filter out inactive feeds (discoverByKeyword already filters, but double-check)
+        const activeDiscoveries = discoveries.filter(d => d.isActive !== false);
+        return { discoveries: activeDiscoveries };
     });
 
     // Explicit URL discovery
@@ -118,7 +122,9 @@ export async function discoveryRoutes(app: FastifyInstance) {
 
         try {
             const discoveries = await discoverFeedsFromUrl(body.url);
-            return { discoveries };
+            // Filter out inactive feeds
+            const activeDiscoveries = discoveries.filter(d => d.isActive !== false);
+            return { discoveries: activeDiscoveries };
         } catch (err) {
             return {
                 discoveries: [],

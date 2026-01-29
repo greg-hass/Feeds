@@ -166,6 +166,25 @@ export default function ManageScreen() {
         }
     }, []);
 
+    // Refresh AI recommendations (triggers new discovery)
+    const handleRefreshRecommendations = useCallback(async () => {
+        setIsLoadingRecs(true);
+        setRecsError(null);
+        try {
+            // Call the refresh endpoint which triggers AI-powered discovery
+            const res = await api.refreshRecommendations();
+            setRecommendations(res.recommendations.filter(r => r.status === 'pending'));
+            setHasFetchedRecs(true);
+            show('Recommendations refreshed!', 'success');
+        } catch (err) {
+            console.error('Failed to refresh recommendations:', err);
+            setRecsError('Failed to refresh recommendations');
+            show('Failed to refresh recommendations', 'error');
+        } finally {
+            setIsLoadingRecs(false);
+        }
+    }, [show]);
+
     // Load recommendations when tab changes to 'foryou'
     useEffect(() => {
         if (activeTab === 'foryou' && !hasFetchedRecs && !isLoadingRecs) {
@@ -845,10 +864,7 @@ export default function ManageScreen() {
                                                 'Personalized for you'}
                                     </Text>
                                     <TouchableOpacity
-                                        onPress={() => {
-                                            setHasFetchedRecs(false);
-                                            fetchRecommendations();
-                                        }}
+                                        onPress={handleRefreshRecommendations}
                                         disabled={isLoadingRecs}
                                         style={[s.refreshButton, isLoadingRecs && s.refreshButtonDisabled]}
                                     >
@@ -871,10 +887,7 @@ export default function ManageScreen() {
                                         <Text style={s.emptyTitle}>{recsError}</Text>
                                         <Button
                                             title="Try Again"
-                                            onPress={() => {
-                                                setHasFetchedRecs(false);
-                                                fetchRecommendations();
-                                            }}
+                                            onPress={fetchRecommendations}
                                             variant="primary"
                                             icon={<RefreshCw size={16} color={colors.text.inverse} />}
                                         />
