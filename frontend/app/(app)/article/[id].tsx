@@ -51,7 +51,11 @@ export default function ArticleScreen() {
 
     const isYouTube = currentArticle?.feed_type === 'youtube' || isYouTubeUrl(currentArticle?.url || '');
     const videoId = extractVideoId(currentArticle?.url || currentArticle?.thumbnail_url || '');
-    const externalUrl = currentArticle?.url || (videoId ? `https://www.youtube.com/watch?v=${videoId}` : null);
+    // For YouTube videos, always construct a proper watch URL to ensure it opens correctly
+    // Don't rely on article.url which might be a feed URL or malformed
+    const externalUrl = videoId 
+        ? `https://www.youtube.com/watch?v=${videoId}` 
+        : (currentArticle?.url || null);
 
     const s = styles(colors, isMobile, settings?.reader_theme);
 

@@ -10,6 +10,7 @@ import { Article } from '@/services/api';
 import { shareContent } from '@/utils/share';
 import { useColors, spacing, borderRadius } from '@/theme';
 import { openExternalLink } from '@/utils/externalLink';
+import { extractVideoId, isYouTubeUrl } from '@/utils/youtube';
 
 interface ArticleContextMenuProps {
     visible: boolean;
@@ -99,10 +100,18 @@ export const ArticleContextMenu: React.FC<ArticleContextMenuProps> = ({
     };
 
     const handleOpenExternal = async () => {
-        if (!article.url) return;
+        if (!article?.url) return;
         try {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            await openExternalLink(article.url);
+            
+            // For YouTube videos, ensure we use a proper watch URL
+            let urlToOpen = article.url;
+            const videoId = extractVideoId(article.url || article.thumbnail_url || '');
+            if (videoId) {
+                urlToOpen = `https://www.youtube.com/watch?v=${videoId}`;
+            }
+            
+            await openExternalLink(urlToOpen);
         } catch (error) {
             console.error('Open external error:', error);
         }
