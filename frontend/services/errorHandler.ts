@@ -137,8 +137,8 @@ export function handleError(error: unknown, options?: {
         console.error('[Error]', parsedError);
     }
 
-    // Show toast notification
-    if (showToast) {
+    // Show toast notification (but not for auth errors)
+    if (showToast && parsedError.status !== 401) {
         const message = fallbackMessage || parsedError.userMessage;
         useToastStore.getState().show(message, toastType);
     }
