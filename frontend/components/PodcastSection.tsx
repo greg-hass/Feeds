@@ -76,19 +76,6 @@ export const PodcastSection: React.FC<PodcastSectionProps> = ({
 
     return (
         <View style={s.container}>
-            {/* Section Header */}
-            <View style={s.sectionHeader}>
-                <View style={s.sectionTitleRow}>
-                    <View style={s.iconContainer}>
-                        <Headphones size={20} color="#fff" />
-                    </View>
-                    <Text style={s.sectionTitle}>Podcasts</Text>
-                </View>
-                <Text style={s.sectionSubtitle}>
-                    {podcastGroups.reduce((acc, g) => acc + g.podcasts.length, 0)} episodes from {podcastGroups.length} shows
-                </Text>
-            </View>
-
             {/* Podcast Groups */}
             {podcastGroups.map((group) => (
                 <PodcastFeedGroup
@@ -310,36 +297,7 @@ const PodcastCard: React.FC<PodcastCardProps> = ({
 const styles = (colors: any, isMobile: boolean) => StyleSheet.create({
     container: {
         marginBottom: spacing.xl,
-    },
-    sectionHeader: {
-        paddingHorizontal: spacing.lg,
-        marginBottom: spacing.lg,
-    },
-    sectionTitleRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.sm,
-        marginBottom: spacing.xs,
-    },
-    iconContainer: {
-        width: 36,
-        height: 36,
-        borderRadius: borderRadius.lg,
-        backgroundColor: colors.feedTypes.podcast,
-        justifyContent: 'center',
-        alignItems: 'center',
-        ...shadows.sm,
-    },
-    sectionTitle: {
-        fontSize: isMobile ? 22 : 26,
-        fontWeight: '800',
-        color: colors.text.primary,
-        letterSpacing: -0.5,
-    },
-    sectionSubtitle: {
-        fontSize: 14,
-        color: colors.text.secondary,
-        marginLeft: 44, // Align with title
+        paddingTop: spacing.lg,
     },
 });
 

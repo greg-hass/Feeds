@@ -13,6 +13,7 @@ import { TimelineEmptyState } from './TimelineEmptyState';
 import { DigestCard } from './DigestCard';
 import { PodcastSection } from './PodcastSection';
 import { timelineStyles } from './Timeline.styles';
+import { ScrollView } from 'react-native';
 import { scheduleIdle, canPrefetch } from '@/utils/scheduler';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import Sidebar from '@/components/Sidebar';
@@ -160,7 +161,13 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
 
             {/* Premium Podcast Section - shown when filtering by podcasts */}
             {filter.type === 'podcast' && !isLoading && articles.length > 0 && (
-                <PodcastSection articles={articles} maxPerFeed={5} />
+                <ScrollView
+                    style={{ flex: 1 }}
+                    contentContainerStyle={{ paddingBottom: 100 }}
+                    showsVerticalScrollIndicator={false}
+                >
+                    <PodcastSection articles={articles} maxPerFeed={5} />
+                </ScrollView>
             )}
 
             {isLoading && articles.length === 0 ? (
