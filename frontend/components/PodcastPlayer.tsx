@@ -147,7 +147,7 @@ const styles = (colors: any, isMobile: boolean, width: number, height: number, i
     container: {
         flex: 1,
         backgroundColor: colors.background.primary,
-        paddingTop: Platform.OS === 'ios' ? insets.top + spacing.xl : spacing.lg,
+        paddingTop: Platform.OS === 'ios' ? insets.top + 20 : spacing.lg,
     },
     header: {
         flexDirection: 'row',
