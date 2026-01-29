@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Platform, useWindowDimensions, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, StyleSheet, Platform, useWindowDimensions, ActivityIndicator } from 'react-native';
 import { useColors, spacing, borderRadius, typography } from '@/theme';
 import { extractVideoId } from '@/utils/youtube';
+import { openExternalLink } from '@/utils/externalLink';
 import { useVideoStore, useSettingsStore } from '@/stores';
 
 // Lazy load WebView only on native platforms
@@ -280,7 +281,7 @@ export default function ArticleContent({ html }: ArticleContentProps) {
                         }
 
                         if (url.startsWith('http')) {
-                            Linking.openURL(url).catch(() => { });
+                            openExternalLink(url).catch(() => { });
                         }
                         return false;
                     }}
