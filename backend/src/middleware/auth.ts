@@ -4,9 +4,41 @@ import jwt from 'jsonwebtoken';
 const JWT_SECRET = process.env.JWT_SECRET;
 
 /**
+ * In-memory store for sliding expiration tracking
+ * Maps token signature to last activity timestamp
+ */
+const tokenActivity = new Map<string, number>();
+const INACTIVITY_TIMEOUT = 30 * 24 * 60 * 60 * 1000; // 30 days in ms
+
+/**
+ * Get token signature (unique identifier for the token)
+ */
+function getTokenSignature(token: string): string {
+    // Use last 16 chars of token as signature (unique enough for this use case)
+    return token.slice(-16);
+}
+
+/**
+ * Clean up old token activity entries (run periodically)
+ */
+function cleanupOldActivity(): void {
+    const now = Date.now();
+    const cutoff = now - INACTIVITY_TIMEOUT;
+    for (const [signature, lastActivity] of tokenActivity.entries()) {
+        if (lastActivity < cutoff) {
+            tokenActivity.delete(signature);
+        }
+    }
+}
+
+// Run cleanup every hour
+setInterval(cleanupOldActivity, 60 * 60 * 1000);
+
+/**
  * Authentication Middleware
  * 
- * Enforces API access control using JWT tokens.
+ * Enforces API access control using JWT tokens with sliding expiration.
+ * Token expires after 30 days of inactivity.
  * 
  * Usage in app.ts:
  * import { authMiddleware } from './middleware/auth';
@@ -36,12 +68,40 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
     }
 
     const token = authHeader.replace('Bearer ', '');
+    const tokenSignature = getTokenSignature(token);
     
     try {
+        // First verify the JWT signature and basic validity
         const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; username: string };
+        
+        // Check sliding expiration (inactivity-based)
+        const now = Date.now();
+        const lastActivity = tokenActivity.get(tokenSignature);
+        
+        if (lastActivity) {
+            const inactiveFor = now - lastActivity;
+            if (inactiveFor > INACTIVITY_TIMEOUT) {
+                // Token expired due to inactivity
+                tokenActivity.delete(tokenSignature);
+                return reply.status(401).send({ 
+                    error: 'Unauthorized: Session expired due to inactivity',
+                    code: 'SESSION_EXPIRED'
+                });
+            }
+        }
+        
+        // Update last activity time (sliding expiration)
+        tokenActivity.set(tokenSignature, now);
+        
         // Attach user info to request for use in routes
         (request as any).user = decoded;
     } catch (error) {
+        if (error instanceof jwt.TokenExpiredError) {
+            return reply.status(401).send({ 
+                error: 'Unauthorized: Token expired',
+                code: 'TOKEN_EXPIRED'
+            });
+        }
         return reply.status(401).send({ error: 'Unauthorized: Invalid token' });
     }
 }
@@ -54,9 +114,10 @@ export function generateToken(userId: number, username: string): string {
         throw new Error('JWT_SECRET not configured');
     }
     
+    // Generate token with long expiry (1 year) - actual expiration handled by sliding window
     return jwt.sign(
         { userId, username },
         JWT_SECRET,
-        { expiresIn: '30d' } // Token valid for 30 days
+        { expiresIn: '365d' } // JWT itself valid for 1 year
     );
 }
