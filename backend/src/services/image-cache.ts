@@ -148,6 +148,10 @@ export async function cacheRemoteImage(
         const extension = deriveExtension(url, contentType || undefined);
         const fileName = `${key}${extension}`;
         const filePath = getCachedImagePath(subdir, fileName);
+        if (!filePath) {
+            console.warn(`[ImageCache] Invalid file path for key ${key}`);
+            return null;
+        }
         const data = Buffer.from(await response.arrayBuffer());
 
         await writeFile(filePath, data);
