@@ -11,6 +11,7 @@ services:
     environment:
       - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
       - APP_PASSWORD=${APP_PASSWORD}
+      - DISABLE_AUTH_ENDPOINTS=${DISABLE_AUTH_ENDPOINTS:-false}
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - YOUTUBE_API_KEY=${YOUTUBE_API_KEY}

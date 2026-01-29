@@ -6,6 +6,11 @@ import { z } from 'zod';
 
 const SALT_ROUNDS = 12;
 
+// Rate limiting store (in-memory, resets on server restart)
+const loginAttempts = new Map<string, { count: number; resetTime: number }>();
+const MAX_ATTEMPTS = 5;
+const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+
 const loginSchema = z.object({
     password: z.string().min(1, 'Password is required'),
 });
@@ -15,42 +20,108 @@ const setupSchema = z.object({
 });
 
 /**
+ * Get client IP for rate limiting
+ */
+function getClientIP(request: FastifyRequest): string {
+    // Try X-Forwarded-For first (for reverse proxy setups)
+    const forwarded = request.headers['x-forwarded-for'];
+    if (forwarded) {
+        return String(forwarded).split(',')[0].trim();
+    }
+    // Fall back to direct connection IP
+    return request.ip || 'unknown';
+}
+
+/**
+ * Check if rate limit is exceeded
+ */
+function checkRateLimit(ip: string): { allowed: boolean; remaining: number; resetIn: number } {
+    const now = Date.now();
+    const attempt = loginAttempts.get(ip);
+
+    if (!attempt || now > attempt.resetTime) {
+        // Reset or create new window
+        loginAttempts.set(ip, { count: 1, resetTime: now + WINDOW_MS });
+        return { allowed: true, remaining: MAX_ATTEMPTS - 1, resetIn: WINDOW_MS };
+    }
+
+    if (attempt.count >= MAX_ATTEMPTS) {
+        const resetIn = attempt.resetTime - now;
+        return { allowed: false, remaining: 0, resetIn };
+    }
+
+    attempt.count++;
+    return { allowed: true, remaining: MAX_ATTEMPTS - attempt.count, resetIn: attempt.resetTime - now };
+}
+
+/**
  * Auth routes for login and setup
  */
 export async function authRoutes(app: FastifyInstance) {
+    // Check if auth endpoints are disabled
+    const authDisabled = process.env.DISABLE_AUTH_ENDPOINTS === 'true';
+
+    if (authDisabled) {
+        // Return 503 Service Unavailable for all auth endpoints when disabled
+        app.addHook('onRequest', async (request, reply) => {
+            return reply.status(503).send({
+                error: 'Authentication endpoints are currently disabled',
+                message: 'Please contact the administrator'
+            });
+        });
+        return;
+    }
+
     /**
      * POST /api/v1/auth/login
      * Authenticate with password and receive JWT token
      */
     app.post('/login', async (request: FastifyRequest, reply) => {
+        const clientIP = getClientIP(request);
+        const rateLimit = checkRateLimit(clientIP);
+
+        if (!rateLimit.allowed) {
+            const minutes = Math.ceil(rateLimit.resetIn / 60000);
+            return reply.status(429).send({
+                error: `Too many login attempts. Please try again in ${minutes} minute${minutes > 1 ? 's' : ''}.`,
+                retryAfter: Math.ceil(rateLimit.resetIn / 1000),
+            });
+        }
+
         const { password } = loginSchema.parse(request.body);
-        
+
         // Get the default user (id=1)
         const user = queryOne<{ id: number; username: string; password_hash: string }>(
             'SELECT id, username, password_hash FROM users WHERE id = 1'
         );
-        
+
         if (!user) {
             return reply.status(401).send({ error: 'User not found' });
         }
-        
+
         // Check if password is set up
         if (user.password_hash === 'disabled' || !user.password_hash) {
-            return reply.status(401).send({ 
+            return reply.status(401).send({
                 error: 'Authentication not configured. Please run setup first.',
-                needsSetup: true 
+                needsSetup: true
             });
         }
-        
+
         // Verify password
         const isValid = await bcrypt.compare(password, user.password_hash);
         if (!isValid) {
-            return reply.status(401).send({ error: 'Invalid password' });
+            return reply.status(401).send({
+                error: 'Invalid password',
+                remainingAttempts: rateLimit.remaining,
+            });
         }
-        
+
+        // Clear rate limit on successful login
+        loginAttempts.delete(clientIP);
+
         // Generate JWT token
         const token = generateToken(user.id, user.username);
-        
+
         return {
             token,
             user: {
@@ -59,7 +130,7 @@ export async function authRoutes(app: FastifyInstance) {
             },
         };
     });
-    
+
     /**
      * POST /api/v1/auth/setup
      * Initial password setup (only works if no password is set)
