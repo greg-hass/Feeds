@@ -1,10 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, Platform, useWindowDimensions, ActivityIndicator, Linking } from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
+import { View, Text, StyleSheet, Platform, useWindowDimensions, ActivityIndicator, Linking } from 'react-native';
 import { useColors, spacing, borderRadius, typography } from '@/theme';
 import { extractVideoId } from '@/utils/youtube';
 import { useVideoStore, useSettingsStore } from '@/stores';
-import { openExternalLink, isUniversalLink as checkUniversalLink } from '@/utils/externalLink';
 
 // Lazy load WebView only on native platforms
 const NativeWebView = Platform.OS !== 'web'
@@ -31,16 +29,6 @@ export default function ArticleContent({ html }: ArticleContentProps) {
     const readerTheme = settings?.reader_theme || 'default';
     const customLineHeight = settings?.reader_line_height;
     const showImages = settings?.show_images ?? true;
-
-    // Warm up WebBrowser for faster link opening
-    useEffect(() => {
-        if (Platform.OS !== 'web') {
-            WebBrowser.warmUpAsync();
-            return () => {
-                WebBrowser.coolDownAsync();
-            };
-        }
-    }, []);
 
     const sizes = fontSizes[fontSize];
 
@@ -174,43 +162,19 @@ export default function ArticleContent({ html }: ArticleContentProps) {
             font-family: ${FONT_STACK} !important;
         }
 
-        /* Reddit-specific cleanup */
-        /* Hide "Go to [subreddit]" navigation links */
-        ${s}a[href*="reddit.com/r/"]:first-child,
-        ${s}p:first-child a[href*="reddit.com/r/"],
-        ${s}div:first-child a[href*="reddit.com/r/"] {
+        /* Reddit-specific cleanup - simplified for Safari compatibility */
+        /* Hide "Go to [subreddit]" navigation tables at the end of Reddit posts */
+        ${s}table[bgcolor="#f5f5f5"] {
             display: none !important;
         }
 
-        /* Hide standalone subreddit links (r/subreddit) */
-        ${s}a[href*="reddit.com/r/"]:only-child {
+        /* Hide standalone subreddit/username links that appear as only children */
+        ${s}a[href*="reddit.com/r/"]:only-child,
+        ${s}a[href*="reddit.com/user/"]:only-child {
             display: none !important;
         }
 
-        /* Hide username links (u/username) */
-        ${s}a[href*="reddit.com/u/"],
-        ${s}a[href*="reddit.com/user/"] {
-            display: none !important;
-        }
-
-        /* Hide duplicate titles (often the first h1 or h2) */
-        ${s}h1:first-of-type,
-        ${s}h2:first-of-type {
-            display: none !important;
-        }
-
-        /* Hide Reddit metadata (points, comments, etc.) */
-        ${s}p:has(> a[href*="reddit.com"]):empty,
-        ${s}div:has(> a[href*="reddit.com"]):empty {
-            display: none !important;
-        }
-
-        /* Hide empty paragraphs that only contain links */
-        ${s}p:has(> a:only-child) {
-            display: none !important;
-        }
-
-        /* Clean up excessive spacing from hidden elements */
+        /* Clean up truly empty elements */
         ${s}p:empty,
         ${s}div:empty {
             display: none !important;
@@ -255,25 +219,38 @@ export default function ArticleContent({ html }: ArticleContentProps) {
         };
     }, [html, settings, fontSize, readerTheme, customLineHeight, playVideo]);
 
-    const renderWebContent = () => (
-        <View style={componentStyles.container}>
-            <style dangerouslySetInnerHTML={{
-                __html: `
-                ${getBaseStyles('.zen-article')}
-                @media (max-width: 600px) {
-                    .zen-article img {
-                        width: auto;
-                        max-width: 100%;
+    const renderWebContent = () => {
+        // Show message if no content
+        if (!html || html.trim() === '') {
+            return (
+                <View style={[componentStyles.container, componentStyles.emptyContainer]}>
+                    <Text style={[componentStyles.emptyText, { color: colors.text.secondary }]}>
+                        No content available for this article.
+                    </Text>
+                </View>
+            );
+        }
+
+        return (
+            <View style={componentStyles.container}>
+                <style dangerouslySetInnerHTML={{
+                    __html: `
+                    ${getBaseStyles('.zen-article')}
+                    @media (max-width: 600px) {
+                        .zen-article img {
+                            width: auto;
+                            max-width: 100%;
+                        }
                     }
-                }
-            ` }} />
-            <div
-                ref={containerRef}
-                className="zen-article"
-                dangerouslySetInnerHTML={{ __html: html }}
-            />
-        </View>
-    );
+                ` }} />
+                <div
+                    ref={containerRef}
+                    className="zen-article"
+                    dangerouslySetInnerHTML={{ __html: html }}
+                />
+            </View>
+        );
+    };
 
     const renderNativeContent = () => (
         <View style={componentStyles.container}>
@@ -303,18 +280,7 @@ export default function ArticleContent({ html }: ArticleContentProps) {
                         }
 
                         if (url.startsWith('http')) {
-                            // For Universal Links, use Linking.openURL to avoid blank Safari page
-                            if (checkUniversalLink(url)) {
-                                Linking.openURL(url).catch(() => { });
-                            } else {
-                                // Use WebBrowser for regular links
-                                WebBrowser.openBrowserAsync(url, {
-                                    dismissButtonStyle: 'close',
-                                    presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,
-                                    readerMode: false,
-                                    enableBarCollapsing: true,
-                                }).catch(() => { });
-                            }
+                            Linking.openURL(url).catch(() => { });
                         }
                         return false;
                     }}
@@ -346,5 +312,15 @@ export default function ArticleContent({ html }: ArticleContentProps) {
 const componentStyles = StyleSheet.create({
     container: {
         flex: 1,
+    },
+    emptyContainer: {
+        paddingVertical: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    emptyText: {
+        fontSize: 16,
+        textAlign: 'center',
+        opacity: 0.7,
     }
 });
