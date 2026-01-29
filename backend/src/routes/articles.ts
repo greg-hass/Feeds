@@ -4,6 +4,7 @@ import { queryOne, queryAll, run } from '../db/index.js';
 import { extractReadability, fetchAndExtractReadability } from '../services/readability.js';
 import { getUserSettings } from '../services/settings.js';
 import { Article } from '../types/index.js';
+import { validateId } from '../utils/validation.js';
 
 const listArticlesSchema = z.object({
     feed_id: z.coerce.number().optional(),
@@ -212,7 +213,10 @@ export async function articlesRoutes(app: FastifyInstance) {
 
     // Get single article with full content
     app.get('/:id', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-        const articleId = parseInt(request.params.id, 10);
+        const articleId = validateId(request.params.id);
+        if (articleId === null) {
+            return reply.status(400).send({ error: 'Invalid article ID' });
+        }
 
         const article = queryOne<Article & {
             feed_title: string;
@@ -295,8 +299,11 @@ export async function articlesRoutes(app: FastifyInstance) {
     });
 
     // Mark article as read
-    app.post('/:id/read', async (request: FastifyRequest<{ Params: { id: string } }>) => {
-        const articleId = parseInt(request.params.id, 10);
+    app.post('/:id/read', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+        const articleId = validateId(request.params.id);
+        if (articleId === null) {
+            return reply.status(400).send({ error: 'Invalid article ID' });
+        }
 
         run(
             `INSERT OR REPLACE INTO read_state (user_id, article_id, is_read, read_at, updated_at)
@@ -308,8 +315,11 @@ export async function articlesRoutes(app: FastifyInstance) {
     });
 
     // Mark article as unread
-    app.post('/:id/unread', async (request: FastifyRequest<{ Params: { id: string } }>) => {
-        const articleId = parseInt(request.params.id, 10);
+    app.post('/:id/unread', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+        const articleId = validateId(request.params.id);
+        if (articleId === null) {
+            return reply.status(400).send({ error: 'Invalid article ID' });
+        }
 
         run(
             `INSERT OR REPLACE INTO read_state (user_id, article_id, is_read, read_at, updated_at)

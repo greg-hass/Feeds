@@ -12,7 +12,12 @@ export interface OPMLFolder {
 }
 
 export function parseOPML(xml: string): { folders: OPMLFolder[]; feeds: OPMLFeed[] } {
-    const $ = cheerio.load(xml, { xmlMode: true });
+    // Security: Disable XML external entity (XXE) processing
+    // This prevents malicious XML from accessing external files or URLs
+    const $ = cheerio.load(xml, {
+        xmlMode: true,
+        decodeEntities: false, // Don't decode HTML entities (prevents entity expansion attacks)
+    });
 
     const folders: OPMLFolder[] = [];
     const feeds: OPMLFeed[] = [];

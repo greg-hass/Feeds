@@ -6,9 +6,11 @@ const JWT_SECRET = process.env.JWT_SECRET;
 /**
  * In-memory store for sliding expiration tracking
  * Maps token signature to last activity timestamp
+ * Limited to MAX_ENTRIES to prevent unbounded growth
  */
 const tokenActivity = new Map<string, number>();
 const INACTIVITY_TIMEOUT = 30 * 24 * 60 * 60 * 1000; // 30 days in ms
+const MAX_ENTRIES = 10000; // Maximum number of tokens to track
 
 /**
  * Get token signature (unique identifier for the token)
@@ -20,12 +22,27 @@ function getTokenSignature(token: string): string {
 
 /**
  * Clean up old token activity entries (run periodically)
+ * Also enforces MAX_ENTRIES limit by removing oldest entries
  */
 function cleanupOldActivity(): void {
     const now = Date.now();
     const cutoff = now - INACTIVITY_TIMEOUT;
+
+    // First, remove expired entries
     for (const [signature, lastActivity] of tokenActivity.entries()) {
         if (lastActivity < cutoff) {
+            tokenActivity.delete(signature);
+        }
+    }
+
+    // If still over limit, remove oldest entries
+    if (tokenActivity.size > MAX_ENTRIES) {
+        const entries = Array.from(tokenActivity.entries());
+        // Sort by last activity (oldest first)
+        entries.sort((a, b) => a[1] - b[1]);
+        // Remove oldest entries to get back under limit
+        const toRemove = entries.slice(0, tokenActivity.size - MAX_ENTRIES);
+        for (const [signature] of toRemove) {
             tokenActivity.delete(signature);
         }
     }

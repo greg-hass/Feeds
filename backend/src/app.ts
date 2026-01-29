@@ -74,15 +74,7 @@ export async function buildApp() {
     // Health check
     app.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));
 
-    // Debug endpoint (development only)
-    if (process.env.NODE_ENV === 'development') {
-        app.get('/debug/env', async () => ({
-            youtube_api_key_present: !!process.env.YOUTUBE_API_KEY,
-            youtube_api_key_prefix: process.env.YOUTUBE_API_KEY?.substring(0, 8) || 'NOT_SET',
-            gemini_api_key_present: !!process.env.GEMINI_API_KEY,
-            node_env: process.env.NODE_ENV || 'not_set'
-        }));
-    }
+
 
     // API routes
     await app.register(feedsRoutes, { prefix: '/api/v1/feeds' });

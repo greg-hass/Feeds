@@ -81,12 +81,16 @@ export async function searchRoutes(app: FastifyInstance) {
     app.get('/', async (request: FastifyRequest) => {
         const query = searchSchema.parse(request.query);
 
-        // Build FTS query - escape special characters
+        // Build FTS query - properly escape special characters
+        const escapeFts = (term: string): string => {
+            // Escape double quotes by doubling them (FTS5 syntax)
+            return term.replace(/"/g, '""');
+        };
+
         const ftsQuery = query.q
-            .replace(/["\-*]/g, ' ')
             .split(/\s+/)
-            .filter(w => w.length > 0)
-            .map(w => `"${w}"`)
+            .filter(w => w.length > 2)  // Filter out very short terms
+            .map(w => `"${escapeFts(w)}"`)
             .join(' OR ');
 
         if (!ftsQuery) {
