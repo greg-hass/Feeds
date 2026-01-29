@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { View, StyleSheet, useWindowDimensions, Platform, AppState } from 'react-native';
+import { View, StyleSheet, useWindowDimensions, Platform, AppState, ActivityIndicator } from 'react-native';
 import { Slot } from 'expo-router';
 import { useArticleStore, useFeedStore, useSettingsStore } from '@/stores';
 import { useColors } from '@/theme';
@@ -281,7 +281,14 @@ export default function AppLayout() {
 
     const s = styles(isDesktop, isReaderRoute, colors);
 
-    if (!mounted || isAuthenticated === null) return null;
+    // Show loading state while checking auth
+    if (!mounted || isAuthenticated === null) {
+        return (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background.primary }}>
+                <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
+            </View>
+        );
+    }
 
     // Show login screen if not authenticated
     if (!isAuthenticated) {
