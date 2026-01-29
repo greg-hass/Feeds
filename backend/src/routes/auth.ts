@@ -58,20 +58,6 @@ function checkRateLimit(ip: string): { allowed: boolean; remaining: number; rese
  * Auth routes for login and setup
  */
 export async function authRoutes(app: FastifyInstance) {
-    // Check if auth endpoints are disabled
-    const authDisabled = process.env.DISABLE_AUTH_ENDPOINTS === 'true';
-
-    if (authDisabled) {
-        // Return 503 Service Unavailable for all auth endpoints when disabled
-        app.addHook('onRequest', async (request, reply) => {
-            return reply.status(503).send({
-                error: 'Authentication endpoints are currently disabled',
-                message: 'Please contact the administrator'
-            });
-        });
-        return;
-    }
-
     /**
      * POST /api/v1/auth/login
      * Authenticate with password and receive JWT token
