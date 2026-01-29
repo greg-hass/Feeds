@@ -16,9 +16,12 @@ import { FloatingAudioPlayer } from '@/components/FloatingAudioPlayer';
 import { useAudioStore } from '@/stores/audioStore';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { api } from '@/services/api';
+import { LoginScreen } from '@/components/LoginScreen';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function AppLayout() {
     const [mounted, setMounted] = useState(false);
+    const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
     useEffect(() => setMounted(true), []);
     const { width } = useWindowDimensions();
     const isDesktop = width >= 1024;
@@ -28,7 +31,44 @@ export default function AppLayout() {
     const { fetchSettings } = useSettingsStore();
     const lastIsRefreshingRef = useRef(false);
 
+    // Check authentication status on mount
     useEffect(() => {
+        const checkAuth = async () => {
+            try {
+                const status = await api.getAuthStatus();
+                if (!status.authEnabled) {
+                    // Auth not enabled, allow access
+                    setIsAuthenticated(true);
+                    return;
+                }
+
+                // Check if we have a valid token
+                const token = await AsyncStorage.getItem('@feeds_auth_token');
+                if (token) {
+                    // Try to make an authenticated request to verify token
+                    try {
+                        await api.getFeeds();
+                        setIsAuthenticated(true);
+                    } catch (e) {
+                        // Token invalid
+                        await api.logout();
+                        setIsAuthenticated(false);
+                    }
+                } else {
+                    setIsAuthenticated(false);
+                }
+            } catch (e) {
+                console.error('Auth check failed:', e);
+                setIsAuthenticated(false);
+            }
+        };
+
+        checkAuth();
+    }, []);
+
+    useEffect(() => {
+        if (!isAuthenticated) return;
+        
         fetchFeeds();
         fetchFolders();
         fetchArticles(true);
@@ -245,7 +285,14 @@ export default function AppLayout() {
 
     const s = styles(isDesktop, isReaderRoute, colors);
 
-    if (!mounted) return null;
+    if (!mounted || isAuthenticated === null) return null;
+
+    // Show login screen if not authenticated
+    if (!isAuthenticated) {
+        return (
+            <LoginScreen onLogin={() => setIsAuthenticated(true)} />
+        );
+    }
 
     return (
         <ErrorBoundary>

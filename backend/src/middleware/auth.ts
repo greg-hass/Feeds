@@ -1,43 +1,62 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET;
 
 /**
  * Authentication Middleware
  * 
- * Enforces API access control.
+ * Enforces API access control using JWT tokens.
  * 
  * Usage in app.ts:
  * import { authMiddleware } from './middleware/auth';
  * app.addHook('onRequest', authMiddleware);
- * 
- * Note: Requires JWT_SECRET to be set in environment variables.
- * If not set, it defaults to allowing access (open mode) or warns.
  */
 export async function authMiddleware(request: FastifyRequest, reply: FastifyReply) {
-    const secret = process.env.JWT_SECRET;
-    
-    // If no secret is configured, we assume the app is running in single-user personal mode
-    // without auth (or behind a proxy that handles it).
-    if (!secret) {
+    // If no JWT_SECRET is set, skip auth (backward compatibility for development)
+    if (!JWT_SECRET) {
+        console.warn('Warning: JWT_SECRET not set, running without authentication');
         return;
     }
 
-    // Skip auth for health check and static assets if any
-    if (request.url === '/health' || request.url.startsWith('/static')) {
+    // Skip auth for public endpoints
+    const publicPaths = [
+        '/health',
+        '/api/v1/auth/login',
+        '/api/v1/auth/setup',
+    ];
+    
+    if (publicPaths.some(path => request.url.startsWith(path))) {
         return;
     }
 
     const authHeader = request.headers.authorization;
-    if (!authHeader) {
-        // TODO: Enable this once frontend supports sending tokens
-        // reply.status(401).send({ error: 'Unauthorized: No token provided' });
-        return; 
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return reply.status(401).send({ error: 'Unauthorized: No token provided' });
     }
 
     const token = authHeader.replace('Bearer ', '');
-    // Simple verification (replace with actual JWT verification logic using @fastify/jwt if needed)
-    // For now, we just check if it matches the secret if it's a simple API key style,
-    // or if we were using a real JWT library, verify it there.
     
-    // Since we don't have a JWT library installed yet, and to avoid breaking changes,
-    // this is a placeholder for where the verification logic resides.
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; username: string };
+        // Attach user info to request for use in routes
+        (request as any).user = decoded;
+    } catch (error) {
+        return reply.status(401).send({ error: 'Unauthorized: Invalid token' });
+    }
+}
+
+/**
+ * Generate a JWT token for a user
+ */
+export function generateToken(userId: number, username: string): string {
+    if (!JWT_SECRET) {
+        throw new Error('JWT_SECRET not configured');
+    }
+    
+    return jwt.sign(
+        { userId, username },
+        JWT_SECRET,
+        { expiresIn: '30d' } // Token valid for 30 days
+    );
 }

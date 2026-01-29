@@ -1,6 +1,8 @@
 import { parseSSEStream } from '@/utils/sse';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || '/api/v1';
+const AUTH_TOKEN_KEY = '@feeds_auth_token';
 
 interface RequestOptions {
     method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
@@ -9,6 +11,31 @@ interface RequestOptions {
 }
 
 class ApiClient {
+    private authToken: string | null = null;
+
+    constructor() {
+        // Load token from storage on init
+        this.loadAuthToken();
+    }
+
+    async loadAuthToken(): Promise<void> {
+        try {
+            this.authToken = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+        } catch (e) {
+            console.error('Failed to load auth token:', e);
+        }
+    }
+
+    async setAuthToken(token: string): Promise<void> {
+        this.authToken = token;
+        await AsyncStorage.setItem(AUTH_TOKEN_KEY, token);
+    }
+
+    async clearAuthToken(): Promise<void> {
+        this.authToken = null;
+        await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
+    }
+
     async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
         const { method = 'GET', body, headers = {} } = options;
 
@@ -17,6 +44,11 @@ class ApiClient {
             'Pragma': 'no-cache',
             'Expires': '0',
         };
+
+        // Add auth token if available
+        if (this.authToken) {
+            requestHeaders['Authorization'] = `Bearer ${this.authToken}`;
+        }
 
         Object.entries(headers).forEach(([key, value]) => {
             if (value !== undefined) {
@@ -65,6 +97,27 @@ class ApiClient {
 
     async delete<T>(endpoint: string, options: Omit<RequestOptions, 'method'> = {}): Promise<T> {
         return this.request<T>(endpoint, { ...options, method: 'DELETE' });
+    }
+
+    // Auth
+    async login(password: string): Promise<AuthResponse> {
+        const response = await this.post<AuthResponse>('/auth/login', { password });
+        await this.setAuthToken(response.token);
+        return response;
+    }
+
+    async setupPassword(password: string): Promise<AuthResponse> {
+        const response = await this.post<AuthResponse>('/auth/setup', { password });
+        await this.setAuthToken(response.token);
+        return response;
+    }
+
+    async getAuthStatus(): Promise<AuthStatus> {
+        return this.get<AuthStatus>('/auth/status');
+    }
+
+    async logout(): Promise<void> {
+        await this.clearAuthToken();
     }
 
     // Feeds
@@ -720,6 +773,20 @@ export interface Interest {
     topic: string;
     source: 'explicit' | 'derived' | 'content_analysis';
     confidence: number;
+}
+
+export interface AuthResponse {
+    token: string;
+    user: {
+        id: number;
+        username: string;
+    };
+}
+
+export interface AuthStatus {
+    authEnabled: boolean;
+    needsSetup: boolean;
+    hasEnvPassword: boolean;
 }
 
 export const api = new ApiClient();
