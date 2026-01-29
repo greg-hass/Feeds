@@ -13,7 +13,7 @@ export function ensureThumbnailCacheDir() {
     ensureBaseCacheDir(THUMBNAIL_SUBDIR);
 }
 
-export function getCachedThumbnailPath(fileName: string) {
+export function getCachedThumbnailPath(fileName: string): string | null {
     return getCachedImagePath(THUMBNAIL_SUBDIR, fileName);
 }
 

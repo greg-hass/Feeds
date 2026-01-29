@@ -35,6 +35,9 @@ export async function iconsRoutes(app: FastifyInstance) {
         }
 
         const filePath = getCachedIconPath(feed.icon_cached_path);
+        if (!filePath) {
+            return reply.status(400).send({ error: 'Invalid icon path' });
+        }
         if (!existsSync(filePath)) {
             if (feed.icon_url) {
                 return reply.redirect(302, feed.icon_url);

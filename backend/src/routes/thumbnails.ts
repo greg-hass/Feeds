@@ -34,6 +34,9 @@ export async function thumbnailsRoutes(app: FastifyInstance) {
         }
 
         const filePath = getCachedThumbnailPath(row.thumbnail_cached_path);
+        if (!filePath) {
+            return reply.status(400).send({ error: 'Invalid thumbnail path' });
+        }
         if (!existsSync(filePath)) {
             return reply.status(404).send({ error: 'Thumbnail missing' });
         }

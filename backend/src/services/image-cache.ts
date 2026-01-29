@@ -80,7 +80,24 @@ export function ensureCacheDir(subdir: string) {
     ensureDirectory(getCacheDir(subdir));
 }
 
-export function getCachedImagePath(subdir: string, fileName: string) {
+/**
+ * Validate filename to prevent path traversal attacks
+ * Only allows alphanumeric characters, hyphens, underscores, and dots
+ */
+function validateFileName(fileName: string): boolean {
+    // Must not contain path separators or parent directory references
+    if (fileName.includes('/') || fileName.includes('\\') || fileName.includes('..')) {
+        return false;
+    }
+    // Must match safe filename pattern
+    return /^[a-zA-Z0-9_-]+\.[a-zA-Z0-9]+$/.test(fileName);
+}
+
+export function getCachedImagePath(subdir: string, fileName: string): string | null {
+    if (!validateFileName(fileName)) {
+        console.warn(`[ImageCache] Invalid filename rejected: ${fileName}`);
+        return null;
+    }
     return join(getCacheDir(subdir), fileName);
 }
 
