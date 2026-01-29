@@ -3,12 +3,17 @@ import { run } from '../db/index.js';
 import { readdir, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 
-const USER_AGENT = 'Feeds/1.0 (Icon Cache; +https://github.com/greg-hass/Feeds)';
+// Use browser-like headers for YouTube servers
+const ICON_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'image/*,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.9',
+};
 const ICON_SUBDIR = 'icons';
 
 export async function cacheFeedIcon(feedId: number, iconUrl: string): Promise<{ fileName: string; mime: string } | null> {
     return cacheRemoteImage(ICON_SUBDIR, `feed-${feedId}`, iconUrl, {
-        headers: { 'User-Agent': USER_AGENT },
+        headers: ICON_HEADERS,
     });
 }
 
