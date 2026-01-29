@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Image, Animated, Platform } from 'react-native';
 import { Headphones } from 'lucide-react-native';
 import { Article } from '@/services/api';
@@ -51,6 +51,7 @@ const ArticleCard = React.memo<ArticleCardProps>(({
     const colors = useColors();
     const { settings } = useSettingsStore();
     const viewDensity: ViewDensity = settings?.view_density || 'comfortable';
+    const [iconFailed, setIconFailed] = useState(false);
 
     const densitySpacing = getDensitySpacing(viewDensity);
     const thumbnailSize = getThumbnailSize(viewDensity);
@@ -117,8 +118,12 @@ const ArticleCard = React.memo<ArticleCardProps>(({
                 <View style={{ flex: 1 }}>
                     {/* Feed Pill */}
                     <View style={s.feedPill}>
-                        {item.feed_icon_url ? (
-                            <Image source={{ uri: item.feed_icon_url }} style={s.feedIcon} />
+                        {item.feed_icon_url && !iconFailed ? (
+                            <Image 
+                                source={{ uri: item.feed_icon_url }} 
+                                style={s.feedIcon}
+                                onError={() => setIconFailed(true)}
+                            />
                         ) : (
                             <View style={s.feedInitial}>
                                 <Text style={s.initialText}>{item.feed_title?.charAt(0)}</Text>
