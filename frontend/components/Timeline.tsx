@@ -11,6 +11,7 @@ import TimelineArticle from './TimelineArticle';
 import NewArticlesPill from './NewArticlesPill';
 import { TimelineEmptyState } from './TimelineEmptyState';
 import { DigestCard } from './DigestCard';
+import { PodcastSection } from './PodcastSection';
 import { timelineStyles } from './Timeline.styles';
 import { scheduleIdle, canPrefetch } from '@/utils/scheduler';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
@@ -157,9 +158,14 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
 
             <DigestCard />
 
+            {/* Premium Podcast Section - shown when filtering by podcasts */}
+            {filter.type === 'podcast' && !isLoading && articles.length > 0 && (
+                <PodcastSection articles={articles} maxPerFeed={5} />
+            )}
+
             {isLoading && articles.length === 0 ? (
                 <TimelineSkeleton />
-            ) : (
+            ) : filter.type !== 'podcast' ? (
                 <View style={{ flex: 1, opacity: isScrollRestored ? 1 : 0 }}>
                     <FlatList
                         ref={flatListRef}
@@ -198,7 +204,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                         updateCellsBatchingPeriod={50}
                     />
                 </View>
-            )}
+            ) : null}
 
             {/* Mobile Sidebar */}
             {isMobile && (
