@@ -34,6 +34,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
     const [error, setError] = useState('');
     const [isChecking, setIsChecking] = useState(true);
     const [needsSetup, setNeedsSetup] = useState(false);
+    const [isFocused, setIsFocused] = useState(false);
 
     // Check auth status on mount
     useEffect(() => {
@@ -156,10 +157,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                     ) : null}
 
                     {/* Password Input */}
-                    <View style={s.inputContainer}>
+                    <View style={[s.inputWrapper, isFocused && s.inputWrapperFocused]}>
                         <Lock
                             size={20}
-                            color={colors.text.tertiary}
+                            color={isFocused ? colors.primary.DEFAULT : colors.text.tertiary}
                             style={s.inputIcon}
                         />
                         <TextInput
@@ -177,6 +178,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                             autoCapitalize="none"
                             autoCorrect={false}
                             editable={!isLoading}
+                            selectionColor={colors.primary.DEFAULT}
+                            onFocus={() => setIsFocused(true)}
+                            onBlur={() => setIsFocused(false)}
                         />
                     </View>
 
@@ -271,23 +275,29 @@ const styles = (colors: any, isMobile: boolean) =>
             color: colors.error,
             flex: 1,
         },
-        inputContainer: {
+        inputWrapper: {
             flexDirection: 'row',
             alignItems: 'center',
             backgroundColor: colors.background.tertiary,
-            borderRadius: borderRadius.md,
-            borderWidth: 1,
-            borderColor: colors.border.DEFAULT,
+            borderRadius: borderRadius.lg,
+            paddingHorizontal: spacing.md,
+            paddingVertical: spacing.sm,
             marginBottom: spacing.md,
+            borderWidth: 2,
+            borderColor: 'transparent',
+        },
+        inputWrapperFocused: {
+            borderColor: colors.primary.DEFAULT,
         },
         inputIcon: {
-            marginLeft: spacing.md,
+            marginRight: spacing.sm,
         },
         input: {
             flex: 1,
-            padding: spacing.md,
+            paddingVertical: spacing.sm,
             fontSize: 16,
             color: colors.text.primary,
+            outlineStyle: 'none',
         },
         button: {
             backgroundColor: colors.primary.DEFAULT,
