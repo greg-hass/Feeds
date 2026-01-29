@@ -11,12 +11,14 @@ const loginAttempts = new Map<string, { count: number; resetTime: number }>();
 const MAX_ATTEMPTS = 5;
 const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 
+const MAX_PASSWORD_LENGTH = 128;
+
 const loginSchema = z.object({
-    password: z.string().min(1, 'Password is required'),
+    password: z.string().min(1, 'Password is required').max(MAX_PASSWORD_LENGTH, `Password must not exceed ${MAX_PASSWORD_LENGTH} characters`),
 });
 
 const setupSchema = z.object({
-    password: z.string().min(8, 'Password must be at least 8 characters'),
+    password: z.string().min(8, 'Password must be at least 8 characters').max(MAX_PASSWORD_LENGTH, `Password must not exceed ${MAX_PASSWORD_LENGTH} characters`),
 });
 
 /**

@@ -45,8 +45,12 @@ setInterval(cleanupOldActivity, 60 * 60 * 1000);
  * app.addHook('onRequest', authMiddleware);
  */
 export async function authMiddleware(request: FastifyRequest, reply: FastifyReply) {
-    // If no JWT_SECRET is set, skip auth (backward compatibility for development)
+    // If no JWT_SECRET is set, fail closed in production
     if (!JWT_SECRET) {
+        if (process.env.NODE_ENV === 'production') {
+            console.error('FATAL: JWT_SECRET not set in production. Authentication disabled.');
+            return reply.status(500).send({ error: 'Server configuration error' });
+        }
         console.warn('Warning: JWT_SECRET not set, running without authentication');
         return;
     }

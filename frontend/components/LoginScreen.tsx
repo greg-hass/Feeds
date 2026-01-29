@@ -35,6 +35,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
     const [isChecking, setIsChecking] = useState(true);
     const [needsSetup, setNeedsSetup] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
+    const [sessionExpired, setSessionExpired] = useState(false);
 
     // Check auth status on mount
     useEffect(() => {
@@ -51,7 +52,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                     await api.getFeeds();
                     onLogin?.();
                     return;
-                } catch (e) {
+                } catch (e: any) {
+                    // Check if session expired due to inactivity
+                    if (e.code === 'SESSION_EXPIRED') {
+                        setSessionExpired(true);
+                    }
                     // Token invalid, remove it
                     await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
                 }
@@ -87,7 +92,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
             await AsyncStorage.setItem(AUTH_TOKEN_KEY, response.token);
             onLogin?.();
         } catch (e: any) {
-            setError(e.message || 'Login failed. Please try again.');
+            if (e.status === 429 && e.retryAfter) {
+                const minutes = Math.ceil(e.retryAfter / 60);
+                setError(`Too many login attempts. Please try again in ${minutes} minute${minutes > 1 ? 's' : ''}.`);
+            } else {
+                setError(e.message || 'Login failed. Please try again.');
+            }
         } finally {
             setIsLoading(false);
         }
@@ -147,6 +157,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                             ? 'Create a password to secure your Feeds'
                             : 'Enter your password to continue'}
                     </Text>
+
+                    {/* Session Expired Message */}
+                    {sessionExpired && (
+                        <View style={[s.errorContainer, s.infoContainer]}>
+                            <AlertCircle size={16} color={colors.primary.DEFAULT} />
+                            <Text style={[s.errorText, { color: colors.primary.DEFAULT }]}>
+                                Your session expired due to inactivity. Please login again.
+                            </Text>
+                        </View>
+                    )}
 
                     {/* Error Message */}
                     {error ? (
@@ -274,6 +294,9 @@ const styles = (colors: any, isMobile: boolean) =>
             fontSize: 14,
             color: colors.error,
             flex: 1,
+        },
+        infoContainer: {
+            backgroundColor: colors.primary.DEFAULT + '15',
         },
         inputWrapper: {
             flexDirection: 'row',

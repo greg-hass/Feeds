@@ -68,10 +68,6 @@ export default function AppLayout() {
 
     useEffect(() => {
         if (!isAuthenticated) return;
-        
-        fetchFeeds();
-        fetchFolders();
-        fetchArticles(true);
 
         const cleanupSync = enableSync((changes, isRefreshing) => {
             useFeedStore.getState().applySyncChanges(changes, isRefreshing);
