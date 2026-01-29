@@ -12,12 +12,18 @@
     "resizeMode": "contain",
     "backgroundColor": "#18181b"
   },
-  "assetBundlePatterns": [
-    "**/*"
-  ],
+  "assetBundlePatterns": ["**/*"],
   "ios": {
     "supportsTablet": true,
-    "bundleIdentifier": "com.feeds.reader"
+    "bundleIdentifier": "com.feeds.reader",
+    "infoPlist": {
+      "LSApplicationQueriesSchemes": [
+        "youtube",
+        "reddit",
+        "twitter",
+        "instagram"
+      ]
+    }
   },
   "android": {
     "adaptiveIcon": {
@@ -37,11 +43,7 @@
     "themeColor": "#18181b",
     "backgroundColor": "#18181b"
   },
-  "plugins": [
-    "expo-router",
-    "expo-secure-store",
-    "expo-web-browser"
-  ],
+  "plugins": ["expo-router", "expo-secure-store", "expo-web-browser"],
   "experiments": {
     "typedRoutes": true
   }

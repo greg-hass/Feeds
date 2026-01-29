@@ -18,67 +18,94 @@ export function cleanupWebBrowser(): void {
 }
 
 /**
- * Domains that have native iOS apps and support Universal Links.
- * For these, we use Linking.openURL to let iOS hand off directly
- * to the native app without showing Safari first.
+ * Extract YouTube video ID from a URL
  */
-const UNIVERSAL_LINK_DOMAINS = [
-    'youtube.com',
-    'www.youtube.com',
-    'm.youtube.com',
-    'youtu.be',
-    'reddit.com',
-    'www.reddit.com',
-    'old.reddit.com',
-    'twitter.com',
-    'x.com',
-    'instagram.com',
-    'www.instagram.com',
-];
+function extractYouTubeVideoId(url: string): string | null {
+    const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+        /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
+    ];
+    for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match) return match[1];
+    }
+    return null;
+}
 
 /**
- * Check if a URL is for a known Universal Link domain
- * that should open directly in its native app
+ * Extract Reddit path from a URL (subreddit, post, etc.)
  */
-function isUniversalLinkUrl(url: string): boolean {
+function extractRedditPath(url: string): string | null {
     try {
         const urlObj = new URL(url);
-        const hostname = urlObj.hostname.toLowerCase();
-        return UNIVERSAL_LINK_DOMAINS.some(domain => 
-            hostname === domain || hostname.endsWith('.' + domain)
-        );
+        if (urlObj.hostname.includes('reddit.com')) {
+            return urlObj.pathname; // e.g., /r/apple/comments/...
+        }
     } catch {
-        return false;
+        // Invalid URL
     }
+    return null;
+}
+
+/**
+ * Try to open a URL using the app's custom URL scheme.
+ * Returns true if successful, false if the app isn't installed.
+ */
+async function tryOpenWithCustomScheme(url: string): Promise<boolean> {
+    // YouTube: youtube://video_id or youtube://www.youtube.com/watch?v=id
+    const youtubeVideoId = extractYouTubeVideoId(url);
+    if (youtubeVideoId) {
+        const youtubeAppUrl = `youtube://${youtubeVideoId}`;
+        try {
+            const canOpen = await Linking.canOpenURL(youtubeAppUrl);
+            if (canOpen) {
+                await Linking.openURL(youtubeAppUrl);
+                return true;
+            }
+        } catch {
+            // App not installed or scheme not supported
+        }
+    }
+
+    // Reddit: reddit://path
+    const redditPath = extractRedditPath(url);
+    if (redditPath) {
+        const redditAppUrl = `reddit:/${redditPath}`;
+        try {
+            const canOpen = await Linking.canOpenURL(redditAppUrl);
+            if (canOpen) {
+                await Linking.openURL(redditAppUrl);
+                return true;
+            }
+        } catch {
+            // App not installed or scheme not supported
+        }
+    }
+
+    return false;
 }
 
 /**
  * Open an external URL using the appropriate method for the platform
  * 
- * For Universal Link domains (YouTube, Reddit, Twitter, etc.), uses
- * Linking.openURL to let iOS hand off directly to native apps.
- * For other URLs, uses expo-web-browser for an in-app experience.
+ * For YouTube and Reddit, tries to use custom URL schemes to open
+ * directly in native apps without Safari. Falls back to in-app browser.
  */
 export async function openExternalLink(url: string): Promise<void> {
     if (Platform.OS === 'web') {
-        // Web: use window.open
         window.open(url, '_blank', 'noopener,noreferrer');
         return;
     }
 
-    // For known Universal Link domains, use Linking.openURL
-    // This lets iOS hand off directly to native apps without showing Safari
-    if (isUniversalLinkUrl(url)) {
-        try {
-            await Linking.openURL(url);
+    // Try custom URL schemes first (opens app directly, no Safari)
+    if (Platform.OS === 'ios') {
+        const opened = await tryOpenWithCustomScheme(url);
+        if (opened) {
             return;
-        } catch (error) {
-            console.error('Linking.openURL failed, falling back to WebBrowser:', error);
-            // Fall through to WebBrowser
         }
     }
 
-    // For other URLs, use in-app browser
+    // Fall back to in-app browser for other URLs or if app not installed
     try {
         await WebBrowser.openBrowserAsync(url, {
             dismissButtonStyle: 'close',
@@ -88,7 +115,6 @@ export async function openExternalLink(url: string): Promise<void> {
         });
     } catch (error) {
         console.error('WebBrowser error:', error);
-        // Fallback: try Linking.openURL
         try {
             await Linking.openURL(url);
         } catch (e) {
@@ -96,3 +122,4 @@ export async function openExternalLink(url: string): Promise<void> {
         }
     }
 }
+
