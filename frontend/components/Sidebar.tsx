@@ -4,7 +4,7 @@ import { useFeedStore, useArticleStore } from '@/stores';
 import {
     Rss, Youtube, MessageSquare, Headphones,
     Folder, Search, Settings,
-    Plus, RefreshCw, Bookmark, BookOpen, Pause, BarChart3, Zap
+    Plus, RefreshCw, Bookmark, BookOpen, Pause, BarChart3, Zap, Activity
 } from 'lucide-react-native';
 import { useColors, borderRadius, spacing, shadows } from '@/theme';
 import { useIsDesktop } from '@/hooks/useBreakpoint';
@@ -156,6 +156,16 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 >
                     <Zap size={18} color={pathname.includes('/rules') ? colors.text.inverse : colors.warning} />
                     <Text style={[s.navItemText, pathname.includes('/rules') && s.navItemTextActive]}>Automation</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={[s.navItem, pathname === '/feed-health' && s.navItemActive]}
+                    onPress={() => { onNavigate?.(); router.push('/(app)/feed-health' as any); }}
+                    accessibilityLabel="Feed health dashboard"
+                    accessibilityRole="link"
+                >
+                    <Activity size={18} color={pathname === '/feed-health' ? colors.text.inverse : colors.text.secondary} />
+                    <Text style={[s.navItemText, pathname === '/feed-health' && s.navItemTextActive]}>Feed Health</Text>
                 </TouchableOpacity>
 
                 {/* Smart Folders */}
