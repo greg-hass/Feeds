@@ -185,11 +185,19 @@ export async function authRoutes(app: FastifyInstance) {
         const jwtSecret = process.env.JWT_SECRET;
         const envPassword = process.env.APP_PASSWORD;
         
+        console.log('[Auth Status] JWT_SECRET present:', !!jwtSecret);
+        console.log('[Auth Status] APP_PASSWORD present:', !!envPassword);
+        
         const user = queryOne<{ password_hash: string }>(
             'SELECT password_hash FROM users WHERE id = 1'
         );
         
+        console.log('[Auth Status] User found:', !!user);
+        console.log('[Auth Status] User password_hash:', user?.password_hash ? 'set' : 'not set');
+        
         const needsSetup = !user || user.password_hash === 'disabled' || !user.password_hash;
+        
+        console.log('[Auth Status] needsSetup:', needsSetup);
         
         return {
             authEnabled: !!jwtSecret,
