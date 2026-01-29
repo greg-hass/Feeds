@@ -47,9 +47,9 @@ export async function checkRssFeedActivity(feedUrl: string): Promise<ActivityChe
             let latestDate: Date | null = null;
             let itemCount = 0;
 
-            feedparser.on('readable', function() {
-                let item;
-                while ((item = this.read())) {
+            feedparser.on('readable', () => {
+                let item: any;
+                while ((item = feedparser.read())) {
                     itemCount++;
                     if (item.pubdate) {
                         const itemDate = new Date(item.pubdate);
