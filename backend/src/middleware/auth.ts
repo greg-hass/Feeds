@@ -77,6 +77,8 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
         '/health',
         '/api/v1/auth/login',
         '/api/v1/auth/setup',
+        '/api/v1/thumbnails',
+        '/api/v1/icons',
     ];
     
     if (publicPaths.some(path => request.url.startsWith(path))) {
