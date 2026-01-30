@@ -16,7 +16,7 @@ export interface CleanupResult {
 
 const DEFAULT_RETENTION: RetentionSettings = {
     enabled: true,
-    maxArticleAgeDays: 90, // Keep articles for 90 days
+    maxArticleAgeDays: 14, // Keep articles for 14 days
     maxArticlesPerFeed: 500, // Keep max 500 articles per feed
     keepStarred: true,
     keepUnread: true,

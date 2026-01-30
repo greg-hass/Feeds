@@ -567,6 +567,39 @@ class ApiClient {
             onError?.(error);
         }
     }
+
+    // Data Retention & Maintenance
+    async getRetentionSettings() {
+        return this.get<RetentionSettings>('/maintenance/retention');
+    }
+
+    async updateRetentionSettings(settings: Partial<RetentionSettings>) {
+        return this.put<RetentionSettings>('/maintenance/retention', settings);
+    }
+
+    async getCleanupPreview() {
+        return this.get<CleanupPreview>('/maintenance/cleanup/preview');
+    }
+
+    async runCleanup() {
+        return this.post<CleanupResult>('/maintenance/cleanup');
+    }
+
+    async getMaintenanceStats() {
+        return this.get<MaintenanceStats>('/maintenance/stats');
+    }
+
+    async checkMaintenance() {
+        return this.get<MaintenanceCheck>('/maintenance/check');
+    }
+
+    async optimizeDatabaseMaintenance() {
+        return this.post<OptimizeResult>('/maintenance/optimize');
+    }
+
+    async vacuumDatabaseMaintenance() {
+        return this.post<VacuumResult>('/maintenance/vacuum');
+    }
 }
 
 // Error class
@@ -805,6 +838,64 @@ export interface AuthStatus {
     authEnabled: boolean;
     needsSetup: boolean;
     hasEnvPassword: boolean;
+}
+
+export interface RetentionSettings {
+    enabled: boolean;
+    maxArticleAgeDays: number;
+    maxArticlesPerFeed: number;
+    keepStarred: boolean;
+    keepUnread: boolean;
+}
+
+export interface CleanupPreview {
+    articlesAffected: number;
+    oldestArticleDate: string | null;
+    estimatedSpaceSaved: number;
+}
+
+export interface CleanupResult {
+    articlesDeleted: number;
+    bytesReclaimed: number;
+    durationMs: number;
+}
+
+export interface MaintenanceStats {
+    totalSizeBytes: number;
+    tableSizes: Array<{
+        name: string;
+        rowCount: number;
+        sizeBytes: number;
+    }>;
+    indexSizes: Array<{
+        name: string;
+        tableName: string;
+        sizeBytes: number;
+    }>;
+    articleCount: number;
+    feedCount: number;
+    oldestArticleDate: string | null;
+    ftsSizeBytes: number;
+}
+
+export interface MaintenanceCheck {
+    needsVacuum: boolean;
+    needsOptimize: boolean;
+    fragmentationRatio: number;
+    recommendations: string[];
+}
+
+export interface OptimizeResult {
+    success: boolean;
+    message: string;
+    durationMs: number;
+}
+
+export interface VacuumResult {
+    success: boolean;
+    message: string;
+    durationMs: number;
+    bytesReclaimed: number;
 }
 
 export const api = new ApiClient();
