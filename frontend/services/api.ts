@@ -471,10 +471,16 @@ class ApiClient {
             } as any);
         }
 
+        const headers: Record<string, string> = {};
+        if (this.authToken) {
+            headers['Authorization'] = `Bearer ${this.authToken}`;
+        }
+
         try {
             // Note: Do NOT set Content-Type - browser will set it with proper multipart boundary
             const response = await fetch(`${API_URL}/opml-stream/import`, {
                 method: 'POST',
+                headers,
                 body: formData,
             });
 
@@ -500,9 +506,15 @@ class ApiClient {
     ): Promise<void> {
         const idsParam = feedIds?.length ? `?ids=${feedIds.join(',')}` : '';
 
+        const headers: Record<string, string> = {};
+        if (this.authToken) {
+            headers['Authorization'] = `Bearer ${this.authToken}`;
+        }
+
         try {
             const response = await fetch(`${API_URL}/feeds-stream/refresh-multiple${idsParam}`, {
                 method: 'GET',
+                headers,
                 signal,
             });
 
@@ -529,9 +541,15 @@ class ApiClient {
         onError?: (error: Error) => void,
         signal?: AbortSignal
     ): Promise<void> {
+        const headers: Record<string, string> = {};
+        if (this.authToken) {
+            headers['Authorization'] = `Bearer ${this.authToken}`;
+        }
+
         try {
             const response = await fetch(`${API_URL}/feeds-stream/refresh-events`, {
                 method: 'GET',
+                headers,
                 signal,
             });
 
