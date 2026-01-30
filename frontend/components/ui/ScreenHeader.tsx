@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ViewStyle, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ViewStyle, ActivityIndicator, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, X, Menu } from 'lucide-react-native';
 import { useColors, spacing, borderRadius } from '@/theme';
@@ -27,10 +27,11 @@ interface ScreenHeaderProps {
     refreshText?: string;
     showMenuButton?: boolean;
     onMenuPress?: () => void;
+    timeLeft?: string | null;
 }
 
-export const ScreenHeader = ({ 
-    title, 
+export const ScreenHeader = ({
+    title,
     showBackButton = true,
     backButtonVariant = 'back',
     onBackPress,
@@ -43,6 +44,7 @@ export const ScreenHeader = ({
     refreshText = 'Refreshing…',
     showMenuButton = false,
     onMenuPress,
+    timeLeft,
 }: ScreenHeaderProps) => {
     const router = useRouter();
     const colors = useColors();
@@ -114,8 +116,11 @@ export const ScreenHeader = ({
             </View>
 
             {/* Right section */}
-            {actions.length > 0 && (
+            {(actions.length > 0 || timeLeft) && (
                 <View style={s.rightContainer}>
+                    {timeLeft && !isRefreshing && (
+                        <Text style={s.timerText}>{timeLeft}</Text>
+                    )}
                     {actions.map((action, index) => (
                         <TouchableOpacity
                             key={index}
@@ -239,5 +244,12 @@ const styles = (colors: any) => StyleSheet.create({
         fontSize: 11,
         color: colors.text.tertiary,
         fontWeight: '500',
+    },
+    timerText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: colors.primary?.DEFAULT ?? colors.primary,
+        fontFamily: Platform.OS === 'web' ? 'monospace' : undefined,
+        marginRight: spacing.sm,
     },
 });

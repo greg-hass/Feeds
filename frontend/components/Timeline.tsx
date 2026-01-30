@@ -127,6 +127,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                 showMenuButton={isMobile}
                 onMenuPress={toggleMenu}
                 isRefreshing={isRefreshing}
+                timeLeft={timeLeft}
                 rightActions={[
                     {
                         icon: <RefreshCw size={20} color={colors.text.secondary} />,
