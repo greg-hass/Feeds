@@ -115,7 +115,7 @@ export default function AppLayout() {
         let hasSyncedOnce = false;
 
         const syncNow = async () => {
-            const syncResult = await fetchChanges();
+            const syncResult = await fetchChanges('feeds,folders,articles,read_state', { skipCursorUpdate: true });
             if (syncResult) {
                 useFeedStore.getState().applySyncChanges(syncResult.changes, true);
                 useArticleStore.getState().applySyncChanges(syncResult.changes);
@@ -196,6 +196,10 @@ export default function AppLayout() {
 
                 if (event.type === 'complete') {
                     useFeedStore.setState({ isBackgroundRefreshing: false, refreshProgress: null });
+                    // Fetch new articles after background refresh completes
+                    fetchFeeds();
+                    fetchFolders();
+                    fetchArticles(true);
                     return;
                 }
             },

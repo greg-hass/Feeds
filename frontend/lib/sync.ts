@@ -60,13 +60,16 @@ async function saveSyncCursor(cursor: string): Promise<void> {
 /**
  * Fetch changes from the server since the last sync
  */
-export async function fetchChanges(include: string = 'feeds,folders,articles,read_state'): Promise<SyncResult | null> {
+export async function fetchChanges(
+    include: string = 'feeds,folders,articles,read_state',
+    options: { skipCursorUpdate?: boolean } = {}
+): Promise<SyncResult | null> {
     try {
         const cursor = await getSyncCursor();
         const response = await api.sync(cursor || undefined);
 
-        // Save the new cursor for next sync
-        if (response.next_cursor) {
+        // Save the new cursor for next sync (unless skipped)
+        if (response.next_cursor && !options.skipCursorUpdate) {
             await saveSyncCursor(response.next_cursor);
         }
 
