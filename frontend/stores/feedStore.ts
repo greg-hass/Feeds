@@ -205,6 +205,7 @@ export const useFeedStore = create<FeedState>()(
                     }
                     set({
                         isLoading: false,
+                        isBackgroundRefreshing: false,
                         refreshProgress: null,
                         lastRefreshNewArticles: totalNewArticles > 0 ? totalNewArticles : null
                     });
@@ -216,7 +217,7 @@ export const useFeedStore = create<FeedState>()(
                     refreshAbortController.abort();
                     refreshAbortController = null;
                 }
-                set({ isLoading: false, refreshProgress: null });
+                set({ isLoading: false, isBackgroundRefreshing: false, refreshProgress: null });
             },
 
             updateFeed: async (id, updates) => {

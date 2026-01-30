@@ -221,13 +221,22 @@ export default function AppLayout() {
         let wasHidden = false;
         const STALE_MS = 30 * 1000;
 
-        const refreshNow = () => {
+        const refreshNow = async () => {
             const now = Date.now();
             if (now - lastRefreshAt < STALE_MS) return;
             lastRefreshAt = now;
-            fetchFeeds();
-            fetchFolders();
-            fetchArticles(true);
+            
+            // Reset any stuck refresh state
+            useFeedStore.setState({ 
+                isBackgroundRefreshing: false, 
+                refreshProgress: null 
+            });
+            
+            await Promise.all([
+                fetchFeeds(),
+                fetchFolders(),
+                fetchArticles(true)
+            ]);
             fetchSettings().catch(() => { });
         };
 
