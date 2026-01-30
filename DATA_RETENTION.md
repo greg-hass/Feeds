@@ -78,9 +78,9 @@ Runs VACUUM to defragment the database and reclaim disk space. **Warning**: This
 
 ## Default Settings
 - **Enabled**: Yes
-- **Max Article Age**: 90 days
+- **Max Article Age**: 14 days
 - **Max Articles Per Feed**: 500
-- **Keep Bookmarked**: Yes
+- **Keep Bookmarked**: Yes (bookmarks are kept indefinitely)
 - **Keep Unread**: Yes
 
 ## Recommended Usage
@@ -96,11 +96,11 @@ Runs VACUUM to defragment the database and reclaim disk space. **Warning**: This
    curl http://your-server/api/v1/maintenance/cleanup/preview
    ```
 
-3. **Adjust retention settings if needed** (e.g., keep only 30 days):
+3. **Adjust retention settings if needed** (e.g., keep only 14 days - the default):
    ```bash
    curl -X PUT http://your-server/api/v1/maintenance/retention \
      -H "Content-Type: application/json" \
-     -d '{"enabled":true,"maxArticleAgeDays":30,"maxArticlesPerFeed":200,"keepStarred":true,"keepUnread":true}'
+     -d '{"enabled":true,"maxArticleAgeDays":14,"maxArticlesPerFeed":200,"keepStarred":true,"keepUnread":true}'
    ```
 
 4. **Run cleanup**:
