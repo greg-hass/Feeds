@@ -19,6 +19,7 @@ import { rulesRoutes } from './routes/rules.js';
 import { highlightsRoutes } from './routes/highlights.js';
 import { healthRoutes } from './routes/health.js';
 import { authRoutes } from './routes/auth.js';
+import { maintenanceRoutes } from './routes/maintenance.js';
 import { authMiddleware } from './middleware/auth.js';
 import { startScheduler, stopScheduler } from './services/scheduler.js';
 import { ensureIconCacheDir } from './services/icon-cache.js';
@@ -95,6 +96,7 @@ export async function buildApp() {
     await app.register(highlightsRoutes, { prefix: '/api/v1/highlights' });
     await app.register(healthRoutes, { prefix: '/api/v1/health' });
     await app.register(authRoutes, { prefix: '/api/v1/auth' });
+    await app.register(maintenanceRoutes, { prefix: '/api/v1/maintenance' });
 
     return app;
 }
