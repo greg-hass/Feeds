@@ -8,7 +8,6 @@ import { useIsDesktop } from '@/hooks/useBreakpoint';
 import { TimelineSkeleton } from './Skeleton';
 import FilterPills from './FilterPills';
 import TimelineArticle from './TimelineArticle';
-import NewArticlesPill from './NewArticlesPill';
 import { TimelineEmptyState } from './TimelineEmptyState';
 import { DigestCard } from './DigestCard';
 import { PodcastSection } from './PodcastSection';
@@ -122,7 +121,6 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
 
     return (
         <View style={styles.container}>
-            <NewArticlesPill />
             <ScreenHeader
                 title={headerTitle}
                 showBackButton={false}
