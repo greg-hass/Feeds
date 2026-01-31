@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { View, FlatList, RefreshControl, ActivityIndicator, Platform, LayoutAnimation, UIManager, InteractionManager, Animated, TouchableOpacity } from 'react-native';
 import { Article } from '@/services/api';
 import { useColors, spacing } from '@/theme';
@@ -44,6 +44,16 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
         getBookmarkScale, getBookmarkRotation,
     } = useTimeline(onArticlePress);
 
+    const {
+        flatListRef, isScrollRestored, onViewableItemsChanged, handleScroll, saveScrollPosition
+    } = useTimelineScroll(articles, filter);
+
+    // Connect saveScrollPosition to handleArticlePress
+    const handleArticlePressWithSave = useCallback((item: Article) => {
+        saveScrollPosition();
+        handleArticlePress(item);
+    }, [handleArticlePress, saveScrollPosition]);
+
     const toggleMenu = () => {
         setShowMenu(!showMenu);
         Animated.timing(sidebarAnim, {
@@ -77,10 +87,6 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
         prefetchArticle,
     });
 
-    const {
-        flatListRef, isScrollRestored, onViewableItemsChanged, handleScroll
-    } = useTimelineScroll(articles, filter);
-
     const renderArticle = ({ item, index }: { item: Article; index: number }) => (
         <TimelineArticle
             item={item}
@@ -92,7 +98,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
             isPlaying={isPlaying}
             colors={colors}
             hotPulseAnim={hotPulseAnim}
-            onArticlePress={handleArticlePress}
+            onArticlePress={handleArticlePressWithSave}
             onVideoPress={handleVideoPress}
             onPlayPress={handlePlayPress}
             getBookmarkScale={getBookmarkScale}

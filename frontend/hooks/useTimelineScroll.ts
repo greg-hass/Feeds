@@ -1,9 +1,17 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { FlatList } from 'react-native';
 import { useArticleStore } from '@/stores';
 
+// Global ref to store scroll positions outside of React lifecycle
+// This avoids hook dependency issues and circular imports
+const scrollPositions = {
+    timeline: 0,
+    bookmarks: 0,
+    search: 0,
+};
+
 export const useTimelineScroll = (articles: any[], filter: any) => {
-    const { scrollPosition, setScrollPosition, prefetchArticle } = useArticleStore();
+    const { prefetchArticle } = useArticleStore();
     const [isScrollRestored, setIsScrollRestored] = useState(false);
     const flatListRef = useRef<FlatList>(null);
     const hasRestoredScroll = useRef(false);
@@ -30,9 +38,11 @@ export const useTimelineScroll = (articles: any[], filter: any) => {
             return;
         }
 
-        if (articles.length > 0 && scrollPosition > 0 && flatListRef.current) {
+        const savedPosition = scrollPositions.timeline;
+
+        if (articles.length > 0 && savedPosition > 0 && flatListRef.current) {
             // Store the position we want to scroll to
-            pendingScrollPosition.current = scrollPosition;
+            pendingScrollPosition.current = savedPosition;
             
             // Use a small delay to ensure FlatList has rendered items
             const timeoutId = setTimeout(() => {
@@ -48,11 +58,22 @@ export const useTimelineScroll = (articles: any[], filter: any) => {
             }, 100);
 
             return () => clearTimeout(timeoutId);
-        } else if (scrollPosition === 0 || articles.length === 0) {
+        } else if (savedPosition === 0 || articles.length === 0) {
             hasRestoredScroll.current = true;
             setIsScrollRestored(true);
         }
-    }, [articles.length, scrollPosition]);
+    }, [articles.length]);
+
+    // Save scroll position to global ref
+    const saveScrollPosition = useCallback(() => {
+        scrollPositions.timeline = pendingScrollPosition.current || scrollPositions.timeline;
+    }, []);
+
+    // Track scroll position in real-time
+    const handleScroll = useCallback((e: any) => {
+        const offset = e.nativeEvent.contentOffset.y;
+        scrollPositions.timeline = offset;
+    }, []);
 
     // Prefetch articles as user scrolls
     const articlesRef = useRef(articles);
@@ -60,7 +81,6 @@ export const useTimelineScroll = (articles: any[], filter: any) => {
         articlesRef.current = articles;
     }, [articles]);
 
-    // Prefetch articles as user scrolls
     const [onViewableItemsChanged] = useState(() => ({ viewableItems }: any) => {
         const currentArticles = articlesRef.current;
         if (viewableItems.length > 0) {
@@ -72,15 +92,11 @@ export const useTimelineScroll = (articles: any[], filter: any) => {
         }
     });
 
-    const handleScroll = (e: any) => {
-        const offset = e.nativeEvent.contentOffset.y;
-        setScrollPosition(offset);
-    };
-
     return {
         flatListRef,
         isScrollRestored,
         onViewableItemsChanged,
         handleScroll,
+        saveScrollPosition,
     };
 };
