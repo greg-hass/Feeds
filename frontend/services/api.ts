@@ -502,9 +502,16 @@ class ApiClient {
         }
 
         try {
+            // Build headers with auth token
+            const headers: Record<string, string> = {};
+            if (this.authToken) {
+                headers['Authorization'] = `Bearer ${this.authToken}`;
+            }
+
             // Note: Do NOT set Content-Type - browser will set it with proper multipart boundary
             const response = await fetch(`${API_URL}/opml-stream/import`, {
                 method: 'POST',
+                headers,
                 body: formData,
             });
 
