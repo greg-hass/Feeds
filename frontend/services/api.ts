@@ -538,8 +538,15 @@ class ApiClient {
         const idsParam = feedIds?.length ? `?ids=${feedIds.join(',')}` : '';
 
         try {
+            // Build headers with auth token
+            const headers: Record<string, string> = {};
+            if (this.authToken) {
+                headers['Authorization'] = `Bearer ${this.authToken}`;
+            }
+
             const response = await fetch(`${API_URL}/feeds-stream/refresh-multiple${idsParam}`, {
                 method: 'GET',
+                headers,
                 signal,
             });
 
