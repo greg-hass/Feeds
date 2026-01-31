@@ -20,6 +20,7 @@ import { api } from '@/services/api';
 import { LoginScreen } from '@/components/LoginScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFeedChanges } from '@/hooks/useFeedChanges';
+import { usePwaThemeColor } from '@/hooks/usePwaThemeColor';
 
 export default function AppLayout() {
     const [mounted, setMounted] = useState(false);
@@ -35,6 +36,9 @@ export default function AppLayout() {
 
     // Listen for real-time feed/folder changes from other devices
     useFeedChanges();
+
+    // Sync PWA theme color with accent color setting
+    usePwaThemeColor(settings?.accent_color);
 
     // Check authentication status on mount
     useEffect(() => {

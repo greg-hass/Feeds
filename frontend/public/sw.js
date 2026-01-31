@@ -8,6 +8,9 @@ const ASSETS_TO_CACHE = [
     '/assets/favicon.png',
 ];
 
+// Store the user's accent color (set via postMessage from the app)
+let userAccentColor = '#10b981'; // Default emerald
+
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
@@ -16,8 +19,47 @@ self.addEventListener('install', (event) => {
     );
 });
 
+// Listen for messages from the app
+self.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'SET_ACCENT_COLOR') {
+        userAccentColor = event.data.color;
+        console.log('[SW] Accent color updated:', userAccentColor);
+    }
+});
+
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
+
+    // Intercept manifest.json and serve dynamic version with accent color
+    if (url.pathname === '/manifest.json') {
+        event.respondWith(
+            fetch(event.request)
+                .then((response) => response.json())
+                .then((manifest) => {
+                    // Update theme_color with user's accent color
+                    const dynamicManifest = {
+                        ...manifest,
+                        theme_color: userAccentColor,
+                        background_color: userAccentColor,
+                    };
+                    
+                    return new Response(
+                        JSON.stringify(dynamicManifest),
+                        {
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Cache-Control': 'no-cache',
+                            },
+                        }
+                    );
+                })
+                .catch(() => {
+                    // Fallback to cached manifest
+                    return caches.match(event.request);
+                })
+        );
+        return;
+    }
 
     // For API requests, use network-first strategy
     if (url.pathname.startsWith('/api/v1/articles')) {
