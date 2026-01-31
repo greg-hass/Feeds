@@ -579,6 +579,35 @@ class ApiClient {
             onError?.(error);
         }
     }
+
+    /**
+     * Listen for feed/folder changes via SSE (real-time sync across devices)
+     */
+    async listenForFeedChanges(
+        onEvent: (event: { type: string; feed?: Feed; folder?: Folder; feedId?: number; folderId?: number; timestamp: string }) => void,
+        onError?: (error: Error) => void,
+        signal?: AbortSignal
+    ): Promise<void> {
+        try {
+            const response = await fetch(`${API_URL}/feed-changes`, {
+                method: 'GET',
+                signal,
+            });
+
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+                throw new Error(error.error || 'Feed changes stream failed');
+            }
+
+            await parseSSEStream(response, onEvent);
+        } catch (err) {
+            const error = err instanceof Error ? err : new Error('Unknown error');
+            if (error.name === 'AbortError') {
+                return;
+            }
+            onError?.(error);
+        }
+    }
 }
 
 // Error class

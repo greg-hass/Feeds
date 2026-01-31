@@ -5,6 +5,7 @@ import { parseFeed, normalizeArticle, detectFeedType, FeedType } from '../servic
 import { fetchYouTubeIcon } from '../services/youtube-parser.js';
 import { refreshFeed } from '../services/feed-refresh.js';
 import { cacheFeedIcon, clearAllIconCaches, clearFeedIconCache } from '../services/icon-cache.js';
+import { emitFeedChange } from '../services/feed-changes.js';
 import { Feed } from '../types/index.js';
 
 const ICON_ENDPOINT_PREFIX = '/api/v1/icons';
@@ -163,7 +164,7 @@ export class FeedsController {
             }
         }
 
-        return {
+        const result = {
             feed: {
                 ...toApiFeed(feed!),
                 unread_count: feedData.articles.length,
@@ -171,6 +172,15 @@ export class FeedsController {
             discovered,
             articles_added: feedData.articles.length,
         };
+
+        // Broadcast feed creation to all connected clients
+        emitFeedChange({
+            type: 'feed_created',
+            feed: result.feed,
+            timestamp: new Date().toISOString(),
+        });
+
+        return result;
     }
 
     static async update(request: FastifyRequest<{ Params: { id: string }, Body: any }>, reply: FastifyReply) {
@@ -195,7 +205,16 @@ export class FeedsController {
         }
 
         const feed = queryOne<Feed>('SELECT * FROM feeds WHERE id = ?', [feedId]);
-        return { feed: toApiFeed(feed!) };
+        const result = { feed: toApiFeed(feed!) };
+
+        // Broadcast feed update to all connected clients
+        emitFeedChange({
+            type: 'feed_updated',
+            feed: result.feed,
+            timestamp: new Date().toISOString(),
+        });
+
+        return result;
     }
 
     static async delete(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
@@ -215,7 +234,14 @@ export class FeedsController {
         if (feed?.icon_cached_path) {
             await clearFeedIconCache(feedId, feed.icon_cached_path);
         }
-        
+
+        // Broadcast feed deletion to all connected clients
+        emitFeedChange({
+            type: 'feed_deleted',
+            feedId,
+            timestamp: new Date().toISOString(),
+        });
+
         return { deleted: true };
     }
 

@@ -19,6 +19,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { api } from '@/services/api';
 import { LoginScreen } from '@/components/LoginScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFeedChanges } from '@/hooks/useFeedChanges';
 
 export default function AppLayout() {
     const [mounted, setMounted] = useState(false);
@@ -31,6 +32,9 @@ export default function AppLayout() {
     const { showPlayer } = useAudioStore();
     const { fetchSettings } = useSettingsStore();
     const lastIsRefreshingRef = useRef(false);
+
+    // Listen for real-time feed/folder changes from other devices
+    useFeedChanges();
 
     // Check authentication status on mount
     useEffect(() => {

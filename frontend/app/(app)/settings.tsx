@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useSettingsStore, useToastStore, useFeedStore } from '@/stores';
+import { useSettingsStore, useToastStore, useFeedStore, useArticleStore } from '@/stores';
 import { Settings, api } from '@/services/api';
 import { Sun, Moon, Monitor, Check, Trash2 } from 'lucide-react-native';
 import { useColors, spacing, borderRadius, shadows, ACCENT_COLORS, AccentColor } from '@/theme';
@@ -48,6 +48,11 @@ export default function SettingsScreen() {
             await api.clearIconCache();
             await fetchFeeds(); // Reload feeds to get updated icon URLs
             await refreshAllFeeds(); // Refresh all feeds to fetch new icons from sources
+            
+            // Refresh articles to get fresh data with new icons
+            const { fetchArticles } = useArticleStore.getState();
+            await fetchArticles(true);
+            
             show('Icon cache cleared and feeds refreshed', 'success');
         } catch (error) {
             show('Failed to clear icon cache', 'error');

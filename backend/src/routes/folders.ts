@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { queryOne, queryAll, run } from '../db/index.js';
+import { emitFeedChange } from '../services/feed-changes.js';
 import { Folder, SmartFolder } from '../types/index.js';
 
 const createFolderSchema = z.object({
@@ -134,6 +135,13 @@ export async function foldersRoutes(app: FastifyInstance) {
 
         const folder = queryOne<Folder>('SELECT * FROM folders WHERE id = ?', [result.lastInsertRowid]);
 
+        // Broadcast folder creation to all connected clients
+        emitFeedChange({
+            type: 'folder_created',
+            folder,
+            timestamp: new Date().toISOString(),
+        });
+
         return { folder };
     });
 
@@ -184,6 +192,14 @@ export async function foldersRoutes(app: FastifyInstance) {
         }
 
         const folder = queryOne<Folder>('SELECT * FROM folders WHERE id = ?', [folderId]);
+
+        // Broadcast folder update to all connected clients
+        emitFeedChange({
+            type: 'folder_updated',
+            folder,
+            timestamp: new Date().toISOString(),
+        });
+
         return { folder };
     });
 
@@ -203,6 +219,13 @@ export async function foldersRoutes(app: FastifyInstance) {
 
         // Uncategorize feeds
         run('UPDATE feeds SET folder_id = NULL WHERE folder_id = ?', [folderId]);
+
+        // Broadcast folder deletion to all connected clients
+        emitFeedChange({
+            type: 'folder_deleted',
+            folderId,
+            timestamp: new Date().toISOString(),
+        });
 
         return { deleted: true };
     });
