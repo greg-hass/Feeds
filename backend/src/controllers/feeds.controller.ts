@@ -164,7 +164,7 @@ export class FeedsController {
             }
         }
 
-        const result = {
+        const addResult = {
             feed: {
                 ...toApiFeed(feed!),
                 unread_count: feedData.articles.length,
@@ -176,11 +176,11 @@ export class FeedsController {
         // Broadcast feed creation to all connected clients
         emitFeedChange({
             type: 'feed_created',
-            feed: result.feed,
+            feed: addResult.feed,
             timestamp: new Date().toISOString(),
         });
 
-        return result;
+        return addResult;
     }
 
     static async update(request: FastifyRequest<{ Params: { id: string }, Body: any }>, reply: FastifyReply) {
@@ -204,17 +204,17 @@ export class FeedsController {
             run(`UPDATE feeds SET ${updates.join(', ')} WHERE id = ? AND user_id = ?`, params);
         }
 
-        const feed = queryOne<Feed>('SELECT * FROM feeds WHERE id = ?', [feedId]);
-        const result = { feed: toApiFeed(feed!) };
+        const updatedFeed = queryOne<Feed>('SELECT * FROM feeds WHERE id = ?', [feedId]);
+        const updateResult = { feed: toApiFeed(updatedFeed!) };
 
         // Broadcast feed update to all connected clients
         emitFeedChange({
             type: 'feed_updated',
-            feed: result.feed,
+            feed: updateResult.feed,
             timestamp: new Date().toISOString(),
         });
 
-        return result;
+        return updateResult;
     }
 
     static async delete(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
