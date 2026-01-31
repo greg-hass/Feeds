@@ -4,7 +4,7 @@ import { discoverFeedsFromUrl } from '../services/discovery.js';
 import { parseFeed, normalizeArticle, detectFeedType, FeedType } from '../services/feed-parser.js';
 import { fetchYouTubeIcon } from '../services/youtube-parser.js';
 import { refreshFeed } from '../services/feed-refresh.js';
-import { cacheFeedIcon, clearAllIconCaches } from '../services/icon-cache.js';
+import { cacheFeedIcon, clearAllIconCaches, clearFeedIconCache } from '../services/icon-cache.js';
 import { Feed } from '../types/index.js';
 
 const ICON_ENDPOINT_PREFIX = '/api/v1/icons';
@@ -65,8 +65,24 @@ export class FeedsController {
 
         if (existing) {
             if (existing.deleted_at) {
-                run('UPDATE feeds SET deleted_at = NULL, folder_id = ? WHERE id = ?', [body.folder_id || null, existing.id]);
+                // Clear cached icon to force re-fetch on restore (prevents stale/wrong icons)
+                run('UPDATE feeds SET deleted_at = NULL, folder_id = ?, icon_cached_path = NULL, icon_cached_content_type = NULL WHERE id = ?', [body.folder_id || null, existing.id]);
                 const restoredFeed = queryOne<Feed>('SELECT * FROM feeds WHERE id = ?', [existing.id]);
+                
+                // Re-fetch and cache the icon fresh
+                if (restoredFeed?.icon_url) {
+                    try {
+                        const cached = await cacheFeedIcon(restoredFeed.id, restoredFeed.icon_url);
+                        if (cached) {
+                            run(`UPDATE feeds SET icon_cached_path = ?, icon_cached_content_type = ? WHERE id = ?`, [cached.fileName, cached.mime, restoredFeed.id]);
+                            restoredFeed.icon_cached_path = cached.fileName;
+                            restoredFeed.icon_cached_content_type = cached.mime;
+                        }
+                    } catch (err) {
+                        console.warn(`[Feed Restore] Failed to cache icon for feed ${restoredFeed.id}:`, err);
+                    }
+                }
+                
                 return reply.status(200).send({ feed: toApiFeed(restoredFeed!), restored: true });
             }
             return reply.status(409).send({ error: 'Feed already exists', feed_id: existing.id });
@@ -185,8 +201,21 @@ export class FeedsController {
     static async delete(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
         const userId = 1;
         const feedId = parseInt(request.params.id, 10);
+        
+        // Get the icon cache path before deleting
+        const feed = queryOne<{ icon_cached_path: string | null }>(
+            'SELECT icon_cached_path FROM feeds WHERE id = ? AND user_id = ? AND deleted_at IS NULL',
+            [feedId, userId]
+        );
+        
         const result = run(`UPDATE feeds SET deleted_at = datetime('now'), updated_at = datetime('now') WHERE id = ? AND user_id = ? AND deleted_at IS NULL`, [feedId, userId]);
         if (result.changes === 0) return reply.status(404).send({ error: 'Feed not found' });
+        
+        // Clear the icon cache file to prevent icon reuse issues
+        if (feed?.icon_cached_path) {
+            await clearFeedIconCache(feedId, feed.icon_cached_path);
+        }
+        
         return { deleted: true };
     }
 

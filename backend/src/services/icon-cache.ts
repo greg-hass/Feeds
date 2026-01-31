@@ -2,6 +2,7 @@ import { cacheRemoteImage, ensureCacheDir as ensureBaseCacheDir, getCachedImageP
 import { run } from '../db/index.js';
 import { readdir, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
+import { existsSync } from 'node:fs';
 
 // Use browser-like headers for YouTube servers
 const ICON_HEADERS = {
@@ -27,6 +28,19 @@ export function getCachedIconPath(fileName: string) {
 
 export function resolveIconMime(fileName: string, override?: string | null) {
     return resolveImageMime(fileName, override);
+}
+
+export async function clearFeedIconCache(feedId: number, cachedPath: string | null) {
+    if (!cachedPath) return;
+    try {
+        const filePath = getCachedIconPath(cachedPath);
+        if (filePath && existsSync(filePath)) {
+            await unlink(filePath);
+            console.log(`[IconCache] Deleted icon for feed ${feedId}: ${cachedPath}`);
+        }
+    } catch (err) {
+        console.warn(`[IconCache] Failed to delete icon for feed ${feedId}:`, err);
+    }
 }
 
 export async function clearAllIconCaches() {
