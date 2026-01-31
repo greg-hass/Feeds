@@ -1,0 +1,39 @@
+name: feeds
+type: containerized-application
+maturity: production
+
+structure:
+  frontend: ./frontend
+  backend: ./backend
+  docs: ./docs
+  docker: ./docker
+
+build:
+  system: github-actions
+  trigger: push
+  artifact: docker-image
+  dockerfile: Dockerfile
+
+ci:
+  provider: github-actions
+  workflows_dir: .github/workflows
+
+deploy:
+  target: ubuntu-server
+  method: image-pull
+  orchestrator: dockge
+  compose_file: docker-compose.yml
+
+runtime:
+  environment: docker
+  config: env-vars
+  reverse_proxy: true
+  systemd_in_container: false
+
+source_control:
+  primary: github
+  secondary: forgejo
+
+constraints:
+  no_manual_builds_on_server: true
+  no_local_runtime_dependencies: true

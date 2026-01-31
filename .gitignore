@@ -52,3 +52,6 @@ task-*.md
 READER_VIEW_AND_IMAGES.md
 FIX_PLAN.md
 TESTFILE
+
+# OpenCode local working notes
+.opencode/local/
