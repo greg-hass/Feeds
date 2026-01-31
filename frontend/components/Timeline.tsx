@@ -179,7 +179,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                     filterType={filter.type}
                     onClearFilter={() => setFilter({ unread_only: false, type: undefined })}
                 />
-            ) : (isLoading && articles.length === 0) || !isScrollRestored ? (
+            ) : isLoading && articles.length === 0 ? (
                 <TimelineSkeleton />
             ) : filter.type !== 'podcast' ? (
                 <View style={{ flex: 1 }}>
