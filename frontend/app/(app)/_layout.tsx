@@ -31,7 +31,7 @@ export default function AppLayout() {
     const { fetchFeeds, fetchFolders, refreshProgress, cancelRefresh } = useFeedStore();
     const { fetchArticles } = useArticleStore();
     const { showPlayer } = useAudioStore();
-    const { fetchSettings } = useSettingsStore();
+    const { fetchSettings, settings } = useSettingsStore();
     const lastIsRefreshingRef = useRef(false);
 
     // Listen for real-time feed/folder changes from other devices
