@@ -5,15 +5,16 @@ import { useColors, spacing } from '@/theme';
 import { useTimeline } from '@/hooks/useTimeline';
 import { useTimelineScroll } from '@/hooks/useTimelineScroll';
 import { useIsDesktop } from '@/hooks/useBreakpoint';
+import { useArticlePrefetch } from '@/hooks/useArticlePrefetch';
 import { TimelineSkeleton } from './Skeleton';
 import FilterPills from './FilterPills';
 import TimelineArticle from './TimelineArticle';
+import NewArticlesPill from './NewArticlesPill';
 import { TimelineEmptyState } from './TimelineEmptyState';
 import { DigestCard } from './DigestCard';
 import { PodcastSection } from './PodcastSection';
 import { timelineStyles } from './Timeline.styles';
 import { ScrollView } from 'react-native';
-import { scheduleIdle, canPrefetch } from '@/utils/scheduler';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import Sidebar from '@/components/Sidebar';
 import { RefreshCw, CircleCheck, X } from 'lucide-react-native';
@@ -53,7 +54,6 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     };
 
     const prevArticleCount = useRef(articles.length);
-    const prefetchedRef = useRef<Set<number>>(new Set());
 
     useEffect(() => {
         if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -68,9 +68,14 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
         prevArticleCount.current = articles.length;
     }, [articles.length]);
 
-    useEffect(() => {
-        prefetchedRef.current.clear();
-    }, [filter.feed_id, filter.folder_id, filter.type, filter.unread_only]);
+    // Use the prefetch hook for article content
+    useArticlePrefetch({
+        articles,
+        isLoading,
+        isMobile,
+        unreadOnly: filter.unread_only || false,
+        prefetchArticle,
+    });
 
     const {
         flatListRef, isScrollRestored, onViewableItemsChanged, handleScroll
@@ -95,39 +100,15 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
         />
     );
 
-    useEffect(() => {
-        if (isLoading || articles.length === 0) return;
-
-        let cancelled = false;
-        const prefetchCount = isMobile ? 8 : 16;
-        const candidates = (filter.unread_only ? articles.filter((a) => !a.is_read) : articles)
-            .slice(0, prefetchCount);
-
-        scheduleIdle(() => {
-            canPrefetch().then((allowed) => {
-                if (!allowed || cancelled) return;
-                candidates.forEach((article) => {
-                    if (prefetchedRef.current.has(article.id)) return;
-                    prefetchedRef.current.add(article.id);
-                    prefetchArticle(article.id);
-                });
-            });
-        });
-
-        return () => {
-            cancelled = true;
-        };
-    }, [articles, filter.unread_only, isLoading, isMobile, prefetchArticle]);
-
     return (
         <View style={styles.container}>
+            <NewArticlesPill />
             <ScreenHeader
                 title={headerTitle}
                 showBackButton={false}
                 showMenuButton={isMobile}
                 onMenuPress={toggleMenu}
                 isRefreshing={isRefreshing}
-                timeLeft={timeLeft}
                 rightActions={[
                     {
                         icon: <RefreshCw size={20} color={colors.text.secondary} />,

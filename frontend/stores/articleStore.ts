@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api, Article, ArticleDetail } from '@/services/api';
 import { applySyncChanges, SyncChanges } from '@/lib/sync';
 import { handleError } from '@/services/errorHandler';
+import { sortArticlesByDateAndId } from '@/utils/sorting';
 import { ArticleState } from './types';
 
 
@@ -85,13 +86,7 @@ export const useArticleStore = create<ArticleState>()(
                         }
 
                         // Combine and re-sort just in case, though backend usually handles it
-                        finalArticles = [...trulyNew, ...state.articles];
-                        finalArticles.sort((a, b) => {
-                            const dateA = new Date(a.published_at || 0).getTime();
-                            const dateB = new Date(b.published_at || 0).getTime();
-                            if (dateA !== dateB) return dateB - dateA;
-                            return b.id - a.id;
-                        });
+                        finalArticles = sortArticlesByDateAndId([...trulyNew, ...state.articles]);
                     } else {
                         // Merge new articles into existing sorted list
                         // Backend returns sorted articles, so we can do efficient merge
@@ -106,13 +101,7 @@ export const useArticleStore = create<ArticleState>()(
                         // Only sort if we actually have duplicates (rare case)
                         if (newMap.size < articles.length || existingMap.size !== state.articles.length + articles.length) {
                             // Had duplicates, need to sort
-                            finalArticles = Array.from(existingMap.values());
-                            finalArticles.sort((a, b) => {
-                                const dateA = new Date(a.published_at || 0).getTime();
-                                const dateB = new Date(b.published_at || 0).getTime();
-                                if (dateA !== dateB) return dateB - dateA;
-                                return b.id - a.id;
-                            });
+                            finalArticles = sortArticlesByDateAndId(Array.from(existingMap.values()));
                         } else {
                             // No duplicates, just concatenate (backend already sorted)
                             finalArticles = [...state.articles, ...articles];
@@ -360,12 +349,7 @@ export const useArticleStore = create<ArticleState>()(
                         if (addedArticles.length > 0) {
                             newArticles = [...addedArticles, ...newArticles];
                             // Sort by date then ID
-                            newArticles.sort((a, b) => {
-                                const dateA = new Date(a.published_at || 0).getTime();
-                                const dateB = new Date(b.published_at || 0).getTime();
-                                if (dateA !== dateB) return dateB - dateA;
-                                return b.id - a.id;
-                            });
+                            newArticles = sortArticlesByDateAndId(newArticles);
                         }
                     }
 

@@ -13,13 +13,15 @@ interface Feed extends FeedToRefresh {
     title: string;
 }
 
-const CHECK_INTERVAL = 60 * 1000; // Check every minute
-const FEED_DELAY = 100; // 100ms delay between batches (increased from 25ms to reduce network spikes)
-const BATCH_SIZE = 20; // Reduced from 30 to stay within common API rate limits and reduce parallel connection overhead
-const CLEANUP_INTERVAL = 24 * 60 * 60 * 1000; // Run cleanup once per day
-const DIGEST_CHECK_INTERVAL = 5 * 60 * 1000; // Check digest schedule every 5 minutes
-const THUMBNAIL_RETENTION_DAYS = 7;
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
+// Scheduler timing configuration
+// These values balance responsiveness with resource usage and external API limits
+const CHECK_INTERVAL = 60 * 1000; // 1 minute - frequent enough for responsive UI updates without excessive DB polling
+const FEED_DELAY = 100; // 100ms between batches - reduces network spikes and prevents overwhelming external servers
+const BATCH_SIZE = 20; // Max 20 concurrent feeds - stays within common API rate limits (many APIs allow 20-30 req/s)
+const CLEANUP_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours - daily cleanup is sufficient for maintenance tasks
+const DIGEST_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes - checks digest schedule without missing hourly boundaries
+const THUMBNAIL_RETENTION_DAYS = 7; // Keep thumbnails for 1 week - balances storage vs re-fetch needs
+const MS_PER_DAY = 24 * 60 * 60 * 1000; // Milliseconds per day - utility constant for date calculations
 
 // Circuit breaker configuration
 const FAILURE_THRESHOLD = 3;

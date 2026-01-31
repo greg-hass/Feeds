@@ -199,9 +199,6 @@ export async function articlesRoutes(app: FastifyInstance) {
             })).toString('base64');
         }
 
-        // Note: Removed expensive COUNT(*) query for total_unread
-        // Frontend doesn't actually use this value, saving ~50% query time per request
-
         const normalizedArticles = articles.map(normalizeArticleResponse);
 
         return {

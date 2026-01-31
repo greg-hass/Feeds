@@ -218,76 +218,107 @@ export function toggleRule(ruleId: number, userId: number, enabled: boolean): vo
 // ============================================================================
 
 /**
- * Evaluate a single condition against an article
+ * Normalizes a string value based on case sensitivity setting
  */
-function evaluateCondition(condition: RuleCondition, article: Article): boolean {
-    let fieldValue: any;
+function normalizeForComparison(value: string | number, caseSensitive: boolean): string | number {
+    if (caseSensitive || typeof value !== 'string') {
+        return value;
+    }
+    return value.toLowerCase();
+}
 
-    // Extract field value from article
+/**
+ * Normalizes an array of values based on case sensitivity setting
+ */
+function normalizeArrayForComparison(values: (string | number)[], caseSensitive: boolean): (string | number)[] {
+    if (caseSensitive) {
+        return values;
+    }
+    return values.map(v => typeof v === 'string' ? v.toLowerCase() : v);
+}
+
+/**
+ * Extracts the field value from an article based on the condition field
+ */
+function extractFieldValue(condition: RuleCondition, article: Article): unknown {
     switch (condition.field) {
         case 'title':
-            fieldValue = article.title;
-            break;
+            return article.title;
         case 'content':
-            fieldValue = article.content || article.summary || '';
-            break;
+            return article.content || article.summary || '';
         case 'feed_id':
-            fieldValue = article.feed_id;
-            break;
+            return article.feed_id;
         case 'author':
-            fieldValue = article.author || '';
-            break;
+            return article.author || '';
         case 'url':
-            fieldValue = article.url || '';
-            break;
+            return article.url || '';
         case 'type':
-            fieldValue = article.type || 'rss';
-            break;
+            return article.type || 'rss';
         case 'tags':
             // Query tags for this article
             const tags = query<{ tag: string }>(
                 'SELECT tag FROM article_tags WHERE article_id = ?',
                 [article.id]
             );
-            fieldValue = tags.map((t: { tag: string }) => t.tag);
-            break;
+            return tags.map((t: { tag: string }) => t.tag);
         default:
-            return false;
+            return undefined;
+    }
+}
+
+/**
+ * Evaluates a string containment condition
+ */
+function evaluateContains(fieldValue: string, conditionValue: string, caseSensitive: boolean): boolean {
+    const normalizedField = normalizeForComparison(fieldValue, caseSensitive) as string;
+    const normalizedCondition = normalizeForComparison(conditionValue, caseSensitive) as string;
+    return normalizedField.includes(normalizedCondition);
+}
+
+/**
+ * Evaluates an equality condition
+ */
+function evaluateEquals(fieldValue: unknown, conditionValue: unknown, caseSensitive: boolean): boolean {
+    const normalizedField = normalizeForComparison(fieldValue as string | number, caseSensitive);
+    const normalizedCondition = normalizeForComparison(conditionValue as string | number, caseSensitive);
+    return normalizedField === normalizedCondition;
+}
+
+/**
+ * Evaluates an array membership condition
+ */
+function evaluateIn(fieldValue: unknown, conditionValues: (string | number)[], caseSensitive: boolean): boolean {
+    const normalizedField = normalizeForComparison(fieldValue as string | number, caseSensitive);
+    const normalizedValues = normalizeArrayForComparison(conditionValues, caseSensitive);
+    return normalizedValues.includes(normalizedField);
+}
+
+/**
+ * Evaluate a single condition against an article
+ */
+function evaluateCondition(condition: RuleCondition, article: Article): boolean {
+    const fieldValue = extractFieldValue(condition, article);
+    
+    if (fieldValue === undefined) {
+        return false;
     }
 
-    // Apply operator
     const caseSensitive = condition.case_sensitive !== false;
 
     switch (condition.operator) {
         case 'contains':
             if (typeof fieldValue !== 'string' || typeof condition.value !== 'string') return false;
-            const searchValue = caseSensitive ? condition.value : condition.value.toLowerCase();
-            const searchField = caseSensitive ? fieldValue : fieldValue.toLowerCase();
-            return searchField.includes(searchValue);
+            return evaluateContains(fieldValue, condition.value, caseSensitive);
 
         case 'not_contains':
             if (typeof fieldValue !== 'string' || typeof condition.value !== 'string') return false;
-            const notSearchValue = caseSensitive ? condition.value : condition.value.toLowerCase();
-            const notSearchField = caseSensitive ? fieldValue : fieldValue.toLowerCase();
-            return !notSearchField.includes(notSearchValue);
+            return !evaluateContains(fieldValue, condition.value, caseSensitive);
 
         case 'equals':
-            if (caseSensitive) {
-                return fieldValue === condition.value;
-            } else {
-                const v1 = typeof fieldValue === 'string' ? fieldValue.toLowerCase() : fieldValue;
-                const v2 = typeof condition.value === 'string' ? condition.value.toLowerCase() : condition.value;
-                return v1 === v2;
-            }
+            return evaluateEquals(fieldValue, condition.value, caseSensitive);
 
         case 'not_equals':
-            if (caseSensitive) {
-                return fieldValue !== condition.value;
-            } else {
-                const v1 = typeof fieldValue === 'string' ? fieldValue.toLowerCase() : fieldValue;
-                const v2 = typeof condition.value === 'string' ? condition.value.toLowerCase() : condition.value;
-                return v1 !== v2;
-            }
+            return !evaluateEquals(fieldValue, condition.value, caseSensitive);
 
         case 'matches_regex':
             if (typeof fieldValue !== 'string' || typeof condition.value !== 'string') return false;
@@ -300,23 +331,11 @@ function evaluateCondition(condition: RuleCondition, article: Article): boolean 
 
         case 'in':
             if (!Array.isArray(condition.value)) return false;
-            if (caseSensitive) {
-                return (condition.value as (string | number)[]).includes(fieldValue as string | number);
-            } else {
-                const lowerValues = (condition.value as (string | number)[]).map((v: string | number) => typeof v === 'string' ? v.toLowerCase() : v);
-                const lowerField = typeof fieldValue === 'string' ? fieldValue.toLowerCase() : fieldValue;
-                return lowerValues.includes(lowerField);
-            }
+            return evaluateIn(fieldValue, condition.value as (string | number)[], caseSensitive);
 
         case 'not_in':
             if (!Array.isArray(condition.value)) return false;
-            if (caseSensitive) {
-                return !(condition.value as (string | number)[]).includes(fieldValue as string | number);
-            } else {
-                const lowerValues = (condition.value as (string | number)[]).map((v: string | number) => typeof v === 'string' ? v.toLowerCase() : v);
-                const lowerField = typeof fieldValue === 'string' ? fieldValue.toLowerCase() : fieldValue;
-                return !lowerValues.includes(lowerField);
-            }
+            return !evaluateIn(fieldValue, condition.value as (string | number)[], caseSensitive);
 
         default:
             return false;

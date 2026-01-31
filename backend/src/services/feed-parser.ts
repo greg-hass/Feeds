@@ -266,64 +266,110 @@ function extractChannelIdFromUrl(url: string, youtubeChannelId: string | null): 
     return channelId;
 }
 
+/**
+ * Extracts YouTube video ID from GUID or URL
+ */
+function extractYouTubeVideoId(raw: RawArticle): string | null {
+    const guidMatch = raw.guid?.match(STRINGS.YOUTUBE_VIDEO_ID_PATTERN);
+    if (guidMatch) {
+        return guidMatch[1];
+    }
+    
+    // Fallback: Try to find video ID in the link
+    if (raw.link) {
+        const urlMatch = raw.link.match(/(?:v=|youtu\.be\/|\/embed\/)([a-zA-Z0-9_-]{11})/);
+        if (urlMatch) {
+            return urlMatch[1];
+        }
+    }
+    
+    return null;
+}
+
+/**
+ * Normalizes a YouTube article with proper video URLs and thumbnails
+ */
+function normalizeYouTubeArticle(raw: RawArticle, baseFields: NormalizedArticle): NormalizedArticle {
+    const videoId = extractYouTubeVideoId(raw);
+    
+    if (!videoId) {
+        return baseFields;
+    }
+    
+    // ALWAYS use the constructed watch URL for YouTube videos
+    // Don't trust raw.link which might be a feed URL or malformed
+    const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    const thumbnailUrl = baseFields.thumbnail_url || `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+    
+    return {
+        ...baseFields,
+        url: videoUrl,
+        thumbnail_url: thumbnailUrl,
+    };
+}
+
+/**
+ * Normalizes a Reddit article with cleaned content and author formatting
+ */
+function normalizeRedditArticle(raw: RawArticle, baseFields: NormalizedArticle): NormalizedArticle {
+    let content = raw.description || raw.summary || null;
+    let thumbnail = baseFields.thumbnail_url;
+    
+    if (content) {
+        content = cleanRedditContent(content);
+    }
+    
+    const summary = content ? truncate(stripHtml(content), CONTENT.PREVIEW_SUMMARY_LENGTH) : null;
+    const author = normalizeRedditAuthor(raw.author);
+    
+    if (!thumbnail && content) {
+        thumbnail = extractRedditThumbnail(content);
+    } else if (thumbnail) {
+        thumbnail = upgradeRedditImageUrl(decodeHtmlEntities(thumbnail));
+    }
+    
+    return {
+        ...baseFields,
+        content,
+        summary: decodeHtmlEntities(summary),
+        author,
+        thumbnail_url: thumbnail,
+    };
+}
+
+/**
+ * Article normalizers by feed type
+ */
+const articleNormalizers: Record<
+    FeedType, 
+    (raw: RawArticle, base: NormalizedArticle) => NormalizedArticle
+> = {
+    rss: (_raw, base) => base,
+    podcast: (_raw, base) => base,
+    youtube: normalizeYouTubeArticle,
+    reddit: normalizeRedditArticle,
+};
+
 export function normalizeArticle(raw: RawArticle, feedType: FeedType): NormalizedArticle {
     const enclosure = raw.enclosures?.[0];
-    let thumbnail = extractHeroImage(raw.description || raw.summary || '', raw);
-    let author = raw.author;
-    let content = raw.description || raw.summary || null;
-    let url = raw.link || null;
-    let summary = raw.summary;
-
-    if (feedType === 'youtube') {
-        const guidMatch = raw.guid?.match(STRINGS.YOUTUBE_VIDEO_ID_PATTERN);
-        let videoId = guidMatch ? guidMatch[1] : null;
-
-        // Fallback: Try to find video ID in the link if not in GUID
-        if (!videoId && raw.link) {
-            const urlMatch = raw.link.match(/(?:v=|youtu\.be\/|\/embed\/)([a-zA-Z0-9_-]{11})/);
-            if (urlMatch) {
-                videoId = urlMatch[1];
-            }
-        }
-
-        // ALWAYS use the constructed watch URL for YouTube videos
-        // Don't trust raw.link which might be a feed URL or malformed
-        if (videoId) {
-            url = `https://www.youtube.com/watch?v=${videoId}`;
-        }
-        if (!thumbnail && videoId) {
-            thumbnail = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
-        }
-    }
-
-    if (feedType === 'reddit') {
-        if (content) {
-            content = cleanRedditContent(content);
-        }
-
-        summary = content ? truncate(stripHtml(content), CONTENT.PREVIEW_SUMMARY_LENGTH) : null;
-
-        author = normalizeRedditAuthor(author);
-
-        if (!thumbnail && content) {
-            thumbnail = extractRedditThumbnail(content);
-        } else if (thumbnail) {
-            thumbnail = upgradeRedditImageUrl(decodeHtmlEntities(thumbnail));
-        }
-    }
-
-    return {
+    
+    // Build base normalized article with common fields
+    const baseFields: NormalizedArticle = {
         guid: raw.guid,
         title: decodeHtmlEntities(raw.title),
-        url: url,
-        author: author,
-        summary: decodeHtmlEntities(summary),
-        content: content,
+        url: raw.link || null,
+        author: raw.author,
+        summary: decodeHtmlEntities(raw.summary),
+        content: raw.description || raw.summary || null,
         enclosure_url: enclosure?.url || null,
         enclosure_type: enclosure?.type || null,
-        thumbnail_url: thumbnail,
+        thumbnail_url: extractHeroImage(raw.description || raw.summary || '', raw),
         published_at: raw.pubdate ? raw.pubdate.toISOString() : null,
     };
+    
+    // Apply feed-type specific normalization
+    const normalizer = articleNormalizers[feedType];
+    return normalizer(raw, baseFields);
 }
 
 

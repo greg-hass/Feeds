@@ -5,6 +5,7 @@ import { fetchYouTubeIcon } from './youtube-parser.js';
 import { cacheFeedIcon } from './icon-cache.js';
 import { cacheArticleThumbnail } from './thumbnail-cache.js';
 import { getUserSettings } from './settings.js';
+import { logBackgroundError } from '../utils/error-handler.js';
 // Note: fetchAndExtractReadability is no longer used during refresh
 // Content is now fetched lazily when articles are opened (see routes/articles.ts)
 
@@ -315,7 +316,7 @@ async function cacheThumbnailsInBackground(
                     );
                 }
             } catch (err) {
-                // Silent fail for background caching, it's not critical
+                logBackgroundError('Thumbnail Cache', err, { articleId: item.id, url: item.url });
             }
         });
     });
