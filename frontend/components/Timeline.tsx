@@ -145,8 +145,18 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
 
             <DigestCard />
 
+            {/* Empty State - Show when no feeds exist regardless of filter */}
+            {!isLoading && feeds.length === 0 && (
+                <TimelineEmptyState
+                    hasFeeds={false}
+                    isFiltered={!!filter.type}
+                    filterType={filter.type}
+                    onClearFilter={() => setFilter({ unread_only: false, type: undefined })}
+                />
+            )}
+
             {/* Premium Podcast Section - shown when filtering by podcasts */}
-            {filter.type === 'podcast' && !isLoading && articles.length > 0 && (
+            {filter.type === 'podcast' && !isLoading && feeds.length > 0 && articles.length > 0 && (
                 <ScrollView
                     style={{ flex: 1 }}
                     contentContainerStyle={{ paddingBottom: 100 }}
@@ -156,9 +166,19 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                 </ScrollView>
             )}
 
+            {/* Empty state for podcasts when no articles */}
+            {filter.type === 'podcast' && !isLoading && feeds.length > 0 && articles.length === 0 && (
+                <TimelineEmptyState
+                    hasFeeds={true}
+                    isFiltered={true}
+                    filterType={filter.type}
+                    onClearFilter={() => setFilter({ unread_only: false, type: undefined })}
+                />
+            )}
+
             {isLoading && articles.length === 0 ? (
                 <TimelineSkeleton />
-            ) : filter.type !== 'podcast' ? (
+            ) : filter.type !== 'podcast' && feeds.length > 0 ? (
                 <View style={{ flex: 1, opacity: isScrollRestored ? 1 : 0 }}>
                     <FlatList
                         ref={flatListRef}

@@ -8,6 +8,7 @@ import { useColors, spacing, borderRadius, shadows, ACCENT_COLORS, AccentColor }
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { LoadingState } from '@/components/ui/LoadingState';
+import { Dropdown } from '@/components/Dropdown';
 
 export default function SettingsScreen() {
     const router = useRouter();
@@ -238,157 +239,101 @@ export default function SettingsScreen() {
                     <Text style={s.sectionHint}>Limit articles fetched per feed type. Bookmarks are not affected.</Text>
                     <View style={s.card}>
                         {/* RSS Feeds */}
-                        <View style={s.dropdownRow}>
+                        <View style={s.row}>
                             <View style={{ flex: 1 }}>
                                 <Text style={s.label}>RSS Feeds</Text>
                                 <Text style={s.hint}>Articles newer than</Text>
                             </View>
-                            <View style={s.dropdownContainer}>
-                                <Text style={s.dropdownValue}>{settings.feed_fetch_limits?.rss_days || 14} days</Text>
-                                <View style={s.dropdownOptions}>
-                                    {[7, 14, 30, 60, 90].map((days: number) => (
-                                        <TouchableOpacity
-                                            key={days}
-                                            onPress={() => handleToggle('feed_fetch_limits', { ...settings.feed_fetch_limits, rss_days: days })}
-                                            style={[
-                                                s.dropdownOption,
-                                                (settings.feed_fetch_limits?.rss_days || 14) === days && { backgroundColor: colors.primary.DEFAULT }
-                                            ]}
-                                        >
-                                            <Text style={[
-                                                s.dropdownOptionText,
-                                                (settings.feed_fetch_limits?.rss_days || 14) === days && { color: colors.text.inverse, fontWeight: '600' }
-                                            ]}>
-                                                {days} days
-                                            </Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </View>
-                            </View>
+                            <Dropdown
+                                value={String(settings.feed_fetch_limits?.rss_days || 14)}
+                                options={[
+                                    { label: '7 days', value: 7 },
+                                    { label: '14 days', value: 14 },
+                                    { label: '30 days', value: 30 },
+                                    { label: '60 days', value: 60 },
+                                    { label: '90 days', value: 90 },
+                                ]}
+                                onSelect={(value) => handleToggle('feed_fetch_limits', { ...settings.feed_fetch_limits, rss_days: value })}
+                            />
                         </View>
 
                         <View style={s.divider} />
 
                         {/* YouTube Feeds */}
-                        <View style={s.dropdownRow}>
+                        <View style={s.row}>
                             <View style={{ flex: 1 }}>
                                 <Text style={s.label}>YouTube</Text>
-                                <Text style={s.hint}>Last {settings.feed_fetch_limits?.youtube_count || 10} videos × {settings.feed_fetch_limits?.youtube_days || 30} days</Text>
+                                <Text style={s.hint}>Fetch last N videos within N days</Text>
                             </View>
                         </View>
-                        <View style={[s.dropdownRow, { marginTop: 12 }]}>
-                            <Text style={s.sublabel}>Count</Text>
-                            <View style={s.dropdownContainer}>
-                                <Text style={s.dropdownValue}>{settings.feed_fetch_limits?.youtube_count || 10}</Text>
-                                <View style={s.dropdownOptions}>
-                                    {[5, 10, 15, 20, 30].map((count: number) => (
-                                        <TouchableOpacity
-                                            key={count}
-                                            onPress={() => handleToggle('feed_fetch_limits', { ...settings.feed_fetch_limits, youtube_count: count })}
-                                            style={[
-                                                s.dropdownOption,
-                                                (settings.feed_fetch_limits?.youtube_count || 10) === count && { backgroundColor: colors.primary.DEFAULT }
-                                            ]}
-                                        >
-                                            <Text style={[
-                                                s.dropdownOptionText,
-                                                (settings.feed_fetch_limits?.youtube_count || 10) === count && { color: colors.text.inverse, fontWeight: '600' }
-                                            ]}>
-                                                {count}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </View>
-                            </View>
+                        <View style={[s.row, { marginTop: 12 }]}>
+                            <Text style={s.sublabel}>Videos</Text>
+                            <Dropdown
+                                value={String(settings.feed_fetch_limits?.youtube_count || 10)}
+                                options={[
+                                    { label: '5 videos', value: 5 },
+                                    { label: '10 videos', value: 10 },
+                                    { label: '15 videos', value: 15 },
+                                    { label: '20 videos', value: 20 },
+                                    { label: '30 videos', value: 30 },
+                                ]}
+                                onSelect={(value) => handleToggle('feed_fetch_limits', { ...settings.feed_fetch_limits, youtube_count: value })}
+                            />
                         </View>
-                        <View style={[s.dropdownRow, { marginTop: 12 }]}>
-                            <Text style={s.sublabel}>Days</Text>
-                            <View style={s.dropdownContainer}>
-                                <Text style={s.dropdownValue}>{settings.feed_fetch_limits?.youtube_days || 30} days</Text>
-                                <View style={s.dropdownOptions}>
-                                    {[7, 14, 30, 60, 90].map((days: number) => (
-                                        <TouchableOpacity
-                                            key={days}
-                                            onPress={() => handleToggle('feed_fetch_limits', { ...settings.feed_fetch_limits, youtube_days: days })}
-                                            style={[
-                                                s.dropdownOption,
-                                                (settings.feed_fetch_limits?.youtube_days || 30) === days && { backgroundColor: colors.primary.DEFAULT }
-                                            ]}
-                                        >
-                                            <Text style={[
-                                                s.dropdownOptionText,
-                                                (settings.feed_fetch_limits?.youtube_days || 30) === days && { color: colors.text.inverse, fontWeight: '600' }
-                                            ]}>
-                                                {days} days
-                                            </Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </View>
-                            </View>
+                        <View style={[s.row, { marginTop: 12 }]}>
+                            <Text style={s.sublabel}>Timeframe</Text>
+                            <Dropdown
+                                value={String(settings.feed_fetch_limits?.youtube_days || 30)}
+                                options={[
+                                    { label: '7 days', value: 7 },
+                                    { label: '14 days', value: 14 },
+                                    { label: '30 days', value: 30 },
+                                    { label: '60 days', value: 60 },
+                                    { label: '90 days', value: 90 },
+                                ]}
+                                onSelect={(value) => handleToggle('feed_fetch_limits', { ...settings.feed_fetch_limits, youtube_days: value })}
+                            />
                         </View>
 
                         <View style={s.divider} />
 
                         {/* Reddit Feeds */}
-                        <View style={s.dropdownRow}>
+                        <View style={s.row}>
                             <View style={{ flex: 1 }}>
                                 <Text style={s.label}>Reddit</Text>
                                 <Text style={s.hint}>Posts newer than</Text>
                             </View>
-                            <View style={s.dropdownContainer}>
-                                <Text style={s.dropdownValue}>{settings.feed_fetch_limits?.reddit_days || 7} days</Text>
-                                <View style={s.dropdownOptions}>
-                                    {[3, 7, 14, 30].map((days: number) => (
-                                        <TouchableOpacity
-                                            key={days}
-                                            onPress={() => handleToggle('feed_fetch_limits', { ...settings.feed_fetch_limits, reddit_days: days })}
-                                            style={[
-                                                s.dropdownOption,
-                                                (settings.feed_fetch_limits?.reddit_days || 7) === days && { backgroundColor: colors.primary.DEFAULT }
-                                            ]}
-                                        >
-                                            <Text style={[
-                                                s.dropdownOptionText,
-                                                (settings.feed_fetch_limits?.reddit_days || 7) === days && { color: colors.text.inverse, fontWeight: '600' }
-                                            ]}>
-                                                {days} days
-                                            </Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </View>
-                            </View>
+                            <Dropdown
+                                value={String(settings.feed_fetch_limits?.reddit_days || 7)}
+                                options={[
+                                    { label: '3 days', value: 3 },
+                                    { label: '7 days', value: 7 },
+                                    { label: '14 days', value: 14 },
+                                    { label: '30 days', value: 30 },
+                                ]}
+                                onSelect={(value) => handleToggle('feed_fetch_limits', { ...settings.feed_fetch_limits, reddit_days: value })}
+                            />
                         </View>
 
                         <View style={s.divider} />
 
                         {/* Podcast Feeds */}
-                        <View style={s.dropdownRow}>
+                        <View style={s.row}>
                             <View style={{ flex: 1 }}>
                                 <Text style={s.label}>Podcasts</Text>
-                                <Text style={s.hint}>Keep last</Text>
+                                <Text style={s.hint}>Keep last N episodes</Text>
                             </View>
-                            <View style={s.dropdownContainer}>
-                                <Text style={s.dropdownValue}>{settings.feed_fetch_limits?.podcast_count || 5} episodes</Text>
-                                <View style={s.dropdownOptions}>
-                                    {[3, 5, 10, 15, 20].map((count: number) => (
-                                        <TouchableOpacity
-                                            key={count}
-                                            onPress={() => handleToggle('feed_fetch_limits', { ...settings.feed_fetch_limits, podcast_count: count })}
-                                            style={[
-                                                s.dropdownOption,
-                                                (settings.feed_fetch_limits?.podcast_count || 5) === count && { backgroundColor: colors.primary.DEFAULT }
-                                            ]}
-                                        >
-                                            <Text style={[
-                                                s.dropdownOptionText,
-                                                (settings.feed_fetch_limits?.podcast_count || 5) === count && { color: colors.text.inverse, fontWeight: '600' }
-                                            ]}>
-                                                {count} episodes
-                                            </Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </View>
-                            </View>
+                            <Dropdown
+                                value={String(settings.feed_fetch_limits?.podcast_count || 5)}
+                                options={[
+                                    { label: '3 episodes', value: 3 },
+                                    { label: '5 episodes', value: 5 },
+                                    { label: '10 episodes', value: 10 },
+                                    { label: '15 episodes', value: 15 },
+                                    { label: '20 episodes', value: 20 },
+                                ]}
+                                onSelect={(value) => handleToggle('feed_fetch_limits', { ...settings.feed_fetch_limits, podcast_count: value })}
+                            />
                         </View>
                     </View>
                 </View>
@@ -397,39 +342,23 @@ export default function SettingsScreen() {
                 <View style={s.section}>
                     <SectionHeader title="Refresh & Storage" />
                     <View style={s.card}>
-                        <View style={s.dropdownRow}>
+                        <View style={s.row}>
                             <View style={{ flex: 1 }}>
                                 <Text style={s.label}>Refresh Interval</Text>
                                 <Text style={s.hint}>Backend schedule</Text>
                             </View>
-                            <View style={s.dropdownContainer}>
-                                <Text style={s.dropdownValue}>
-                                    {(() => {
-                                        const mins = settings.refresh_interval_minutes || 15;
-                                        if (mins >= 60) return `${mins / 60} hours`;
-                                        return `${mins} minutes`;
-                                    })()}
-                                </Text>
-                                <View style={s.dropdownOptions}>
-                                    {[15, 30, 60, 240, 720, 1440].map((mins: number) => (
-                                        <TouchableOpacity
-                                            key={mins}
-                                            onPress={() => handleToggle('refresh_interval_minutes', mins)}
-                                            style={[
-                                                s.dropdownOption,
-                                                (settings.refresh_interval_minutes || 15) === mins && { backgroundColor: colors.primary.DEFAULT }
-                                            ]}
-                                        >
-                                            <Text style={[
-                                                s.dropdownOptionText,
-                                                (settings.refresh_interval_minutes || 15) === mins && { color: colors.text.inverse, fontWeight: '600' }
-                                            ]}>
-                                                {mins >= 60 ? `${mins / 60} hours` : `${mins} minutes`}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </View>
-                            </View>
+                            <Dropdown
+                                value={String(settings.refresh_interval_minutes || 15)}
+                                options={[
+                                    { label: '15 minutes', value: 15 },
+                                    { label: '30 minutes', value: 30 },
+                                    { label: '1 hour', value: 60 },
+                                    { label: '4 hours', value: 240 },
+                                    { label: '12 hours', value: 720 },
+                                    { label: '24 hours', value: 1440 },
+                                ]}
+                                onSelect={(value) => handleToggle('refresh_interval_minutes', value)}
+                            />
                         </View>
 
                         <View style={s.divider} />
