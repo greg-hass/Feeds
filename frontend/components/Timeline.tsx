@@ -87,6 +87,11 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
         prefetchArticle,
     });
 
+    // Check if there are any feeds matching the current filter
+    const feedsForCurrentFilter = filter.type
+        ? feeds.filter(f => f.type === filter.type)
+        : feeds;
+
     const renderArticle = ({ item, index }: { item: Article; index: number }) => (
         <TimelineArticle
             item={item}
@@ -145,18 +150,8 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
 
             <DigestCard />
 
-            {/* Empty State - Show when no feeds exist regardless of filter */}
-            {!isLoading && feeds.length === 0 && (
-                <TimelineEmptyState
-                    hasFeeds={false}
-                    isFiltered={!!filter.type}
-                    filterType={filter.type}
-                    onClearFilter={() => setFilter({ unread_only: false, type: undefined })}
-                />
-            )}
-
             {/* Premium Podcast Section - shown when filtering by podcasts */}
-            {filter.type === 'podcast' && !isLoading && feeds.length > 0 && articles.length > 0 && (
+            {filter.type === 'podcast' && !isLoading && feedsForCurrentFilter.length > 0 && articles.length > 0 && (
                 <ScrollView
                     style={{ flex: 1 }}
                     contentContainerStyle={{ paddingBottom: 100 }}
@@ -167,7 +162,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
             )}
 
             {/* Empty state for podcasts when no articles */}
-            {filter.type === 'podcast' && !isLoading && feeds.length > 0 && articles.length === 0 && (
+            {filter.type === 'podcast' && feedsForCurrentFilter.length > 0 && articles.length === 0 && (
                 <TimelineEmptyState
                     hasFeeds={true}
                     isFiltered={true}
@@ -176,9 +171,17 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                 />
             )}
 
-            {(isLoading && articles.length === 0) || !isScrollRestored ? (
+            {/* Show empty state immediately if no feeds exist for this filter */}
+            {feedsForCurrentFilter.length === 0 ? (
+                <TimelineEmptyState
+                    hasFeeds={false}
+                    isFiltered={!!filter.type}
+                    filterType={filter.type}
+                    onClearFilter={() => setFilter({ unread_only: false, type: undefined })}
+                />
+            ) : (isLoading && articles.length === 0) || !isScrollRestored ? (
                 <TimelineSkeleton />
-            ) : filter.type !== 'podcast' && feeds.length > 0 ? (
+            ) : filter.type !== 'podcast' ? (
                 <View style={{ flex: 1 }}>
                     <FlatList
                         ref={flatListRef}
@@ -197,14 +200,12 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                         }
                         ListFooterComponent={isLoading ? <ActivityIndicator style={styles.loader} color={colors.primary?.DEFAULT ?? colors.primary} /> : null}
                         ListEmptyComponent={
-                            !isLoading ? (
-                                <TimelineEmptyState
-                                    hasFeeds={feeds.length > 0}
-                                    isFiltered={filter.unread_only || !!filter.feed_id || !!filter.folder_id || !!filter.type}
-                                    filterType={filter.type}
-                                    onClearFilter={() => setFilter({ unread_only: false, type: undefined })}
-                                />
-                            ) : null
+                            <TimelineEmptyState
+                                hasFeeds={true}
+                                isFiltered={filter.unread_only || !!filter.feed_id || !!filter.folder_id || !!filter.type}
+                                filterType={filter.type}
+                                onClearFilter={() => setFilter({ unread_only: false, type: undefined })}
+                            />
                         }
                         onViewableItemsChanged={onViewableItemsChanged}
                         viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
