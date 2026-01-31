@@ -70,7 +70,7 @@ export default function FeedHealthPage() {
     const getStatusIcon = (status: FeedHealthStatus) => {
         switch (status) {
             case 'healthy':
-                return <CheckCircle2 size={20} color="#10b981" />;
+                return <CheckCircle2 size={20} color={colors.primary.DEFAULT} />;
             case 'stale':
                 return <Clock size={20} color="#f59e0b" />;
             case 'dead':
@@ -131,8 +131,8 @@ export default function FeedHealthPage() {
                 {/* Overview Cards */}
                 <View style={s.overviewGrid}>
                     <View style={[s.overviewCard, s.healthyCard]}>
-                        <CheckCircle2 size={24} color="#10b981" />
-                        <Text style={[s.overviewNumber, { color: '#10b981' }]}>
+                        <CheckCircle2 size={24} color={colors.primary.DEFAULT} />
+                        <Text style={[s.overviewNumber, { color: colors.primary.DEFAULT }]}>
                             {stats.healthy}
                         </Text>
                         <Text style={s.overviewLabel}>Healthy</Text>
@@ -176,7 +176,7 @@ export default function FeedHealthPage() {
                                 s.healthBarFill,
                                 {
                                     width: `${stats.total > 0 ? (stats.healthy / stats.total) * 100 : 0}%`,
-                                    backgroundColor: '#10b981',
+                                    backgroundColor: colors.primary.DEFAULT,
                                 },
                             ]}
                         />
@@ -303,8 +303,8 @@ const styles = (colors: any, isMobile: boolean) =>
             ...shadows.sm,
         },
         healthyCard: {
-            borderColor: '#10b981',
-            backgroundColor: '#10b981' + '10',
+            borderColor: colors.primary.DEFAULT,
+            backgroundColor: colors.primary.DEFAULT + '10',
         },
         warningCard: {
             borderColor: '#f59e0b',
