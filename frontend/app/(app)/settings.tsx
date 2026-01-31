@@ -14,7 +14,7 @@ export default function SettingsScreen() {
     const router = useRouter();
     const colors = useColors();
     const { settings, fetchSettings, updateSettings } = useSettingsStore();
-    const { fetchFeeds } = useFeedStore();
+    const { fetchFeeds, refreshAllFeeds } = useFeedStore();
     const { show } = useToastStore();
 
     const s = styles(colors);
@@ -46,8 +46,9 @@ export default function SettingsScreen() {
     const handleClearIconCache = async () => {
         try {
             await api.clearIconCache();
-            await fetchFeeds(); // Reload feeds to get remote URLs
-            show('Icon cache cleared', 'success');
+            await fetchFeeds(); // Reload feeds to get updated icon URLs
+            await refreshAllFeeds(); // Refresh all feeds to fetch new icons from sources
+            show('Icon cache cleared and feeds refreshed', 'success');
         } catch (error) {
             show('Failed to clear icon cache', 'error');
         }
