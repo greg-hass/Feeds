@@ -44,8 +44,9 @@ export async function clearFeedIconCache(feedId: number, cachedPath: string | nu
 }
 
 export async function clearAllIconCaches() {
-    // 1. Clear DB - also clear icon_url to force refetching fresh icons
-    run(`UPDATE feeds SET icon_url = NULL, icon_cached_path = NULL, icon_cached_content_type = NULL`);
+    // 1. Clear DB - only clear cached paths, keep icon_url so we can re-cache
+    // The icon_url will be refreshed by parseFeed during next refresh
+    run(`UPDATE feeds SET icon_cached_path = NULL, icon_cached_content_type = NULL`);
 
     // 2. Delete files
     const dir = getCacheDir(ICON_SUBDIR);
