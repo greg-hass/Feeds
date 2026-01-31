@@ -225,6 +225,9 @@ export default function AppLayout() {
         let wasHidden = false;
         const STALE_MS = 30 * 1000;
 
+        // Initial data load - fetch settings first for timer
+        fetchSettings().catch(() => { });
+        
         const refreshNow = async () => {
             const now = Date.now();
             if (now - lastRefreshAt < STALE_MS) return;
