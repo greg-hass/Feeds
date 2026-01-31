@@ -49,6 +49,11 @@ export const useFeedStore = create<FeedState>()(
             addFeed: async (url: string, folderId?: number, refreshInterval?: number, discover: boolean = true) => {
                 const result = await api.addFeed(url, folderId, discover, refreshInterval);
                 set((state: FeedState) => ({ feeds: [...state.feeds, result.feed] }));
+                
+                // Immediately fetch articles to show the new feed's content live
+                const articleStore = useArticleStore.getState();
+                await articleStore.fetchArticles(true);
+                
                 return result.feed;
             },
 
