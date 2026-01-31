@@ -18,13 +18,20 @@ export const TimelineEmptyState = ({ isFiltered, hasFeeds, filterType, onClearFi
 
     // If no feeds at all, show empty feed message regardless of filter
     if (!hasFeeds) {
-        const filterLabel = filterType ? filterType.charAt(0).toUpperCase() + filterType.slice(1) : 'feed';
+        // Map filter types to user-friendly feed names
+        const feedNameMap: Record<string, string> = {
+            'youtube': 'YouTube',
+            'podcast': 'Podcasts',
+            'reddit': 'Reddit',
+            'rss': 'RSS',
+        };
+        const feedName = filterType ? feedNameMap[filterType] || filterType.charAt(0).toUpperCase() + filterType.slice(1) : 'feed';
         return (
             <View style={s.container}>
                 <View style={[s.iconContainer, { backgroundColor: (colors.primary?.DEFAULT ?? colors.primary) + '22' }]}>
                     <Inbox size={48} color={colors.primary?.DEFAULT ?? colors.primary} />
                 </View>
-                <Text style={s.title}>Your {filterLabel} is empty</Text>
+                <Text style={s.title}>Your {feedName} feed is empty</Text>
                 <Text style={s.message}>
                     It looks like you haven't subscribed to any feeds yet. Add your favorite content to get started!
                 </Text>

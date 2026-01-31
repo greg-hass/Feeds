@@ -24,13 +24,13 @@ const FilterPills = React.memo<FilterPillsProps>(({ unreadOnly, activeType, onFi
     const s = styles(colors);
 
     const filterData: FilterItem[] = [
-        { id: 'unread', label: 'Unread Only', type: 'toggle', active: unreadOnly },
+        { id: 'unread', label: 'Unread', type: 'toggle', active: unreadOnly },
         { id: 'sep', type: 'separator', active: false },
         { id: 'all', label: 'All', type: 'filter', active: !activeType },
+        { id: 'rss', label: 'RSS', type: 'filter', active: activeType === 'rss' },
         { id: 'youtube', label: 'Videos', type: 'filter', active: activeType === 'youtube' },
-        { id: 'podcast', label: 'Podcasts', type: 'filter', active: activeType === 'podcast' },
         { id: 'reddit', label: 'Reddit', type: 'filter', active: activeType === 'reddit' },
-        { id: 'rss', label: 'Articles', type: 'filter', active: activeType === 'rss' },
+        { id: 'podcast', label: 'Podcasts', type: 'filter', active: activeType === 'podcast' },
     ];
 
     const renderFilterItem = ({ item }: { item: FilterItem }) => {
@@ -102,6 +102,7 @@ const styles = (colors: any) => StyleSheet.create({
     filterPill: {
         flexDirection: 'row' as const,
         alignItems: 'center' as const,
+        justifyContent: 'center' as const,
         gap: 6,
         paddingHorizontal: spacing.md,
         paddingVertical: 6,
@@ -109,6 +110,7 @@ const styles = (colors: any) => StyleSheet.create({
         backgroundColor: colors.background.secondary,
         borderWidth: 1,
         borderColor: colors.border.DEFAULT,
+        minWidth: 70,
     },
     filterPillActive: {
         backgroundColor: colors.primary?.DEFAULT ?? colors.primary,

@@ -32,8 +32,9 @@ export const useArticleStore = create<ArticleState>()(
                     hasMore: true,
                     error: null,
                     scrollPosition: 0,
+                    isLoading: true,
                 }));
-                get().fetchArticles(true);
+                get().fetchArticles(true, false, true);
             },
 
             setScrollPosition: (position) => {
@@ -53,12 +54,12 @@ export const useArticleStore = create<ArticleState>()(
                 return get().articleScrollPositions[articleId] || 0;
             },
 
-            fetchArticles: async (reset = false, isLiveUpdate = false) => {
+            fetchArticles: async (reset = false, isLiveUpdate = false, skipLoadingSet = false) => {
                 const state = get();
                 if (state.isLoading && !isLiveUpdate) return;
                 if (!reset && !state.hasMore && !isLiveUpdate) return;
 
-                if (!isLiveUpdate) {
+                if (!isLiveUpdate && !skipLoadingSet) {
                     set({ isLoading: true, error: null });
                 }
                 try {
