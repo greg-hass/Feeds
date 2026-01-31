@@ -55,3 +55,7 @@ TESTFILE
 
 # OpenCode local working notes
 .opencode/local/
+
+Ignore other temp files if they appear later
+.opencode/tmp/
+.opencode/cache/
