@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSettingsStore, useToastStore, useFeedStore } from '@/stores';
 import { Settings, api } from '@/services/api';
@@ -100,13 +100,24 @@ export default function SettingsScreen() {
 
                         <View style={s.row}>
                             <Text style={s.label}>Show Images</Text>
-                            <Switch
-                                value={settings.show_images}
-                                onValueChange={(v: boolean) => handleToggle('show_images', v)}
-                                trackColor={{ false: colors.border.DEFAULT, true: colors.primary.dark }}
-                                thumbColor={colors.background.primary}
+                            <TouchableOpacity
+                                style={[
+                                    s.customSwitch,
+                                    { backgroundColor: settings.show_images ? colors.primary.DEFAULT : colors.border.DEFAULT }
+                                ]}
+                                onPress={() => handleToggle('show_images', !settings.show_images)}
                                 accessibilityLabel="Show images in articles"
-                            />
+                                accessibilityRole="switch"
+                                accessibilityState={{ checked: settings.show_images }}
+                            >
+                                <View style={[
+                                    s.customSwitchThumb,
+                                    { 
+                                        backgroundColor: colors.background.primary,
+                                        transform: [{ translateX: settings.show_images ? 20 : 0 }]
+                                    }
+                                ]} />
+                            </TouchableOpacity>
                         </View>
 
                         <View style={s.divider} />
@@ -172,13 +183,24 @@ export default function SettingsScreen() {
                                 <Text style={s.label}>Reader Mode</Text>
                                 <Text style={s.hint}>Use cleaned article view</Text>
                             </View>
-                            <Switch
-                                value={settings.readability_enabled}
-                                onValueChange={(v: boolean) => handleToggle('readability_enabled', v)}
-                                trackColor={{ false: colors.border.DEFAULT, true: colors.primary.dark }}
-                                thumbColor={colors.background.primary}
+                            <TouchableOpacity
+                                style={[
+                                    s.customSwitch,
+                                    { backgroundColor: settings.readability_enabled ? colors.primary.DEFAULT : colors.border.DEFAULT }
+                                ]}
+                                onPress={() => handleToggle('readability_enabled', !settings.readability_enabled)}
                                 accessibilityLabel="Enable Reader Mode"
-                            />
+                                accessibilityRole="switch"
+                                accessibilityState={{ checked: settings.readability_enabled }}
+                            >
+                                <View style={[
+                                    s.customSwitchThumb,
+                                    { 
+                                        backgroundColor: colors.background.primary,
+                                        transform: [{ translateX: settings.readability_enabled ? 20 : 0 }]
+                                    }
+                                ]} />
+                            </TouchableOpacity>
                         </View>
 
                         <View style={s.divider} />
@@ -188,13 +210,24 @@ export default function SettingsScreen() {
                                 <Text style={s.label}>Fetch Full Content</Text>
                                 <Text style={s.hint}>Load full articles when opened</Text>
                             </View>
-                            <Switch
-                                value={settings.fetch_full_content}
-                                onValueChange={(v: boolean) => handleToggle('fetch_full_content', v)}
-                                trackColor={{ false: colors.border.DEFAULT, true: colors.primary.dark }}
-                                thumbColor={colors.background.primary}
+                            <TouchableOpacity
+                                style={[
+                                    s.customSwitch,
+                                    { backgroundColor: settings.fetch_full_content ? colors.primary.DEFAULT : colors.border.DEFAULT }
+                                ]}
+                                onPress={() => handleToggle('fetch_full_content', !settings.fetch_full_content)}
                                 accessibilityLabel="Fetch Full Content"
-                            />
+                                accessibilityRole="switch"
+                                accessibilityState={{ checked: settings.fetch_full_content }}
+                            >
+                                <View style={[
+                                    s.customSwitchThumb,
+                                    { 
+                                        backgroundColor: colors.background.primary,
+                                        transform: [{ translateX: settings.fetch_full_content ? 20 : 0 }]
+                                    }
+                                ]} />
+                            </TouchableOpacity>
                         </View>
                     </View>
                 </View>
@@ -522,7 +555,8 @@ const styles = (colors: any) => StyleSheet.create({
         fontSize: 13,
         color: colors.text.tertiary,
         marginBottom: spacing.md,
-        marginTop: -spacing.sm,
+        marginTop: spacing.xs,
+        paddingHorizontal: spacing.lg,
     },
     sublabel: {
         fontSize: 14,
@@ -566,5 +600,22 @@ const styles = (colors: any) => StyleSheet.create({
         fontSize: 16,
         color: colors.error,
         fontWeight: '500',
+    },
+    customSwitch: {
+        width: 48,
+        height: 28,
+        borderRadius: 14,
+        padding: 2,
+        justifyContent: 'center',
+    },
+    customSwitchThumb: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 2,
+        elevation: 2,
     },
 });
