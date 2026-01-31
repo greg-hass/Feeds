@@ -218,67 +218,76 @@ export async function opmlStreamRoutes(app: FastifyInstance) {
                 }
             }
 
-            // Auto-refresh each created feed
-            for (const feed of createdFeeds) {
-                sendEvent({
-                    type: 'feed_refreshing',
-                    id: feed.id,
-                    title: feed.title,
-                });
+            // Auto-refresh feeds in parallel batches for speed
+            const BATCH_SIZE = 5; // Process 5 feeds concurrently
 
-                try {
-                    const feedToRefresh: FeedToRefresh = {
-                        id: feed.id,
-                        url: feed.url,
-                        type: feed.type,
-                        refresh_interval_minutes: 30,
-                    };
-
-                    // Use Promise.race for timeout
-                    const refreshPromise = refreshFeed(feedToRefresh);
-                    const timeoutPromise = new Promise<never>((_, reject) =>
-                        setTimeout(() => reject(new Error('Timeout after 30s')), FEED_REFRESH_TIMEOUT)
-                    );
-
-                    const result = await Promise.race([refreshPromise, timeoutPromise]);
-
-                    if (result.success) {
+            for (let i = 0; i < createdFeeds.length; i += BATCH_SIZE) {
+                const batch = createdFeeds.slice(i, i + BATCH_SIZE);
+                
+                // Process batch in parallel
+                await Promise.all(
+                    batch.map(async (feed) => {
                         sendEvent({
-                            type: 'feed_complete',
+                            type: 'feed_refreshing',
                             id: feed.id,
                             title: feed.title,
-                            new_articles: result.newArticles,
                         });
-                        stats.success++;
-                    } else {
-                        sendEvent({
-                            type: 'feed_error',
-                            id: feed.id,
-                            title: feed.title,
-                            error: result.error || 'Unknown error',
-                        });
-                        stats.errors++;
-                        stats.failed_feeds.push({
-                            id: feed.id,
-                            title: feed.title,
-                            error: result.error || 'Unknown error',
-                        });
-                    }
-                } catch (err) {
-                    const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-                    sendEvent({
-                        type: 'feed_error',
-                        id: feed.id,
-                        title: feed.title,
-                        error: errorMessage,
-                    });
-                    stats.errors++;
-                    stats.failed_feeds.push({
-                        id: feed.id,
-                        title: feed.title,
-                        error: errorMessage,
-                    });
-                }
+
+                        try {
+                            const feedToRefresh: FeedToRefresh = {
+                                id: feed.id,
+                                url: feed.url,
+                                type: feed.type,
+                                refresh_interval_minutes: 30,
+                            };
+
+                            // Use Promise.race for timeout
+                            const refreshPromise = refreshFeed(feedToRefresh);
+                            const timeoutPromise = new Promise<never>((_, reject) =>
+                                setTimeout(() => reject(new Error('Timeout after 30s')), FEED_REFRESH_TIMEOUT)
+                            );
+
+                            const result = await Promise.race([refreshPromise, timeoutPromise]);
+
+                            if (result.success) {
+                                sendEvent({
+                                    type: 'feed_complete',
+                                    id: feed.id,
+                                    title: feed.title,
+                                    new_articles: result.newArticles,
+                                });
+                                stats.success++;
+                            } else {
+                                sendEvent({
+                                    type: 'feed_error',
+                                    id: feed.id,
+                                    title: feed.title,
+                                    error: result.error || 'Unknown error',
+                                });
+                                stats.errors++;
+                                stats.failed_feeds.push({
+                                    id: feed.id,
+                                    title: feed.title,
+                                    error: result.error || 'Unknown error',
+                                });
+                            }
+                        } catch (err) {
+                            const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+                            sendEvent({
+                                type: 'feed_error',
+                                id: feed.id,
+                                title: feed.title,
+                                error: errorMessage,
+                            });
+                            stats.errors++;
+                            stats.failed_feeds.push({
+                                id: feed.id,
+                                title: feed.title,
+                                error: errorMessage,
+                            });
+                        }
+                    })
+                );
             }
 
             // Send completion
