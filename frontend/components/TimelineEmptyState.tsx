@@ -7,21 +7,24 @@ import { useRouter } from 'expo-router';
 interface TimelineEmptyStateProps {
     isFiltered: boolean;
     hasFeeds: boolean;
+    filterType?: string;
     onClearFilter?: () => void;
 }
 
-export const TimelineEmptyState = ({ isFiltered, hasFeeds, onClearFilter }: TimelineEmptyStateProps) => {
+export const TimelineEmptyState = ({ isFiltered, hasFeeds, filterType, onClearFilter }: TimelineEmptyStateProps) => {
     const colors = useColors();
     const router = useRouter();
     const s = styles(colors);
 
+    // If no feeds at all, show empty feed message regardless of filter
     if (!hasFeeds) {
+        const filterLabel = filterType ? filterType.charAt(0).toUpperCase() + filterType.slice(1) : 'feed';
         return (
             <View style={s.container}>
                 <View style={[s.iconContainer, { backgroundColor: (colors.primary?.DEFAULT ?? colors.primary) + '22' }]}>
                     <Inbox size={48} color={colors.primary?.DEFAULT ?? colors.primary} />
                 </View>
-                <Text style={s.title}>Your feed is empty</Text>
+                <Text style={s.title}>Your {filterLabel} is empty</Text>
                 <Text style={s.message}>
                     It looks like you haven't subscribed to any feeds yet. Add your favorite content to get started!
                 </Text>

@@ -181,7 +181,8 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                                 <TimelineEmptyState
                                     hasFeeds={feeds.length > 0}
                                     isFiltered={filter.unread_only || !!filter.feed_id || !!filter.folder_id || !!filter.type}
-                                    onClearFilter={() => setFilter({ unread_only: false })}
+                                    filterType={filter.type}
+                                    onClearFilter={() => setFilter({ unread_only: false, type: undefined })}
                                 />
                             ) : null
                         }
