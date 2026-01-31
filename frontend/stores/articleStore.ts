@@ -56,7 +56,7 @@ export const useArticleStore = create<ArticleState>()(
 
             fetchArticles: async (reset = false, isLiveUpdate = false, skipLoadingSet = false) => {
                 const state = get();
-                if (state.isLoading && !isLiveUpdate) return;
+                if (state.isLoading && !isLiveUpdate && !reset) return;
                 if (!reset && !state.hasMore && !isLiveUpdate) return;
 
                 if (!isLiveUpdate && !skipLoadingSet) {
