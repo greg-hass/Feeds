@@ -317,7 +317,9 @@ export const FeedInfoSheet = ({ feedId, visible, onClose, onEdit, onDelete }: Fe
                                         onPress={() => handleOpenUrl(feed.site_url)}
                                     >
                                         <ExternalLink size={16} color={colors.text.tertiary} />
-                                        <Text style={s.urlLabel}>Website</Text>
+                                        <Text style={s.urlLabel}>
+                                            {feed.type === 'youtube' ? 'YouTube Channel' : 'Website'}
+                                        </Text>
                                         <Text style={s.urlValue} numberOfLines={1}>
                                             {feed.site_url}
                                         </Text>

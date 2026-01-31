@@ -4,7 +4,7 @@ import { parseFeed, normalizeArticle, FeedType } from './feed-parser.js';
 import { fetchYouTubeIcon } from './youtube-parser.js';
 import { cacheFeedIcon } from './icon-cache.js';
 import { cacheArticleThumbnail } from './thumbnail-cache.js';
-import { getUserSettings } from './settings.js';
+import { getUserSettings, Settings } from './settings.js';
 import { logBackgroundError } from '../utils/error-handler.js';
 // Note: fetchAndExtractReadability is no longer used during refresh
 // Content is now fetched lazily when articles are opened (see routes/articles.ts)
@@ -96,12 +96,66 @@ interface ArticleInsertResult {
     thumbnailUpdates: Array<{ id: number; url: string }>;
 }
 
+function filterArticlesByFeedRules(
+    articles: any[],
+    feedType: FeedType,
+    settings: Settings['feed_fetch_limits']
+): any[] {
+    const now = new Date();
+    
+    // First, normalize all articles and sort by published_at (newest first)
+    const normalizedArticles = articles.map(article => {
+        const normalized = normalizeArticle(article, feedType);
+        return {
+            raw: article,
+            normalized,
+            publishedAt: normalized.published_at ? new Date(normalized.published_at) : null
+        };
+    }).filter(item => item.publishedAt !== null);
+    
+    // Sort by date descending (newest first)
+    normalizedArticles.sort((a, b) => b.publishedAt!.getTime() - a.publishedAt!.getTime());
+    
+    let filtered = normalizedArticles;
+    
+    switch (feedType) {
+        case 'youtube':
+            // Filter by days first (30 days)
+            const youtubeCutoff = new Date(now.getTime() - settings.youtube_days * 24 * 60 * 60 * 1000);
+            filtered = filtered.filter(item => item.publishedAt! >= youtubeCutoff);
+            // Then limit by count (10 videos)
+            filtered = filtered.slice(0, settings.youtube_count);
+            break;
+            
+        case 'reddit':
+            // Filter by days (7 days)
+            const redditCutoff = new Date(now.getTime() - settings.reddit_days * 24 * 60 * 60 * 1000);
+            filtered = filtered.filter(item => item.publishedAt! >= redditCutoff);
+            break;
+            
+        case 'podcast':
+            // Limit by count (5 episodes) regardless of date
+            filtered = filtered.slice(0, settings.podcast_count);
+            break;
+            
+        case 'rss':
+        default:
+            // Filter by days (14 days)
+            const rssCutoff = new Date(now.getTime() - settings.rss_days * 24 * 60 * 60 * 1000);
+            filtered = filtered.filter(item => item.publishedAt! >= rssCutoff);
+            break;
+    }
+    
+    return filtered.map(item => item.raw);
+}
+
 function insertArticles(
     database: Database,
     feedId: number,
     articles: any[],
     feedType: FeedType,
-    shouldCacheThumbnails: boolean
+    shouldCacheThumbnails: boolean,
+    settings?: Settings['feed_fetch_limits']
 ): ArticleInsertResult {
     const insertArticle = `
         INSERT OR IGNORE INTO articles
@@ -113,6 +167,12 @@ function insertArticles(
     const updateThumbnailStmt = database.prepare(
         `UPDATE articles SET thumbnail_cached_path = ?, thumbnail_cached_content_type = ? WHERE id = ?`
     );
+    
+    // Filter articles based on feed type rules if settings provided
+    let articlesToProcess = articles;
+    if (settings) {
+        articlesToProcess = filterArticlesByFeedRules(articles, feedType, settings);
+    }
     
     const transaction = database.transaction((items: any[], type: FeedType) => {
         let count = 0;
@@ -147,7 +207,7 @@ function insertArticles(
         return { count, thumbnailUpdates };
     });
     
-    const { count, thumbnailUpdates } = transaction(articles, feedType);
+    const { count, thumbnailUpdates } = transaction(articlesToProcess, feedType);
     
     return { insertedCount: count, thumbnailUpdates };
 }
@@ -167,7 +227,18 @@ async function updateFeedMetadata(
     
     // Prepare values for update
     const titleUpdate = feedData.title;
-    const siteUrlUpdate = feedData.link;
+    
+    // For YouTube feeds, construct channel URL from channel ID
+    let siteUrlUpdate = feedData.link;
+    if (newType === 'youtube' && feedData.youtubeChannelId) {
+        const channelId = feedData.youtubeChannelId;
+        if (channelId.startsWith('@')) {
+            siteUrlUpdate = `https://www.youtube.com/${channelId}`;
+        } else if (channelId.startsWith('UC') || channelId.length === 22 || channelId.length === 24) {
+            siteUrlUpdate = `https://www.youtube.com/channel/${channelId}`;
+        }
+    }
+    
     const iconUrlUpdate = shouldUpdateIconUrl ? iconCandidate : null;
     const iconPathUpdate = cachedIcon?.fileName ?? null;
     const iconMimeUpdate = cachedIcon?.mime ?? null;
@@ -361,19 +432,24 @@ export async function refreshFeed(feed: FeedToRefreshWithCache): Promise<Refresh
             feed.refresh_interval_minutes
         );
         refreshIntervalMinutes = updatedInterval;
-        
+
+        // Get user settings for feed fetch limits
+        const userSettings = getUserSettings(userId);
+        const feedFetchLimits = userSettings.feed_fetch_limits;
+
         let currentType = feed.type;
         if (currentType === 'rss') {
             const { detectFeedType } = await import('./feed-parser.js');
             currentType = detectFeedType(feed.url, feedData);
         }
-        
+
         const { insertedCount, thumbnailUpdates } = insertArticles(
             database,
             feed.id,
             feedData.articles,
             currentType,
-            true
+            true,
+            feedFetchLimits
         );
         
         if (thumbnailUpdates.length > 0) {

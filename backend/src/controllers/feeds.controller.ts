@@ -330,6 +330,42 @@ export class FeedsController {
         };
     }
 
+    static async getYouTubeChannelUrl(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+        const userId = 1;
+        const feedId = parseInt(request.params.id, 10);
+
+        const feed = queryOne<Feed>('SELECT * FROM feeds WHERE id = ? AND user_id = ? AND deleted_at IS NULL', [feedId, userId]);
+        if (!feed) return reply.status(404).send({ error: 'Feed not found' });
+
+        // Only for YouTube feeds
+        if (feed.type !== 'youtube' && !feed.url.includes('youtube.com/feeds')) {
+            return reply.status(400).send({ error: 'Only YouTube feeds support channel URLs' });
+        }
+
+        // Try to construct channel URL from site_url or parse feed URL
+        let channelUrl = feed.site_url;
+
+        if (!channelUrl || !channelUrl.includes('youtube.com')) {
+            // Parse channel ID from feed URL
+            const urlObj = new URL(feed.url);
+            const channelId = urlObj.searchParams.get('channel_id');
+
+            if (channelId) {
+                if (channelId.startsWith('@')) {
+                    channelUrl = `https://www.youtube.com/${channelId}`;
+                } else {
+                    channelUrl = `https://www.youtube.com/channel/${channelId}`;
+                }
+            }
+        }
+
+        if (!channelUrl) {
+            return reply.status(404).send({ error: 'Could not determine YouTube channel URL' });
+        }
+
+        return { channel_url: channelUrl };
+    }
+
     static async refreshIcon(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
         const userId = 1;
         const feedId = parseInt(request.params.id, 10);

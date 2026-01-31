@@ -42,6 +42,13 @@ export const useSettingsStore = create<SettingsState>()(
                         show_images: true,
                         accent_color: 'emerald',
                         view_density: 'comfortable',
+                        feed_fetch_limits: {
+                            rss_days: 14,
+                            youtube_count: 10,
+                            youtube_days: 30,
+                            reddit_days: 7,
+                            podcast_count: 5,
+                        },
                     };
                     set({ settings: fallbackSettings, isLoading: false });
                     handleError(error, { context: 'fetchSettings', fallbackMessage: 'Using offline settings' });

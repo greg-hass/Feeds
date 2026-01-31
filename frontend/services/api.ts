@@ -203,6 +203,10 @@ class ApiClient {
         return this.request<FeedInfo>(`/feeds/${id}/info`);
     }
 
+    async getYouTubeChannelUrl(id: number) {
+        return this.request<{ channel_url: string }>(`/feeds/${id}/youtube-channel`);
+    }
+
     // Database Health
     async getDatabaseStats() {
         return this.get<{

@@ -93,6 +93,14 @@ export interface DiscoveredFeed {
 // Settings & Configuration
 // ============================================================================
 
+export interface FeedFetchLimits {
+    rss_days: number;
+    youtube_count: number;
+    youtube_days: number;
+    reddit_days: number;
+    podcast_count: number;
+}
+
 export interface Settings {
     refresh_interval_minutes: number;
     retention_days: number;
@@ -106,6 +114,7 @@ export interface Settings {
     reader_line_height?: number;
     accent_color?: 'emerald' | 'blue' | 'indigo' | 'violet' | 'rose' | 'amber' | 'cyan' | 'yellow';
     view_density?: 'compact' | 'comfortable' | 'spacious';
+    feed_fetch_limits?: FeedFetchLimits;
 }
 
 export interface DigestSettings {

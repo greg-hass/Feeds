@@ -71,6 +71,9 @@ export async function feedsRoutes(app: FastifyInstance) {
     // Get feed info (detailed view)
     app.get('/:id/info', FeedsController.getInfo);
 
+    // Get YouTube channel URL for a feed
+    app.get('/:id/youtube-channel', FeedsController.getYouTubeChannelUrl);
+
     // Force refresh feed icon (useful for YouTube channels)
     app.post('/:id/refresh-icon', FeedsController.refreshIcon);
 

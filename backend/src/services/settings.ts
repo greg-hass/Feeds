@@ -13,6 +13,13 @@ const defaultSettings = {
   font_size: "medium" as const,
   show_images: true,
   accent_color: "emerald",
+  feed_fetch_limits: {
+    rss_days: 14,
+    youtube_count: 10,
+    youtube_days: 30,
+    reddit_days: 7,
+    podcast_count: 5,
+  } as const,
 };
 
 export type Settings = typeof defaultSettings;

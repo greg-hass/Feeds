@@ -2,6 +2,15 @@ import { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { run, db } from '../db/index.js';
 import { getUserSettings, updateUserSettingsRaw, getUserSettingsRaw } from '../services/settings.js';
+import { cleanupOldArticles } from '../services/feed-cleanup.js';
+
+const feedFetchLimitsSchema = z.object({
+    rss_days: z.number().min(1).max(365).optional(),
+    youtube_count: z.number().min(1).max(100).optional(),
+    youtube_days: z.number().min(1).max(365).optional(),
+    reddit_days: z.number().min(1).max(365).optional(),
+    podcast_count: z.number().min(1).max(100).optional(),
+});
 
 const updateSettingsSchema = z.object({
     refresh_interval_minutes: z.number().min(5).max(1440).optional(),
@@ -16,6 +25,7 @@ const updateSettingsSchema = z.object({
     reader_theme: z.enum(['default', 'sepia', 'paper', 'dark']).optional(),
     reader_line_height: z.number().optional(),
     view_density: z.enum(['compact', 'comfortable', 'spacious']).optional(),
+    feed_fetch_limits: feedFetchLimitsSchema.optional(),
 });
 
 // Track if we've already ensured the column exists this session
@@ -73,6 +83,14 @@ export async function settingsRoutes(app: FastifyInstance): Promise<void> {
 
             updateUserSettingsRaw(userId, {
                 global_next_refresh_at: new Date(Date.now() + interval * 60 * 1000).toISOString(),
+            });
+        }
+
+        // If feed fetch limits changed, clean up old articles retroactively
+        if (body.feed_fetch_limits !== undefined) {
+            // Run cleanup asynchronously without blocking the response
+            cleanupOldArticles(userId).catch(err => {
+                console.error('[Settings] Failed to cleanup old articles:', err);
             });
         }
 

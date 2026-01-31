@@ -199,6 +199,152 @@ export default function SettingsScreen() {
                     </View>
                 </View>
 
+                {/* Feed Fetching Rules */}
+                <View style={s.section}>
+                    <SectionHeader title="Feed Fetching Rules" />
+                    <Text style={s.sectionHint}>Limit articles fetched per feed type. Bookmarks are not affected.</Text>
+                    <View style={s.card}>
+                        {/* RSS Feeds */}
+                        <View style={s.row}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={s.label}>RSS Feeds</Text>
+                                <Text style={s.hint}>Articles newer than</Text>
+                            </View>
+                            <View style={s.picker}>
+                                {[7, 14, 30, 60, 90].map((days: number) => (
+                                    <TouchableOpacity
+                                        key={days}
+                                        onPress={() => handleToggle('feed_fetch_limits', { ...settings.feed_fetch_limits, rss_days: days })}
+                                        style={[
+                                            s.pickerOption,
+                                            (settings.feed_fetch_limits?.rss_days || 14) === days && { backgroundColor: colors.primary.dark }
+                                        ]}
+                                    >
+                                        <Text style={[
+                                            s.pickerText,
+                                            (settings.feed_fetch_limits?.rss_days || 14) === days && { color: colors.text.inverse, fontWeight: '600' }
+                                        ]}>
+                                            {days}d
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        <View style={s.divider} />
+
+                        {/* YouTube Feeds */}
+                        <View style={s.row}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={s.label}>YouTube</Text>
+                                <Text style={s.hint}>Last {settings.feed_fetch_limits?.youtube_count || 10} videos × {settings.feed_fetch_limits?.youtube_days || 30} days</Text>
+                            </View>
+                        </View>
+                        <View style={[s.row, { marginTop: 8 }]}>
+                            <Text style={s.sublabel}>Count</Text>
+                            <View style={s.picker}>
+                                {[5, 10, 15, 20, 30].map((count: number) => (
+                                    <TouchableOpacity
+                                        key={count}
+                                        onPress={() => handleToggle('feed_fetch_limits', { ...settings.feed_fetch_limits, youtube_count: count })}
+                                        style={[
+                                            s.pickerOption,
+                                            (settings.feed_fetch_limits?.youtube_count || 10) === count && { backgroundColor: colors.primary.dark }
+                                        ]}
+                                    >
+                                        <Text style={[
+                                            s.pickerText,
+                                            (settings.feed_fetch_limits?.youtube_count || 10) === count && { color: colors.text.inverse, fontWeight: '600' }
+                                        ]}>
+                                            {count}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+                        <View style={[s.row, { marginTop: 8 }]}>
+                            <Text style={s.sublabel}>Days</Text>
+                            <View style={s.picker}>
+                                {[7, 14, 30, 60, 90].map((days: number) => (
+                                    <TouchableOpacity
+                                        key={days}
+                                        onPress={() => handleToggle('feed_fetch_limits', { ...settings.feed_fetch_limits, youtube_days: days })}
+                                        style={[
+                                            s.pickerOption,
+                                            (settings.feed_fetch_limits?.youtube_days || 30) === days && { backgroundColor: colors.primary.dark }
+                                        ]}
+                                    >
+                                        <Text style={[
+                                            s.pickerText,
+                                            (settings.feed_fetch_limits?.youtube_days || 30) === days && { color: colors.text.inverse, fontWeight: '600' }
+                                        ]}>
+                                            {days}d
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        <View style={s.divider} />
+
+                        {/* Reddit Feeds */}
+                        <View style={s.row}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={s.label}>Reddit</Text>
+                                <Text style={s.hint}>Posts newer than</Text>
+                            </View>
+                            <View style={s.picker}>
+                                {[3, 7, 14, 30].map((days: number) => (
+                                    <TouchableOpacity
+                                        key={days}
+                                        onPress={() => handleToggle('feed_fetch_limits', { ...settings.feed_fetch_limits, reddit_days: days })}
+                                        style={[
+                                            s.pickerOption,
+                                            (settings.feed_fetch_limits?.reddit_days || 7) === days && { backgroundColor: colors.primary.dark }
+                                        ]}
+                                    >
+                                        <Text style={[
+                                            s.pickerText,
+                                            (settings.feed_fetch_limits?.reddit_days || 7) === days && { color: colors.text.inverse, fontWeight: '600' }
+                                        ]}>
+                                            {days}d
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        <View style={s.divider} />
+
+                        {/* Podcast Feeds */}
+                        <View style={s.row}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={s.label}>Podcasts</Text>
+                                <Text style={s.hint}>Keep last</Text>
+                            </View>
+                            <View style={s.picker}>
+                                {[3, 5, 10, 15, 20].map((count: number) => (
+                                    <TouchableOpacity
+                                        key={count}
+                                        onPress={() => handleToggle('feed_fetch_limits', { ...settings.feed_fetch_limits, podcast_count: count })}
+                                        style={[
+                                            s.pickerOption,
+                                            (settings.feed_fetch_limits?.podcast_count || 5) === count && { backgroundColor: colors.primary.dark }
+                                        ]}
+                                    >
+                                        <Text style={[
+                                            s.pickerText,
+                                            (settings.feed_fetch_limits?.podcast_count || 5) === count && { color: colors.text.inverse, fontWeight: '600' }
+                                        ]}>
+                                            {count}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+                    </View>
+                </View>
+
                 {/* Refresh & Storage */}
                 <View style={s.section}>
                     <SectionHeader title="Refresh & Storage" />
@@ -371,6 +517,17 @@ const styles = (colors: any) => StyleSheet.create({
     pickerText: {
         fontSize: 12,
         color: colors.text.secondary,
+    },
+    sectionHint: {
+        fontSize: 13,
+        color: colors.text.tertiary,
+        marginBottom: spacing.md,
+        marginTop: -spacing.sm,
+    },
+    sublabel: {
+        fontSize: 14,
+        color: colors.text.secondary,
+        minWidth: 50,
     },
     version: {
         textAlign: 'center',
