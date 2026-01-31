@@ -176,10 +176,10 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                 />
             )}
 
-            {isLoading && articles.length === 0 ? (
+            {(isLoading && articles.length === 0) || !isScrollRestored ? (
                 <TimelineSkeleton />
             ) : filter.type !== 'podcast' && feeds.length > 0 ? (
-                <View style={{ flex: 1, opacity: isScrollRestored ? 1 : 0 }}>
+                <View style={{ flex: 1 }}>
                     <FlatList
                         ref={flatListRef}
                         data={articles}
