@@ -41,7 +41,6 @@ export const useSettingsStore = create<SettingsState>()(
                         font_size: 'medium',
                         show_images: true,
                         accent_color: 'emerald',
-                        view_density: 'comfortable',
                         feed_fetch_limits: {
                             rss_days: 14,
                             youtube_count: 10,

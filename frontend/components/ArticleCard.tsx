@@ -5,7 +5,7 @@ import { Article } from '@/services/api';
 import { useColors, spacing, borderRadius, shadows, animations } from '@/theme';
 import { extractVideoId } from '@/utils/youtube';
 import { useSettingsStore } from '@/stores';
-import { getDensitySpacing, getThumbnailSize, getDensityFontSizes, getFeaturedThumbnailHeight, type ViewDensity } from '@/utils/densitySpacing';
+import { densitySpacing, thumbnailSize, fontSizes, featuredThumbnailHeight } from '@/utils/densitySpacing';
 import ArticleFooter from './ArticleFooter';
 import YouTubePlayer from './YouTubePlayer';
 
@@ -50,14 +50,9 @@ const ArticleCard = React.memo<ArticleCardProps>(({
 }) => {
     const colors = useColors();
     const { settings } = useSettingsStore();
-    const viewDensity: ViewDensity = settings?.view_density || 'comfortable';
     const [iconFailed, setIconFailed] = useState(false);
 
-    const densitySpacing = getDensitySpacing(viewDensity);
-    const thumbnailSize = getThumbnailSize(viewDensity);
-    const fontSizes = getDensityFontSizes(viewDensity);
-
-    const s = styles(colors, isMobile, viewDensity, densitySpacing, thumbnailSize, fontSizes);
+    const s = styles(colors, isMobile);
 
     const thumbnail = item.thumbnail_url;
     const isYouTube = item.feed_type === 'youtube';
@@ -211,11 +206,7 @@ export default ArticleCard;
 // Styles extracted from Timeline
 const styles = (
     colors: any,
-    isMobile: boolean,
-    viewDensity: ViewDensity,
-    densitySpacing: ReturnType<typeof getDensitySpacing>,
-    thumbnailSize: { width: number; height: number },
-    fontSizes: ReturnType<typeof getDensityFontSizes>
+    isMobile: boolean
 ) => ({
     articleCard: {
         backgroundColor: colors.background.secondary,
@@ -269,24 +260,24 @@ const styles = (
         borderRadius: borderRadius.sm,
         alignSelf: 'flex-start' as const,
         marginBottom: densitySpacing.sm,
-        gap: 6,
+        gap: 8, // Increased gap for larger icon
     },
     feedIcon: {
-        width: 14,
-        height: 14,
-        borderRadius: 3,
+        width: 20, // Updated to 20
+        height: 20, // Updated to 20
+        borderRadius: 4, // Slightly larger radius
     },
     feedInitial: {
-        width: 14,
-        height: 14,
-        borderRadius: 3,
+        width: 20, // Updated to 20
+        height: 20, // Updated to 20
+        borderRadius: 4, // Slightly larger radius
         backgroundColor: colors.primary.DEFAULT,
         justifyContent: 'center' as const,
         alignItems: 'center' as const,
     },
     initialText: {
         color: '#fff',
-        fontSize: 8,
+        fontSize: 10, // Increased font size for initial
         fontWeight: '900' as const,
     },
     feedName: {
@@ -321,7 +312,7 @@ const styles = (
     },
     featuredThumbnailWrapper: {
         width: '100%' as const,
-        height: getFeaturedThumbnailHeight(viewDensity),
+        height: featuredThumbnailHeight,
         aspectRatio: 16 / 9,
         borderRadius: borderRadius.xl,
     },

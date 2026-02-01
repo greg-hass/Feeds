@@ -113,7 +113,6 @@ export interface Settings {
     reader_theme?: 'default' | 'sepia' | 'paper' | 'dark';
     reader_line_height?: number;
     accent_color?: 'emerald' | 'blue' | 'indigo' | 'violet' | 'rose' | 'amber' | 'cyan' | 'yellow';
-    view_density?: 'compact' | 'comfortable' | 'spacious';
     feed_fetch_limits?: FeedFetchLimits;
 }
 

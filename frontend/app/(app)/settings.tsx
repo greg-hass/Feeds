@@ -165,34 +165,6 @@ export default function SettingsScreen() {
                                 ))}
                             </View>
                         </View>
-
-                        <View style={s.divider} />
-
-                        <View style={s.row}>
-                            <View style={{ flex: 1 }}>
-                                <Text style={s.label}>View Density</Text>
-                                <Text style={s.hint}>Article card spacing</Text>
-                            </View>
-                            <View style={s.picker}>
-                                {(['compact', 'comfortable', 'spacious'] as const).map((density) => (
-                                    <TouchableOpacity
-                                        key={density}
-                                        onPress={() => handleToggle('view_density', density)}
-                                        style={[
-                                            s.pickerOption,
-                                            (settings.view_density === 'comfortable' || !settings.view_density) && density === 'comfortable' && { backgroundColor: colors.primary.dark }
-                                        ]}
-                                    >
-                                        <Text style={[
-                                            s.pickerText,
-                                            (settings.view_density === 'comfortable' || !settings.view_density) && density === 'comfortable' && { color: colors.text.inverse, fontWeight: '600' }
-                                        ]}>
-                                            {density.charAt(0).toUpperCase() + density.slice(1)}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
                     </View>
                 </View>
 
