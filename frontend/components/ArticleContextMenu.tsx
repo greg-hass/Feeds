@@ -3,9 +3,9 @@ import { View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView, Platform }
 import * as Haptics from 'expo-haptics';
 import {
     Check, CheckCircle, Bookmark, ExternalLink, Share2,
-    Copy, BookmarkCheck, BookmarkX, Circle, CircleDot
+    Copy, BookmarkCheck, BookmarkX, Circle, CircleDot, PauseCircle
 } from 'lucide-react-native';
-import { useArticleStore } from '@/stores';
+import { useArticleStore, useFeedStore, useToastStore } from '@/stores';
 import { Article } from '@/services/api';
 import { shareContent } from '@/utils/share';
 import { useColors, spacing, borderRadius } from '@/theme';
@@ -41,6 +41,8 @@ export const ArticleContextMenu: React.FC<ArticleContextMenuProps> = ({
 }) => {
     const colors = useColors();
     const { markRead, markUnread, toggleBookmark } = useArticleStore();
+    const { pauseFeed } = useFeedStore();
+    const { show } = useToastStore();
     const s = styles(colors);
 
     if (!article) return null;
@@ -60,6 +62,17 @@ export const ArticleContextMenu: React.FC<ArticleContextMenuProps> = ({
     const handleToggleBookmark = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         toggleBookmark(article.id);
+        onClose();
+    };
+
+    const handlePauseFeed = async () => {
+        try {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            await pauseFeed(article.feed_id);
+            show(`Paused "${article.feed_title}"`, 'success');
+        } catch (error) {
+            show('Failed to pause feed', 'error');
+        }
         onClose();
     };
 
@@ -143,6 +156,12 @@ export const ArticleContextMenu: React.FC<ArticleContextMenuProps> = ({
             label: article.is_bookmarked ? 'Remove Bookmark' : 'Bookmark',
             onPress: handleToggleBookmark,
             iconFill: article.is_bookmarked ? colors.primary.DEFAULT : 'none',
+        },
+        {
+            id: 'pause',
+            icon: PauseCircle,
+            label: 'Pause Feed',
+            onPress: handlePauseFeed,
         },
         {
             id: 'share',
