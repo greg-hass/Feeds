@@ -1060,7 +1060,7 @@ export default function ManageScreen() {
                                                 <AlertTriangle size={14} color={colors.error} style={s.statusIcon} />
                                             )}
                                         </View>
-                                        <Text style={s.feedUrl} numberOfLines={1}>
+                                        <Text style={[s.feedUrl, feed.folder_id && s.folderTextHighlight]} numberOfLines={1}>
                                             {feed.folder_id ? folderNameById.get(feed.folder_id) || 'No folder' : 'No folder'}
                                         </Text>
                                         {feed.paused_at && (
@@ -2423,5 +2423,9 @@ const styles = (colors: any) => StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 8,
         elevation: 5,
+    },
+    folderTextHighlight: {
+        color: colors.primary.DEFAULT,
+        fontWeight: '600',
     },
 });
