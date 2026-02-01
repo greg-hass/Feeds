@@ -3,7 +3,8 @@ import { View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView, Platform }
 import * as Haptics from 'expo-haptics';
 import {
     Check, CheckCircle, Bookmark, ExternalLink, Share2,
-    Copy, BookmarkCheck, BookmarkX, Circle, CircleDot, PauseCircle
+    Copy, BookmarkCheck, BookmarkX, Circle, CircleDot, PauseCircle,
+    Info
 } from 'lucide-react-native';
 import { useArticleStore, useFeedStore, useToastStore } from '@/stores';
 import { Article } from '@/services/api';
@@ -17,6 +18,7 @@ interface ArticleContextMenuProps {
     article: Article | null;
     onClose: () => void;
     onArticlePress: (article: Article) => void;
+    onFeedInfoPress?: (feedId: number) => void;
 }
 
 interface MenuAction {
@@ -131,12 +133,26 @@ export const ArticleContextMenu: React.FC<ArticleContextMenuProps> = ({
         onClose();
     };
 
+    const handleFeedInfo = () => {
+        if (article.feed_id && onFeedInfoPress) {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            onFeedInfoPress(article.feed_id);
+        }
+        onClose();
+    };
+
     const actions: MenuAction[] = [
         {
             id: 'open',
             icon: CircleDot,
             label: 'Open Article',
             onPress: handleOpenArticle,
+        },
+        {
+            id: 'info',
+            icon: Info,
+            label: 'Feed Info',
+            onPress: handleFeedInfo,
         },
         {
             id: 'external',

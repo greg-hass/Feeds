@@ -13,6 +13,8 @@ import NewArticlesPill from './NewArticlesPill';
 import { TimelineEmptyState } from './TimelineEmptyState';
 import { DigestCard } from './DigestCard';
 import { PodcastSection } from './PodcastSection';
+import TimelineHeader from './TimelineHeader';
+import { FeedInfoSheet } from './FeedInfoSheet';
 import { timelineStyles } from './Timeline.styles';
 import { ScrollView } from 'react-native';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
@@ -35,6 +37,8 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     const styles = timelineStyles(colors, isMobile);
     const [showMenu, setShowMenu] = useState(false);
     const [sidebarAnim] = useState(new Animated.Value(-300));
+    const [feedInfoId, setFeedInfoId] = useState<number | null>(null);
+    const [feedInfoVisible, setFeedInfoVisible] = useState(false);
 
     const {
         articles, isLoading, hasMore, filter, isFeedLoading, headerTitle, timeLeft, isRefreshing, refreshProgress,
@@ -53,6 +57,11 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
         saveScrollPosition();
         handleArticlePress(item);
     }, [handleArticlePress, saveScrollPosition]);
+
+    const handleFeedInfoPress = useCallback((feedId: number) => {
+        setFeedInfoId(feedId);
+        setFeedInfoVisible(true);
+    }, []);
 
     const toggleMenu = () => {
         setShowMenu(!showMenu);
@@ -108,6 +117,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
             onPlayPress={handlePlayPress}
             getBookmarkScale={getBookmarkScale}
             getBookmarkRotation={getBookmarkRotation}
+            onFeedInfoPress={handleFeedInfoPress}
         />
     );
 
@@ -251,6 +261,15 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                     </Animated.View>
                 </>
             )}
+
+            <FeedInfoSheet
+                feedId={feedInfoId}
+                visible={feedInfoVisible}
+                onClose={() => {
+                    setFeedInfoVisible(false);
+                    setFeedInfoId(null);
+                }}
+            />
         </View>
     );
 }

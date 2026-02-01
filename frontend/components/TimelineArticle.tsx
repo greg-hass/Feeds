@@ -24,12 +24,13 @@ interface TimelineArticleProps {
     onPlayPress: (item: Article) => void;
     getBookmarkScale: (id: number) => Animated.Value;
     getBookmarkRotation: (id: number) => Animated.Value;
+    onFeedInfoPress?: (feedId: number) => void;
 }
 
 const TimelineArticle: React.FC<TimelineArticleProps> = ({
     item, index, isActive, isMobile, activeVideoId, playingArticleId, isPlaying,
     colors, hotPulseAnim, onArticlePress, onVideoPress, onPlayPress,
-    getBookmarkScale, getBookmarkRotation
+    getBookmarkScale, getBookmarkRotation, onFeedInfoPress
 }) => {
     const s = timelineStyles(colors, isMobile);
     const [contextMenuVisible, setContextMenuVisible] = useState(false);
@@ -101,6 +102,7 @@ const TimelineArticle: React.FC<TimelineArticleProps> = ({
                 article={item}
                 onClose={() => setContextMenuVisible(false)}
                 onArticlePress={onArticlePress}
+                onFeedInfoPress={onFeedInfoPress}
             />
         </>
     );

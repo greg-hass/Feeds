@@ -408,39 +408,34 @@ export class FeedsController {
         const feed = queryOne<Feed>('SELECT * FROM feeds WHERE id = ? AND user_id = ? AND deleted_at IS NULL', [feedId, userId]);
         if (!feed) return reply.status(404).send({ error: 'Feed not found' });
         
-        // Only refresh icon for YouTube feeds
-        if (feed.type !== 'youtube' && !feed.url.includes('youtube.com/feeds')) {
-            return reply.status(400).send({ error: 'Only YouTube feeds support icon refresh' });
-        }
-        
         try {
             // Parse feed to get fresh favicon
             const feedData = await parseFeed(feed.url);
             
-            // Extract channel ID and fetch icon
-            const urlObj = new URL(feed.url);
-            let channelId = urlObj.searchParams.get('channel_id');
-            
-            if (!channelId) {
-                // Try to get from metadata
-                const detectedType = detectFeedType(feed.url, feedData);
-                if (detectedType === 'youtube' && feedData.youtubeChannelId) {
-                    // Handle both traditional UC... channel IDs and newer handle-based IDs (@username)
-                    const ytId = feedData.youtubeChannelId;
-                    if (ytId.startsWith('UC') || ytId.startsWith('@')) {
-                        channelId = ytId;
-                    } else if (ytId.length === 22) {
-                        // Legacy: 22-char ID without UC prefix
-                        channelId = 'UC' + ytId;
-                    } else {
-                        channelId = ytId;
+            // Extract channel ID and fetch icon (YouTube only)
+            let newIconUrl: string | null = null;
+            if (feed.type === 'youtube' || feed.url.includes('youtube.com/feeds')) {
+                const urlObj = new URL(feed.url);
+                let channelId = urlObj.searchParams.get('channel_id');
+                
+                if (!channelId) {
+                    // Try to get from metadata
+                    const detectedType = detectFeedType(feed.url, feedData);
+                    if (detectedType === 'youtube' && feedData.youtubeChannelId) {
+                        const ytId = feedData.youtubeChannelId;
+                        if (ytId.startsWith('UC') || ytId.startsWith('@')) {
+                            channelId = ytId;
+                        } else if (ytId.length === 22) {
+                            channelId = 'UC' + ytId;
+                        } else {
+                            channelId = ytId;
+                        }
                     }
                 }
-            }
-            
-            let newIconUrl: string | null = null;
-            if (channelId) {
-                newIconUrl = await fetchYouTubeIcon(channelId);
+                
+                if (channelId) {
+                    newIconUrl = await fetchYouTubeIcon(channelId);
+                }
             }
             
             // If no channel-specific icon, use the feed's favicon

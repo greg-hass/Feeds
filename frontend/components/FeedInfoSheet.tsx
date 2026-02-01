@@ -24,6 +24,7 @@ import {
     FileText,
     Trash2,
     Pencil,
+    Image as ImageIcon,
 } from 'lucide-react-native';
 import { useColors, spacing, borderRadius, shadows } from '@/theme';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
@@ -137,6 +138,26 @@ export const FeedInfoSheet = ({ feedId, visible, onClose, onEdit, onDelete }: Fe
         } catch (err) {
             console.error('Failed to pause/resume feed:', err);
             Alert.alert('Error', 'Failed to update feed status');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleRefreshIcon = async () => {
+        if (!feedInfo) return;
+        setActionLoading(true);
+        try {
+            const result = await api.refreshFeedIcon(feedInfo.feed.id);
+            if (result.icon_refreshed) {
+                setFeedInfo({ ...feedInfo, feed: result.feed });
+                updateFeed(result.feed.id, result.feed);
+                Alert.alert('Success', 'Feed icon refreshed successfully');
+            } else {
+                Alert.alert('Info', result.message || 'Icon is already up to date');
+            }
+        } catch (err) {
+            console.error('Failed to refresh icon:', err);
+            Alert.alert('Error', 'Failed to refresh feed icon');
         } finally {
             setActionLoading(false);
         }
@@ -346,6 +367,21 @@ export const FeedInfoSheet = ({ feedId, visible, onClose, onEdit, onDelete }: Fe
                                         <>
                                             <Pause size={18} color={colors.background.primary} />
                                             <Text style={s.actionButtonTextPrimary}>Pause Feed</Text>
+                                        </>
+                                    )}
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={[s.actionButton, { marginTop: spacing.sm }]}
+                                    onPress={handleRefreshIcon}
+                                    disabled={actionLoading}
+                                >
+                                    {actionLoading ? (
+                                        <ActivityIndicator size="small" color={colors.text.primary} />
+                                    ) : (
+                                        <>
+                                            <ImageIcon size={18} color={colors.text.primary} />
+                                            <Text style={s.actionButtonText}>Refresh Icon</Text>
                                         </>
                                     )}
                                 </TouchableOpacity>
