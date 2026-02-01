@@ -20,11 +20,10 @@ const updateSettingsSchema = z.object({
     theme: z.enum(['light', 'dark', 'auto']).optional(),
     font_size: z.enum(['small', 'medium', 'large']).optional(),
     show_images: z.boolean().optional(),
-    accent_color: z.enum(['emerald', 'blue', 'indigo', 'violet', 'rose', 'amber', 'cyan', 'yellow']).optional(),
+    accent_color: z.enum(['emerald', 'sky', 'indigo', 'purple', 'rose', 'orange', 'teal', 'slate']).optional(),
     font_family: z.enum(['sans', 'serif']).optional(),
     reader_theme: z.enum(['default', 'sepia', 'paper', 'dark']).optional(),
     reader_line_height: z.number().optional(),
-    view_density: z.enum(['compact', 'comfortable', 'spacious']).optional(),
     feed_fetch_limits: feedFetchLimitsSchema.optional(),
 });
 
