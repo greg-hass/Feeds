@@ -80,11 +80,15 @@ export const useDigestStore = create<DigestStore>()(
             },
 
             updateSettings: async (updates) => {
+                const previousSettings = get().settings;
+                // Optimistic update
+                set((state) => ({ settings: { ...state.settings, ...updates } }));
                 try {
                     await api.updateDigestSettings(updates);
-                    set((state) => ({ settings: { ...state.settings, ...updates } }));
                     useToastStore.getState().show('Settings saved', 'success');
                 } catch (error) {
+                    // Revert on failure
+                    set({ settings: previousSettings });
                     handleError(error, { context: 'updateDigestSettings' });
                 }
             },

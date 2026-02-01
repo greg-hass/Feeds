@@ -87,6 +87,8 @@ export default function SettingsScreen() {
         );
     }
 
+    const isDigestEnabled = !!digestSettings?.enabled;
+
     return (
         <View style={s.container}>
             <ScreenHeader title="Settings" />
@@ -381,24 +383,24 @@ export default function SettingsScreen() {
                             <TouchableOpacity
                                 style={[
                                     s.customSwitch,
-                                    { backgroundColor: !!digestSettings?.enabled ? colors.primary.DEFAULT : colors.border.DEFAULT }
+                                    { backgroundColor: isDigestEnabled ? colors.primary.DEFAULT : colors.border.DEFAULT }
                                 ]}
-                                onPress={() => handleDigestToggle('enabled', !digestSettings?.enabled)}
+                                onPress={() => handleDigestToggle('enabled', !isDigestEnabled)}
                                 accessibilityLabel="Enable Daily Digest"
                                 accessibilityRole="switch"
-                                accessibilityState={{ checked: !!digestSettings?.enabled }}
+                                accessibilityState={{ checked: isDigestEnabled }}
                             >
                                 <View style={[
                                     s.customSwitchThumb,
                                     { 
                                         backgroundColor: colors.background.primary,
-                                        transform: [{ translateX: !!digestSettings?.enabled ? 20 : 0 }]
+                                        transform: [{ translateX: isDigestEnabled ? 20 : 0 }]
                                     }
                                 ]} />
                             </TouchableOpacity>
                         </View>
 
-                        {!!digestSettings?.enabled && (
+                        {isDigestEnabled && (
                             <>
                                 <View style={s.divider} />
                                 <View style={s.row}>
