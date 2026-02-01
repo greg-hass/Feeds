@@ -38,7 +38,7 @@ export async function buildApp() {
 
     // CORS
     await app.register(cors, {
-        origin: process.env.CORS_ORIGIN || (process.env.NODE_ENV === 'development' ? true : 'http://localhost:8080'),
+        origin: process.env.CORS_ORIGIN || (process.env.NODE_ENV === 'development' ? ['http://localhost:8080', 'http://localhost:3000'] : 'https://yourdomain.com'),
         credentials: true,
         methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization'],
@@ -108,10 +108,17 @@ export async function startServer() {
     initializeDatabase();
 
     // Ensure default user exists
-    const user = queryOne('SELECT id FROM users WHERE id = 1');
-    if (!user) {
-        console.log('Creating default admin user...');
-        run('INSERT INTO users (id, username, password_hash, is_admin) VALUES (1, ?, ?, 1)', ['admin', 'disabled']);
+    try {
+        const user = queryOne('SELECT id FROM users WHERE username = ?', ['admin']);
+        if (!user) {
+            console.log('Creating default admin user...');
+            const bcrypt = require('bcrypt');
+            const hashedPassword = await bcrypt.hash('disabled', 12);
+            run('INSERT INTO users (username, password_hash, is_admin) VALUES (?, ?, 1)', ['admin', hashedPassword]);
+        }
+    } catch (err) {
+        console.error('Failed to ensure default admin user:', err);
+        // Continue startup - user can be created via UI
     }
 
     const app = await buildApp();
