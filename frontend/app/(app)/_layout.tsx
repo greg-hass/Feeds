@@ -208,6 +208,7 @@ export default function AppLayout() {
                     fetchFeeds();
                     fetchFolders();
                     fetchArticles(true);
+                    fetchSettings().catch(() => {});
                     return;
                 }
             },

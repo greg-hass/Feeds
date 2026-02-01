@@ -36,6 +36,11 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
 
             if (diff <= 0) {
                 setTimeLeft('0s');
+                // If we are significantly past the due date (>10s) and not currently refreshing,
+                // check if we missed an update
+                if (diff < -10000 && !isRefreshing) {
+                    useSettingsStore.getState().fetchSettings().catch(() => {});
+                }
             } else if (diff < 60000) {
                 setTimeLeft(`${Math.floor(diff / 1000)}s`);
             } else if (diff < 3600000) {
