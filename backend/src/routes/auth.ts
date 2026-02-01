@@ -89,6 +89,24 @@ export async function authRoutes(app: FastifyInstance) {
 
         // Check if password is set up
         if (user.password_hash === 'disabled' || !user.password_hash) {
+            // Auto-provision if APP_PASSWORD is configured and matches request
+            const envPassword = process.env.APP_PASSWORD;
+            
+            if (envPassword && password === envPassword) {
+                // First successful login with the env password -> set it as the hash
+                const hash = await bcrypt.hash(password, SALT_ROUNDS);
+                run('UPDATE users SET password_hash = ? WHERE id = 1', [hash]);
+                
+                // Continue to login logic...
+                // We don't need to verify again since we just matched it
+                loginAttempts.delete(clientIP);
+                const token = generateToken(user.id, user.username);
+                return {
+                    token,
+                    user: { id: user.id, username: user.username },
+                };
+            }
+
             return reply.status(401).send({
                 error: 'Authentication not configured. Please run setup first.',
                 needsSetup: true
