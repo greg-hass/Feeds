@@ -20,6 +20,11 @@ export default function SettingsScreen() {
 
     const s = styles(colors);
 
+    // Handle legacy accent colors by falling back to emerald if the stored value isn't in the new palette
+    const activeAccent = settings?.accent_color && Object.keys(ACCENT_COLORS).includes(settings.accent_color)
+        ? settings.accent_color
+        : 'emerald';
+
     useEffect(() => {
         fetchSettings();
         fetchDigestSettings();
@@ -151,12 +156,12 @@ export default function SettingsScreen() {
                                         style={[
                                             s.accentOption,
                                             { backgroundColor: ACCENT_COLORS[key].DEFAULT },
-                                            (settings.accent_color === key || (!settings.accent_color && key === 'emerald')) && s.accentOptionActive
+                                            activeAccent === key && s.accentOptionActive
                                         ]}
                                         onPress={() => handleToggle('accent_color', key)}
                                         accessibilityLabel={`Set accent color to ${key}`}
                                     >
-                                        {(settings.accent_color === key || (!settings.accent_color && key === 'emerald')) && (
+                                        {activeAccent === key && (
                                             <Check size={16} color="#fff" />
                                         )}
                                     </TouchableOpacity>
@@ -376,7 +381,7 @@ export default function SettingsScreen() {
                             <TouchableOpacity
                                 style={[
                                     s.customSwitch,
-                                    { backgroundColor: digestSettings?.enabled ? colors.primary.DEFAULT : colors.border.DEFAULT }
+                                    { backgroundColor: !!digestSettings?.enabled ? colors.primary.DEFAULT : colors.border.DEFAULT }
                                 ]}
                                 onPress={() => handleDigestToggle('enabled', !digestSettings?.enabled)}
                                 accessibilityLabel="Enable Daily Digest"
@@ -387,13 +392,13 @@ export default function SettingsScreen() {
                                     s.customSwitchThumb,
                                     { 
                                         backgroundColor: colors.background.primary,
-                                        transform: [{ translateX: digestSettings?.enabled ? 20 : 0 }]
+                                        transform: [{ translateX: !!digestSettings?.enabled ? 20 : 0 }]
                                     }
                                 ]} />
                             </TouchableOpacity>
                         </View>
 
-                        {digestSettings?.enabled && (
+                        {!!digestSettings?.enabled && (
                             <>
                                 <View style={s.divider} />
                                 <View style={s.row}>
