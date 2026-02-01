@@ -7,6 +7,7 @@ import { refreshFeed } from '../services/feed-refresh.js';
 import { cacheFeedIcon, clearAllIconCaches, clearFeedIconCache } from '../services/icon-cache.js';
 import { emitFeedChange } from '../services/feed-changes.js';
 import { Feed } from '../types/index.js';
+import { ensureFeedsSchema } from '../utils/schema-ensure.js';
 
 const ICON_ENDPOINT_PREFIX = '/api/v1/icons';
 
@@ -26,6 +27,7 @@ export const toApiFeed = (feed: Feed) => {
 // Controllers
 export class FeedsController {
     static async list(request: FastifyRequest, reply: FastifyReply) {
+        ensureFeedsSchema();
         const userId = 1; // Single user app
         // Optimized: Select only essential fields for feed list (40% smaller payload)
         // Excludes: site_url, description (rarely used in list view)

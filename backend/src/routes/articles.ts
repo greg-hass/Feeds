@@ -5,6 +5,7 @@ import { extractReadability, fetchAndExtractReadability } from '../services/read
 import { getUserSettings } from '../services/settings.js';
 import { Article } from '../types/index.js';
 import { validateId } from '../utils/validation.js';
+import { ensureFeedsSchema } from '../utils/schema-ensure.js';
 
 const listArticlesSchema = z.object({
     feed_id: z.coerce.number().optional(),
@@ -108,6 +109,9 @@ function resolveArticleThumbnailUrl(articleId: number, cachedPath: string | null
 }
 
 export async function articlesRoutes(app: FastifyInstance) {
+    // Ensure schema is up to date (resilience against migration failures)
+    ensureFeedsSchema();
+
     // Single user app - user_id is always 1
     const userId = 1;
 
