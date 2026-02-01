@@ -49,33 +49,46 @@ export const useTimelineScroll = (articles: any[], filter: any) => {
     // Restore scroll position when articles are loaded
     useEffect(() => {
         if (hasRestoredScroll.current) {
-            setIsScrollRestored(true);
             return;
         }
 
         const savedPosition = scrollPositions[scrollKey] || 0;
 
-        if (articles.length > 0 && savedPosition > 0 && flatListRef.current) {
+        // If there's no saved position, we're done
+        if (savedPosition <= 0) {
+            hasRestoredScroll.current = true;
+            setIsScrollRestored(true);
+            return;
+        }
+
+        // If we have a saved position but no articles yet, wait for articles
+        if (articles.length === 0) {
+            return;
+        }
+
+        if (flatListRef.current) {
             // Store the position we want to scroll to
             pendingScrollPosition.current = savedPosition;
             
-            // Use a small delay to ensure FlatList has rendered items
+            // Use a slightly longer delay to ensure FlatList has fully rendered items
             const timeoutId = setTimeout(() => {
                 if (flatListRef.current && pendingScrollPosition.current !== null) {
                     flatListRef.current.scrollToOffset({ 
                         offset: pendingScrollPosition.current, 
                         animated: false 
                     });
-                    hasRestoredScroll.current = true;
-                    pendingScrollPosition.current = null;
-                    setIsScrollRestored(true);
+                    
+                    // Small additional delay before allowing scroll tracking to resume
+                    // This prevents the scrollToOffset event itself from being tracked
+                    setTimeout(() => {
+                        hasRestoredScroll.current = true;
+                        pendingScrollPosition.current = null;
+                        setIsScrollRestored(true);
+                    }, 50);
                 }
-            }, 100);
+            }, 250); // Increased delay for layout stability
 
             return () => clearTimeout(timeoutId);
-        } else if (savedPosition === 0 || articles.length === 0) {
-            hasRestoredScroll.current = true;
-            setIsScrollRestored(true);
         }
     }, [articles.length, scrollKey]);
 
@@ -87,8 +100,17 @@ export const useTimelineScroll = (articles: any[], filter: any) => {
 
     // Track scroll position in real-time for the current view
     const handleScroll = useCallback((e: any) => {
+        // IMPORTANT: Ignore scroll events during restoration to prevent overwriting saved position with 0 or jitter
+        if (!hasRestoredScroll.current || pendingScrollPosition.current !== null) {
+            return;
+        }
+        
         const offset = e.nativeEvent.contentOffset.y;
-        scrollPositions[scrollKey] = offset;
+        
+        // Only save if it's a valid positive offset to avoid jitter
+        if (offset > 0) {
+            scrollPositions[scrollKey] = offset;
+        }
     }, [scrollKey]);
 
     // Prefetch articles as user scrolls
