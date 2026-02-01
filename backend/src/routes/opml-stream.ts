@@ -5,6 +5,7 @@ import { parseOPML, OPMLFeed, OPMLFolder } from '../services/opml-parser.js';
 import { refreshFeed, FeedToRefresh } from '../services/feed-refresh.js';
 import { parseFeed, FeedType } from '../services/feed-parser.js';
 import { Feed, Folder, ImportStats, ProgressEvent } from '../types/index.js';
+import { getUserSettings } from '../services/settings.js';
 
 // Timeout configuration
 const FEED_REFRESH_TIMEOUT = 30_000; // 30 seconds
@@ -23,6 +24,10 @@ function heuristicDetectFeedType(url: string): FeedType {
 export async function opmlStreamRoutes(app: FastifyInstance) {
     // Single user app - user_id is always 1
     const userId = 1;
+    
+    // Get user's refresh interval setting
+    const userSettings = getUserSettings(userId);
+    const defaultRefreshInterval = userSettings.refresh_interval_minutes;
 
     // Register multipart for file uploads (each Fastify plugin scope is isolated)
     await app.register(multipart, {
@@ -240,7 +245,7 @@ export async function opmlStreamRoutes(app: FastifyInstance) {
                                 id: feed.id,
                                 url: feed.url,
                                 type: feed.type,
-                                refresh_interval_minutes: 30,
+                                refresh_interval_minutes: defaultRefreshInterval,
                             };
 
                             // Use Promise.race for timeout with proper cleanup

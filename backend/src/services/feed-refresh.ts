@@ -496,6 +496,20 @@ export async function refreshFeed(feed: FeedToRefreshWithCache): Promise<Refresh
         let finalFavicon = feedData.favicon;
         let cachedIcon = null;
 
+        // For YouTube feeds, try to fetch the actual channel avatar instead of generic favicon
+        if (currentType === 'youtube' && feedData.youtubeChannelId) {
+            const { fetchYouTubeIcon } = await import('./youtube-parser.js');
+            const channelId = feedData.youtubeChannelId;
+            try {
+                const avatarUrl = await fetchYouTubeIcon(channelId);
+                if (avatarUrl && !isGenericIconUrl(avatarUrl)) {
+                    finalFavicon = avatarUrl;
+                }
+            } catch (e) {
+                console.warn(`[Refresh] Failed to fetch YouTube icon for ${feed.id}:`, e);
+            }
+        }
+
         if (!iconStatus.iconCachedPath && finalFavicon && !isGenericIconUrl(finalFavicon)) {
              try {
                  cachedIcon = await cacheFeedIcon(feed.id, finalFavicon);
