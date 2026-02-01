@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-nati
 import { useRouter } from 'expo-router';
 import { useSettingsStore, useToastStore, useFeedStore, useArticleStore, useDigestStore } from '@/stores';
 import { Settings, api } from '@/services/api';
-import { Sun, Moon, Monitor, Check, Trash2 } from 'lucide-react-native';
+import { Sun, Moon, Monitor, Check, Trash2, Type, HardDrive } from 'lucide-react-native';
 import { useColors, spacing, borderRadius, shadows, ACCENT_COLORS, AccentColor } from '@/theme';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { SectionHeader } from '@/components/ui/SectionHeader';
@@ -221,6 +221,41 @@ export default function SettingsScreen() {
                                 ]} />
                             </TouchableOpacity>
                         </View>
+
+                        <View style={s.divider} />
+
+                        <View style={s.row}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={s.label}>Font Family</Text>
+                                <Text style={s.hint}>Reader view typography</Text>
+                            </View>
+                            <View style={s.picker}>
+                                <TouchableOpacity
+                                    onPress={() => handleToggle('font_family', 'sans')}
+                                    style={[
+                                        s.pickerOption,
+                                        (settings.font_family === 'sans' || !settings.font_family) && { backgroundColor: colors.primary.dark }
+                                    ]}
+                                >
+                                    <Text style={[
+                                        s.pickerText,
+                                        (settings.font_family === 'sans' || !settings.font_family) && { color: colors.text.inverse, fontWeight: '600' }
+                                    ]}>Sans</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={() => handleToggle('font_family', 'serif')}
+                                    style={[
+                                        s.pickerOption,
+                                        settings.font_family === 'serif' && { backgroundColor: colors.primary.dark }
+                                    ]}
+                                >
+                                    <Text style={[
+                                        s.pickerText,
+                                        settings.font_family === 'serif' && { color: colors.text.inverse, fontWeight: '600' }
+                                    ]}>Serif</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
                     </View>
                 </View>
 
@@ -409,6 +444,26 @@ export default function SettingsScreen() {
                                     { label: '24 hours', value: 1440 },
                                 ]}
                                 onSelect={(value) => handleToggle('refresh_interval_minutes', value)}
+                            />
+                        </View>
+
+                        <View style={s.divider} />
+
+                        <View style={s.row}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={s.label}>Keep Articles</Text>
+                                <Text style={s.hint}>Auto-delete older than</Text>
+                            </View>
+                            <Dropdown
+                                value={String(settings.retention_days || 90)}
+                                options={[
+                                    { label: '30 Days', value: 30 },
+                                    { label: '90 Days', value: 90 },
+                                    { label: '6 Months', value: 180 },
+                                    { label: '1 Year', value: 365 },
+                                    { label: 'Forever', value: 3650 },
+                                ]}
+                                onSelect={(value) => handleToggle('retention_days', value)}
                             />
                         </View>
 
