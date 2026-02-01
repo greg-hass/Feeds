@@ -177,6 +177,7 @@ export async function digestRoutes(app: FastifyInstance) {
 
     // Get digest settings
     app.get('/settings', async (request: FastifyRequest) => {
+        ensureDigestSchema();
         interface RawSettings {
             user_id: number;
             enabled: number;
@@ -223,6 +224,7 @@ export async function digestRoutes(app: FastifyInstance) {
 
     // Update digest settings
     app.put('/settings', async (request: FastifyRequest) => {
+        ensureDigestSchema();
         const body = updateSettingsSchema.parse(request.body);
 
         const current = queryOne('SELECT * FROM digest_settings WHERE user_id = ?', [userId]);
