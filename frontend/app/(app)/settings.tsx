@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useSettingsStore, useToastStore, useFeedStore, useArticleStore } from '@/stores';
+import { useSettingsStore, useToastStore, useFeedStore, useArticleStore, useDigestStore } from '@/stores';
 import { Settings, api } from '@/services/api';
 import { Sun, Moon, Monitor, Check, Trash2 } from 'lucide-react-native';
 import { useColors, spacing, borderRadius, shadows, ACCENT_COLORS, AccentColor } from '@/theme';
@@ -14,6 +14,7 @@ export default function SettingsScreen() {
     const router = useRouter();
     const colors = useColors();
     const { settings, fetchSettings, updateSettings } = useSettingsStore();
+    const { settings: digestSettings, fetchSettings: fetchDigestSettings, updateSettings: updateDigestSettings } = useDigestStore();
     const { fetchFeeds, refreshAllFeeds } = useFeedStore();
     const { show } = useToastStore();
 
@@ -21,7 +22,21 @@ export default function SettingsScreen() {
 
     useEffect(() => {
         fetchSettings();
+        fetchDigestSettings();
     }, []);
+
+    const timeOptions = Array.from({ length: 48 }).map((_, i) => {
+        const hour = Math.floor(i / 2);
+        const minute = i % 2 === 0 ? '00' : '30';
+        const time = `${hour.toString().padStart(2, '0')}:${minute}`;
+        return { label: time, value: time };
+    });
+
+    const handleDigestToggle = async (key: string, value: any) => {
+        if (digestSettings) {
+            await updateDigestSettings({ [key]: value });
+        }
+    };
 
     const handleThemeChange = async (theme: 'light' | 'dark' | 'auto') => {
         try {
@@ -341,6 +356,66 @@ export default function SettingsScreen() {
                                 onSelect={(value) => handleToggle('feed_fetch_limits', { ...settings.feed_fetch_limits, podcast_count: value })}
                             />
                         </View>
+                    </View>
+                </View>
+
+                {/* Daily Digest */}
+                <View style={s.section}>
+                    <SectionHeader title="Daily Digest" />
+                    <View style={s.card}>
+                        <View style={s.row}>
+                            <View>
+                                <Text style={s.label}>Enable Digest</Text>
+                                <Text style={s.hint}>AI-generated summary</Text>
+                            </View>
+                            <TouchableOpacity
+                                style={[
+                                    s.customSwitch,
+                                    { backgroundColor: digestSettings?.enabled ? colors.primary.DEFAULT : colors.border.DEFAULT }
+                                ]}
+                                onPress={() => handleDigestToggle('enabled', !digestSettings?.enabled)}
+                                accessibilityLabel="Enable Daily Digest"
+                                accessibilityRole="switch"
+                                accessibilityState={{ checked: !!digestSettings?.enabled }}
+                            >
+                                <View style={[
+                                    s.customSwitchThumb,
+                                    { 
+                                        backgroundColor: colors.background.primary,
+                                        transform: [{ translateX: digestSettings?.enabled ? 20 : 0 }]
+                                    }
+                                ]} />
+                            </TouchableOpacity>
+                        </View>
+
+                        {digestSettings?.enabled && (
+                            <>
+                                <View style={s.divider} />
+                                <View style={s.row}>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={s.label}>Morning Edition</Text>
+                                        <Text style={s.hint}>Schedule time</Text>
+                                    </View>
+                                    <Dropdown
+                                        value={digestSettings.schedule_morning || '08:00'}
+                                        options={timeOptions}
+                                        onSelect={(value) => handleDigestToggle('schedule_morning', value)}
+                                    />
+                                </View>
+
+                                <View style={[s.row, { marginTop: 12 }]}>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={s.label}>Evening Edition</Text>
+                                        <Text style={s.hint}>Schedule time</Text>
+                                    </View>
+                                    <Dropdown
+                                        value={digestSettings.schedule_evening || '20:00'}
+                                        options={timeOptions}
+                                        onSelect={(value) => handleDigestToggle('schedule_evening', value)}
+                                    />
+                                </View>
+                            </>
+                        )}
                     </View>
                 </View>
 
