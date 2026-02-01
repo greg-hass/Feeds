@@ -36,12 +36,7 @@ const ICON_ENDPOINT_PREFIX = '/api/v1/icons';
 
 function resolveArticleIconUrl(feedId: number, cachedPath: string | null, fallback: string | null, iconUpdatedAt?: string | null) {
     if (cachedPath) {
-        let url = `${ICON_ENDPOINT_PREFIX}/${feedId}`;
-        const version = iconUpdatedAt ? new Date(iconUpdatedAt).getTime() : 0;
-        if (version > 0) {
-            url += `?v=${version}`;
-        }
-        return url;
+        return `${ICON_ENDPOINT_PREFIX}/${feedId}`;
     }
     return fallback;
 }

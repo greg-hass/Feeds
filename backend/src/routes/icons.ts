@@ -45,10 +45,30 @@ export async function iconsRoutes(app: FastifyInstance) {
             return reply.status(404).send({ error: 'Icon missing' });
         }
 
+import { stat } from 'node:fs/promises';
+
+// ... (imports)
+
         const mime = resolveIconMime(feed.icon_cached_path, feed.icon_cached_content_type);
-        reply.header('Content-Type', mime);
-        // Reduced max-age to 1 day and removed immutable to prevent stale icons on ID reuse
-        reply.header('Cache-Control', 'public, max-age=86400');
-        return reply.send(createReadStream(filePath));
+        
+        // Get file stats for ETag
+        try {
+            const stats = await stat(filePath);
+            const etag = `W/"${stats.mtimeMs.toString(16)}-${stats.size.toString(16)}"`;
+            
+            if (request.headers['if-none-match'] === etag) {
+                return reply.status(304).send();
+            }
+            
+            reply.header('Content-Type', mime);
+            reply.header('Cache-Control', 'public, max-age=0, must-revalidate');
+            reply.header('ETag', etag);
+            reply.header('Last-Modified', stats.mtime.toUTCString());
+            
+            return reply.send(createReadStream(filePath));
+        } catch (err) {
+            // File might have been deleted in race condition
+            return reply.status(404).send({ error: 'Icon file missing' });
+        }
     });
 }

@@ -14,11 +14,6 @@ export const toApiFeed = (feed: Feed) => {
     let iconUrl = feed.icon_url;
     if (feed.icon_cached_path) {
         iconUrl = `${ICON_ENDPOINT_PREFIX}/${feed.id}`;
-        // Use dedicated icon_updated_at for cache busting to prevent flicker on regular feed updates
-        const version = feed.icon_updated_at ? new Date(feed.icon_updated_at).getTime() : 0;
-        if (version > 0) {
-            iconUrl += `?v=${version}`;
-        }
     }
     
     const { icon_cached_path, icon_cached_content_type, ...rest } = feed;

@@ -248,10 +248,6 @@ async function checkFeeds() {
             let iconUrl = feed.icon_url;
             if (feed.icon_cached_path) {
                 iconUrl = `/api/v1/icons/${feed.id}`;
-                const version = feed.icon_updated_at ? new Date(feed.icon_updated_at).getTime() : 0;
-                if (version > 0) {
-                    iconUrl += `?v=${version}`;
-                }
             }
             return {
                 id: feed.id,
