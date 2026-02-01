@@ -274,6 +274,7 @@ async function updateFeedMetadata(
             icon_url = COALESCE(?, icon_url),
             icon_cached_path = COALESCE(?, icon_cached_path),
             icon_cached_content_type = COALESCE(?, icon_cached_content_type),
+            icon_updated_at = CASE WHEN ? IS NOT NULL THEN datetime('now') ELSE icon_updated_at END,
             description = COALESCE(description, ?),
             last_fetched_at = datetime('now'),
             next_fetch_at = datetime('now', '+' || CAST(? AS INTEGER) || ' minutes'),
@@ -286,7 +287,38 @@ async function updateFeedMetadata(
         WHERE id = ?
     `;
     
-    run(sql, params);
+    // Add iconPathUpdate to params again for the CASE check
+    // Params order: 
+    // 1. titleUpdate
+    // 2. siteUrlUpdate
+    // 3. iconUrlUpdate
+    // 4. iconPathUpdate
+    // 5. iconMimeUpdate
+    // 6. iconPathUpdate (CHECK) -> NEW
+    // 7. descUpdate
+    // 8. refreshIntervalMinutes (next_fetch)
+    // 9. refreshIntervalMinutes (interval)
+    // 10. [type?]
+    // 11. feedId
+
+    const finalParams = [
+        titleUpdate,
+        siteUrlUpdate,
+        iconUrlUpdate,
+        iconPathUpdate,
+        iconMimeUpdate,
+        iconPathUpdate, // Check if this is not null to update timestamp
+        descUpdate,
+        refreshIntervalMinutes,
+        refreshIntervalMinutes
+    ];
+    
+    if (newType !== oldType) {
+        finalParams.push(newType);
+    }
+    finalParams.push(feedId);
+    
+    run(sql, finalParams);
     
     const updatedFeed = queryOne<{ next_fetch_at: string }>(
         'SELECT next_fetch_at FROM feeds WHERE id = ?',

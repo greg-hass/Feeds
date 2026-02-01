@@ -243,10 +243,15 @@ async function checkFeeds() {
             icon_url: string | null;
             icon_cached_path: string | null;
             updated_at?: string;
+            icon_updated_at?: string;
         }): RefreshFeedUpdate => {
             let iconUrl = feed.icon_url;
             if (feed.icon_cached_path) {
                 iconUrl = `/api/v1/icons/${feed.id}`;
+                const version = feed.icon_updated_at ? new Date(feed.icon_updated_at).getTime() : 0;
+                if (version > 0) {
+                    iconUrl += `?v=${version}`;
+                }
             }
             return {
                 id: feed.id,
@@ -297,8 +302,9 @@ async function checkFeeds() {
                                 icon_url: string | null;
                                 icon_cached_path: string | null;
                                 updated_at: string;
+                                icon_updated_at: string;
                             }>(
-                                'SELECT id, title, type, icon_url, icon_cached_path, updated_at FROM feeds WHERE id = ?',
+                                'SELECT id, title, type, icon_url, icon_cached_path, updated_at, icon_updated_at FROM feeds WHERE id = ?',
                                 [feed.id]
                             );
                             feedsRefreshed++;
