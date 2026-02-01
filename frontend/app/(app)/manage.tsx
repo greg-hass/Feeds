@@ -9,7 +9,7 @@ import {
     Folder as FolderIcon, Trash2, Edit2, FolderInput,
     Check, FileUp, FileDown, AlertTriangle, RefreshCw, RefreshCcw,
     Info, Pause, Clock, Skull, X, Globe, AlertCircle, ChevronRight,
-    Sparkles
+    Sparkles, ChevronDown
 } from 'lucide-react-native';
 import { FeedInfoSheet } from '@/components/FeedInfoSheet';
 import { useColors, borderRadius, spacing } from '@/theme';
@@ -68,6 +68,7 @@ export default function ManageScreen() {
     const [newFolderName, setNewFolderName] = useState('');
     const [showMenu, setShowMenu] = useState(false);
     const [sidebarAnim] = useState(new Animated.Value(-300));
+    const [expandedFolderIds, setExpandedFolderIds] = useState<Set<number>>(new Set());
 
     // AI Recommendations state
     const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
@@ -331,15 +332,22 @@ export default function ManageScreen() {
         setModalType('edit_feed');
     };
 
+    const toggleFolder = (folderId: number) => {
+        setExpandedFolderIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(folderId)) {
+                next.delete(folderId);
+            } else {
+                next.add(folderId);
+            }
+            return next;
+        });
+    };
+
     const handleRenameFolder = (folder: Folder) => {
         setSelectedFolder(folder);
         setRenameValue(folder.name);
         setModalType('rename_folder');
-    };
-
-    const handleViewFolder = (folder: Folder) => {
-        setSelectedFolder(folder);
-        setModalType('view_folder');
     };
 
     const handleMoveFeed = (feed: Feed) => {
@@ -943,37 +951,131 @@ export default function ManageScreen() {
                 {folders.length > 0 && (
                     <View style={s.section}>
                         <SectionHeader title={`Folders (${folders.length})`} />
-                        {folders.map((folder: Folder) => (
-                            <View key={folder.id} style={s.feedItem}>
-                                <TouchableOpacity
-                                    style={s.folderContent}
-                                    onPress={() => handleViewFolder(folder)}
-                                    activeOpacity={0.7}
-                                >
-                                    <FolderIcon size={18} color={colors.secondary.DEFAULT} />
-                                    <View style={s.feedInfo}>
-                                        <Text style={s.feedTitle}>{folder.name}</Text>
-                                        <Text style={s.feedUrl}>
-                                            {feedCountByFolderId.get(folder.id) ?? 0} feeds
-                                        </Text>
+                        {folders.map((folder: Folder) => {
+                            const isExpanded = expandedFolderIds.has(folder.id);
+                            const folderFeeds = feeds.filter(f => f.folder_id === folder.id);
+
+                            return (
+                                <View key={folder.id}>
+                                    <View style={s.feedItem}>
+                                        <TouchableOpacity
+                                            style={s.folderContent}
+                                            onPress={() => toggleFolder(folder.id)}
+                                            activeOpacity={0.7}
+                                        >
+                                            {isExpanded ? (
+                                                <ChevronDown size={18} color={colors.text.tertiary} />
+                                            ) : (
+                                                <ChevronRight size={18} color={colors.text.tertiary} />
+                                            )}
+                                            <FolderIcon size={18} color={colors.secondary.DEFAULT} style={{ marginLeft: spacing.sm }} />
+                                            <View style={s.feedInfo}>
+                                                <Text style={s.feedTitle}>{folder.name}</Text>
+                                                <Text style={s.feedUrl}>
+                                                    {folderFeeds.length} feeds
+                                                </Text>
+                                            </View>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            onPress={() => handleRenameFolder(folder)}
+                                            style={s.actionButton}
+                                            accessibilityLabel={`Rename folder ${folder.name}`}
+                                        >
+                                            <Edit2 size={16} color={colors.text.tertiary} />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            onPress={() => handleDeleteFolder(folder.id, folder.name)}
+                                            style={s.actionButton}
+                                            accessibilityLabel={`Delete folder ${folder.name}`}
+                                        >
+                                            <Trash2 size={16} color={colors.text.tertiary} />
+                                        </TouchableOpacity>
                                     </View>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    onPress={() => handleRenameFolder(folder)}
-                                    style={s.actionButton}
-                                    accessibilityLabel={`Rename folder ${folder.name}`}
-                                >
-                                    <Edit2 size={16} color={colors.text.tertiary} />
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    onPress={() => handleDeleteFolder(folder.id, folder.name)}
-                                    style={s.actionButton}
-                                    accessibilityLabel={`Delete folder ${folder.name}`}
-                                >
-                                    <Trash2 size={16} color={colors.text.tertiary} />
-                                </TouchableOpacity>
-                            </View>
-                        ))}
+
+                                    {isExpanded && (
+                                        <View style={{ paddingLeft: spacing.xl }}>
+                                            {folderFeeds.map((feed) => {
+                                                const healthStatus = getFeedHealth(feed);
+                                                const isStale = healthStatus === 'stale';
+                                                const isDead = healthStatus === 'dead';
+
+                                                return (
+                                                    <View key={feed.id} style={[s.feedItem, { borderLeftWidth: 3, borderLeftColor: colors.border.DEFAULT }]}>
+                                                        <TouchableOpacity
+                                                            style={s.feedContentClickable}
+                                                            onPress={() => {
+                                                                setFilter({ feed_id: feed.id, type: undefined, folder_id: undefined });
+                                                                router.push('/(app)');
+                                                            }}
+                                                            activeOpacity={0.7}
+                                                        >
+                                                            <View style={s.feedIconContainer}>
+                                                                {feed.icon_url ? (
+                                                                    <Image source={{ uri: feed.icon_url }} style={[s.feedIcon, feed.paused_at && s.feedIconPaused]} />
+                                                                ) : (
+                                                                    getTypeIcon(feed.type)
+                                                                )}
+                                                                {feed.paused_at && (
+                                                                    <View style={s.pausedOverlay}>
+                                                                        <Pause size={10} color={colors.text.inverse} />
+                                                                    </View>
+                                                                )}
+                                                            </View>
+
+                                                            <View style={s.feedInfo}>
+                                                                <Text style={[s.feedTitle, feed.paused_at && s.feedTitlePaused]} numberOfLines={1}>{feed.title}</Text>
+                                                                {feed.paused_at && (
+                                                                    <View style={s.pausedBadge}>
+                                                                        <Pause size={10} color={colors.warning} />
+                                                                        <Text style={s.pausedBadgeText}>Paused</Text>
+                                                                    </View>
+                                                                )}
+                                                                {feed.error_count > 0 && !feed.paused_at && (
+                                                                    <View style={s.errorBadge}>
+                                                                        <AlertTriangle size={10} color={colors.error} />
+                                                                        <Text style={s.errorBadgeText}>Error</Text>
+                                                                    </View>
+                                                                )}
+                                                            </View>
+                                                        </TouchableOpacity>
+
+                                                        <View style={s.feedActions}>
+                                                            {feed.error_count > 0 ? (
+                                                                <TouchableOpacity
+                                                                    onPress={() => handleRetryFeed(feed.id, feed.title)}
+                                                                    style={s.actionButton}
+                                                                >
+                                                                    <RefreshCw size={16} color={colors.error} />
+                                                                </TouchableOpacity>
+                                                            ) : (
+                                                                <TouchableOpacity
+                                                                    onPress={() => handleMoveFeed(feed)}
+                                                                    style={s.actionButton}
+                                                                >
+                                                                    <FolderInput size={16} color={colors.text.tertiary} />
+                                                                </TouchableOpacity>
+                                                            )}
+                                                            <TouchableOpacity
+                                                                onPress={() => handleEditFeed(feed)}
+                                                                style={s.actionButton}
+                                                            >
+                                                                <Edit2 size={16} color={colors.text.tertiary} />
+                                                            </TouchableOpacity>
+                                                            <TouchableOpacity
+                                                                onPress={() => handleDeleteFeed(feed.id, feed.title)}
+                                                                style={s.actionButton}
+                                                            >
+                                                                <Trash2 size={16} color={colors.text.tertiary} />
+                                                            </TouchableOpacity>
+                                                        </View>
+                                                    </View>
+                                                );
+                                            })}
+                                        </View>
+                                    )}
+                                </View>
+                            );
+                        })}
                     </View>
                 )}
 
