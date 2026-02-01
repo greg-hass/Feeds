@@ -247,9 +247,6 @@ async function checkFeeds() {
             let iconUrl = feed.icon_url;
             if (feed.icon_cached_path) {
                 iconUrl = `/api/v1/icons/${feed.id}`;
-                // Add cache buster to force frontend update
-                const version = feed.updated_at ? new Date(feed.updated_at).getTime() : Date.now();
-                iconUrl += `?v=${version}`;
             }
             return {
                 id: feed.id,

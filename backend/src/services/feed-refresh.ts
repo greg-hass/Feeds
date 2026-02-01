@@ -416,15 +416,13 @@ export async function refreshFeed(feed: FeedToRefreshWithCache): Promise<Refresh
     try {
         const iconStatus = await getFeedIconStatus(feed.id, feed.hasValidIcon);
         
-        // Determine if we need to fetch a fresh icon
-        // For YouTube feeds with generic icons, we always try to get a better icon
-        const hasGenericIcon = iconStatus.iconUrl ? isGenericIconUrl(iconStatus.iconUrl) : true;
-        const isYouTubeFeed = feed.type === 'youtube' || feed.url.includes('youtube.com/feeds');
-        const shouldFetchFreshIcon = isYouTubeFeed && hasGenericIcon;
+        // SIMPLIFIED LOGIC:
+        // Only fetch a new icon if we don't have one cached.
+        // Once cached, we stick with it unless manually refreshed.
+        const shouldFetchFreshIcon = !iconStatus.iconCachedPath;
         
         // Only skip icon fetch if we have a valid non-generic icon cached
-        const shouldSkipIconFetch = !shouldFetchFreshIcon && iconStatus.hasValidIcon && !!iconStatus.iconCachedPath;
-        const feedData = await parseFeed(feed.url, { skipIconFetch: shouldSkipIconFetch, signal: feed.signal });
+        const feedData = await parseFeed(feed.url, { skipIconFetch: !shouldFetchFreshIcon, signal: feed.signal });
         
         const { userId, refreshIntervalMinutes: updatedInterval } = getFeedSettings(
             feed.id,
@@ -461,22 +459,18 @@ export async function refreshFeed(feed: FeedToRefreshWithCache): Promise<Refresh
             });
         }
         
-        // For YouTube feeds with generic icons, try to fetch a proper channel icon
+        // Simplified Icon Caching:
+        // Only attempt to cache if we don't have a cached icon yet and we found a valid one
         let finalFavicon = feedData.favicon;
-        if (isYouTubeFeed && hasGenericIcon && feedData.youtubeChannelId) {
-            try {
-                const youtubeIcon = await fetchYouTubeIcon(feedData.youtubeChannelId);
-                if (youtubeIcon && !isGenericIconUrl(youtubeIcon)) {
-                    finalFavicon = youtubeIcon;
-                }
-            } catch (iconErr) {
-                console.warn(`[Refresh] Failed to fetch YouTube icon for ${feed.id}:`, iconErr);
-            }
+        let cachedIcon = null;
+
+        if (!iconStatus.iconCachedPath && finalFavicon && !isGenericIconUrl(finalFavicon)) {
+             try {
+                 cachedIcon = await cacheFeedIcon(feed.id, finalFavicon);
+             } catch (e) {
+                 console.warn(`[Refresh] Failed to cache icon for ${feed.id}:`, e);
+             }
         }
-        
-        // Cache icon if: (no cached icon OR current icon is generic) AND we have a valid favicon
-        const needsIconCache = (!iconStatus.iconCachedPath || hasGenericIcon) && finalFavicon && !isGenericIconUrl(finalFavicon);
-        const cachedIcon = needsIconCache ? await cacheFeedIcon(feed.id, finalFavicon!) : null;
         
         const nextFetchAt = await updateFeedMetadata(
             feed.id,

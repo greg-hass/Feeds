@@ -34,13 +34,9 @@ function getYouTubeIdFromGuid(guid: string | null): string | null {
 
 const ICON_ENDPOINT_PREFIX = '/api/v1/icons';
 
-function resolveArticleIconUrl(feedId: number, cachedPath: string | null, fallback: string | null, updatedAt?: string | null) {
+function resolveArticleIconUrl(feedId: number, cachedPath: string | null, fallback: string | null) {
     if (cachedPath) {
-        let url = `${ICON_ENDPOINT_PREFIX}/${feedId}`;
-        if (updatedAt) {
-            url += `?v=${new Date(updatedAt).getTime()}`;
-        }
-        return url;
+        return `${ICON_ENDPOINT_PREFIX}/${feedId}`;
     }
     return fallback;
 }
@@ -78,7 +74,7 @@ function normalizeArticleResponse(
     }
 ): NormalizedArticleResponse {
     const videoId = article.feed_type === 'youtube' ? getYouTubeIdFromGuid(article.guid) : null;
-    const iconUrl = resolveArticleIconUrl(article.feed_id, article.feed_icon_cached_path, article.feed_icon_url, article.feed_updated_at);
+    const iconUrl = resolveArticleIconUrl(article.feed_id, article.feed_icon_cached_path, article.feed_icon_url);
     const { feed_icon_cached_path, thumbnail_cached_path, ...rest } = article;
     let thumbnailUrl = resolveArticleThumbnailUrl(rest.id, thumbnail_cached_path, rest.thumbnail_url);
     if (!thumbnailUrl && videoId) {
