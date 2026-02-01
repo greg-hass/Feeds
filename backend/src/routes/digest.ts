@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
-import { queryOne, queryAll, run } from '../db/index.js';
+import { queryOne, queryAll, run, db } from '../db/index.js';
 import { generateDailyDigest } from '../services/digest.js';
 
 const updateSettingsSchema = z.object({
@@ -10,6 +10,60 @@ const updateSettingsSchema = z.object({
     included_feeds: z.array(z.number()).nullable().optional(),
     style: z.enum(['bullets', 'paragraphs']).optional()
 });
+
+let schemaEnsured = false;
+function ensureDigestSchema() {
+    if (schemaEnsured) return;
+    try {
+        const database = db();
+        
+        // Ensure digest_settings table
+        database.exec(`
+            CREATE TABLE IF NOT EXISTS digest_settings (
+                user_id INTEGER PRIMARY KEY,
+                enabled BOOLEAN DEFAULT 1,
+                schedule TEXT DEFAULT '06:00',
+                included_feeds TEXT,
+                style TEXT DEFAULT 'bullets',
+                created_at TEXT DEFAULT (datetime('now')),
+                updated_at TEXT DEFAULT (datetime('now')),
+                schedule_morning TEXT DEFAULT '08:00',
+                schedule_evening TEXT DEFAULT '20:00',
+                last_dismissed_digest_id INTEGER,
+                FOREIGN KEY(user_id) REFERENCES users(id)
+            );
+        `);
+        
+        // Ensure columns exist (idempotent via try-catch)
+        try { database.exec("ALTER TABLE digest_settings ADD COLUMN schedule_morning TEXT DEFAULT '08:00'"); } catch {}
+        try { database.exec("ALTER TABLE digest_settings ADD COLUMN schedule_evening TEXT DEFAULT '20:00'"); } catch {}
+        try { database.exec("ALTER TABLE digest_settings ADD COLUMN last_dismissed_digest_id INTEGER"); } catch {}
+
+        // Ensure digests table
+        database.exec(`
+            CREATE TABLE IF NOT EXISTS digests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                content TEXT NOT NULL,
+                article_count INTEGER NOT NULL DEFAULT 0,
+                feed_count INTEGER NOT NULL DEFAULT 0,
+                generated_at TEXT DEFAULT (datetime('now')),
+                edition TEXT DEFAULT 'morning',
+                title TEXT,
+                topics TEXT,
+                FOREIGN KEY(user_id) REFERENCES users(id)
+            );
+        `);
+        
+        try { database.exec("ALTER TABLE digests ADD COLUMN edition TEXT DEFAULT 'morning'"); } catch {}
+        try { database.exec("ALTER TABLE digests ADD COLUMN title TEXT"); } catch {}
+        try { database.exec("ALTER TABLE digests ADD COLUMN topics TEXT"); } catch {}
+
+    } catch (err) {
+        console.error('Failed to ensure digest schema:', err);
+    }
+    schemaEnsured = true;
+}
 
 interface Digest {
     id: number;
@@ -28,6 +82,7 @@ export async function digestRoutes(app: FastifyInstance) {
 
     // Get latest digest
     app.get('/', async (request: FastifyRequest) => {
+        ensureDigestSchema();
         const digest = queryOne<Digest>(
             'SELECT * FROM digests WHERE user_id = ? ORDER BY generated_at DESC LIMIT 1',
             [userId]
