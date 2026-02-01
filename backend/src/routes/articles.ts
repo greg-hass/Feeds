@@ -34,9 +34,13 @@ function getYouTubeIdFromGuid(guid: string | null): string | null {
 
 const ICON_ENDPOINT_PREFIX = '/api/v1/icons';
 
-function resolveArticleIconUrl(feedId: number, cachedPath: string | null, fallback: string | null) {
+function resolveArticleIconUrl(feedId: number, cachedPath: string | null, fallback: string | null, updatedAt?: string | null) {
     if (cachedPath) {
-        return `${ICON_ENDPOINT_PREFIX}/${feedId}`;
+        let url = `${ICON_ENDPOINT_PREFIX}/${feedId}`;
+        if (updatedAt) {
+            url += `?v=${new Date(updatedAt).getTime()}`;
+        }
+        return url;
     }
     return fallback;
 }
@@ -66,6 +70,7 @@ function normalizeArticleResponse(
         feed_title: string;
         feed_icon_url: string | null;
         feed_icon_cached_path: string | null;
+        feed_updated_at?: string | null;
         feed_type: string;
         is_read: number | null;
         is_bookmarked: number;
@@ -73,7 +78,7 @@ function normalizeArticleResponse(
     }
 ): NormalizedArticleResponse {
     const videoId = article.feed_type === 'youtube' ? getYouTubeIdFromGuid(article.guid) : null;
-    const iconUrl = resolveArticleIconUrl(article.feed_id, article.feed_icon_cached_path, article.feed_icon_url);
+    const iconUrl = resolveArticleIconUrl(article.feed_id, article.feed_icon_cached_path, article.feed_icon_url, article.feed_updated_at);
     const { feed_icon_cached_path, thumbnail_cached_path, ...rest } = article;
     let thumbnailUrl = resolveArticleThumbnailUrl(rest.id, thumbnail_cached_path, rest.thumbnail_url);
     if (!thumbnailUrl && videoId) {
@@ -167,6 +172,7 @@ export async function articlesRoutes(app: FastifyInstance) {
             feed_title: string;
             feed_icon_url: string | null;
             feed_icon_cached_path: string | null;
+            feed_updated_at: string;
             feed_type: string;
             is_read: number | null;
             is_bookmarked: number;
@@ -175,7 +181,7 @@ export async function articlesRoutes(app: FastifyInstance) {
         a.id, a.feed_id, a.guid, a.title, a.url, a.author, a.summary, 
         a.enclosure_url, a.enclosure_type, a.thumbnail_url, a.thumbnail_cached_path, a.published_at,
         COALESCE(a.is_bookmarked, 0) as is_bookmarked,
-        f.title as feed_title, f.icon_url as feed_icon_url, f.icon_cached_path as feed_icon_cached_path, f.type as feed_type,
+        f.title as feed_title, f.icon_url as feed_icon_url, f.icon_cached_path as feed_icon_cached_path, f.updated_at as feed_updated_at, f.type as feed_type,
         rs.is_read
        FROM articles a
        JOIN feeds f ON f.id = a.feed_id
@@ -219,9 +225,10 @@ export async function articlesRoutes(app: FastifyInstance) {
             feed_title: string;
             feed_icon_url: string | null;
             feed_icon_cached_path: string | null;
+            feed_updated_at: string;
             is_read: number | null;
         }>(
-            `SELECT a.*, f.title as feed_title, f.icon_url as feed_icon_url, f.icon_cached_path as feed_icon_cached_path, rs.is_read
+            `SELECT a.*, f.title as feed_title, f.icon_url as feed_icon_url, f.icon_cached_path as feed_icon_cached_path, f.updated_at as feed_updated_at, rs.is_read
        FROM articles a
        JOIN feeds f ON f.id = a.feed_id
        LEFT JOIN read_state rs ON rs.article_id = a.id AND rs.user_id = ?
@@ -433,6 +440,7 @@ export async function articlesRoutes(app: FastifyInstance) {
             feed_title: string;
             feed_icon_url: string | null;
             feed_icon_cached_path: string | null;
+            feed_updated_at: string;
             feed_type: string;
             is_read: number | null;
             is_bookmarked: number;
@@ -440,7 +448,7 @@ export async function articlesRoutes(app: FastifyInstance) {
             `SELECT 
                 a.id, a.feed_id, a.guid, a.title, a.url, a.author, a.summary, 
                 a.enclosure_url, a.enclosure_type, a.thumbnail_url, a.thumbnail_cached_path, a.published_at, a.is_bookmarked,
-                f.title as feed_title, f.icon_url as feed_icon_url, f.icon_cached_path as feed_icon_cached_path, f.type as feed_type,
+                f.title as feed_title, f.icon_url as feed_icon_url, f.icon_cached_path as feed_icon_cached_path, f.updated_at as feed_updated_at, f.type as feed_type,
                 rs.is_read
              FROM articles a
              JOIN feeds f ON f.id = a.feed_id

@@ -43,7 +43,8 @@ export async function thumbnailsRoutes(app: FastifyInstance) {
 
         const mime = resolveThumbnailMime(row.thumbnail_cached_path, row.thumbnail_cached_content_type);
         reply.header('Content-Type', mime);
-        reply.header('Cache-Control', 'public, max-age=31536000, immutable');
+        // Reduced max-age to 1 day and removed immutable to prevent stale thumbnails on ID reuse
+        reply.header('Cache-Control', 'public, max-age=86400');
         return reply.send(createReadStream(filePath));
     });
 }

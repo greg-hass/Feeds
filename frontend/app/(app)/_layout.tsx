@@ -234,8 +234,13 @@ export default function AppLayout() {
         
         const refreshNow = async () => {
             const now = Date.now();
-            if (now - lastRefreshAt < STALE_MS) return;
+            const timeSinceLast = now - lastRefreshAt;
+            
+            if (timeSinceLast < STALE_MS) return;
             lastRefreshAt = now;
+            
+            // Just fetch latest data from backend - do NOT trigger a crawl
+            // This ensures instant updates if the backend has been working in the background
             
             // Reset any stuck refresh state
             useFeedStore.setState({ 

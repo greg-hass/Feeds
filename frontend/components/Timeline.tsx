@@ -113,7 +113,6 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
 
     return (
         <View style={styles.container}>
-            <NewArticlesPill />
             <ScreenHeader
                 title={headerTitle}
                 showBackButton={false}

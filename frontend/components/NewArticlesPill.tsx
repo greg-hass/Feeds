@@ -1,16 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Animated, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFeedStore } from '@/stores';
 import { useColors, borderRadius, spacing } from '@/theme';
 
 const DISPLAY_DURATION = 3000; // 3 seconds
 
-export default function NewArticlesPill() {
+export default function NewArticlesPill({ isDesktop }: { isDesktop?: boolean }) {
     const colors = useColors();
+    const insets = useSafeAreaInsets();
     const lastRefreshNewArticles = useFeedStore((state) => state.lastRefreshNewArticles);
     const [displayCount, setDisplayCount] = useState<number | null>(null);
     const [opacity] = useState(() => new Animated.Value(0));
-    const [translateY] = useState(() => new Animated.Value(-20));
+    const [translateY] = useState(() => new Animated.Value(20)); // Start from below
     const [scale] = useState(() => new Animated.Value(0.8));
 
     useEffect(() => {
@@ -47,7 +49,7 @@ export default function NewArticlesPill() {
                         useNativeDriver: true,
                     }),
                     Animated.timing(translateY, {
-                        toValue: -20,
+                        toValue: 20, // Slide back down
                         duration: 300,
                         useNativeDriver: true,
                     }),
@@ -69,7 +71,7 @@ export default function NewArticlesPill() {
 
     if (displayCount === null) return null;
 
-    const s = styles(colors);
+    const s = styles(colors, insets, isDesktop);
 
     return (
         <Animated.View
@@ -92,10 +94,10 @@ export default function NewArticlesPill() {
     );
 }
 
-const styles = (colors: any) => StyleSheet.create({
+const styles = (colors: any, insets: any, isDesktop?: boolean) => StyleSheet.create({
     container: {
         position: 'absolute',
-        top: Platform.OS === 'web' ? 70 : 60,
+        bottom: isDesktop ? 40 : (insets.bottom + 90), // Just above nav bar (approx 60px height + padding)
         left: 0,
         right: 0,
         alignItems: 'center',
