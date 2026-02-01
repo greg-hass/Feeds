@@ -11,6 +11,15 @@ const FEED_REFRESH_TIMEOUT = 30_000; // 30 seconds
 const OPERATION_TIMEOUT = 300_000; // 5 minutes
 const KEEPALIVE_INTERVAL = 15_000; // 15 seconds
 
+// Simple heuristic for feed type detection during initial import
+// Proper detection happens during the first refresh
+function heuristicDetectFeedType(url: string): FeedType {
+    const lowerUrl = url.toLowerCase();
+    if (lowerUrl.includes('youtube.com') || lowerUrl.includes('youtu.be')) return 'youtube';
+    if (lowerUrl.includes('reddit.com')) return 'reddit';
+    return 'rss';
+}
+
 export async function opmlStreamRoutes(app: FastifyInstance) {
     // Single user app - user_id is always 1
     const userId = 1;
@@ -176,15 +185,8 @@ export async function opmlStreamRoutes(app: FastifyInstance) {
                 try {
                     const folderId = feed.folder ? folderMap.get(feed.folder) || null : null;
 
-                    // Try to parse feed to detect type
-                    let feedType: FeedType = 'rss';
-                    try {
-                        const feedData = await parseFeed(feed.xmlUrl);
-                        const { detectFeedType } = await import('../services/feed-parser.js');
-                        feedType = detectFeedType(feed.xmlUrl, feedData);
-                    } catch {
-                        // If parse fails, we'll still create the feed entry
-                    }
+                    // Skip network hit during creation; proper type detection happens in refresh stage
+                    const feedType = heuristicDetectFeedType(feed.xmlUrl);
 
                     const result = run(
                         `INSERT INTO feeds (user_id, folder_id, type, title, url, site_url)
