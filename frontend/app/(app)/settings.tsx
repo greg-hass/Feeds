@@ -33,9 +33,7 @@ export default function SettingsScreen() {
     });
 
     const handleDigestToggle = async (key: string, value: any) => {
-        if (digestSettings) {
-            await updateDigestSettings({ [key]: value });
-        }
+        await updateDigestSettings({ [key]: value });
     };
 
     const handleThemeChange = async (theme: 'light' | 'dark' | 'auto') => {
