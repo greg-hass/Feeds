@@ -1155,6 +1155,9 @@ export default function ManageScreen() {
                                     <View style={s.feedInfo}>
                                         <View style={s.feedTitleRow}>
                                             <Text style={[s.feedTitle, feed.paused_at && s.feedTitlePaused]} numberOfLines={1}>{feed.title}</Text>
+                                            <View style={s.feedTypeBadge}>
+                                                {getTypeIcon(feed.type)}
+                                            </View>
                                             {feed.paused_at && (
                                                 <Pause size={14} color={colors.warning} style={s.statusIcon} />
                                             )}
@@ -1839,6 +1842,10 @@ const styles = (colors: any) => StyleSheet.create({
         alignItems: 'center',
         gap: spacing.xs,
         flex: 1,
+    },
+    feedTypeBadge: {
+        marginLeft: 4,
+        opacity: 0.8,
     },
     errorIcon: {
         flexShrink: 0,
