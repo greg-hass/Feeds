@@ -105,10 +105,48 @@ export default function AppLayout() {
         });
 
         if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js').catch(err => {
+            window.addEventListener('load', async () => {
+                try {
+                    const registration = await navigator.serviceWorker.register('/sw.js');
+                    console.log('SW registered:', registration);
+                    
+                    // Register for background sync if supported
+                    if ('sync' in registration) {
+                        try {
+                            await registration.sync.register('feeds-background-sync');
+                            console.log('Background sync registered');
+                        } catch (syncError) {
+                            console.log('Background sync registration failed:', syncError);
+                        }
+                    }
+                    
+                    // Register for periodic background sync if supported
+                    if ('periodicSync' in registration) {
+                        try {
+                            const status = await navigator.permissions.query({
+                                name: 'periodic-background-sync' as PermissionName,
+                            });
+                            
+                            if (status.state === 'granted') {
+                                await (registration as any).periodicSync.register('feeds-background-sync', {
+                                    minInterval: 5 * 60 * 1000, // 5 minutes
+                                });
+                                console.log('Periodic background sync registered');
+                            }
+                        } catch (periodicError) {
+                            console.log('Periodic sync registration failed:', periodicError);
+                        }
+                    }
+                    
+                    // Listen for messages from service worker
+                    navigator.serviceWorker.addEventListener('message', (event) => {
+                        if (event.data?.type === 'BACKGROUND_SYNC_COMPLETE') {
+                            console.log('Background sync completed:', event.data);
+                        }
+                    });
+                } catch (err) {
                     console.log('SW registration failed: ', err);
-                });
+                }
             });
         }
 
@@ -226,18 +264,20 @@ export default function AppLayout() {
     }, []);
 
     useEffect(() => {
-        let lastRefreshAt = 0;
+        let lastRefreshAt = Date.now();
         let wasHidden = false;
+        let backgroundedAt: number | null = null;
         const STALE_MS = 30 * 1000;
+        const BACKGROUND_REFRESH_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutes - if backgrounded longer than this, do a full refresh
 
         // Initial data load - fetch settings first for timer
         fetchSettings().catch(() => { });
         
-        const refreshNow = async () => {
+        const refreshNow = async (force = false) => {
             const now = Date.now();
             const timeSinceLast = now - lastRefreshAt;
             
-            if (timeSinceLast < STALE_MS) return;
+            if (!force && timeSinceLast < STALE_MS) return;
             lastRefreshAt = now;
             
             // Just fetch latest data from backend - do NOT trigger a crawl
@@ -259,16 +299,27 @@ export default function AppLayout() {
 
         const appStateSub = AppState.addEventListener('change', (state) => {
             if (state === 'active') {
-                refreshNow();
+                // Check if we were backgrounded for a significant time
+                const backgroundedDuration = backgroundedAt ? Date.now() - backgroundedAt : 0;
+                const forceRefresh = backgroundedDuration > BACKGROUND_REFRESH_THRESHOLD_MS;
+                backgroundedAt = null;
+                refreshNow(forceRefresh);
+            } else if (state === 'background' || state === 'inactive') {
+                backgroundedAt = Date.now();
             }
         });
 
         const onVisibility = () => {
             if (document.visibilityState === 'visible') {
+                // Check if we were hidden for a significant time
+                const hiddenDuration = backgroundedAt ? Date.now() - backgroundedAt : 0;
+                const forceRefresh = hiddenDuration > BACKGROUND_REFRESH_THRESHOLD_MS;
+                backgroundedAt = null;
                 wasHidden = true;
-                refreshNow();
+                refreshNow(forceRefresh);
             } else if (document.visibilityState === 'hidden') {
                 wasHidden = true;
+                backgroundedAt = Date.now();
             }
         };
 
@@ -276,7 +327,11 @@ export default function AppLayout() {
             // Only refresh if the page was actually hidden (tab switch), not on internal navigation
             if (wasHidden) {
                 wasHidden = false;
-                refreshNow();
+                // Check if significant time passed while hidden
+                const hiddenDuration = backgroundedAt ? Date.now() - backgroundedAt : 0;
+                const forceRefresh = hiddenDuration > BACKGROUND_REFRESH_THRESHOLD_MS;
+                backgroundedAt = null;
+                refreshNow(forceRefresh);
             }
         };
 
