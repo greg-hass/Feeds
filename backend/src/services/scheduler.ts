@@ -242,8 +242,15 @@ async function checkFeeds() {
             type: FeedType;
             icon_url: string | null;
             icon_cached_path: string | null;
+            updated_at?: string;
         }): RefreshFeedUpdate => {
-            const iconUrl = feed.icon_cached_path ? `/api/v1/icons/${feed.id}` : feed.icon_url;
+            let iconUrl = feed.icon_url;
+            if (feed.icon_cached_path) {
+                iconUrl = `/api/v1/icons/${feed.id}`;
+                // Add cache buster to force frontend update
+                const version = feed.updated_at ? new Date(feed.updated_at).getTime() : Date.now();
+                iconUrl += `?v=${version}`;
+            }
             return {
                 id: feed.id,
                 title: feed.title,
@@ -292,8 +299,9 @@ async function checkFeeds() {
                                 type: FeedType;
                                 icon_url: string | null;
                                 icon_cached_path: string | null;
+                                updated_at: string;
                             }>(
-                                'SELECT id, title, type, icon_url, icon_cached_path FROM feeds WHERE id = ?',
+                                'SELECT id, title, type, icon_url, icon_cached_path, updated_at FROM feeds WHERE id = ?',
                                 [feed.id]
                             );
                             feedsRefreshed++;
