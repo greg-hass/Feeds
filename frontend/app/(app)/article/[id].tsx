@@ -19,6 +19,7 @@ import { ErrorView } from '@/components/ErrorView';
 
 export default function ArticleScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
+    const articleId = Number(id);
     const router = useRouter();
     const colors = useColors();
     const { width } = useWindowDimensions();
@@ -44,7 +45,7 @@ export default function ArticleScreen() {
 
     // Analytics: Track reading session
     const { updateScrollDepth } = useReadingSession({
-        articleId: Number(id),
+        articleId,
         enabled: !!id,
     });
     const contentHeightRef = useRef(0);
@@ -82,9 +83,9 @@ export default function ArticleScreen() {
             setIconFailed(false);
             fadeAnim.setValue(0);
             setReadingProgress(0);
-            fetchArticle(Number(id))
+            fetchArticle(articleId)
                 .then(() => {
-                    markRead(Number(id));
+                    markRead(articleId);
                     Animated.timing(fadeAnim, {
                         toValue: 1,
                         duration: 400,
@@ -96,7 +97,7 @@ export default function ArticleScreen() {
     }, [id]);
 
     useEffect(() => {
-        if (!id || !currentArticle || currentArticle.id !== Number(id)) return;
+        if (!id || !currentArticle || currentArticle.id !== articleId) return;
         if (isLoading) {
             fadeAnim.setValue(1);
         }
@@ -105,7 +106,7 @@ export default function ArticleScreen() {
     // Populate adjacent articles from store
     useEffect(() => {
         if (id && articles.length > 0) {
-            const currentIndex = articles.findIndex(a => a.id === Number(id));
+            const currentIndex = articles.findIndex(a => a.id === articleId);
             if (currentIndex !== -1) {
                 setAdjacentArticles({
                     prev: currentIndex > 0 ? articles[currentIndex - 1].id : null,
@@ -134,8 +135,6 @@ export default function ArticleScreen() {
     useFocusEffect(
         useCallback(() => {
             if (!id || !currentArticle || isLoading) return;
-
-            const articleId = Number(id);
 
             // Only restore if this is a different article than last viewed
             if (currentArticleIdRef.current !== articleId) {
@@ -193,7 +192,7 @@ export default function ArticleScreen() {
 
         // Save scroll position for current article
         if (id && offset > 0) {
-            setArticleScrollPosition(Number(id), offset);
+            setArticleScrollPosition(articleId, offset);
         }
     };
 
@@ -218,12 +217,12 @@ export default function ArticleScreen() {
         }
     };
 
-    const navigateToArticle = useCallback((articleId: number | null) => {
-        if (!articleId) {
+    const navigateToArticle = useCallback((targetId: number | null) => {
+        if (!targetId) {
             show('No more articles in this direction');
             return;
         }
-        router.replace(`/(app)/article/${articleId}`);
+        router.replace(`/(app)/article/${targetId}`);
     }, [router, show]);
 
     const handleOpenExternal = useCallback(async () => {
@@ -261,7 +260,7 @@ export default function ArticleScreen() {
     const handleRetry = useCallback(() => {
         if (id) {
             setIsLoading(true);
-            fetchArticle(Number(id)).finally(() => setIsLoading(false));
+            fetchArticle(articleId).finally(() => setIsLoading(false));
         }
     }, [id, fetchArticle]);
 
@@ -275,7 +274,7 @@ export default function ArticleScreen() {
             );
         }
 
-        if (!currentArticle) {
+        if (!currentArticle || currentArticle.id !== articleId) {
             return (
                 <View style={s.loadingContainer}>
                     <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
