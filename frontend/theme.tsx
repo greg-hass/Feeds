@@ -146,11 +146,11 @@ export const ACCENT_COLORS = {
         dark: '#059669',
         soft: '#10b98125',
     },
-    blue: {
-        DEFAULT: '#3b82f6',
-        light: '#60a5fa',
-        dark: '#2563eb',
-        soft: '#3b82f625',
+    sky: {
+        DEFAULT: '#0ea5e9', // Sky 500
+        light: '#38bdf8',
+        dark: '#0284c7',
+        soft: '#0ea5e925',
     },
     indigo: {
         DEFAULT: '#6366f1',
@@ -158,11 +158,11 @@ export const ACCENT_COLORS = {
         dark: '#4f46e5',
         soft: '#6366f125',
     },
-    violet: {
-        DEFAULT: '#8b5cf6',
-        light: '#a78bfa',
-        dark: '#7c3aed',
-        soft: '#8b5cf625',
+    purple: {
+        DEFAULT: '#a855f7', // Purple 500
+        light: '#c084fc',
+        dark: '#9333ea',
+        soft: '#a855f725',
     },
     rose: {
         DEFAULT: '#f43f5e',
@@ -170,23 +170,23 @@ export const ACCENT_COLORS = {
         dark: '#e11d48',
         soft: '#f43f5e25',
     },
-    amber: {
-        DEFAULT: '#f59e0b',
-        light: '#fbbf24',
-        dark: '#d97706',
-        soft: '#f59e0b25',
+    orange: {
+        DEFAULT: '#f97316', // Orange 500
+        light: '#fb923c',
+        dark: '#ea580c',
+        soft: '#f9731625',
     },
-    cyan: {
-        DEFAULT: '#06b6d4',
-        light: '#22d3ee',
-        dark: '#0891b2',
-        soft: '#06b6d425',
+    teal: {
+        DEFAULT: '#14b8a6', // Teal 500
+        light: '#2dd4bf',
+        dark: '#0f766e',
+        soft: '#14b8a625',
     },
-    yellow: {
-        DEFAULT: '#facc15',
-        light: '#fef08a',
-        dark: '#ca8a04',
-        soft: '#facc1525',
+    slate: {
+        DEFAULT: '#64748b', // Slate 500
+        light: '#94a3b8',
+        dark: '#475569',
+        soft: '#64748b25',
     },
 };
 
