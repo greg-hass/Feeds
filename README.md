@@ -106,8 +106,39 @@ Data is stored in a Docker volume:
 - **Database**: `/data/feeds.db`
 - **Icons**: `/data/icons/`
 - **Thumbnails**: `/data/thumbnails/`
+- **Backups**: `/data/backups/` (auto-created daily, 7 days retention)
 
-To backup: `docker cp feeds:/data ./backup`
+### Backup & Restore
+
+**Manual Backup:**
+```bash
+# Create backup
+docker exec feeds cp /data/feeds.db /data/backups/feeds-manual-$(date +%Y%m%d).db
+
+# Copy to host
+docker cp feeds:/data/backups/feeds-manual-YYYYMMDD.db ./
+```
+
+**Restore from Backup:**
+```bash
+# Stop container
+docker-compose down
+
+# Restore database (replace YYYYMMDD with backup date)
+docker cp ./feeds-backup-YYYYMMDD.db feeds:/data/feeds.db
+
+# Start container
+docker-compose up -d
+```
+
+**Automated Backups:**
+The container automatically creates daily backups at `/data/backups/` with 7-day retention. To persist backups outside the container:
+```yaml
+# docker-compose.yml
+volumes:
+  - feeds_data:/data
+  - ./backups:/data/backups  # Mount backups to host
+```
 
 ## Troubleshooting
 

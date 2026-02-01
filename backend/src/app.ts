@@ -31,6 +31,9 @@ export async function buildApp() {
         logger: {
             level: process.env.LOG_LEVEL || 'info',
         },
+        connectionTimeout: 30000, // 30s - max time to establish connection
+        keepAliveTimeout: 60000,  // 60s - keep-alive timeout
+        bodyLimit: 10485760,      // 10MB - max request body size
     });
 
     ensureIconCacheDir();
@@ -103,18 +106,56 @@ export async function buildApp() {
     return app;
 }
 
+function validateEnvironment(): void {
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    if (isProduction) {
+        if (!process.env.JWT_SECRET) {
+            console.error('FATAL: JWT_SECRET environment variable is required in production');
+            console.error('Please set a secure random string (e.g., openssl rand -base64 32)');
+            process.exit(1);
+        }
+        
+        if (process.env.JWT_SECRET.length < 32) {
+            console.error('FATAL: JWT_SECRET must be at least 32 characters long in production');
+            process.exit(1);
+        }
+    }
+}
+
+function generateTempPassword(): string {
+    const crypto = require('crypto');
+    return crypto.randomBytes(16).toString('hex');
+}
+
 export async function startServer() {
+    // Validate environment before starting
+    validateEnvironment();
+    
     // Initialize database
     initializeDatabase();
 
     // Ensure default user exists
+    let tempPassword: string | null = null;
     try {
         const user = queryOne('SELECT id FROM users WHERE username = ?', ['admin']);
         if (!user) {
             console.log('Creating default admin user...');
+            tempPassword = generateTempPassword();
             const bcrypt = require('bcrypt');
-            const hashedPassword = await bcrypt.hash('disabled', 12);
+            const hashedPassword = await bcrypt.hash(tempPassword, 12);
             run('INSERT INTO users (username, password_hash, is_admin) VALUES (?, ?, 1)', ['admin', hashedPassword]);
+            
+            console.log('');
+            console.log('╔════════════════════════════════════════════════════════╗');
+            console.log('║              FIRST TIME SETUP                          ║');
+            console.log('╠════════════════════════════════════════════════════════╣');
+            console.log(`║  Username: admin                                       ║`);
+            console.log(`║  Password: ${tempPassword}              ║`);
+            console.log('║                                                        ║');
+            console.log('║  Please change this password immediately after login   ║');
+            console.log('╚════════════════════════════════════════════════════════╝');
+            console.log('');
         }
     } catch (err) {
         console.error('Failed to ensure default admin user:', err);
