@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { queryOne } from '../db/index.js';
 import { createReadStream, existsSync } from 'node:fs';
 import { getCachedIconPath, resolveIconMime } from '../services/icon-cache.js';
+import { stat } from 'node:fs/promises';
 
 interface IconFeedRow {
     icon_cached_path: string | null;
@@ -44,10 +45,6 @@ export async function iconsRoutes(app: FastifyInstance) {
             }
             return reply.status(404).send({ error: 'Icon missing' });
         }
-
-import { stat } from 'node:fs/promises';
-
-// ... (imports)
 
         const mime = resolveIconMime(feed.icon_cached_path, feed.icon_cached_content_type);
         
