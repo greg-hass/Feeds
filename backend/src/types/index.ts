@@ -18,11 +18,9 @@ export interface Feed {
     last_error: string | null;
     last_error_at: string | null;
     paused_at: string | null;
-    deleted_at: string | null;
     created_at: string;
     updated_at: string;
-    icon_cached_path: string | null;
-    icon_cached_content_type: string | null;
+    icon_updated_at?: string;
 }
 
 export interface Article {
