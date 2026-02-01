@@ -3,12 +3,26 @@ import { FlatList } from 'react-native';
 import { useArticleStore } from '@/stores';
 
 // Global ref to store scroll positions outside of React lifecycle
-// This avoids hook dependency issues and circular imports
-const scrollPositions = {
-    timeline: 0,
-    bookmarks: 0,
-    search: 0,
-};
+// Keyed by filter configuration so each view has its own scroll position
+const scrollPositions: Record<string, number> = {};
+
+// Generate a unique key based on filter configuration
+function getScrollKey(filter: any): string {
+    // Build a key from the filter state
+    const parts: string[] = ['timeline'];
+    
+    if (filter.unread_only) parts.push('unread');
+    if (filter.type) parts.push(`type:${filter.type}`);
+    if (filter.feed_id) parts.push(`feed:${filter.feed_id}`);
+    if (filter.folder_id) parts.push(`folder:${filter.folder_id}`);
+    
+    // Default view (All Articles with no filters)
+    if (parts.length === 1) {
+        return 'timeline:all';
+    }
+    
+    return parts.join(':');
+}
 
 export const useTimelineScroll = (articles: any[], filter: any) => {
     const { prefetchArticle } = useArticleStore();
@@ -16,20 +30,21 @@ export const useTimelineScroll = (articles: any[], filter: any) => {
     const flatListRef = useRef<FlatList>(null);
     const hasRestoredScroll = useRef(false);
     const pendingScrollPosition = useRef<number | null>(null);
+    const currentScrollKey = useRef<string>('');
 
-    // Reset scroll restoration flag when component mounts or filter changes
-    useEffect(() => {
-        hasRestoredScroll.current = false;
-        setIsScrollRestored(false);
-        pendingScrollPosition.current = null;
-    }, []);
+    // Generate scroll key based on current filter
+    const scrollKey = getScrollKey(filter);
 
-    // Reset scroll restoration flag when filter changes
+    // Reset scroll restoration when filter changes (view switches)
     useEffect(() => {
-        hasRestoredScroll.current = false;
-        setIsScrollRestored(false);
-        pendingScrollPosition.current = null;
-    }, [filter]);
+        // Only reset if the key actually changed
+        if (currentScrollKey.current !== scrollKey) {
+            hasRestoredScroll.current = false;
+            setIsScrollRestored(false);
+            pendingScrollPosition.current = null;
+            currentScrollKey.current = scrollKey;
+        }
+    }, [scrollKey]);
 
     // Restore scroll position when articles are loaded
     useEffect(() => {
@@ -38,7 +53,7 @@ export const useTimelineScroll = (articles: any[], filter: any) => {
             return;
         }
 
-        const savedPosition = scrollPositions.timeline;
+        const savedPosition = scrollPositions[scrollKey] || 0;
 
         if (articles.length > 0 && savedPosition > 0 && flatListRef.current) {
             // Store the position we want to scroll to
@@ -62,18 +77,19 @@ export const useTimelineScroll = (articles: any[], filter: any) => {
             hasRestoredScroll.current = true;
             setIsScrollRestored(true);
         }
-    }, [articles.length]);
+    }, [articles.length, scrollKey]);
 
-    // Save scroll position to global ref
+    // Save scroll position to global ref with the current filter key
     const saveScrollPosition = useCallback(() => {
-        scrollPositions.timeline = pendingScrollPosition.current || scrollPositions.timeline;
-    }, []);
+        const position = pendingScrollPosition.current || scrollPositions[scrollKey] || 0;
+        scrollPositions[scrollKey] = position;
+    }, [scrollKey]);
 
-    // Track scroll position in real-time
+    // Track scroll position in real-time for the current view
     const handleScroll = useCallback((e: any) => {
         const offset = e.nativeEvent.contentOffset.y;
-        scrollPositions.timeline = offset;
-    }, []);
+        scrollPositions[scrollKey] = offset;
+    }, [scrollKey]);
 
     // Prefetch articles as user scrolls
     const articlesRef = useRef(articles);

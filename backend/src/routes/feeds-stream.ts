@@ -15,7 +15,7 @@ function isGenericIconUrl(url: string | null): boolean {
 }
 
 // Timeout configuration
-const FEED_REFRESH_TIMEOUT = 15_000; // 15 seconds (reduced from 30s - fail fast on slow feeds)
+const FEED_REFRESH_TIMEOUT = 30_000; // 30 seconds - increased to prevent premature timeouts
 const KEEPALIVE_INTERVAL = 15_000; // 15 seconds
 const DELAY_BETWEEN_FEEDS = 1_000; // 1 second delay between feeds (currently unused)
 
@@ -160,7 +160,7 @@ export async function feedsStreamRoutes(app: FastifyInstance) {
 
             // Refresh feeds in larger batches for speed (optimizations allow higher concurrency)
             // Icon lookups are pre-fetched, content is lazy-loaded, thumbnails are fire-and-forget
-            const BATCH_SIZE = 10; // Reduced from 50 for smoother UI updates
+            const BATCH_SIZE = 5; // Reduced for stability - prevents SQLite contention
 
             for (let i = 0; i < feeds.length; i += BATCH_SIZE) {
                 if (isCancelled) break;
@@ -186,13 +186,17 @@ export async function feedsStreamRoutes(app: FastifyInstance) {
                             signal: abortController.signal,
                         };
 
-                        // Use Promise.race for timeout (fail fast on slow feeds)
+                        // Use Promise.race for timeout with proper cleanup
+                        let timeoutId: NodeJS.Timeout;
+                        const timeoutPromise = new Promise<never>((_, reject) => {
+                            timeoutId = setTimeout(() => 
+                                reject(new Error(`Timeout after ${FEED_REFRESH_TIMEOUT / 1000}s`)), FEED_REFRESH_TIMEOUT
+                            );
+                        });
+                        
                         const refreshPromise = refreshFeed(feedToRefresh);
-                        const timeoutPromise = new Promise<never>((_, reject) =>
-                            setTimeout(() => reject(new Error(`Timeout after ${FEED_REFRESH_TIMEOUT / 1000}s`)), FEED_REFRESH_TIMEOUT)
-                        );
-
                         const result = await Promise.race([refreshPromise, timeoutPromise]);
+                        clearTimeout(timeoutId!); // Clean up timer to prevent memory leak
 
                         if (result.success) {
                             const updatedFeed = queryOne<{

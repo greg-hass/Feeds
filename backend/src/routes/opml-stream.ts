@@ -241,13 +241,15 @@ export async function opmlStreamRoutes(app: FastifyInstance) {
                                 refresh_interval_minutes: 30,
                             };
 
-                            // Use Promise.race for timeout
+                            // Use Promise.race for timeout with proper cleanup
+                            let timeoutId: NodeJS.Timeout;
+                            const timeoutPromise = new Promise<never>((_, reject) => {
+                                timeoutId = setTimeout(() => reject(new Error('Timeout after 30s')), FEED_REFRESH_TIMEOUT);
+                            });
+                            
                             const refreshPromise = refreshFeed(feedToRefresh);
-                            const timeoutPromise = new Promise<never>((_, reject) =>
-                                setTimeout(() => reject(new Error('Timeout after 30s')), FEED_REFRESH_TIMEOUT)
-                            );
-
                             const result = await Promise.race([refreshPromise, timeoutPromise]);
+                            clearTimeout(timeoutId!); // Clean up timer to prevent memory leak
 
                             if (result.success) {
                                 sendEvent({

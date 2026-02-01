@@ -17,7 +17,7 @@ interface Feed extends FeedToRefresh {
 // These values balance responsiveness with resource usage and external API limits
 const CHECK_INTERVAL = 60 * 1000; // 1 minute - frequent enough for responsive UI updates without excessive DB polling
 const FEED_DELAY = 100; // 100ms between batches - reduces network spikes and prevents overwhelming external servers
-const BATCH_SIZE = 20; // Max 20 concurrent feeds - stays within common API rate limits (many APIs allow 20-30 req/s)
+const BATCH_SIZE = 5; // Max 5 concurrent feeds - reduces SQLite contention and prevents crashes
 const CLEANUP_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours - daily cleanup is sufficient for maintenance tasks
 const DIGEST_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes - checks digest schedule without missing hourly boundaries
 const THUMBNAIL_RETENTION_DAYS = 7; // Keep thumbnails for 1 week - balances storage vs re-fetch needs
@@ -27,6 +27,10 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000; // Milliseconds per day - utility consta
 const FAILURE_THRESHOLD = 3;
 const MAX_BACKOFF = 5 * 60 * 1000; // 5 minutes
 const BASE_BACKOFF = 1000; // 1 second
+
+// Memory safety limits
+const MEMORY_WARNING_MB = 400; // Log warning at 400MB
+const MEMORY_CRITICAL_MB = 512; // Pause scheduler at 512MB to prevent crash
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -99,8 +103,46 @@ function calculateBackoff(failures: number): number {
     return Math.min(BASE_BACKOFF * Math.pow(2, failures), MAX_BACKOFF);
 }
 
+function checkMemoryUsage(): { ok: boolean; warning: boolean; usedMB: number } {
+    const memUsage = process.memoryUsage();
+    const usedMB = Math.round(memUsage.heapUsed / 1024 / 1024);
+    return {
+        ok: usedMB < MEMORY_CRITICAL_MB,
+        warning: usedMB > MEMORY_WARNING_MB,
+        usedMB,
+    };
+}
+
 async function runSchedulerCycle() {
     if (!state.isRunning || state.isPaused) return;
+    
+    // Memory safety check - pause if critically high
+    const memCheck = checkMemoryUsage();
+    if (!memCheck.ok) {
+        console.error(`[Scheduler] CRITICAL: Memory usage at ${memCheck.usedMB}MB, pausing scheduler`);
+        state.isPaused = true;
+        // Try again in 1 minute after GC has had time to run
+        state.timeoutHandle = setTimeout(() => {
+            state.isPaused = false;
+            if (state.isRunning) {
+                state.timeoutHandle = setTimeout(runSchedulerCycle, 5000);
+            }
+        }, 60000);
+        return;
+    }
+    if (memCheck.warning) {
+        console.warn(`[Scheduler] WARNING: Memory usage at ${memCheck.usedMB}MB`);
+    }
+    
+    // Prevent concurrent refresh cycles
+    if (state.isProcessing) {
+        console.log('[Scheduler] Previous cycle still running, skipping this cycle');
+        // Reschedule for next interval
+        if (state.isRunning && !state.isPaused) {
+            state.timeoutHandle = setTimeout(runSchedulerCycle, CHECK_INTERVAL);
+        }
+        return;
+    }
 
     try {
         console.log(`[Scheduler] Running cycle (failures: ${state.consecutiveFailures})`);
@@ -152,6 +194,10 @@ async function checkFeeds() {
         failed_feeds: [],
     };
 
+    // Set a global timeout for the entire refresh cycle (10 minutes max)
+    const cycleTimeoutMs = 10 * 60 * 1000;
+    const cycleStartTime = Date.now();
+    
     try {
         state.isProcessing = true;
         const userId = 1;
@@ -208,6 +254,12 @@ async function checkFeeds() {
 
         // Process in batches with timeout per batch
         for (let i = 0; i < feeds.length; i += BATCH_SIZE) {
+            // Check global timeout
+            if (Date.now() - cycleStartTime > cycleTimeoutMs) {
+                console.error(`[Scheduler] Refresh cycle exceeded ${cycleTimeoutMs/60000} minute limit, aborting`);
+                break;
+            }
+            
             const batch = feeds.slice(i, i + BATCH_SIZE);
             
             // Add timeout for batch processing
@@ -218,14 +270,18 @@ async function checkFeeds() {
                     emitRefreshEvent({ type: 'feed_refreshing', id: feed.id, title: feed.title });
                     
                     try {
-                        // Add individual timeout for feed refresh
-                        // Reduced to 30s - feeds are now lightweight (no content/thumbnail blocking)
-                        const result = await Promise.race([
-                            refreshFeed(feed),
-                            new Promise<never>((_, reject) =>
-                                setTimeout(() => reject(new Error('Feed refresh timeout')), 30000) // 30s timeout
-                            )
-                        ]);
+                        // Add individual timeout for feed refresh with proper cleanup
+                        const timeoutMs = 30000;
+                        let timeoutId: NodeJS.Timeout;
+                        
+                        const timeoutPromise = new Promise<never>((_, reject) => {
+                            timeoutId = setTimeout(() => reject(new Error('Feed refresh timeout')), timeoutMs);
+                        });
+                        
+                        const refreshPromise = refreshFeed(feed);
+                        
+                        const result = await Promise.race([refreshPromise, timeoutPromise]);
+                        clearTimeout(timeoutId!); // Clean up timer to prevent memory leak
                         
                         const feedTime = Date.now() - feedStart;
                         
@@ -290,7 +346,8 @@ async function checkFeeds() {
                             title: feed.title,
                             error: errorMessage,
                         });
-                        throw err;
+                        // Don't re-throw - we already tracked the error, let Promise.allSettled handle it
+                        return { success: false, newArticles: 0, error: errorMessage };
                     }
                 })
             );
