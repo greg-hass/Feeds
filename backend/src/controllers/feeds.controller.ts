@@ -14,6 +14,11 @@ export const toApiFeed = (feed: Feed) => {
     let iconUrl = feed.icon_url;
     if (feed.icon_cached_path) {
         iconUrl = `${ICON_ENDPOINT_PREFIX}/${feed.id}`;
+        // Use dedicated icon_updated_at for cache busting to prevent flicker on regular feed updates
+        const version = feed.icon_updated_at ? new Date(feed.icon_updated_at).getTime() : 0;
+        if (version > 0) {
+            iconUrl += `?v=${version}`;
+        }
     }
     
     const { icon_cached_path, icon_cached_content_type, ...rest } = feed;
@@ -32,7 +37,7 @@ export class FeedsController {
         const feeds = queryAll<Feed & { unread_count: number }>(
             `SELECT
                 f.id, f.user_id, f.folder_id, f.type, f.title, f.url,
-                f.icon_url, f.icon_cached_path, f.icon_cached_content_type,
+                f.icon_url, f.icon_cached_path, f.icon_cached_content_type, f.icon_updated_at,
                 f.refresh_interval_minutes, f.last_fetched_at, f.next_fetch_at,
                 f.error_count, f.last_error, f.last_error_at, f.paused_at, f.deleted_at,
                 f.created_at, f.updated_at,
@@ -446,7 +451,7 @@ export class FeedsController {
             if (newIconUrl && newIconUrl !== feed.icon_url) {
                 // Clear cached icon and update with new URL
                 const cachedIcon = await cacheFeedIcon(feed.id, newIconUrl);
-                run(`UPDATE feeds SET icon_url = ?, icon_cached_path = ?, icon_cached_content_type = ?, updated_at = datetime('now') WHERE id = ?`,
+                run(`UPDATE feeds SET icon_url = ?, icon_cached_path = ?, icon_cached_content_type = ?, updated_at = datetime('now'), icon_updated_at = datetime('now') WHERE id = ?`,
                     [newIconUrl, cachedIcon?.fileName ?? null, cachedIcon?.mime ?? null, feedId]);
                 
                 const updatedFeed = queryOne<Feed>('SELECT * FROM feeds WHERE id = ?', [feedId]);
@@ -547,7 +552,7 @@ export class FeedsController {
                     // Cache the icon locally
                     const cachedIcon = await cacheFeedIcon(feed.id, avatarUrl);
                     
-                    run(`UPDATE feeds SET icon_url = ?, icon_cached_path = ?, icon_cached_content_type = ? WHERE id = ?`, 
+                    run(`UPDATE feeds SET icon_url = ?, icon_cached_path = ?, icon_cached_content_type = ?, icon_updated_at = datetime('now') WHERE id = ?`, 
                         [avatarUrl, cachedIcon?.fileName ?? null, cachedIcon?.mime ?? null, feed.id]);
                     
                     results.updated++;
