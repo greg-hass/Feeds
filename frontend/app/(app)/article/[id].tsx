@@ -28,6 +28,7 @@ export default function ArticleScreen() {
     const { show } = useToastStore();
     const [isLoading, setIsLoading] = useState(true);
     const [showReadability, setShowReadability] = useState(settings?.readability_enabled ?? false);
+    const [iconFailed, setIconFailed] = useState(false);
     const scrollViewRef = useRef<ScrollView>(null);
     const currentArticleIdRef = useRef<number | null>(null);
 
@@ -78,6 +79,7 @@ export default function ArticleScreen() {
     useEffect(() => {
         if (id) {
             setIsLoading(true);
+            setIconFailed(false);
             fadeAnim.setValue(0);
             setReadingProgress(0);
             fetchArticle(Number(id))
@@ -388,7 +390,20 @@ export default function ArticleScreen() {
                     scrollEventThrottle={16}
                 >
                     <Animated.View style={[s.contentContainer, { opacity: fadeAnim }]}>
-                        <Text style={s.feedName}>{currentArticle.feed_title}</Text>
+                        <View style={s.feedHeader}>
+                            {currentArticle.feed_icon_url && !iconFailed ? (
+                                <Image 
+                                    source={{ uri: currentArticle.feed_icon_url }} 
+                                    style={s.feedIcon}
+                                    onError={() => setIconFailed(true)}
+                                />
+                            ) : (
+                                <View style={s.feedInitial}>
+                                    <Text style={s.initialText}>{currentArticle.feed_title?.charAt(0)}</Text>
+                                </View>
+                            )}
+                            <Text style={s.feedName}>{currentArticle.feed_title}</Text>
+                        </View>
                         <Text style={s.title}>{currentArticle.title}</Text>
 
                         <View style={s.meta}>
@@ -562,11 +577,34 @@ const styles = (colors: any, isMobile: boolean, readerTheme?: string) => {
             paddingHorizontal: spacing.xl,
             borderRadius: isMobile ? 0 : borderRadius.lg,
         },
+        feedHeader: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: spacing.sm,
+        },
+        feedIcon: {
+            width: 20,
+            height: 20,
+            borderRadius: 4,
+        },
+        feedInitial: {
+            width: 20,
+            height: 20,
+            borderRadius: 4,
+            backgroundColor: colors.primary.DEFAULT,
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        initialText: {
+            color: '#fff',
+            fontSize: 10,
+            fontWeight: '900',
+        },
         feedName: {
             fontSize: 13,
             color: colors.primary.DEFAULT,
             fontWeight: '700',
-            marginBottom: spacing.sm,
             textTransform: 'uppercase',
             letterSpacing: 1,
         },
