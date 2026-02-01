@@ -603,10 +603,8 @@ const styles = (colors: any, isMobile: boolean, readerTheme?: string) => {
         },
         feedName: {
             fontSize: 13,
-            color: colors.primary.DEFAULT,
+            color: colors.text.secondary,
             fontWeight: '700',
-            textTransform: 'uppercase',
-            letterSpacing: 1,
         },
         title: {
             fontFamily: typography.sans.family,
