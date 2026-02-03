@@ -60,7 +60,7 @@ COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # Create data directory with correct ownership
-RUN mkdir -p /data /data/backups && chown -R feeds:feeds /data /app
+RUN mkdir -p /data && chown -R feeds:feeds /data /app
 
 # Switch to non-root user
 USER feeds
