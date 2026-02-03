@@ -18,7 +18,7 @@ import { FeedInfoSheet } from './FeedInfoSheet';
 import { timelineStyles } from './Timeline.styles';
 import { ScrollView } from 'react-native';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
-import Sidebar from '@/components/Sidebar';
+import Sidebar from './Sidebar';
 import { RefreshCw, CircleCheck, X } from 'lucide-react-native';
 
 interface TimelineProps {
@@ -36,10 +36,14 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     const isMobile = !isDesktop;
     const styles = timelineStyles(colors, isMobile);
     const [showMenu, setShowMenu] = useState(false);
-    // eslint-disable-next-line react-hooks/purity -- useState initializer pattern for Animated.Value
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- useState initializer pattern for Animated.Value
     const [sidebarAnim] = useState(new Animated.Value(-300));
     const [feedInfoId, setFeedInfoId] = useState<number | null>(null);
     const [feedInfoVisible, setFeedInfoVisible] = useState(false);
+
+    // Track new articles for Twitter/X-style timeline behavior
+    const [newArticlesCount, setNewArticlesCount] = useState<number>(0);
+    const previousArticlesRef = useRef<Article[]>([]);
 
     const {
         articles, isLoading, hasMore, filter, isFeedLoading, headerTitle, timeLeft, isRefreshing, refreshProgress,
@@ -50,8 +54,36 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     } = useTimeline(onArticlePress);
 
     const {
-        flatListRef, isScrollRestored, onViewableItemsChanged, handleScroll, saveScrollPosition
+        flatListRef, isScrollRestored, onViewableItemsChanged, handleScroll, saveScrollPosition,
+        scrollToTop, isAtTop, prepareForNewArticles
     } = useTimelineScroll(articles, filter);
+
+    // Detect new articles being prepended and handle scroll compensation
+    useEffect(() => {
+        if (previousArticlesRef.current.length === 0) {
+            previousArticlesRef.current = articles;
+            return;
+        }
+
+        // Check if new articles were prepended (new articles at the beginning)
+        if (articles.length > previousArticlesRef.current.length) {
+            const oldFirstId = previousArticlesRef.current[0]?.id;
+            const newFirstIndex = articles.findIndex(a => a.id === oldFirstId);
+
+            if (newFirstIndex > 0) {
+                // New articles were prepended
+                const addedCount = newFirstIndex;
+
+                // Only show notification and prepare compensation if user is not at top
+                if (!isAtTop()) {
+                    setNewArticlesCount(prev => prev + addedCount);
+                    prepareForNewArticles(addedCount);
+                }
+            }
+        }
+
+        previousArticlesRef.current = articles;
+    }, [articles, isAtTop, prepareForNewArticles]);
 
     // Connect saveScrollPosition to handleArticlePress
     const handleArticlePressWithSave = useCallback((item: Article) => {
@@ -72,6 +104,12 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
             useNativeDriver: true,
         }).start();
     };
+
+    // Handle pressing the new articles pill - scroll to top and clear count
+    const handleNewArticlesPress = useCallback(() => {
+        scrollToTop(true);
+        setNewArticlesCount(0);
+    }, [scrollToTop]);
 
     const prevArticleCount = useRef(articles.length);
 
@@ -229,6 +267,11 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                         maxToRenderPerBatch={5}
                         windowSize={11}
                         updateCellsBatchingPeriod={50}
+                        // Maintain visible content position when prepending items (Twitter/X style)
+                        maintainVisibleContentPosition={{
+                            minIndexForVisible: 0,
+                            autoscrollToTopThreshold: undefined,
+                        }}
                     />
                 </View>
             ) : null}
@@ -263,6 +306,14 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                     </Animated.View>
                 </>
             )}
+
+            {/* New Articles Pill - shows when new articles are loaded above current view */}
+            <NewArticlesPill
+                isDesktop={isDesktop}
+                visible={newArticlesCount > 0}
+                count={newArticlesCount}
+                onPress={handleNewArticlesPress}
+            />
 
             <FeedInfoSheet
                 feedId={feedInfoId}

@@ -1,25 +1,33 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Animated, Platform } from 'react-native';
+import { View, Text, StyleSheet, Animated, Platform, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFeedStore } from '@/stores';
 import { useColors, borderRadius, spacing } from '@/theme';
 
-const DISPLAY_DURATION = 3000; // 3 seconds
+interface NewArticlesPillProps {
+    isDesktop?: boolean;
+    onPress?: () => void;
+    visible?: boolean;
+    count?: number;
+}
 
-export default function NewArticlesPill({ isDesktop }: { isDesktop?: boolean }) {
+export default function NewArticlesPill({ isDesktop, onPress, visible, count }: NewArticlesPillProps) {
     const colors = useColors();
     const insets = useSafeAreaInsets();
     const lastRefreshNewArticles = useFeedStore((state) => state.lastRefreshNewArticles);
-    const [displayCount, setDisplayCount] = useState<number | null>(null);
     const [opacity] = useState(() => new Animated.Value(0));
-    const [translateY] = useState(() => new Animated.Value(20)); // Start from below
+    const [translateY] = useState(() => new Animated.Value(20));
     const [scale] = useState(() => new Animated.Value(0.8));
+    const [isVisible, setIsVisible] = useState(false);
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Animation trigger on external state change
+    // Use external visible/count props if provided, otherwise fall back to store
+    const shouldShow = visible !== undefined ? visible : (lastRefreshNewArticles !== null && lastRefreshNewArticles > 0);
+    const displayCount = count !== undefined ? count : lastRefreshNewArticles;
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Animation trigger
     useEffect(() => {
-        if (lastRefreshNewArticles !== null && lastRefreshNewArticles > 0) {
-            setDisplayCount(lastRefreshNewArticles);
-
+        if (shouldShow && displayCount && displayCount > 0) {
+            setIsVisible(true);
             // Animate in
             Animated.parallel([
                 Animated.timing(opacity, {
@@ -40,39 +48,39 @@ export default function NewArticlesPill({ isDesktop }: { isDesktop?: boolean }) 
                     useNativeDriver: true,
                 }),
             ]).start();
-
-            // Animate out after duration
-            const timeout = setTimeout(() => {
-                Animated.parallel([
-                    Animated.timing(opacity, {
-                        toValue: 0,
-                        duration: 300,
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(translateY, {
-                        toValue: 20, // Slide back down
-                        duration: 300,
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(scale, {
-                        toValue: 0.8,
-                        duration: 300,
-                        useNativeDriver: true,
-                    }),
-                ]).start(() => {
-                    setDisplayCount(null);
-                    // Clear the store value
-                    useFeedStore.setState({ lastRefreshNewArticles: null });
-                });
-            }, DISPLAY_DURATION);
-
-            return () => clearTimeout(timeout);
+        } else {
+            // Animate out
+            Animated.parallel([
+                Animated.timing(opacity, {
+                    toValue: 0,
+                    duration: 200,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(translateY, {
+                    toValue: 20,
+                    duration: 200,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(scale, {
+                    toValue: 0.8,
+                    duration: 200,
+                    useNativeDriver: true,
+                }),
+            ]).start(() => {
+                setIsVisible(false);
+            });
         }
-    }, [lastRefreshNewArticles]);
+    }, [shouldShow, displayCount, opacity, translateY, scale]);
 
-    if (displayCount === null) return null;
+    if (!isVisible && !shouldShow) return null;
 
     const s = styles(colors, insets, isDesktop);
+
+    const handlePress = () => {
+        if (onPress) {
+            onPress();
+        }
+    };
 
     return (
         <Animated.View
@@ -83,14 +91,19 @@ export default function NewArticlesPill({ isDesktop }: { isDesktop?: boolean }) 
                     transform: [{ translateY }, { scale }],
                 },
             ]}
-            pointerEvents="none"
         >
-            <View style={s.pill}>
+            <TouchableOpacity
+                style={s.pill}
+                onPress={handlePress}
+                activeOpacity={0.8}
+                accessibilityLabel={`${displayCount} new articles. Tap to scroll to top.`}
+                accessibilityRole="button"
+            >
                 <Text style={s.text}>New Articles</Text>
                 <View style={s.badge}>
                     <Text style={s.badgeText}>{displayCount}</Text>
                 </View>
-            </View>
+            </TouchableOpacity>
         </Animated.View>
     );
 }
@@ -98,7 +111,7 @@ export default function NewArticlesPill({ isDesktop }: { isDesktop?: boolean }) 
 const styles = (colors: any, insets: any, isDesktop?: boolean) => StyleSheet.create({
     container: {
         position: 'absolute',
-        bottom: isDesktop ? 40 : (insets.bottom + 90), // Just above nav bar (approx 60px height + padding)
+        bottom: isDesktop ? 40 : (insets.bottom + 90),
         left: 0,
         right: 0,
         alignItems: 'center',
