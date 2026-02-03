@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:yt="http://www.youtube.com/xml/schemas/2015">
+  <id>yt:channel:UC_x5XG1OV2P6uZZ5FSM9Ttw</id>
+  <title>YouTube Test Channel</title>
+  <link rel="alternate" href="https://www.youtube.com/channel/UC_x5XG1OV2P6uZZ5FSM9Ttw"/>
+  <link rel="self" href="https://www.youtube.com/feeds/videos.xml?channel_id=UC_x5XG1OV2P6uZZ5FSM9Ttw"/>
+  <author>
+    <name>YouTube Test Channel</name>
+  </author>
+  <updated>2026-02-02T12:00:00Z</updated>
+  <entry>
+    <id>yt:video:dQw4w9WgXcQ</id>
+    <yt:videoId>dQw4w9WgXcQ</yt:videoId>
+    <yt:channelId>UC_x5XG1OV2P6uZZ5FSM9Ttw</yt:channelId>
+    <title>Test YouTube Video</title>
+    <link rel="alternate" href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"/>
+    <author>
+      <name>YouTube Test Channel</name>
+    </author>
+    <updated>2026-02-02T10:00:00Z</updated>
+    <published>2026-02-02T10:00:00Z</published>
+    <summary>This is a test YouTube video description.</summary>
+    <media:group xmlns:media="http://search.yahoo.com/mrss/">
+      <media:title>Test YouTube Video</media:title>
+      <media:thumbnail url="https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg" width="1280" height="720"/>
+    </media:group>
+  </entry>
+</feed>

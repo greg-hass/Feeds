@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Image, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Play } from 'lucide-react-native';
 import { WebView } from 'react-native-webview';
 import { getEmbedUrl } from '@/utils/youtube';
+import { useColors } from '@/theme';
 
 interface YouTubePlayerProps {
     videoId: string;
@@ -23,6 +24,7 @@ const YouTubePlayer = React.memo<YouTubePlayerProps>(({
     isShort = false,
     onPress,
 }) => {
+    const colors = useColors();
     const embedUrl = getEmbedUrl(videoId);
 
     return (
@@ -62,7 +64,7 @@ const YouTubePlayer = React.memo<YouTubePlayerProps>(({
                     />
                     <View style={styles.playButtonOverlay}>
                         <View style={styles.playButtonCircle}>
-                            <Play size={24} color="#fff" fill="#fff" style={{ marginLeft: 4 }} />
+                            <Play size={24} color={colors.text.inverse} fill={colors.text.inverse} style={{ marginLeft: 4 }} />
                         </View>
                     </View>
                 </TouchableOpacity>
@@ -113,7 +115,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 3,
-        borderColor: '#fff',
+        borderColor: colors.text.inverse,
     },
     webviewContainer: {
         flex: 1,

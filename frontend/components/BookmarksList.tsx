@@ -105,7 +105,7 @@ export default function BookmarksList({ onArticlePress, activeArticleId, isMobil
                                 />
                                 {isYouTube && (
                                     <View style={s.playOverlay}>
-                                        <Play size={32} color="#fff" fill="#fff" />
+                                        <Play size={32} color={colors.text.inverse} fill="#fff" />
                                     </View>
                                 )}
                             </View>
@@ -131,7 +131,7 @@ export default function BookmarksList({ onArticlePress, activeArticleId, isMobil
                             />
                             {isYouTube && (
                                 <View style={s.playOverlaySmall}>
-                                    <Play size={20} color="#fff" fill="#fff" />
+                                    <Play size={20} color={colors.text.inverse} fill="#fff" />
                                 </View>
                             )}
                         </View>

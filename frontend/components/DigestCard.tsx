@@ -30,7 +30,7 @@ export const DigestCard = () => {
             >
                 <View style={s.header}>
                     <View style={s.titleRow}>
-                        <Sparkles size={18} color="#fff" style={s.icon} />
+                        <Sparkles size={18} color={colors.text.inverse} style={s.icon} />
                         <Text style={s.title}>{pendingDigest.title || 'Your Daily Digest'}</Text>
                     </View>
                     <TouchableOpacity

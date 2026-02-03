@@ -52,7 +52,7 @@ const TimelineArticle: React.FC<TimelineArticleProps> = ({
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     useArticleStore.getState().markRead(item.id);
                 }} style={s.swipeActionButton}>
-                    <Check size={24} color="#fff" />
+                    <Check size={24} color={colors.text.inverse} />
                     <Text style={s.swipeActionText}>Read</Text>
                 </TouchableOpacity>
             </Animated.View>
@@ -71,7 +71,7 @@ const TimelineArticle: React.FC<TimelineArticleProps> = ({
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                     useArticleStore.getState().toggleBookmark(item.id);
                 }} style={s.swipeActionButton}>
-                    <Bookmark size={24} color="#fff" fill="#fff" />
+                    <Bookmark size={24} color={colors.text.inverse} fill={colors.text.inverse} />
                     <Text style={s.swipeActionText}>Save</Text>
                 </TouchableOpacity>
             </Animated.View>
@@ -81,6 +81,7 @@ const TimelineArticle: React.FC<TimelineArticleProps> = ({
     const Content = (
         <>
             <ArticleCard
+                testID={`article-item-${item.id}`}
                 item={item}
                 index={index}
                 isActive={isActive}

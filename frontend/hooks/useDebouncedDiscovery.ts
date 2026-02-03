@@ -107,6 +107,11 @@ export const useDebouncedDiscovery = (options: UseDebouncedDiscoveryOptions = {}
             if (timeoutRef.current) {
                 clearTimeout(timeoutRef.current);
             }
+            // Cancel any in-flight request when input changes
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
+                abortControllerRef.current = null;
+            }
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [input, delay]);

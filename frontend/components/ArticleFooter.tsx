@@ -84,7 +84,7 @@ const ArticleFooter = React.memo<ArticleFooterProps>(({
                             end={{ x: 1, y: 0 }}
                             style={styles.hotBadge}
                         >
-                            <Flame size={10} color="#fff" fill="#fff" />
+                            <Flame size={10} color={colors.text.inverse} fill="#fff" />
                             <Text style={styles.hotText}>HOT</Text>
                         </LinearGradient>
                     </Animated.View>

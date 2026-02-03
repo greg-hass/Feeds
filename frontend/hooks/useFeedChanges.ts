@@ -3,7 +3,6 @@ import { api } from '@/services/api';
 import { useFeedStore } from '@/stores';
 
 export function useFeedChanges() {
-    const { feeds, folders, fetchFeeds, fetchFolders } = useFeedStore();
     const abortControllerRef = useRef<AbortController | null>(null);
 
     useEffect(() => {
@@ -20,6 +19,7 @@ export function useFeedChanges() {
         }) => {
             console.log('[Feed Changes] Received event:', event.type);
 
+            // Use getState() to always get fresh state instead of capturing from closure
             switch (event.type) {
                 case 'feed_created':
                     // Add new feed if not already present

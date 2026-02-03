@@ -455,7 +455,7 @@ export default function ArticleScreen() {
     };
 
     return (
-        <View style={s.container}>
+        <View testID="article-detail" style={s.container}>
             {isMobile ? renderReader() : <View style={s.readerPane}>{renderReader()}</View>}
 
             <VideoModal

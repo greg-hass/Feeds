@@ -119,7 +119,7 @@ const styles = (colors: any, insets: any, isDesktop?: boolean) => StyleSheet.cre
         elevation: 5,
     },
     text: {
-        color: '#fff',
+        color: colors.text.inverse,
         fontSize: 14,
         fontWeight: '700',
     },

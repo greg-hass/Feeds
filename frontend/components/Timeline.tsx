@@ -122,7 +122,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     );
 
     return (
-        <View style={styles.container}>
+        <View testID="timeline-screen" style={styles.container}>
             <ScreenHeader
                 title={headerTitle}
                 showBackButton={false}
@@ -194,6 +194,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
             ) : filter.type !== 'podcast' ? (
                 <View style={{ flex: 1 }}>
                     <FlatList
+                        testID="article-list"
                         ref={flatListRef}
                         data={articles}
                         renderItem={renderArticle}

@@ -38,7 +38,11 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
                 setTimeLeft('0s');
                 // If we are significantly past the due date (>10s) and not currently refreshing,
                 // check if we missed an update
-                if (diff < -10000 && !isRefreshing) {
+                // Use getState() to get current isRefreshing value instead of closure capture
+                const currentIsRefreshing = useFeedStore.getState().isLoading || 
+                    !!useFeedStore.getState().refreshProgress || 
+                    useFeedStore.getState().isBackgroundRefreshing;
+                if (diff < -10000 && !currentIsRefreshing) {
                     useSettingsStore.getState().fetchSettings().catch(() => {});
                 }
             } else if (diff < 60000) {

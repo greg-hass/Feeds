@@ -53,7 +53,7 @@ export class ErrorBoundary extends Component<Props, State> {
                         </View>
 
                         <TouchableOpacity style={styles.button} onPress={this.handleReset}>
-                            <RefreshCw size={20} color="#fff" style={{ marginRight: 8 }} />
+                            <RefreshCw size={20} color={colors.text.inverse} style={{ marginRight: 8 }} />
                             <Text style={styles.buttonText}>Try to Recover</Text>
                         </TouchableOpacity>
 

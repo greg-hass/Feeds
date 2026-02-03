@@ -6,8 +6,7 @@ import { z } from 'zod';
 
 const SALT_ROUNDS = 12;
 
-// Rate limiting store (in-memory, resets on server restart)
-const loginAttempts = new Map<string, { count: number; resetTime: number }>();
+// Rate limiting configuration
 const MAX_ATTEMPTS = 5;
 const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 
@@ -35,25 +34,48 @@ function getClientIP(request: FastifyRequest): string {
 }
 
 /**
- * Check if rate limit is exceeded
+ * Check if rate limit is exceeded (persisted to SQLite)
  */
 function checkRateLimit(ip: string): { allowed: boolean; remaining: number; resetIn: number } {
     const now = Date.now();
-    const attempt = loginAttempts.get(ip);
+    const resetAt = new Date(now + WINDOW_MS).toISOString();
+    
+    // Get current attempt record
+    const attempt = queryOne<{ attempt_count: number; reset_at: string }>(
+        'SELECT attempt_count, reset_at FROM rate_limits WHERE ip_address = ?',
+        [ip]
+    );
 
-    if (!attempt || now > attempt.resetTime) {
+    if (!attempt || new Date(attempt.reset_at).getTime() < now) {
         // Reset or create new window
-        loginAttempts.set(ip, { count: 1, resetTime: now + WINDOW_MS });
+        run(
+            'INSERT OR REPLACE INTO rate_limits (ip_address, attempt_count, reset_at, updated_at) VALUES (?, 1, ?, datetime("now"))',
+            [ip, resetAt]
+        );
         return { allowed: true, remaining: MAX_ATTEMPTS - 1, resetIn: WINDOW_MS };
     }
 
-    if (attempt.count >= MAX_ATTEMPTS) {
-        const resetIn = attempt.resetTime - now;
+    if (attempt.attempt_count >= MAX_ATTEMPTS) {
+        const resetIn = new Date(attempt.reset_at).getTime() - now;
         return { allowed: false, remaining: 0, resetIn };
     }
 
-    attempt.count++;
-    return { allowed: true, remaining: MAX_ATTEMPTS - attempt.count, resetIn: attempt.resetTime - now };
+    // Increment attempt count
+    run(
+        'UPDATE rate_limits SET attempt_count = attempt_count + 1, updated_at = datetime("now") WHERE ip_address = ?',
+        [ip]
+    );
+    
+    const remaining = MAX_ATTEMPTS - attempt.attempt_count - 1;
+    const resetIn = new Date(attempt.reset_at).getTime() - now;
+    return { allowed: true, remaining, resetIn };
+}
+
+/**
+ * Clear rate limit for an IP (on successful login)
+ */
+function clearRateLimit(ip: string): void {
+    run('DELETE FROM rate_limits WHERE ip_address = ?', [ip]);
 }
 
 /**
@@ -99,7 +121,7 @@ export async function authRoutes(app: FastifyInstance) {
                 
                 // Continue to login logic...
                 // We don't need to verify again since we just matched it
-                loginAttempts.delete(clientIP);
+                clearRateLimit(clientIP);
                 const token = generateToken(user.id, user.username);
                 return {
                     token,
@@ -123,7 +145,7 @@ export async function authRoutes(app: FastifyInstance) {
         }
 
         // Clear rate limit on successful login
-        loginAttempts.delete(clientIP);
+        clearRateLimit(clientIP);
 
         // Generate JWT token
         const token = generateToken(user.id, user.username);
@@ -199,23 +221,23 @@ export async function authRoutes(app: FastifyInstance) {
      * GET /api/v1/auth/status
      * Check if authentication is required and configured
      */
-    app.get('/status', async () => {
+    app.get('/status', async (request) => {
         const jwtSecret = process.env.JWT_SECRET;
         const envPassword = process.env.APP_PASSWORD;
         
-        console.log('[Auth Status] JWT_SECRET present:', !!jwtSecret);
-        console.log('[Auth Status] APP_PASSWORD present:', !!envPassword);
+        request.log.debug({ jwtSecretPresent: !!jwtSecret }, 'Auth status check');
+        request.log.debug({ appPasswordPresent: !!envPassword }, 'Auth status check');
         
         const user = queryOne<{ password_hash: string }>(
             'SELECT password_hash FROM users WHERE id = 1'
         );
         
-        console.log('[Auth Status] User found:', !!user);
-        console.log('[Auth Status] User password_hash:', user?.password_hash ? 'set' : 'not set');
+        request.log.debug({ userFound: !!user }, 'Auth status check');
+        request.log.debug({ passwordHashSet: !!user?.password_hash }, 'Auth status check');
         
         const needsSetup = !user || user.password_hash === 'disabled' || !user.password_hash;
         
-        console.log('[Auth Status] needsSetup:', needsSetup);
+        request.log.debug({ needsSetup }, 'Auth status check');
         
         return {
             authEnabled: !!jwtSecret,

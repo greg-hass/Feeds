@@ -265,7 +265,7 @@ const PodcastCard: React.FC<PodcastCardProps> = ({
                     {isPlaying ? (
                         <PlayingWaveform />
                     ) : (
-                        <Play size={24} color="#fff" fill="#fff" style={{ marginLeft: 2 }} />
+                        <Play size={24} color={colors.text.inverse} fill="#fff" style={{ marginLeft: 2 }} />
                     )}
                 </View>
 

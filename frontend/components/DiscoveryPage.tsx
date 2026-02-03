@@ -193,7 +193,7 @@ export const DiscoveryPage = () => {
                                     <Image source={{ uri: metadata.thumbnail }} style={s.thumbnail} accessibilityLabel={`${rec.title} thumbnail`} />
                                     ) : (
                                         <View style={[s.thumbnailPlaceholder, { backgroundColor: rec.feed_type === 'youtube' ? colors.feedTypes.youtube : colors.primary.DEFAULT }]}>
-                                            {rec.feed_type === 'youtube' ? <Youtube size={24} color="#FFF" /> : <Newspaper size={24} color="#FFF" />}
+                                            {rec.feed_type === 'youtube' ? <Youtube size={24} color={colors.text.inverse} /> : <Newspaper size={24} color={colors.text.inverse} />}
                                         </View>
                                     )}
                                     <View style={s.cardTitles}>
@@ -231,11 +231,11 @@ export const DiscoveryPage = () => {
                                     >
                                         {subscribingIds.has(rec.id) ? (
                                             <View style={s.loadingContent}>
-                                                <ActivityIndicator size="small" color="#fff" />
+                                                <ActivityIndicator size="small" color={colors.text.inverse} />
                                             </View>
                                         ) : (
                                             <>
-                                                <Plus size={18} color="#fff" strokeWidth={3} />
+                                                <Plus size={18} color={colors.text.inverse} strokeWidth={3} />
                                                 <Text style={s.subscribeText}>Subscribe</Text>
                                             </>
                                         )}

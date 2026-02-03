@@ -12,12 +12,13 @@ interface DiscoveryCardProps {
     onAdd: () => void;
 }
 
-const typeConfig = {
-    youtube: { icon: Youtube, color: '#ef4444', label: 'YouTube' },
-    reddit: { icon: MessageSquare, color: '#f97316', label: 'Reddit' },
-    podcast: { icon: Headphones, color: '#8b5cf6', label: 'Podcast' },
-    rss: { icon: Rss, color: '#3b82f6', label: 'RSS' },
-};
+// Feed type colors from theme
+const getTypeConfig = (colors: any) => ({
+    youtube: { icon: Youtube, color: colors.feedTypes.youtube, label: 'YouTube' },
+    reddit: { icon: MessageSquare, color: colors.feedTypes.reddit, label: 'Reddit' },
+    podcast: { icon: Headphones, color: colors.feedTypes.podcast, label: 'Podcast' },
+    rss: { icon: Rss, color: colors.feedTypes.rss, label: 'RSS' },
+});
 
 export const DiscoveryCard = ({
     discovery,
@@ -29,6 +30,7 @@ export const DiscoveryCard = ({
     const colors = useColors();
     const s = styles(colors);
 
+    const typeConfig = getTypeConfig(colors);
     const typeInfo = typeConfig[discovery.type] || typeConfig.rss;
     const TypeIcon = typeInfo.icon;
 

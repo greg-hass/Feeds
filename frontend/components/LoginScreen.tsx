@@ -135,6 +135,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
 
     return (
         <KeyboardAvoidingView
+            testID="login-screen"
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={s.container}
         >
@@ -145,7 +146,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                 <View style={s.card}>
                     {/* Logo/Icon */}
                     <View style={s.iconContainer}>
-                        <Lock size={32} color="#fff" />
+                        <Lock size={32} color={colors.text.inverse} />
                     </View>
 
                     {/* Title */}
@@ -170,7 +171,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
 
                     {/* Error Message */}
                     {error ? (
-                        <View style={s.errorContainer}>
+                        <View testID="login-error" style={s.errorContainer}>
                             <AlertCircle size={16} color={colors.error} />
                             <Text style={s.errorText}>{error}</Text>
                         </View>
@@ -184,6 +185,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                             style={s.inputIcon}
                         />
                         <TextInput
+                            testID="password-input"
                             style={s.input}
                             placeholder={
                                 needsSetup
@@ -206,13 +208,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
 
                     {/* Submit Button */}
                     <TouchableOpacity
+                        testID="login-button"
                         style={[s.button, isLoading && s.buttonDisabled]}
                         onPress={needsSetup ? handleSetup : handleLogin}
                         disabled={isLoading}
                         activeOpacity={0.8}
                     >
                         {isLoading ? (
-                            <ActivityIndicator color="#fff" />
+                            <ActivityIndicator color={colors.text.inverse} />
                         ) : (
                             <Text style={s.buttonText}>
                                 {needsSetup ? 'Create Password' : 'Sign In'}
@@ -333,7 +336,7 @@ const styles = (colors: any, isMobile: boolean) =>
             opacity: 0.6,
         },
         buttonText: {
-            color: '#fff',
+            color: colors.text.inverse,
             fontSize: 16,
             fontWeight: '700',
         },
