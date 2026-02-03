@@ -3,8 +3,14 @@ set -e
 
 echo "Starting Feeds..."
 
-# Ensure data directory exists
+# Fix permissions for data directory (Docker volumes mount with root ownership by default)
+if [ -d "/data" ]; then
+    chown -R feeds:feeds /data 2>/dev/null || true
+fi
+
+# Ensure data directory exists with correct permissions
 mkdir -p /data /data/backups
+chown -R feeds:feeds /data /data/backups 2>/dev/null || true
 
 # Daily backup of database (keep last 7)
 if [ -f "/data/feeds.db" ]; then
