@@ -17,8 +17,7 @@ if [ -f "/data/feeds.db" ]; then
     BACKUP_FILE="/data/backups/feeds-$(date +%Y%m%d).db"
     if [ ! -f "$BACKUP_FILE" ]; then
         echo "Creating daily backup..."
-        # Run backup as feeds user to ensure ownership matches
-        su -s /bin/sh feeds -c "cp /data/feeds.db '$BACKUP_FILE'"
+        cp /data/feeds.db "$BACKUP_FILE"
         # Keep only last 7 backups
         ls -t /data/backups/feeds-*.db 2>/dev/null | tail -n +8 | xargs -r rm
     fi
