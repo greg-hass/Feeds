@@ -254,6 +254,11 @@ describe('Auth Routes', () => {
     });
 
     describe('Rate Limiting', () => {
+        beforeEach(async () => {
+            // Clear rate limits table before each rate limit test
+            (run as any).mockClear();
+        });
+
         it('should rate limit after 5 failed attempts', async () => {
             const hashedPassword = await bcrypt.hash('correctpassword', 12);
             (queryOne as any).mockReturnValue({
@@ -262,13 +267,36 @@ describe('Auth Routes', () => {
                 password_hash: hashedPassword,
             });
 
+            // Track query calls to handle rate limit queries
+            let rateLimitQueryCount = 0;
+            (queryOne as any).mockImplementation((sql: string, params: any[]) => {
+                if (sql.includes('rate_limits')) {
+                    rateLimitQueryCount++;
+                    if (rateLimitQueryCount === 1) {
+                        // First query - no existing record
+                        return null;
+                    } else {
+                        // Subsequent queries - return incrementing count
+                        const count = Math.min(rateLimitQueryCount - 1, 5);
+                        const now = Date.now();
+                        return {
+                            attempt_count: count,
+                            reset_at: new Date(now + 15 * 60 * 1000).toISOString(),
+                        };
+                    }
+                }
+                return { id: 1, username: 'admin', password_hash: hashedPassword };
+            });
+
             // Make 5 failed login attempts
             for (let i = 0; i < 5; i++) {
-                await app.inject({
+                const response = await app.inject({
                     method: 'POST',
                     url: '/api/v1/auth/login',
                     payload: { password: 'wrongpassword' },
                 });
+                // First 5 attempts should return 401, not rate limited
+                expect(response.statusCode).toBe(401);
             }
 
             // 6th attempt should be rate limited
@@ -292,16 +320,34 @@ describe('Auth Routes', () => {
                 password_hash: hashedPassword,
             });
 
+            let rateLimitQueryCount = 0;
+            let rateLimitRecord: { attempt_count: number; reset_at: string } | null = null;
+
+            (queryOne as any).mockImplementation((sql: string, params: any[]) => {
+                if (sql.includes('rate_limits')) {
+                    rateLimitQueryCount++;
+                    return rateLimitRecord;
+                }
+                return { id: 1, username: 'admin', password_hash: hashedPassword };
+            });
+
             // Make 3 failed attempts
             for (let i = 0; i < 3; i++) {
-                await app.inject({
+                rateLimitRecord = {
+                    attempt_count: i + 1,
+                    reset_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+                };
+                const response = await app.inject({
                     method: 'POST',
                     url: '/api/v1/auth/login',
                     payload: { password: 'wrongpassword' },
                 });
+                expect(response.statusCode).toBe(401);
             }
 
-            // Successful login
+            // Successful login - clears rate limit
+            rateLimitRecord = null;
+
             await app.inject({
                 method: 'POST',
                 url: '/api/v1/auth/login',

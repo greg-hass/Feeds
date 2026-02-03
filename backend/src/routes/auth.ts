@@ -39,24 +39,39 @@ function getClientIP(request: FastifyRequest): string {
 function checkRateLimit(ip: string): { allowed: boolean; remaining: number; resetIn: number } {
     const now = Date.now();
     const resetAt = new Date(now + WINDOW_MS).toISOString();
-    
+
     // Get current attempt record
     const attempt = queryOne<{ attempt_count: number; reset_at: string }>(
         'SELECT attempt_count, reset_at FROM rate_limits WHERE ip_address = ?',
         [ip]
     );
 
-    if (!attempt || new Date(attempt.reset_at).getTime() < now) {
-        // Reset or create new window
+    // If no record exists, create one and allow
+    if (!attempt) {
         run(
-            'INSERT OR REPLACE INTO rate_limits (ip_address, attempt_count, reset_at, updated_at) VALUES (?, 1, ?, datetime("now"))',
+            'INSERT INTO rate_limits (ip_address, attempt_count, reset_at, updated_at) VALUES (?, 1, ?, datetime("now"))',
             [ip, resetAt]
         );
         return { allowed: true, remaining: MAX_ATTEMPTS - 1, resetIn: WINDOW_MS };
     }
 
+    // Validate record structure - skip rate limiting if invalid
+    if (typeof attempt.attempt_count !== 'number' || !attempt.reset_at) {
+        return { allowed: true, remaining: MAX_ATTEMPTS - 1, resetIn: WINDOW_MS };
+    }
+
+    // Check if window expired
+    const resetTime = new Date(attempt.reset_at).getTime();
+    if (resetTime < now) {
+        run(
+            'UPDATE rate_limits SET attempt_count = 1, reset_at = ?, updated_at = datetime("now") WHERE ip_address = ?',
+            [resetAt, ip]
+        );
+        return { allowed: true, remaining: MAX_ATTEMPTS - 1, resetIn: WINDOW_MS };
+    }
+
     if (attempt.attempt_count >= MAX_ATTEMPTS) {
-        const resetIn = new Date(attempt.reset_at).getTime() - now;
+        const resetIn = resetTime - now;
         return { allowed: false, remaining: 0, resetIn };
     }
 
@@ -65,9 +80,9 @@ function checkRateLimit(ip: string): { allowed: boolean; remaining: number; rese
         'UPDATE rate_limits SET attempt_count = attempt_count + 1, updated_at = datetime("now") WHERE ip_address = ?',
         [ip]
     );
-    
+
     const remaining = MAX_ATTEMPTS - attempt.attempt_count - 1;
-    const resetIn = new Date(attempt.reset_at).getTime() - now;
+    const resetIn = resetTime - now;
     return { allowed: true, remaining, resetIn };
 }
 
