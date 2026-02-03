@@ -15,6 +15,7 @@ export default function NewArticlesPill({ isDesktop }: { isDesktop?: boolean }) 
     const [translateY] = useState(() => new Animated.Value(20)); // Start from below
     const [scale] = useState(() => new Animated.Value(0.8));
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Animation trigger on external state change
     useEffect(() => {
         if (lastRefreshNewArticles !== null && lastRefreshNewArticles > 0) {
             setDisplayCount(lastRefreshNewArticles);

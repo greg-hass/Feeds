@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useRef } from 'react';
+import React, { useMemo, useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet, Animated, useWindowDimensions } from 'react-native';
 import { Play, Pause, Clock, Headphones, ChevronRight } from 'lucide-react-native';
 import { Article } from '@/services/api';
@@ -34,10 +34,10 @@ export const PodcastSection: React.FC<PodcastSectionProps> = ({
     // Group podcasts by feed, limiting to maxPerFeed per feed
     const podcastGroups = useMemo(() => {
         const groups = new Map<number, PodcastGroup>();
-        
+
         articles.forEach((article) => {
             if (!article.has_audio) return;
-            
+
             const existing = groups.get(article.feed_id);
             if (existing) {
                 if (existing.podcasts.length < maxPerFeed) {
@@ -52,7 +52,7 @@ export const PodcastSection: React.FC<PodcastSectionProps> = ({
                 });
             }
         });
-        
+
         return Array.from(groups.values());
     }, [articles, maxPerFeed]);
 
@@ -169,9 +169,10 @@ interface PodcastCardProps {
 
 // Animated waveform component for playing indicator
 const PlayingWaveform: React.FC = () => {
-    const anim1 = useRef(new Animated.Value(8)).current;
-    const anim2 = useRef(new Animated.Value(14)).current;
-    const anim3 = useRef(new Animated.Value(10)).current;
+    // Using useState with lazy initializer instead of useRef().current to avoid render-time ref access
+    const [anim1] = useState(() => new Animated.Value(8));
+    const [anim2] = useState(() => new Animated.Value(14));
+    const [anim3] = useState(() => new Animated.Value(10));
 
     useEffect(() => {
         const createPulse = (anim: Animated.Value, min: number, max: number, delay: number) => {
@@ -205,7 +206,7 @@ const PlayingWaveform: React.FC = () => {
             pulse2.stop();
             pulse3.stop();
         };
-    }, []);
+    }, [anim1, anim2, anim3]);
 
     return (
         <View style={waveformStyles.container}>
@@ -240,8 +241,9 @@ const PodcastCard: React.FC<PodcastCardProps> = ({
     onPlay,
 }) => {
     const s = cardStyles(colors, isMobile);
-    const isNew = podcast.published_at && 
-        new Date(podcast.published_at).getTime() > Date.now() - 24 * 60 * 60 * 1000;
+    // eslint-disable-next-line react-hooks/purity -- Date.now() purity check is acceptable for display-only
+    const isNew = useMemo(() => podcast.published_at &&
+        new Date(podcast.published_at).getTime() > Date.now() - 24 * 60 * 60 * 1000, [podcast.published_at]);
 
     return (
         <TouchableOpacity
@@ -259,7 +261,7 @@ const PodcastCard: React.FC<PodcastCardProps> = ({
                         <Headphones size={32} color={colors.text.tertiary} />
                     </View>
                 )}
-                
+
                 {/* Play Overlay */}
                 <View style={[s.playOverlay, isCurrent && s.playOverlayActive]}>
                     {isPlaying ? (

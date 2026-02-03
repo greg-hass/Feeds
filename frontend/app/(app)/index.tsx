@@ -6,6 +6,7 @@ import { FileText } from 'lucide-react-native';
 
 export default function ArticleListScreen() {
     const [mounted, setMounted] = useState(false);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Mounting pattern for hydration
     useEffect(() => setMounted(true), []);
     const colors = useColors();
     const { width } = useWindowDimensions();

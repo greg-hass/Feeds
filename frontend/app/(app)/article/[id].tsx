@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image, useWindowDimensions, Platform, Animated, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { formatDistanceToNow } from 'date-fns';
@@ -41,7 +41,6 @@ export default function ArticleScreen() {
 
     const { activeVideoId, playVideo, minimize, close: closeVideo, isMinimized } = useVideoStore();
     const { play: playPodcast } = useAudioStore();
-    const [adjacentArticles, setAdjacentArticles] = useState<{ prev: number | null; next: number | null }>({ prev: null, next: null });
 
     // Analytics: Track reading session
     const { updateScrollDepth } = useReadingSession({
@@ -55,14 +54,15 @@ export default function ArticleScreen() {
     const videoId = extractVideoId(currentArticle?.url || currentArticle?.thumbnail_url || '');
     // For YouTube videos, always construct a proper watch URL to ensure it opens correctly
     // Don't rely on article.url which might be a feed URL or malformed
-    const externalUrl = videoId 
-        ? `https://www.youtube.com/watch?v=${videoId}` 
+    const externalUrl = videoId
+        ? `https://www.youtube.com/watch?v=${videoId}`
         : (currentArticle?.url || null);
 
     const s = styles(colors, isMobile, settings?.reader_theme);
 
     const [fadeAnim] = useState(() => new Animated.Value(0));
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Syncing external settings state
     useEffect(() => {
         if (settings?.readability_enabled !== undefined) {
             setShowReadability(settings.readability_enabled);
@@ -77,6 +77,7 @@ export default function ArticleScreen() {
         };
     }, []);
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initializing state for new article load
     useEffect(() => {
         if (id) {
             setIsLoading(true);
@@ -103,18 +104,19 @@ export default function ArticleScreen() {
         }
     }, [currentArticle?.id, id, isLoading]);
 
-    // Populate adjacent articles from store
-    useEffect(() => {
+    // Derive adjacent articles from store using useMemo instead of useState+useEffect
+    const adjacentArticles = useMemo(() => {
         if (id && articles.length > 0) {
             const currentIndex = articles.findIndex(a => a.id === articleId);
             if (currentIndex !== -1) {
-                setAdjacentArticles({
+                return {
                     prev: currentIndex > 0 ? articles[currentIndex - 1].id : null,
                     next: currentIndex < articles.length - 1 ? articles[currentIndex + 1].id : null
-                });
+                };
             }
         }
-    }, [id, articles]);
+        return { prev: null, next: null };
+    }, [id, articles, articleId]);
 
     // Handle video state when article changes
     useEffect(() => {
@@ -132,6 +134,7 @@ export default function ArticleScreen() {
     }, [currentArticle?.id, activeVideoId]);
 
     // Restore scroll position when screen is focused and article is loaded
+    // eslint-disable-next-line react-hooks/preserve-manual-memoization -- Intentional deps for scroll restoration
     useFocusEffect(
         useCallback(() => {
             if (!id || !currentArticle || isLoading) return;
@@ -151,7 +154,7 @@ export default function ArticleScreen() {
 
                 return () => clearTimeout(timeoutId);
             }
-        }, [id, currentArticle, isLoading, getArticleScrollPosition])
+        }, [id, currentArticle, isLoading, getArticleScrollPosition, articleId])
     );
 
     const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -257,19 +260,20 @@ export default function ArticleScreen() {
         }
     }, [currentArticle, externalUrl]);
 
+    // eslint-disable-next-line react-hooks/preserve-manual-memoization -- Intentional deps for retry handler
     const handleRetry = useCallback(() => {
         if (id) {
             setIsLoading(true);
             fetchArticle(articleId).finally(() => setIsLoading(false));
         }
-    }, [id, fetchArticle]);
+    }, [id, fetchArticle, articleId]);
 
     const renderReader = () => {
         if (error && !isLoading) {
             return (
-                <ErrorView 
-                    message={error} 
-                    onRetry={handleRetry} 
+                <ErrorView
+                    message={error}
+                    onRetry={handleRetry}
                 />
             );
         }
@@ -354,22 +358,22 @@ export default function ArticleScreen() {
                             </TouchableOpacity>
                             {showTextSizeMenu && (
                                 <View style={s.textSizeMenu}>
-                                    <TouchableOpacity 
-                                        onPress={() => { updateSettings({ font_size: 'small' }); setShowTextSizeMenu(false); }} 
+                                    <TouchableOpacity
+                                        onPress={() => { updateSettings({ font_size: 'small' }); setShowTextSizeMenu(false); }}
                                         style={[s.textSizeOption, settings?.font_size === 'small' && s.textSizeOptionActive]}
                                         accessibilityLabel="Set text size to small"
                                     >
                                         <Text style={[s.textSizeLabel, { fontSize: 12 }]}>A</Text>
                                     </TouchableOpacity>
-                                    <TouchableOpacity 
-                                        onPress={() => { updateSettings({ font_size: 'medium' }); setShowTextSizeMenu(false); }} 
+                                    <TouchableOpacity
+                                        onPress={() => { updateSettings({ font_size: 'medium' }); setShowTextSizeMenu(false); }}
                                         style={[s.textSizeOption, (settings?.font_size === 'medium' || !settings?.font_size) && s.textSizeOptionActive]}
                                         accessibilityLabel="Set text size to medium"
                                     >
                                         <Text style={[s.textSizeLabel, { fontSize: 16 }]}>A</Text>
                                     </TouchableOpacity>
-                                    <TouchableOpacity 
-                                        onPress={() => { updateSettings({ font_size: 'large' }); setShowTextSizeMenu(false); }} 
+                                    <TouchableOpacity
+                                        onPress={() => { updateSettings({ font_size: 'large' }); setShowTextSizeMenu(false); }}
                                         style={[s.textSizeOption, settings?.font_size === 'large' && s.textSizeOptionActive]}
                                         accessibilityLabel="Set text size to large"
                                     >
@@ -391,8 +395,8 @@ export default function ArticleScreen() {
                     <Animated.View style={[s.contentContainer, { opacity: fadeAnim }]}>
                         <View style={s.feedHeader}>
                             {currentArticle.feed_icon_url && !iconFailed ? (
-                                <Image 
-                                    source={{ uri: currentArticle.feed_icon_url }} 
+                                <Image
+                                    source={{ uri: currentArticle.feed_icon_url }}
                                     style={s.feedIcon}
                                     onError={() => setIconFailed(true)}
                                 />

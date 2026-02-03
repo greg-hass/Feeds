@@ -25,6 +25,7 @@ import { usePwaThemeColor } from '@/hooks/usePwaThemeColor';
 export default function AppLayout() {
     const [mounted, setMounted] = useState(false);
     const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Mounting pattern for hydration
     useEffect(() => setMounted(true), []);
     const { width } = useWindowDimensions();
     const isDesktop = width >= 1024;
@@ -109,7 +110,7 @@ export default function AppLayout() {
                 try {
                     const registration = await navigator.serviceWorker.register('/sw.js');
                     console.log('SW registered:', registration);
-                    
+
                     // Register for background sync if supported
                     if ('sync' in registration) {
                         try {
@@ -119,14 +120,14 @@ export default function AppLayout() {
                             console.log('Background sync registration failed:', syncError);
                         }
                     }
-                    
+
                     // Register for periodic background sync if supported
                     if ('periodicSync' in registration) {
                         try {
                             const status = await navigator.permissions.query({
                                 name: 'periodic-background-sync' as PermissionName,
                             });
-                            
+
                             if (status.state === 'granted') {
                                 await (registration as any).periodicSync.register('feeds-background-sync', {
                                     minInterval: 5 * 60 * 1000, // 5 minutes
@@ -137,7 +138,7 @@ export default function AppLayout() {
                             console.log('Periodic sync registration failed:', periodicError);
                         }
                     }
-                    
+
                     // Listen for messages from service worker
                     navigator.serviceWorker.addEventListener('message', (event) => {
                         if (event.data?.type === 'BACKGROUND_SYNC_COMPLETE') {
@@ -246,7 +247,7 @@ export default function AppLayout() {
                     fetchFeeds();
                     fetchFolders();
                     fetchArticles(true);
-                    fetchSettings().catch(() => {});
+                    fetchSettings().catch(() => { });
                     return;
                 }
             },
@@ -272,23 +273,23 @@ export default function AppLayout() {
 
         // Initial data load - fetch settings first for timer
         fetchSettings().catch(() => { });
-        
+
         const refreshNow = async (force = false) => {
             const now = Date.now();
             const timeSinceLast = now - lastRefreshAt;
-            
+
             if (!force && timeSinceLast < STALE_MS) return;
             lastRefreshAt = now;
-            
+
             // Just fetch latest data from backend - do NOT trigger a crawl
             // This ensures instant updates if the backend has been working in the background
-            
+
             // Reset any stuck refresh state
-            useFeedStore.setState({ 
-                isBackgroundRefreshing: false, 
-                refreshProgress: null 
+            useFeedStore.setState({
+                isBackgroundRefreshing: false,
+                refreshProgress: null
             });
-            
+
             await Promise.all([
                 fetchFeeds(),
                 fetchFolders(),

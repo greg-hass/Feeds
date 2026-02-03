@@ -10,17 +10,17 @@ const scrollPositions: Record<string, number> = {};
 function getScrollKey(filter: any): string {
     // Build a key from the filter state
     const parts: string[] = ['timeline'];
-    
+
     if (filter.unread_only) parts.push('unread');
     if (filter.type) parts.push(`type:${filter.type}`);
     if (filter.feed_id) parts.push(`feed:${filter.feed_id}`);
     if (filter.folder_id) parts.push(`folder:${filter.folder_id}`);
-    
+
     // Default view (All Articles with no filters)
     if (parts.length === 1) {
         return 'timeline:all';
     }
-    
+
     return parts.join(':');
 }
 
@@ -36,6 +36,7 @@ export const useTimelineScroll = (articles: any[], filter: any) => {
     const scrollKey = getScrollKey(filter);
 
     // Reset scroll restoration when filter changes (view switches)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Resetting state on filter change
     useEffect(() => {
         // Only reset if the key actually changed
         if (currentScrollKey.current !== scrollKey) {
@@ -57,6 +58,7 @@ export const useTimelineScroll = (articles: any[], filter: any) => {
         // If there's no saved position, we're done
         if (savedPosition <= 0) {
             hasRestoredScroll.current = true;
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- Scroll restoration complete
             setIsScrollRestored(true);
             return;
         }
@@ -69,15 +71,15 @@ export const useTimelineScroll = (articles: any[], filter: any) => {
         if (flatListRef.current) {
             // Store the position we want to scroll to
             pendingScrollPosition.current = savedPosition;
-            
+
             // Use a slightly longer delay to ensure FlatList has fully rendered items
             const timeoutId = setTimeout(() => {
                 if (flatListRef.current && pendingScrollPosition.current !== null) {
-                    flatListRef.current.scrollToOffset({ 
-                        offset: pendingScrollPosition.current, 
-                        animated: false 
+                    flatListRef.current.scrollToOffset({
+                        offset: pendingScrollPosition.current,
+                        animated: false
                     });
-                    
+
                     // Small additional delay before allowing scroll tracking to resume
                     // This prevents the scrollToOffset event itself from being tracked
                     setTimeout(() => {
@@ -104,9 +106,9 @@ export const useTimelineScroll = (articles: any[], filter: any) => {
         if (!hasRestoredScroll.current || pendingScrollPosition.current !== null) {
             return;
         }
-        
+
         const offset = e.nativeEvent.contentOffset.y;
-        
+
         // Only save if it's a valid positive offset to avoid jitter
         if (offset > 0) {
             scrollPositions[scrollKey] = offset;

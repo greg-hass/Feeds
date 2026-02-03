@@ -64,6 +64,7 @@ const ArticleCard = React.memo<ArticleCardProps>(({
     const isFeatured = (index % 5 === 0 && !isMobile && thumbnail) || isYouTube;
     // Calculate isHot using useMemo to avoid recalculation on every render
     // This is impure due to Date.now() but memoized to prevent unnecessary recalculations
+    // eslint-disable-next-line react-hooks/purity -- Date.now() is stable enough for this display-only check
     const isHot = React.useMemo(() => {
         return !!(item.published_at && (new Date(item.published_at).getTime() > Date.now() - 4 * 60 * 60 * 1000));
     }, [item.published_at]);
@@ -120,8 +121,8 @@ const ArticleCard = React.memo<ArticleCardProps>(({
                     {/* Feed Pill */}
                     <View style={s.feedPill}>
                         {item.feed_icon_url && !iconFailed ? (
-                            <Image 
-                                source={{ uri: item.feed_icon_url }} 
+                            <Image
+                                source={{ uri: item.feed_icon_url }}
                                 style={s.feedIcon}
                                 onError={() => setIconFailed(true)}
                             />

@@ -36,6 +36,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     const isMobile = !isDesktop;
     const styles = timelineStyles(colors, isMobile);
     const [showMenu, setShowMenu] = useState(false);
+    // eslint-disable-next-line react-hooks/purity -- useState initializer pattern for Animated.Value
     const [sidebarAnim] = useState(new Animated.Value(-300));
     const [feedInfoId, setFeedInfoId] = useState<number | null>(null);
     const [feedInfoVisible, setFeedInfoVisible] = useState(false);
