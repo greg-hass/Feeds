@@ -92,6 +92,7 @@ export async function discoveryRoutes(app: FastifyInstance) {
     // Discover feeds (automatic URL or keyword)
     app.get('/', async (request: FastifyRequest) => {
         const query = keywordSchema.parse(request.query);
+        console.log(`[Discovery Route] Query: "${query.q}", Type: ${query.type || 'all'}`);
         const q = query.q;
 
         const isUrl = q.startsWith('http://') || q.startsWith('https://') || q.includes('.');
@@ -111,8 +112,12 @@ export async function discoveryRoutes(app: FastifyInstance) {
         }
 
         const discoveries = await discoverByKeyword(q, query.limit, query.type);
+        console.log(`[Discovery Route] Total discoveries: ${discoveries.length}`);
+        
         // Filter out inactive feeds (discoverByKeyword already filters, but double-check)
         const activeDiscoveries = discoveries.filter(d => d.isActive !== false);
+        console.log(`[Discovery Route] Active discoveries: ${activeDiscoveries.length}`);
+        
         return { discoveries: activeDiscoveries };
     });
 

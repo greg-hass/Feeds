@@ -487,13 +487,19 @@ async function discoverYouTubeByKeyword(keyword: string, limit: number): Promise
 }
 
 export async function discoverByKeyword(keyword: string, limit: number = 10, type?: string): Promise<DiscoveredFeed[]> {
+    console.log(`[Discovery] Searching for keyword: "${keyword}", type: ${type || 'all'}`);
+    
     let redditDiscoveries: DiscoveredFeed[] = [];
     let youtubeDiscoveries: DiscoveredFeed[] = [];
     let aiSuggestionsList: import('./ai.js').AiSuggestedUrl[] = [];
 
     // 1. Fetch from sources conditionally
     if (!type || type === 'reddit') {
+        console.log('[Discovery] Fetching Reddit subreddits...');
         redditDiscoveries = await discoverRedditByKeyword(keyword, limit);
+        console.log(`[Discovery] Reddit found ${redditDiscoveries.length} subreddits`);
+    } else {
+        console.log('[Discovery] Skipping Reddit (type filter)');
     }
 
     if (!type || type === 'youtube') {
@@ -571,6 +577,7 @@ export async function discoverByKeyword(keyword: string, limit: number = 10, typ
 }
 
 async function discoverRedditByKeyword(keyword: string, limit: number): Promise<DiscoveredFeed[]> {
+    console.log(`[Reddit Discovery] Searching for: "${keyword}"`);
     const discoveries: DiscoveredFeed[] = [];
     const encodedKeyword = encodeURIComponent(keyword);
 
@@ -580,9 +587,12 @@ async function discoverRedditByKeyword(keyword: string, limit: number): Promise<
             signal: AbortSignal.timeout(10000),
         });
 
+        console.log(`[Reddit Discovery] Response status: ${response.status}`);
+
         if (response.ok) {
             const data = await response.json();
             const subreddits = data.data?.children || [];
+            console.log(`[Reddit Discovery] Found ${subreddits.length} subreddits`);
 
             // Check activity for each subreddit
             for (const sub of subreddits) {
@@ -590,12 +600,14 @@ async function discoverRedditByKeyword(keyword: string, limit: number): Promise<
                 const subredditName = info.display_name;
                 
                 // Check if subreddit has recent activity
+                console.log(`[Reddit Discovery] Checking activity for r/${subredditName}`);
                 const activity = await checkRedditActivity(subredditName);
                 
                 if (!activity.isActive) {
-                    console.log(`[Reddit Discovery] Skipping inactive subreddit: r/${subredditName}`);
+                    console.log(`[Reddit Discovery] Skipping inactive subreddit: r/${subredditName} (last post: ${activity.lastPostDate})`);
                     continue;
                 }
+                console.log(`[Reddit Discovery] r/${subredditName} is active`);
                 
                 const icon = await iconService.getRedditIcon(subredditName);
 
@@ -615,8 +627,9 @@ async function discoverRedditByKeyword(keyword: string, limit: number): Promise<
             }
         }
     } catch (err) {
-        console.error('Reddit keyword discovery failed:', err);
+        console.error('[Reddit Discovery] Failed:', err);
     }
 
+    console.log(`[Reddit Discovery] Returning ${discoveries.length} discoveries`);
     return discoveries;
 }
