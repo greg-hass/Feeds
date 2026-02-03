@@ -41,8 +41,8 @@ RUN addgroup -g 1001 -S feeds && adduser -u 1001 -S feeds -G feeds
 
 WORKDIR /app
 
-# Install nginx and wget (for healthcheck)
-RUN apk add --no-cache nginx wget
+# Install nginx, wget (for healthcheck), and su-exec (for dropping privileges)
+RUN apk add --no-cache nginx wget su-exec
 
 # Setup nginx directories for non-root operation
 RUN mkdir -p /var/lib/nginx/tmp/client_body \
@@ -72,8 +72,7 @@ RUN chmod +x /entrypoint.sh
 # Create data directory with correct ownership
 RUN mkdir -p /data && chown -R feeds:feeds /data /app
 
-# Switch to non-root user
-USER feeds
+# Note: Container starts as root, entrypoint drops to feeds user after fixing permissions
 
 # Expose port
 EXPOSE 80
