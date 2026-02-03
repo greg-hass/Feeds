@@ -36,8 +36,8 @@ RUN npx expo export --platform web
 # Stage 3: Production image
 FROM node:20-alpine AS production
 
-# Create non-root user
-RUN addgroup -g 1000 -S feeds && adduser -u 1000 -S feeds -G feeds
+# Create non-root user (use 1001 since 1000 is taken by node user in Alpine)
+RUN addgroup -g 1001 -S feeds && adduser -u 1001 -S feeds -G feeds
 
 WORKDIR /app
 
