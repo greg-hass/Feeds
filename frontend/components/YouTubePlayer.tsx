@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 3,
-        borderColor: colors.text.inverse,
+        borderColor: '#fff',
     },
     webviewContainer: {
         flex: 1,
