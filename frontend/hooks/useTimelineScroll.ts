@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { FlatList, Platform } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import { useArticleStore } from '@/stores';
 
 // Global ref to store scroll positions outside of React lifecycle
@@ -53,6 +54,21 @@ export const useTimelineScroll = (articles: any[], filter: any) => {
             currentScrollKey.current = scrollKey;
         }
     }, [scrollKey]);
+
+    // Reset scroll restoration when screen regains focus (e.g., returning from article)
+    // This ensures scroll position is restored when navigating back to timeline
+    // eslint-disable-next-line react-hooks/preserve-manual-memoization -- Intentional deps for focus handling
+    useFocusEffect(
+        useCallback(() => {
+            // Only reset if we have a saved position to restore to
+            const savedPosition = scrollPositions[scrollKey] || 0;
+            if (savedPosition > 0 && hasRestoredScroll.current) {
+                // Reset to allow scroll restoration
+                hasRestoredScroll.current = false;
+                setIsScrollRestored(false);
+            }
+        }, [scrollKey])
+    );
 
     // Restore scroll position when articles are loaded
     useEffect(() => {
