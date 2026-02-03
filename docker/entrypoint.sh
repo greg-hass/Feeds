@@ -12,14 +12,17 @@ fi
 mkdir -p /data /data/backups
 chown -R feeds:feeds /data /data/backups 2>/dev/null || true
 
-# Daily backup of database (keep last 7)
+# Daily backup of database (keep last 7) - non-fatal if permissions fail
 if [ -f "/data/feeds.db" ]; then
     BACKUP_FILE="/data/backups/feeds-$(date +%Y%m%d).db"
     if [ ! -f "$BACKUP_FILE" ]; then
         echo "Creating daily backup..."
-        cp /data/feeds.db "$BACKUP_FILE"
-        # Keep only last 7 backups
-        ls -t /data/backups/feeds-*.db 2>/dev/null | tail -n +8 | xargs -r rm
+        if cp /data/feeds.db "$BACKUP_FILE" 2>/dev/null; then
+            # Keep only last 7 backups
+            ls -t /data/backups/feeds-*.db 2>/dev/null | tail -n +8 | xargs -r rm 2>/dev/null || true
+        else
+            echo "Warning: Could not create backup (permission denied). Continuing anyway..."
+        fi
     fi
 fi
 
