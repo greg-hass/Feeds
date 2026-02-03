@@ -50,7 +50,8 @@ export const useSettingsStore = create<SettingsState>()(
                         },
                     };
                     set({ settings: fallbackSettings, isLoading: false });
-                    handleError(error, { context: 'fetchSettings', fallbackMessage: 'Using offline settings' });
+                    // Silent error - settings sync failure is not actionable by user
+                    handleError(error, { context: 'fetchSettings', showToast: false });
                 }
             },
 

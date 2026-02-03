@@ -27,6 +27,26 @@ const YouTubePlayer = React.memo<YouTubePlayerProps>(({
     const colors = useColors();
     const embedUrl = getEmbedUrl(videoId);
 
+    // 0: prop thumbnail, 1: maxres, 2: hq
+    const [qualityLevel, setQualityLevel] = React.useState(thumbnail ? 0 : 1);
+
+    // Reset when inputs change
+    React.useEffect(() => {
+        setQualityLevel(thumbnail ? 0 : 1);
+    }, [videoId, thumbnail]);
+
+    const handleError = () => {
+        if (qualityLevel < 2) {
+            setQualityLevel(prev => prev + 1);
+        }
+    };
+
+    const getThumbnailSource = () => {
+        if (qualityLevel === 0 && thumbnail) return { uri: thumbnail };
+        if (qualityLevel <= 1) return { uri: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` };
+        return { uri: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` };
+    };
+
     return (
         <View style={styles.videoContainer}>
             {isPlaying ? (
@@ -49,7 +69,7 @@ const YouTubePlayer = React.memo<YouTubePlayerProps>(({
                     )}
                 </View>
             ) : (
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={styles.videoThumbnailWrapper}
                     onPress={onPress}
                     activeOpacity={0.9}
@@ -57,10 +77,11 @@ const YouTubePlayer = React.memo<YouTubePlayerProps>(({
                     accessibilityLabel="Play YouTube video"
                     accessibilityHint="Double tap to play video"
                 >
-                    <Image 
-                        source={{ uri: thumbnail || `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` }} 
-                        style={styles.thumbnail} 
+                    <Image
+                        source={getThumbnailSource()}
+                        style={styles.thumbnail}
                         resizeMode={isShort ? "contain" : "cover"}
+                        onError={handleError}
                     />
                     <View style={styles.playButtonOverlay}>
                         <View style={styles.playButtonCircle}>
