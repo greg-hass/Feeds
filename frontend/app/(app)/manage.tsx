@@ -887,7 +887,7 @@ export default function ManageScreen() {
                                     </TouchableOpacity>
                                 </View>
 
-                                {isLoadingRecs && recommendations.length === 0 ? (
+                                {(isLoadingRecs || !hasFetchedRecs) && recommendations.length === 0 ? (
                                     <LoadingState variant="skeleton" count={2} />
                                 ) : recsError ? (
                                     <View style={s.emptyDiscoveries}>
