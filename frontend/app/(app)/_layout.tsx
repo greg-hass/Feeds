@@ -284,7 +284,8 @@ export default function AppLayout() {
             // Just fetch latest data from backend - do NOT trigger a crawl
             // This ensures instant updates if the backend has been working in the background
 
-            // Reset any stuck refresh state
+            // Clear any stuck loading/refresh states to ensure fetch happens immediately
+            useArticleStore.setState({ isLoading: false });
             useFeedStore.setState({
                 isBackgroundRefreshing: false,
                 refreshProgress: null
