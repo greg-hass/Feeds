@@ -44,6 +44,16 @@ WORKDIR /app
 # Install nginx and wget (for healthcheck)
 RUN apk add --no-cache nginx wget
 
+# Setup nginx directories for non-root operation
+RUN mkdir -p /var/lib/nginx/tmp/client_body \
+    /var/lib/nginx/tmp/proxy \
+    /var/lib/nginx/tmp/fastcgi \
+    /var/lib/nginx/tmp/uwsgi \
+    /var/lib/nginx/tmp/scgi \
+    /var/log/nginx \
+    /run/nginx && \
+    chown -R feeds:feeds /var/lib/nginx /var/log/nginx /run/nginx
+
 # Copy backend build
 COPY --from=backend-builder /app/backend/dist ./backend/dist
 COPY --from=backend-builder /app/backend/package*.json ./backend/
