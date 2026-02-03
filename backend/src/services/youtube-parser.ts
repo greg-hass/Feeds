@@ -9,23 +9,30 @@ export async function fetchYouTubeIcon(channelId: string | null | undefined): Pr
         console.log(`[YouTube Icon] Invalid channel ID: "${channelId}"`);
         return null;
     }
-    
+
     // Support both traditional UC... channel IDs and newer handle-based IDs
     const isTraditionalChannelId = channelId.startsWith('UC') && channelId.length === 24;
     const isHandle = channelId.startsWith('@');
-    
-    if (!isTraditionalChannelId && !isHandle) {
+    // Some RSS feeds provide the channel ID without the "UC" prefix (22 chars base64)
+    const isBase64ChannelId = !channelId.startsWith('UC') && !channelId.startsWith('@') && channelId.length === 22 && /^[A-Za-z0-9_-]+$/.test(channelId);
+
+    // Normalize: prepend UC to base64-only channel IDs
+    let normalizedChannelId = channelId;
+    if (isBase64ChannelId) {
+        normalizedChannelId = `UC${channelId}`;
+    } else if (!isTraditionalChannelId && !isHandle) {
+        // Only log unrecognized formats, not base64 IDs we can fix
         console.log(`[YouTube Icon] Unrecognized channel ID format: "${channelId}"`);
         return null;
     }
-    
-    console.log(`[YouTube Icon] Fetching icon for channel: ${channelId}`);
-    
+
+    console.log(`[YouTube Icon] Fetching icon for channel: ${normalizedChannelId}`);
+
     // Determine the correct URL path based on ID type
-    const channelUrl = isHandle 
-        ? `https://www.youtube.com/${channelId}`
-        : `https://www.youtube.com/channel/${channelId}`;
-    
+    const channelUrl = isHandle
+        ? `https://www.youtube.com/${normalizedChannelId}`
+        : `https://www.youtube.com/channel/${normalizedChannelId}`;
+
     try {
         console.log(`[YouTube Icon] Making request to YouTube: ${channelUrl}`);
         const response = await fetchWithRetry(channelUrl, () => ({
@@ -37,14 +44,14 @@ export async function fetchYouTubeIcon(channelId: string | null | undefined): Pr
         }), {
             retries: 2,
         });
-        
+
         console.log(`[YouTube Icon] Response status: ${response.status}`);
-        
+
         if (!response.ok) {
             console.log(`[YouTube Icon] Failed to fetch channel page: ${response.status}`);
             return null;
         }
-        
+
         const html = await response.text();
         console.log(`[YouTube Icon] Got HTML (${html.length} chars), searching for avatar...`);
 
@@ -71,28 +78,28 @@ export async function fetchYouTubeIcon(channelId: string | null | undefined): Pr
             const match = html.match(pattern.regex);
             if (match && match[1]) {
                 let avatarUrl = match[1];
-                
+
                 avatarUrl = avatarUrl.replace(/\\u0026/g, '&').replace(/\\/g, '');
-                
+
                 if (avatarUrl.includes('=s')) {
                     avatarUrl = avatarUrl.replace(/=s\d+.*/, '=s176-c-k-c0x00ffffff-no-rj-mo');
                 }
-                
+
                 console.log(`[YouTube Icon] ✓ Found icon using "${pattern.name}": ${avatarUrl.substring(0, 50)}...`);
                 return avatarUrl;
             }
         }
-        
-        console.log(`[YouTube Icon] No patterns matched for ${channelId}`);
+
+        console.log(`[YouTube Icon] No patterns matched for ${normalizedChannelId}`);
     } catch (e) {
         console.error(`[YouTube Icon] Error fetching: ${e}`);
     }
 
-    // Fallback: Try YouTube Data API if available
-    if (YOUTUBE_API_KEY && isTraditionalChannelId) {
+    // Fallback: Try YouTube Data API if available (works for UC... style IDs)
+    if (YOUTUBE_API_KEY && (isTraditionalChannelId || isBase64ChannelId)) {
         try {
-            console.log(`[YouTube Icon] Trying YouTube Data API for ${channelId}`);
-            const apiUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${channelId}&key=${YOUTUBE_API_KEY}`;
+            console.log(`[YouTube Icon] Trying YouTube Data API for ${normalizedChannelId}`);
+            const apiUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${normalizedChannelId}&key=${YOUTUBE_API_KEY}`;
             const response = await fetch(apiUrl);
             if (response.ok) {
                 const data = await response.json();
@@ -113,15 +120,15 @@ export async function fetchYouTubeIcon(channelId: string | null | undefined): Pr
 export function extractYouTubeChannelId(extendedMeta: any): string | null {
     const channelId = (extendedMeta as any)['yt:channelid'] || (extendedMeta as any)['yt:channelId'];
     if (!channelId) return null;
-    
+
     if (typeof channelId === 'object' && channelId && typeof channelId['#'] === 'string') {
         return channelId['#'];
     }
-    
+
     if (typeof channelId === 'string') {
         return channelId;
     }
-    
+
     return null;
 }
 
