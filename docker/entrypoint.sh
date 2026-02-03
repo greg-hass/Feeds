@@ -10,7 +10,7 @@ fi
 
 # Ensure data directory exists with correct permissions
 mkdir -p /data /data/backups
-chown -R feeds:feeds /data /data/backups
+chown -R feeds:feeds /data /data/backups 2>/dev/null || true
 
 # Daily backup of database (keep last 7)
 if [ -f "/data/feeds.db" ]; then
