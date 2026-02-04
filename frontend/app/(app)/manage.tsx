@@ -203,7 +203,8 @@ export default function ManageScreen() {
             type: rec.feed_type,
             site_url: metadata.site_url || rec.feed_url,
             icon_url: metadata.thumbnail || null,
-            confidence: rec.relevance_score / 100, // Convert percentage to 0-1
+            confidence: rec.relevance_score / 100,
+            method: 'search',
         };
     };
 
