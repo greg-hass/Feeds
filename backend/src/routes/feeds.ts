@@ -82,4 +82,30 @@ export async function feedsRoutes(app: FastifyInstance) {
 
     // Clear all icon caches
     app.post('/clear-icon-cache', FeedsController.clearIconCache);
+
+    // Preview feed articles (without subscribing)
+    app.get<{ Querystring: { url: string } }>('/preview', async (request, reply) => {
+        const { url } = request.query;
+        if (!url) {
+            return reply.status(400).send({ error: 'URL required' });
+        }
+
+        try {
+            const feedParser = await import('../services/feed-parser.js');
+            const feed = await feedParser.parseFeed(url);
+
+            const articles = feed.articles.slice(0, 5).map((item: any) => ({
+                title: item.title || 'Untitled',
+                url: item.link || '',
+                thumbnail: item.image || null,
+                published_at: item.pubdate ? item.pubdate.toISOString() : null,
+                summary: item.summary || null,
+            }));
+
+            return { articles };
+        } catch (err) {
+            console.error('Feed preview failed:', err);
+            return reply.status(500).send({ error: 'Failed to fetch feed preview' });
+        }
+    });
 }

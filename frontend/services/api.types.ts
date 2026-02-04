@@ -92,6 +92,14 @@ export interface DiscoveredFeed {
     lastPostDate?: string;
 }
 
+export interface FeedPreview {
+    title: string;
+    url: string;
+    thumbnail?: string;
+    published_at?: string;
+    summary?: string;
+}
+
 // ============================================================================
 // Settings & Configuration
 // ============================================================================
