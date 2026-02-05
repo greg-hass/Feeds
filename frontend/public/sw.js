@@ -1,5 +1,5 @@
 /* eslint-env serviceworker */
-const CACHE_NAME = 'feeds-cache-v1';
+const CACHE_NAME = 'feeds-cache-v2';
 const ASSETS_TO_CACHE = [
     '/',
     '/index.html',
@@ -26,7 +26,15 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-    event.waitUntil(self.clients.claim());
+    event.waitUntil(
+        caches.keys().then((keys) => {
+            return Promise.all(
+                keys
+                    .filter((key) => key !== CACHE_NAME)
+                    .map((key) => caches.delete(key))
+            );
+        }).then(() => self.clients.claim())
+    );
 });
 
 // Listen for messages from the app
@@ -203,41 +211,33 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // For API requests, use stale-while-revalidate strategy
-    // This returns cached data immediately while fetching fresh data in background
+    // For API requests, use network-first strategy
+    // This ensures the UI gets fresh data when online, with cache fallback offline
     if (url.pathname.startsWith('/api/v1/articles') || 
         url.pathname.startsWith('/api/v1/feeds') ||
         url.pathname.startsWith('/api/v1/folders') ||
         url.pathname.startsWith('/api/v1/settings')) {
         event.respondWith(
-            caches.match(event.request).then((cachedResponse) => {
-                const fetchPromise = fetch(event.request)
-                    .then((networkResponse) => {
-                        if (networkResponse.ok) {
-                            const clonedResponse = networkResponse.clone();
-                            caches.open(CACHE_NAME).then((cache) => {
-                                cache.put(event.request, clonedResponse);
-                            });
-                        }
-                        return networkResponse;
-                    })
-                    .catch(() => {
-                        // Network failed, will use cached response
-                        return null;
+            fetch(event.request)
+                .then((networkResponse) => {
+                    if (networkResponse && networkResponse.ok) {
+                        const clonedResponse = networkResponse.clone();
+                        caches.open(CACHE_NAME).then((cache) => {
+                            cache.put(event.request, clonedResponse);
+                        });
+                    }
+                    return networkResponse;
+                })
+                .catch(async () => {
+                    const cachedResponse = await caches.match(event.request);
+                    if (cachedResponse) {
+                        return cachedResponse;
+                    }
+                    return new Response(JSON.stringify({ error: 'Network error' }), {
+                        status: 503,
+                        headers: { 'Content-Type': 'application/json' },
                     });
-                
-                // Return cached response immediately if available, otherwise wait for network
-                if (cachedResponse) {
-                    // Revalidate in background
-                    fetchPromise;
-                    return cachedResponse;
-                }
-                
-                return fetchPromise.then(response => response || new Response(JSON.stringify({ error: 'Network error' }), {
-                    status: 503,
-                    headers: { 'Content-Type': 'application/json' }
-                }));
-            })
+                })
         );
         return;
     }
