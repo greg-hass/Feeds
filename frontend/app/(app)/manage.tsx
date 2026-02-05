@@ -57,6 +57,7 @@ export default function ManageScreen() {
         triggerDiscovery,
         clearDiscovery,
     } = useDebouncedDiscovery({
+        type: discoveryType === 'all' ? undefined : discoveryType,
         onError: () => show('Discovery failed', 'error'),
     });
 
@@ -154,6 +155,14 @@ export default function ManageScreen() {
         const typeParam = discoveryType === 'all' ? undefined : discoveryType;
         await triggerDiscovery(urlInput, typeParam);
     }, [urlInput, discoveryType, triggerDiscovery]);
+
+    // If the type filter changes and we already searched, re-run discovery
+    useEffect(() => {
+        if (activeTab !== 'search') return;
+        if (!hasAttempted || !urlInput.trim()) return;
+        const typeParam = discoveryType === 'all' ? undefined : discoveryType;
+        triggerDiscovery(urlInput, typeParam);
+    }, [activeTab, discoveryType, hasAttempted, triggerDiscovery, urlInput]);
 
     // Fetch AI recommendations
     const fetchRecommendations = useCallback(async () => {

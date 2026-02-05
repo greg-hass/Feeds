@@ -5,6 +5,7 @@ interface UseDebouncedDiscoveryOptions {
     delay?: number;
     onError?: (error: Error) => void;
     onSuccess?: (discoveries: DiscoveredFeed[]) => void;
+    type?: string;
 }
 
 export const useDebouncedDiscovery = (options: UseDebouncedDiscoveryOptions = {}) => {
@@ -99,7 +100,7 @@ export const useDebouncedDiscovery = (options: UseDebouncedDiscoveryOptions = {}
 
         if (isUrlLike) {
             timeoutRef.current = setTimeout(() => {
-                triggerDiscovery(input);
+                triggerDiscovery(input, optionsRef.current.type);
             }, delay);
         }
 
