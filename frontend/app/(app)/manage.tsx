@@ -3,13 +3,13 @@ import { useMemo, useState, useCallback, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, Modal, Image, Platform, useWindowDimensions, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFeedStore, useToastStore, useArticleStore, useSettingsStore } from '@/stores';
-import { api, DiscoveredFeed, Feed, Folder, Recommendation } from '@/services/api';
+import { api, DiscoveredFeed, Feed, Folder, Recommendation, FeedPreview } from '@/services/api';
 import {
     ArrowLeft, Plus, Search, Rss, Youtube, Headphones, MessageSquare,
     Folder as FolderIcon, Trash2, Edit2, FolderInput,
     Check, FileUp, FileDown, AlertTriangle, RefreshCw, RefreshCcw,
     Info, Pause, Clock, Skull, X, Globe, AlertCircle, ChevronRight,
-    Sparkles, ChevronDown
+    Sparkles, ChevronDown, ArrowUpRight
 } from 'lucide-react-native';
 import { FeedInfoSheet } from '@/components/FeedInfoSheet';
 import { useColors, borderRadius, spacing } from '@/theme';
@@ -46,6 +46,8 @@ export default function ManageScreen() {
     const { show } = useToastStore();
     const { settings } = useSettingsStore();
 
+    const [discoveryType, setDiscoveryType] = useState<DiscoveryType>('all');
+
     // Use debounced discovery hook
     const {
         input: urlInput,
@@ -57,13 +59,12 @@ export default function ManageScreen() {
         triggerDiscovery,
         clearDiscovery,
     } = useDebouncedDiscovery({
+        type: discoveryType === 'all' ? undefined : discoveryType,
         onError: (error) => {
             const message = error instanceof Error ? error.message : 'Discovery failed';
             show(message, 'error');
         },
     });
-
-    const [discoveryType, setDiscoveryType] = useState<DiscoveryType>('all');
     const [activeTab, setActiveTab] = useState<AddFeedTab>('search');
     const [isAdding, setIsAdding] = useState(false);
     const [addingId, setAddingId] = useState<string | null>(null);
@@ -113,6 +114,10 @@ export default function ManageScreen() {
     // Preview modal state
     const [previewFeed, setPreviewFeed] = useState<DiscoveredFeed | null>(null);
 
+    // Discovery card expand state
+    const [expandedDiscoveries, setExpandedDiscoveries] = useState<Set<string>>(new Set());
+    const [previewArticles, setPreviewArticles] = useState<Record<string, FeedPreview[]>>({});
+
     const handleProgressEvent = useProgressHandler(setProgressState, {
         onFolderCreated: fetchFolders,
         onFeedCreated: () => {
@@ -153,6 +158,14 @@ export default function ManageScreen() {
         const typeParam = discoveryType === 'all' ? undefined : discoveryType;
         await triggerDiscovery(urlInput, typeParam);
     }, [urlInput, discoveryType, triggerDiscovery]);
+
+    // If the type filter changes and we already searched, re-run discovery
+    useEffect(() => {
+        if (activeTab !== 'search') return;
+        if (!hasAttempted || !urlInput.trim()) return;
+        const typeParam = discoveryType === 'all' ? undefined : discoveryType;
+        triggerDiscovery(urlInput, typeParam);
+    }, [activeTab, discoveryType, hasAttempted, triggerDiscovery, urlInput]);
 
     // Fetch AI recommendations
     const fetchRecommendations = useCallback(async () => {
@@ -206,7 +219,8 @@ export default function ManageScreen() {
             type: rec.feed_type,
             site_url: metadata.site_url || rec.feed_url,
             icon_url: metadata.thumbnail || null,
-            confidence: rec.relevance_score / 100, // Convert percentage to 0-1
+            confidence: rec.relevance_score / 100,
+            method: 'search',
         };
     };
 
@@ -291,6 +305,37 @@ export default function ManageScreen() {
     // Handle preview
     const handlePreview = useCallback((discovery: DiscoveredFeed) => {
         setPreviewFeed(discovery);
+    }, []);
+
+    // Toggle expanded discovery card
+    const toggleExpandDiscovery = useCallback(async (feedUrl: string) => {
+        setExpandedDiscoveries((prev) => {
+            const newSet = new Set(prev);
+            if (newSet.has(feedUrl)) {
+                newSet.delete(feedUrl);
+                return newSet;
+            }
+            newSet.add(feedUrl);
+            return newSet;
+        });
+
+        // Fetch preview articles if not already cached
+        if (!previewArticles[feedUrl]) {
+            try {
+                const result = await api.previewFeed(feedUrl);
+                setPreviewArticles((prev) => ({
+                    ...prev,
+                    [feedUrl]: result.articles.slice(0, 5),
+                }));
+            } catch {
+                // Silently fail - preview is optional
+            }
+        }
+    }, [previewArticles]);
+
+    // Handle opening site URL
+    const handleOpenSite = useCallback((url: string) => {
+        openExternalLink(url);
     }, []);
 
     const handleDeleteFeed = (feedId: number, feedTitle: string) => {
@@ -825,21 +870,121 @@ export default function ManageScreen() {
                                                 );
                                             }
 
+                                            // Group by type
+                                            const grouped = {
+                                                rss: newDiscoveries.filter(d => d.type === 'rss'),
+                                                youtube: newDiscoveries.filter(d => d.type === 'youtube'),
+                                                podcast: newDiscoveries.filter(d => d.type === 'podcast'),
+                                                reddit: newDiscoveries.filter(d => d.type === 'reddit'),
+                                            };
+
+                                            const total = Object.values(grouped).reduce((sum, arr) => sum + arr.length, 0);
+
                                             return (
                                                 <>
                                                     <Text style={s.discoveriesTitle}>
-                                                        {newDiscoveries.length} {newDiscoveries.length === 1 ? 'feed' : 'feeds'} found
+                                                        {total} {total === 1 ? 'feed' : 'feeds'} found
                                                     </Text>
-                                                    {newDiscoveries.map((discovery: DiscoveredFeed, i: number) => (
-                                                        <DiscoveryCard
-                                                            key={`${discovery.feed_url}-${i}`}
-                                                            discovery={discovery}
-                                                            isAdding={addingId === discovery.feed_url}
-                                                            isDuplicate={false}
-                                                            onPreview={() => handlePreview(discovery)}
-                                                            onAdd={() => handleAddFeed(discovery)}
-                                                        />
-                                                    ))}
+
+                                                    {/* RSS Section */}
+                                                    {grouped.rss.length > 0 && (
+                                                        <View style={s.groupSection}>
+                                                            <View style={s.groupHeader}>
+                                                                <Rss size={18} color={colors.feedTypes.rss} />
+                                                                <Text style={s.groupTitle}>RSS Feeds</Text>
+                                                                <Text style={s.groupCount}>{grouped.rss.length}</Text>
+                                                            </View>
+                                                            {grouped.rss.map((discovery, i) => (
+                                                                <DiscoveryCard
+                                                                    key={`rss-${discovery.feed_url}-${i}`}
+                                                                    discovery={discovery}
+                                                                    previewArticles={previewArticles[discovery.feed_url] || []}
+                                                                    isAdding={addingId === discovery.feed_url}
+                                                                    isDuplicate={false}
+                                                                    onPreview={() => handlePreview(discovery)}
+                                                                    onAdd={() => handleAddFeed(discovery)}
+                                                                    onOpenSite={() => handleOpenSite(discovery.site_url || discovery.feed_url)}
+                                                                    expanded={expandedDiscoveries.has(discovery.feed_url)}
+                                                                    onToggleExpand={() => toggleExpandDiscovery(discovery.feed_url)}
+                                                                />
+                                                            ))}
+                                                        </View>
+                                                    )}
+
+                                                    {/* YouTube Section */}
+                                                    {grouped.youtube.length > 0 && (
+                                                        <View style={s.groupSection}>
+                                                            <View style={s.groupHeader}>
+                                                                <Youtube size={18} color={colors.feedTypes.youtube} />
+                                                                <Text style={s.groupTitle}>YouTube Channels</Text>
+                                                                <Text style={s.groupCount}>{grouped.youtube.length}</Text>
+                                                            </View>
+                                                            {grouped.youtube.map((discovery, i) => (
+                                                                <DiscoveryCard
+                                                                    key={`yt-${discovery.feed_url}-${i}`}
+                                                                    discovery={discovery}
+                                                                    previewArticles={previewArticles[discovery.feed_url] || []}
+                                                                    isAdding={addingId === discovery.feed_url}
+                                                                    isDuplicate={false}
+                                                                    onPreview={() => handlePreview(discovery)}
+                                                                    onAdd={() => handleAddFeed(discovery)}
+                                                                    onOpenSite={() => handleOpenSite(discovery.site_url || discovery.feed_url)}
+                                                                    expanded={expandedDiscoveries.has(discovery.feed_url)}
+                                                                    onToggleExpand={() => toggleExpandDiscovery(discovery.feed_url)}
+                                                                />
+                                                            ))}
+                                                        </View>
+                                                    )}
+
+                                                    {/* Podcast Section */}
+                                                    {grouped.podcast.length > 0 && (
+                                                        <View style={s.groupSection}>
+                                                            <View style={s.groupHeader}>
+                                                                <Headphones size={18} color={colors.feedTypes.podcast} />
+                                                                <Text style={s.groupTitle}>Podcasts</Text>
+                                                                <Text style={s.groupCount}>{grouped.podcast.length}</Text>
+                                                            </View>
+                                                            {grouped.podcast.map((discovery, i) => (
+                                                                <DiscoveryCard
+                                                                    key={`pod-${discovery.feed_url}-${i}`}
+                                                                    discovery={discovery}
+                                                                    previewArticles={previewArticles[discovery.feed_url] || []}
+                                                                    isAdding={addingId === discovery.feed_url}
+                                                                    isDuplicate={false}
+                                                                    onPreview={() => handlePreview(discovery)}
+                                                                    onAdd={() => handleAddFeed(discovery)}
+                                                                    onOpenSite={() => handleOpenSite(discovery.site_url || discovery.feed_url)}
+                                                                    expanded={expandedDiscoveries.has(discovery.feed_url)}
+                                                                    onToggleExpand={() => toggleExpandDiscovery(discovery.feed_url)}
+                                                                />
+                                                            ))}
+                                                        </View>
+                                                    )}
+
+                                                    {/* Reddit Section */}
+                                                    {grouped.reddit.length > 0 && (
+                                                        <View style={s.groupSection}>
+                                                            <View style={s.groupHeader}>
+                                                                <MessageSquare size={18} color={colors.feedTypes.reddit} />
+                                                                <Text style={s.groupTitle}>Subreddits</Text>
+                                                                <Text style={s.groupCount}>{grouped.reddit.length}</Text>
+                                                            </View>
+                                                            {grouped.reddit.map((discovery, i) => (
+                                                                <DiscoveryCard
+                                                                    key={`rd-${discovery.feed_url}-${i}`}
+                                                                    discovery={discovery}
+                                                                    previewArticles={previewArticles[discovery.feed_url] || []}
+                                                                    isAdding={addingId === discovery.feed_url}
+                                                                    isDuplicate={false}
+                                                                    onPreview={() => handlePreview(discovery)}
+                                                                    onAdd={() => handleAddFeed(discovery)}
+                                                                    onOpenSite={() => handleOpenSite(discovery.site_url || discovery.feed_url)}
+                                                                    expanded={expandedDiscoveries.has(discovery.feed_url)}
+                                                                    onToggleExpand={() => toggleExpandDiscovery(discovery.feed_url)}
+                                                                />
+                                                            ))}
+                                                        </View>
+                                                    )}
                                                 </>
                                             );
                                         })()}
@@ -890,7 +1035,7 @@ export default function ManageScreen() {
                                     </TouchableOpacity>
                                 </View>
 
-                                {isLoadingRecs && recommendations.length === 0 ? (
+                                {(isLoadingRecs || !hasFetchedRecs) && recommendations.length === 0 ? (
                                     <LoadingState variant="skeleton" count={2} />
                                 ) : recsError ? (
                                     <View style={s.emptyDiscoveries}>
@@ -913,16 +1058,23 @@ export default function ManageScreen() {
                                     </View>
                                 ) : (
                                     <>
-                                        {recommendations.map((rec) => (
-                                            <DiscoveryCard
-                                                key={rec.id}
-                                                discovery={convertRecommendationToDiscovery(rec)}
-                                                isAdding={addingRecId === rec.id}
-                                                isDuplicate={false}
-                                                onPreview={() => handlePreview(convertRecommendationToDiscovery(rec))}
-                                                onAdd={() => handleSubscribeRecommendation(rec)}
-                                            />
-                                        ))}
+                                        {recommendations.map((rec) => {
+                                            const discovery = convertRecommendationToDiscovery(rec);
+                                            return (
+                                                <DiscoveryCard
+                                                    key={rec.id}
+                                                    discovery={discovery}
+                                                    previewArticles={previewArticles[discovery.feed_url] || []}
+                                                    isAdding={addingRecId === rec.id}
+                                                    isDuplicate={false}
+                                                    onPreview={() => handlePreview(discovery)}
+                                                    onAdd={() => handleSubscribeRecommendation(rec)}
+                                                    onOpenSite={() => handleOpenSite(discovery.site_url || discovery.feed_url)}
+                                                    expanded={expandedDiscoveries.has(discovery.feed_url)}
+                                                    onToggleExpand={() => toggleExpandDiscovery(discovery.feed_url)}
+                                                />
+                                            );
+                                        })}
                                     </>
                                 )}
                             </View>
@@ -1158,6 +1310,9 @@ export default function ManageScreen() {
                                     <View style={s.feedInfo}>
                                         <View style={s.feedTitleRow}>
                                             <Text style={[s.feedTitle, feed.paused_at && s.feedTitlePaused]} numberOfLines={1}>{feed.title}</Text>
+                                            <View style={s.feedTypeBadge}>
+                                                {getTypeIcon(feed.type)}
+                                            </View>
                                             {feed.paused_at && (
                                                 <Pause size={14} color={colors.warning} style={s.statusIcon} />
                                             )}
@@ -1740,6 +1895,30 @@ const styles = (colors: any) => StyleSheet.create({
         color: colors.text.tertiary,
         marginBottom: spacing.sm,
     },
+    groupSection: {
+        marginBottom: spacing.lg,
+    },
+    groupHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+        marginBottom: spacing.sm,
+        paddingHorizontal: spacing.xs,
+    },
+    groupTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: colors.text.primary,
+        flex: 1,
+    },
+    groupCount: {
+        fontSize: 12,
+        color: colors.text.tertiary,
+        backgroundColor: colors.background.tertiary,
+        paddingHorizontal: spacing.sm,
+        paddingVertical: 2,
+        borderRadius: borderRadius.full,
+    },
     discoveryItem: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1842,6 +2021,10 @@ const styles = (colors: any) => StyleSheet.create({
         alignItems: 'center',
         gap: spacing.xs,
         flex: 1,
+    },
+    feedTypeBadge: {
+        marginLeft: 4,
+        opacity: 0.8,
     },
     errorIcon: {
         flexShrink: 0,

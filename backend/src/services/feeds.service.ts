@@ -7,6 +7,7 @@ import { cacheFeedIcon, clearAllIconCaches, clearFeedIconCache } from '../servic
 import { emitFeedChange } from '../services/feed-changes.js';
 import { ensureFeedsSchema } from '../utils/schema-ensure.js';
 import { NotFoundError, ConflictError, ValidationError, BusinessLogicError } from '../utils/errors.js';
+import { getUserSettings } from '../services/settings.js';
 
 const ICON_ENDPOINT_PREFIX = '/api/v1/icons';
 
@@ -304,7 +305,7 @@ export class FeedsService {
                 feedData.link || null,
                 iconForInsert,
                 feedData.description || null,
-                input.refresh_interval_minutes ?? 30,
+                input.refresh_interval_minutes ?? getUserSettings(userId).refresh_interval_minutes,
             ]
         );
 

@@ -82,11 +82,22 @@ export interface ArticleDetail extends Article {
 export interface DiscoveredFeed {
     type: 'rss' | 'youtube' | 'reddit' | 'podcast';
     title: string;
+    description?: string;
     feed_url: string;
     site_url?: string;
     icon_url?: string;
     confidence: number;
     method: string;
+    isActive?: boolean;
+    lastPostDate?: string;
+}
+
+export interface FeedPreview {
+    title: string;
+    url: string;
+    thumbnail?: string;
+    published_at?: string;
+    summary?: string;
 }
 
 // ============================================================================

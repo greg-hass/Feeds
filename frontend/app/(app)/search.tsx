@@ -90,7 +90,8 @@ export default function SearchScreen() {
 
         setIsLoading(true);
         setHasSearched(true);
-        saveSearch(t);
+        // Use functional update to avoid stale closure
+        await saveSearch(t);
 
         try {
             const response = await api.search(t, {
@@ -110,7 +111,8 @@ export default function SearchScreen() {
         } finally {
             setIsLoading(false);
         }
-    }, [recentSearches]);
+        // Remove recentSearches from deps - saveSearch handles its own state updates
+    }, []);
 
     // Debounce effect for query, type, and unreadOnly changes
     useEffect(() => {
@@ -172,10 +174,11 @@ export default function SearchScreen() {
     );
 
     return (
-        <View style={s.container}>
+        <View testID="search-screen" style={s.container}>
             {/* Header */}
             <View style={s.header}>
                 <TouchableOpacity
+                    testID="search-back-button"
                     onPress={() => router.back()}
                     style={s.backButton}
                     accessibilityLabel="Go back"
@@ -186,6 +189,7 @@ export default function SearchScreen() {
                 <View style={[s.searchInputContainer, isFocused && s.searchFocused]}>
                     <SearchIcon size={18} color={isFocused ? colors.primary.DEFAULT : colors.text.tertiary} />
                     <TextInput
+                        testID="search-input"
                         style={s.searchInput}
                         placeholder="Search articles…"
                         placeholderTextColor={colors.text.tertiary}
@@ -258,6 +262,7 @@ export default function SearchScreen() {
             ) : (
                 <Animated.View style={[s.listContainer, { opacity: fadeAnim }]}>
                     <FlatList
+                        testID="search-results"
                         data={results}
                         keyExtractor={(item: SearchResult) => String(item.id)}
                         renderItem={renderResult}

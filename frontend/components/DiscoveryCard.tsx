@@ -1,130 +1,247 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
-import { DiscoveredFeed } from '@/services/api';
+import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView } from 'react-native';
+import { DiscoveredFeed, FeedPreview } from '@/services/api';
 import { useColors, borderRadius, spacing } from '@/theme';
-import { Youtube, Rss, MessageSquare, Headphones, Globe, Plus, Check, AlertCircle } from 'lucide-react-native';
+import { Youtube, Rss, MessageSquare, Headphones, Globe, Plus, Check, AlertCircle, ChevronRight, Clock, Zap, ExternalLink } from 'lucide-react-native';
 
 interface DiscoveryCardProps {
     discovery: DiscoveredFeed;
+    previewArticles?: FeedPreview[];
     isAdding?: boolean;
     isDuplicate?: boolean;
     onPreview: () => void;
     onAdd: () => void;
+    onOpenSite: () => void;
+    expanded?: boolean;
+    onToggleExpand?: () => void;
 }
 
-const typeConfig = {
-    youtube: { icon: Youtube, color: '#ef4444', label: 'YouTube' },
-    reddit: { icon: MessageSquare, color: '#f97316', label: 'Reddit' },
-    podcast: { icon: Headphones, color: '#8b5cf6', label: 'Podcast' },
-    rss: { icon: Rss, color: '#3b82f6', label: 'RSS' },
+const getTypeConfig = (colors: any) => ({
+    youtube: { icon: Youtube, color: colors.feedTypes.youtube, label: 'YouTube', bgColor: '#FF0000' },
+    reddit: { icon: MessageSquare, color: colors.feedTypes.reddit, label: 'Reddit', bgColor: '#FF4500' },
+    podcast: { icon: Headphones, color: colors.feedTypes.podcast, label: 'Podcast', bgColor: '#8B5CF6' },
+    rss: { icon: Rss, color: colors.feedTypes.rss, label: 'RSS', bgColor: '#F59E0B' },
+});
+
+const getConfidenceLabel = (confidence: number): string => {
+    if (confidence >= 0.95) return 'Verified';
+    if (confidence >= 0.85) return 'High';
+    if (confidence >= 0.7) return 'Good';
+    return 'Fair';
+};
+
+const getActivityLabel = (lastPostDate?: string): string => {
+    if (!lastPostDate) return '';
+    const date = new Date(lastPostDate);
+    const now = new Date();
+    const diffHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+    
+    if (diffHours < 1) return 'Just now';
+    if (diffHours < 24) return `${Math.floor(diffHours)}h ago`;
+    if (diffHours < 168) return `${Math.floor(diffHours / 24)}d ago`;
+    return `${Math.floor(diffHours / 168)}w ago`;
 };
 
 export const DiscoveryCard = ({
     discovery,
+    previewArticles = [],
     isAdding = false,
     isDuplicate = false,
     onPreview,
     onAdd,
+    onOpenSite,
+    expanded = false,
+    onToggleExpand,
 }: DiscoveryCardProps) => {
     const colors = useColors();
     const s = styles(colors);
 
+    const typeConfig = getTypeConfig(colors);
     const typeInfo = typeConfig[discovery.type] || typeConfig.rss;
     const TypeIcon = typeInfo.icon;
 
+    const confidence = discovery.confidence || 0;
+    const activityLabel = getActivityLabel(discovery.lastPostDate);
+
     return (
         <View style={s.card}>
-            {/* Header with icon and title */}
-            <View style={s.header}>
+            {/* Main Content */}
+            <TouchableOpacity 
+                style={s.mainContent} 
+                onPress={onToggleExpand}
+                activeOpacity={0.7}
+            >
+                {/* Type Icon */}
                 {discovery.icon_url ? (
                     <Image source={{ uri: discovery.icon_url }} style={s.icon} />
                 ) : (
-                    <View style={[s.iconPlaceholder, { backgroundColor: typeInfo.color + '22' }]}>
+                    <View style={[s.iconPlaceholder, { backgroundColor: typeInfo.color + '15' }]}>
                         <TypeIcon size={24} color={typeInfo.color} />
                     </View>
                 )}
-                <View style={s.titleContainer}>
+
+                {/* Title and Meta */}
+                <View style={s.infoContainer}>
                     <Text style={s.title} numberOfLines={1}>
                         {discovery.title}
                     </Text>
+                    
+                    {/* Meta badges */}
                     <View style={s.metaRow}>
-                        <View style={[s.typeBadge, { backgroundColor: typeInfo.color + '22' }]}>
+                        <View style={[s.typeBadge, { backgroundColor: typeInfo.color + '15' }]}>
                             <TypeIcon size={12} color={typeInfo.color} />
                             <Text style={[s.typeLabel, { color: typeInfo.color }]}>
                                 {typeInfo.label}
                             </Text>
                         </View>
-                        {discovery.confidence > 0.9 && (
-                            <View style={s.confidenceBadge}>
-                                <Check size={10} color={colors.status.success} />
-                                <Text style={s.confidenceText}>Verified</Text>
+                        
+                        {confidence >= 0.7 && (
+                            <View style={[s.confidenceBadge, { backgroundColor: colors.status.success + '15' }]}>
+                                <Zap size={10} color={colors.status.success} />
+                                <Text style={[s.confidenceText, { color: colors.status.success }]}>
+                                    {getConfidenceLabel(confidence)}
+                                </Text>
+                            </View>
+                        )}
+                        
+                        {activityLabel && (
+                            <View style={s.activityBadge}>
+                                <Clock size={10} color={colors.text.tertiary} />
+                                <Text style={s.activityText}>{activityLabel}</Text>
                             </View>
                         )}
                     </View>
                 </View>
-            </View>
 
-            {/* URL hint */}
-            <View style={s.urlContainer}>
-                <Globe size={12} color={colors.text.tertiary} />
-                <Text style={s.url} numberOfLines={1}>
-                    {(() => {
-                        try {
-                            return new URL(discovery.site_url || discovery.feed_url).hostname;
-                        } catch {
-                            return discovery.feed_url;
-                        }
-                    })()}
-                </Text>
-            </View>
+                {/* Expand/Collapse Chevron */}
+                <View style={s.chevronContainer}>
+                    <ChevronRight 
+                        size={20} 
+                        color={colors.text.tertiary} 
+                        style={{ transform: expanded ? [{ rotate: '90deg' }] : [{ rotate: '0deg' }] }}
+                    />
+                </View>
+            </TouchableOpacity>
 
-            {/* Duplicate warning */}
-            {isDuplicate && (
-                <View style={s.duplicateWarning}>
-                    <AlertCircle size={14} color={colors.status.warning} />
-                    <Text style={s.duplicateText}>
-                        You&apos;re already subscribed to this feed
-                    </Text>
+            {/* Expanded Content - Preview Articles */}
+            {expanded && (
+                <View style={s.expandedContent}>
+                    {/* Site URL */}
+                    <TouchableOpacity 
+                        style={s.siteUrlRow} 
+                        onPress={onOpenSite}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                        <Globe size={14} color={colors.text.tertiary} />
+                        <Text style={s.siteUrl} numberOfLines={1}>
+                            {(() => {
+                                try {
+                                    const url = discovery.site_url || discovery.feed_url;
+                                    return new URL(url).hostname + new URL(url).pathname;
+                                } catch {
+                                    return discovery.feed_url;
+                                }
+                            })()}
+                        </Text>
+                        <ExternalLink size={12} color={colors.text.tertiary} />
+                    </TouchableOpacity>
+
+                    {/* Description */}
+                    {discovery.description && (
+                        <Text style={s.description} numberOfLines={2}>
+                            {discovery.description}
+                        </Text>
+                    )}
+
+                    {/* Preview Articles */}
+                    {previewArticles.length > 0 && (
+                        <View style={s.previewSection}>
+                            <Text style={s.previewSectionTitle}>Latest articles</Text>
+                            <ScrollView 
+                                horizontal 
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={s.previewList}
+                            >
+                                {previewArticles.slice(0, 5).map((article, index) => (
+                                    <TouchableOpacity 
+                                        key={`${article.url}-${index}`}
+                                        style={s.previewArticle}
+                                        onPress={() => onOpenSite()}
+                                    >
+                                        {article.thumbnail && (
+                                            <Image 
+                                                source={{ uri: article.thumbnail }} 
+                                                style={s.previewThumbnail}
+                                            />
+                                        )}
+                                        <Text style={s.previewTitle} numberOfLines={2}>
+                                            {article.title}
+                                        </Text>
+                                        {article.published_at && (
+                                            <Text style={s.previewDate}>
+                                                {new Date(article.published_at).toLocaleDateString()}
+                                            </Text>
+                                        )}
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        </View>
+                    )}
+
+                    {/* Duplicate Warning */}
+                    {isDuplicate && (
+                        <View style={s.duplicateWarning}>
+                            <AlertCircle size={14} color={colors.status.warning} />
+                            <Text style={s.duplicateText}>
+                                You're already subscribed
+                            </Text>
+                        </View>
+                    )}
+
+                    {/* Actions */}
+                    <View style={s.actions}>
+                        <TouchableOpacity
+                            style={[s.button, s.previewButton, { borderColor: colors.border.DEFAULT }]}
+                            onPress={onPreview}
+                            disabled={isAdding}
+                        >
+                            <Text style={[s.buttonText, { color: colors.text.secondary }]}>
+                                Preview
+                            </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[
+                                s.button,
+                                s.addButton,
+                                { 
+                                    backgroundColor: isDuplicate ? colors.background.tertiary : typeInfo.color,
+                                    opacity: isDuplicate ? 0.6 : 1,
+                                },
+                            ]}
+                            onPress={onAdd}
+                            disabled={isAdding || isDuplicate}
+                        >
+                            {isAdding ? (
+                                <Text style={[s.buttonText, s.addButtonText]}>Adding...</Text>
+                            ) : isDuplicate ? (
+                                <>
+                                    <Check size={16} color={colors.text.tertiary} />
+                                    <Text style={[s.buttonText, { color: colors.text.tertiary }]}>
+                                        Added
+                                    </Text>
+                                </>
+                            ) : (
+                                <>
+                                    <Plus size={16} color={colors.text.inverse} />
+                                    <Text style={[s.buttonText, s.addButtonText]}>
+                                        Add {typeInfo.label}
+                                    </Text>
+                                </>
+                            )}
+                        </TouchableOpacity>
+                    </View>
                 </View>
             )}
-
-            {/* Actions */}
-            <View style={s.actions}>
-                <TouchableOpacity
-                    style={[s.button, s.previewButton, { borderColor: colors.border.DEFAULT }]}
-                    onPress={onPreview}
-                    disabled={isAdding}
-                >
-                    <Text style={[s.buttonText, { color: colors.text.secondary }]}>
-                        Preview
-                    </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[
-                        s.button,
-                        s.addButton,
-                        { backgroundColor: isDuplicate ? colors.background.tertiary : colors.primary?.DEFAULT ?? colors.primary },
-                    ]}
-                    onPress={onAdd}
-                    disabled={isAdding || isDuplicate}
-                >
-                    {isAdding ? (
-                        <Text style={[s.buttonText, s.addButtonText]}>Adding...</Text>
-                    ) : isDuplicate ? (
-                        <>
-                            <Check size={16} color={colors.text.tertiary} />
-                            <Text style={[s.buttonText, { color: colors.text.tertiary }]}>
-                                Added
-                            </Text>
-                        </>
-                    ) : (
-                        <>
-                            <Plus size={16} color={colors.text.inverse} />
-                            <Text style={[s.buttonText, s.addButtonText]}>Add Feed</Text>
-                        </>
-                    )}
-                </TouchableOpacity>
-            </View>
         </View>
     );
 };
@@ -133,7 +250,6 @@ const styles = (colors: any) => StyleSheet.create({
     card: {
         backgroundColor: colors.background.elevated,
         borderRadius: borderRadius.xl,
-        padding: spacing.lg,
         marginBottom: spacing.md,
         borderWidth: 1,
         borderColor: colors.border.DEFAULT,
@@ -142,39 +258,41 @@ const styles = (colors: any) => StyleSheet.create({
         shadowOpacity: 0.06,
         shadowRadius: 8,
         elevation: 2,
+        overflow: 'hidden',
     },
-    header: {
+    mainContent: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: spacing.md,
+        padding: spacing.md,
     },
     icon: {
-        width: 48,
-        height: 48,
+        width: 52,
+        height: 52,
         borderRadius: borderRadius.lg,
         marginRight: spacing.md,
     },
     iconPlaceholder: {
-        width: 48,
-        height: 48,
+        width: 52,
+        height: 52,
         borderRadius: borderRadius.lg,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: spacing.md,
     },
-    titleContainer: {
+    infoContainer: {
         flex: 1,
     },
     title: {
-        fontSize: 17,
+        fontSize: 16,
         fontWeight: '700',
         color: colors.text.primary,
-        marginBottom: 4,
+        marginBottom: 6,
     },
     metaRow: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: spacing.sm,
+        flexWrap: 'wrap',
     },
     typeBadge: {
         flexDirection: 'row',
@@ -191,24 +309,92 @@ const styles = (colors: any) => StyleSheet.create({
     confidenceBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 3,
+        gap: 4,
+        paddingHorizontal: 6,
+        paddingVertical: 3,
+        borderRadius: borderRadius.full,
     },
     confidenceText: {
-        fontSize: 11,
-        color: colors.status.success,
-        fontWeight: '600',
+        fontSize: 10,
+        fontWeight: '700',
+        textTransform: 'uppercase',
     },
-    urlContainer: {
+    activityBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
-        marginBottom: spacing.md,
-        paddingHorizontal: spacing.sm,
+        gap: 4,
     },
-    url: {
+    activityText: {
+        fontSize: 11,
+        color: colors.text.tertiary,
+    },
+    chevronContainer: {
+        padding: spacing.xs,
+    },
+    expandedContent: {
+        borderTopWidth: 1,
+        borderTopColor: colors.border.DEFAULT,
+        padding: spacing.md,
+        backgroundColor: colors.background.secondary,
+    },
+    siteUrlRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
+        marginBottom: spacing.sm,
+        paddingHorizontal: spacing.xs,
+    },
+    siteUrl: {
         fontSize: 12,
         color: colors.text.tertiary,
         flex: 1,
+        fontStyle: 'italic',
+    },
+    description: {
+        fontSize: 13,
+        color: colors.text.secondary,
+        marginBottom: spacing.md,
+        lineHeight: 18,
+    },
+    previewSection: {
+        marginBottom: spacing.md,
+    },
+    previewSectionTitle: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: colors.text.tertiary,
+        marginBottom: spacing.sm,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    previewList: {
+        gap: spacing.sm,
+    },
+    previewArticle: {
+        width: 140,
+        padding: spacing.sm,
+        backgroundColor: colors.background.elevated,
+        borderRadius: borderRadius.md,
+        borderWidth: 1,
+        borderColor: colors.border.DEFAULT,
+    },
+    previewThumbnail: {
+        width: '100%',
+        height: 80,
+        borderRadius: borderRadius.sm,
+        marginBottom: spacing.xs,
+        backgroundColor: colors.background.tertiary,
+    },
+    previewTitle: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: colors.text.primary,
+        lineHeight: 16,
+        marginBottom: 4,
+    },
+    previewDate: {
+        fontSize: 10,
+        color: colors.text.tertiary,
     },
     duplicateWarning: {
         flexDirection: 'row',
@@ -228,6 +414,7 @@ const styles = (colors: any) => StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'flex-end',
         gap: spacing.sm,
+        marginTop: spacing.sm,
     },
     button: {
         flexDirection: 'row',
@@ -244,9 +431,9 @@ const styles = (colors: any) => StyleSheet.create({
         borderWidth: 1,
     },
     addButton: {
-        shadowColor: colors.primary?.DEFAULT ?? colors.primary,
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
+        shadowOpacity: 0.15,
         shadowRadius: 4,
         elevation: 2,
     },
@@ -255,6 +442,6 @@ const styles = (colors: any) => StyleSheet.create({
         fontWeight: '700',
     },
     addButtonText: {
-        color: colors.text.inverse,
+        color: '#fff',
     },
 });

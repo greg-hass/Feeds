@@ -2,7 +2,7 @@
 
 A fast, reliable, private self-hosted feed reader supporting RSS/Atom, YouTube, Reddit, and Podcasts.
 
-![Feeds](https://img.shields.io/badge/Self--Hosted-Private-green) ![Docker](https://img.shields.io/badge/Docker-Ready-blue)
+![Feeds](https://img.shields.io/badge/Self--Hosted-Private-green) ![Docker](https://img.shields.io/badge/Docker-Ready-blue) ![Tests](https://img.shields.io/badge/Tests-161%20passing-success) ![Coverage](https://img.shields.io/badge/Coverage-35.75%25-yellow)
 
 ## Features
 

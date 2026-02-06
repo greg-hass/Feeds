@@ -3,25 +3,15 @@ set -e
 
 echo "Starting Feeds..."
 
-# Ensure data directory exists
-mkdir -p /data /data/backups
+# Fix permissions for data directory (entrypoint runs as root)
+mkdir -p /data
+chown -R feeds:feeds /data
 
-# Daily backup of database (keep last 7)
-if [ -f "/data/feeds.db" ]; then
-    BACKUP_FILE="/data/backups/feeds-$(date +%Y%m%d).db"
-    if [ ! -f "$BACKUP_FILE" ]; then
-        echo "Creating daily backup..."
-        cp /data/feeds.db "$BACKUP_FILE"
-        # Keep only last 7 backups
-        ls -t /data/backups/feeds-*.db 2>/dev/null | tail -n +8 | xargs -r rm
-    fi
-fi
-
-# Start nginx in background
+# Start nginx in background (as feeds user)
 echo "Starting nginx..."
-nginx
+su-exec feeds nginx
 
-# Start backend
+# Start backend (as feeds user)
 echo "Starting backend..."
 cd /app/backend
-exec node dist/index.js
+exec su-exec feeds node dist/index.js

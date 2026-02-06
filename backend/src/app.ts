@@ -1,5 +1,6 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
+import { randomUUID } from 'crypto';
 import { initializeDatabase, closeDatabase, run, queryOne } from './db/index.js';
 import { feedsRoutes } from './routes/feeds.js';
 import { foldersRoutes } from './routes/folders.js';
@@ -45,6 +46,12 @@ export async function buildApp() {
         credentials: true,
         methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization'],
+    });
+
+    // Request ID middleware - adds correlation ID for tracing
+    app.addHook('onRequest', async (request, reply) => {
+        request.id = request.headers['x-request-id']?.toString() || randomUUID();
+        reply.header('x-request-id', request.id);
     });
 
     // Authentication middleware (protects all routes except public ones)
@@ -106,18 +113,18 @@ export async function buildApp() {
     return app;
 }
 
-function validateEnvironment(): void {
+function validateEnvironment(logger: typeof console): void {
     const isProduction = process.env.NODE_ENV === 'production';
     
     if (isProduction) {
         if (!process.env.JWT_SECRET) {
-            console.error('FATAL: JWT_SECRET environment variable is required in production');
-            console.error('Please set a secure random string (e.g., openssl rand -base64 32)');
+            logger.error('FATAL: JWT_SECRET environment variable is required in production');
+            logger.error('Please set a secure random string (e.g., openssl rand -base64 32)');
             process.exit(1);
         }
         
         if (process.env.JWT_SECRET.length < 32) {
-            console.error('FATAL: JWT_SECRET must be at least 32 characters long in production');
+            logger.error('FATAL: JWT_SECRET must be at least 32 characters long in production');
             process.exit(1);
         }
     }
@@ -130,7 +137,7 @@ function generateTempPassword(): string {
 
 export async function startServer() {
     // Validate environment before starting
-    validateEnvironment();
+    validateEnvironment(console);
     
     // Initialize database
     initializeDatabase();
@@ -140,22 +147,23 @@ export async function startServer() {
     try {
         const user = queryOne('SELECT id FROM users WHERE username = ?', ['admin']);
         if (!user) {
-            console.log('Creating default admin user...');
+            const startupLogger = { log: console.log, error: console.error };
+            startupLogger.log('Creating default admin user...');
             tempPassword = generateTempPassword();
             const bcrypt = require('bcrypt');
             const hashedPassword = await bcrypt.hash(tempPassword, 12);
             run('INSERT INTO users (username, password_hash, is_admin) VALUES (?, ?, 1)', ['admin', hashedPassword]);
             
-            console.log('');
-            console.log('╔════════════════════════════════════════════════════════╗');
-            console.log('║              FIRST TIME SETUP                          ║');
-            console.log('╠════════════════════════════════════════════════════════╣');
-            console.log(`║  Username: admin                                       ║`);
-            console.log(`║  Password: ${tempPassword}              ║`);
-            console.log('║                                                        ║');
-            console.log('║  Please change this password immediately after login   ║');
-            console.log('╚════════════════════════════════════════════════════════╝');
-            console.log('');
+            startupLogger.log('');
+            startupLogger.log('╔════════════════════════════════════════════════════════╗');
+            startupLogger.log('║              FIRST TIME SETUP                          ║');
+            startupLogger.log('╠════════════════════════════════════════════════════════╣');
+            startupLogger.log(`║  Username: admin                                       ║`);
+            startupLogger.log(`║  Password: ${tempPassword}              ║`);
+            startupLogger.log('║                                                        ║');
+            startupLogger.log('║  Please change this password immediately after login   ║');
+            startupLogger.log('╚════════════════════════════════════════════════════════╝');
+            startupLogger.log('');
         }
     } catch (err) {
         console.error('Failed to ensure default admin user:', err);
@@ -169,14 +177,14 @@ export async function startServer() {
 
     try {
         await app.listen({ port, host });
-        console.log(`Server running at http://${host}:${port}`);
+        app.log.info(`Server running at http://${host}:${port}`);
 
         // Start background job scheduler
         startScheduler();
 
         // Graceful shutdown
         const shutdown = async () => {
-            console.log('Shutting down...');
+            app.log.info('Shutting down...');
             stopScheduler();
             await app.close();
             closeDatabase();

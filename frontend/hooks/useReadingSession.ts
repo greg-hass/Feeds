@@ -83,18 +83,27 @@ export function useReadingSession({ articleId, enabled = true }: ReadingSessionO
         return (scrollDepth >= 80 && timeSpent >= 10) || scrollDepth >= 100;
     }, [scrollDepth]);
 
+    // Use refs to access current values in cleanup
+    const sessionIdRef = useRef(sessionId);
+    const endSessionRef = useRef(endSession);
+    const isCompletedRef = useRef(isCompleted);
+    
+    sessionIdRef.current = sessionId;
+    endSessionRef.current = endSession;
+    isCompletedRef.current = isCompleted;
+
     // Start session on mount
     useEffect(() => {
         startSession();
 
         return () => {
-            // End session on unmount
-            if (sessionId) {
-                const completed = isCompleted();
-                endSession(completed);
+            // End session on unmount - use refs to get current values
+            if (sessionIdRef.current) {
+                const completed = isCompletedRef.current();
+                endSessionRef.current(completed);
             }
         };
-    }, [articleId]); // Only restart if article changes
+    }, [articleId, startSession]); // Only restart if article changes
 
     // Handle app state changes (background/foreground)
     useEffect(() => {
@@ -104,9 +113,10 @@ export function useReadingSession({ articleId, enabled = true }: ReadingSessionO
                 appStateRef.current.match(/active/) &&
                 nextAppState.match(/inactive|background/)
             ) {
-                if (sessionId) {
-                    const completed = isCompleted();
-                    endSession(completed);
+                // Use refs to get current values
+                if (sessionIdRef.current) {
+                    const completed = isCompletedRef.current();
+                    endSessionRef.current(completed);
                 }
             }
 
@@ -115,7 +125,7 @@ export function useReadingSession({ articleId, enabled = true }: ReadingSessionO
                 appStateRef.current.match(/inactive|background/) &&
                 nextAppState === 'active'
             ) {
-                if (!sessionId && enabled) {
+                if (!sessionIdRef.current && enabled) {
                     startSession();
                 }
             }
@@ -126,7 +136,7 @@ export function useReadingSession({ articleId, enabled = true }: ReadingSessionO
         return () => {
             subscription.remove();
         };
-    }, [sessionId, enabled, endSession, startSession, isCompleted]);
+    }, [enabled, startSession]); // sessionId, endSession, isCompleted accessed via refs
 
     // Cleanup timer on unmount
     useEffect(() => {

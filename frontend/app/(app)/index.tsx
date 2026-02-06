@@ -6,6 +6,7 @@ import { FileText } from 'lucide-react-native';
 
 export default function ArticleListScreen() {
     const [mounted, setMounted] = useState(false);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Mounting pattern for hydration
     useEffect(() => setMounted(true), []);
     const colors = useColors();
     const { width } = useWindowDimensions();
@@ -16,7 +17,7 @@ export default function ArticleListScreen() {
     if (!mounted) return null;
 
     return (
-        <View style={s.container}>
+        <View testID="feeds-screen" style={s.container}>
             {/* Desktop: Column 3 Content (Empty state - no article selected) */}
             {/* Mobile: Full Screen Timeline (which includes Header) */}
 

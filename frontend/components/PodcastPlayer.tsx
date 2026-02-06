@@ -104,9 +104,9 @@ export const PodcastPlayer = () => {
                         accessibilityLabel={isPlaying ? 'Pause playback' : 'Play'}
                     >
                         {isPlaying ? (
-                            <Pause size={48} color="#fff" fill="#fff" />
+                            <Pause size={48} color={colors.text.inverse} fill="#fff" />
                         ) : (
-                            <Play size={48} color="#fff" fill="#fff" style={{ marginLeft: 6 }} />
+                            <Play size={48} color={colors.text.inverse} fill="#fff" style={{ marginLeft: 6 }} />
                         )}
                     </TouchableOpacity>
 

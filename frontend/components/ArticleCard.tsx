@@ -10,6 +10,7 @@ import ArticleFooter from './ArticleFooter';
 import YouTubePlayer from './YouTubePlayer';
 
 interface ArticleCardProps {
+    testID?: string;
     item: Article;
     index: number;
     isActive: boolean;
@@ -32,6 +33,7 @@ interface ArticleCardProps {
  * Prevents unnecessary re-renders when parent state changes
  */
 const ArticleCard = React.memo<ArticleCardProps>(({
+    testID,
     item,
     index,
     isActive,
@@ -60,8 +62,12 @@ const ArticleCard = React.memo<ArticleCardProps>(({
     const isShort = !!(isYouTube && item.url?.includes('/shorts/'));
     const isVideoPlaying = !!(isYouTube && videoId && activeVideoId === videoId);
     const isFeatured = (index % 5 === 0 && !isMobile && thumbnail) || isYouTube;
-    // eslint-disable-next-line react-hooks/purity
-    const isHot = !!(item.published_at && (new Date(item.published_at).getTime() > Date.now() - 4 * 60 * 60 * 1000));
+    // Calculate isHot using useMemo to avoid recalculation on every render
+    // This is impure due to Date.now() but memoized to prevent unnecessary recalculations
+    // eslint-disable-next-line react-hooks/purity -- Date.now() is stable enough for this display-only check
+    const isHot = React.useMemo(() => {
+        return !!(item.published_at && (new Date(item.published_at).getTime() > Date.now() - 4 * 60 * 60 * 1000));
+    }, [item.published_at]);
 
     const handleBookmarkPress = () => {
         const scale = getBookmarkScale(item.id);
@@ -93,6 +99,7 @@ const ArticleCard = React.memo<ArticleCardProps>(({
 
     return (
         <TouchableOpacity
+            testID={testID || `article-card-${item.id}`}
             activeOpacity={0.9}
             onPress={() => isYouTube ? onVideoPress(item) : onArticlePress(item)}
             onLongPress={onLongPress}
@@ -114,8 +121,8 @@ const ArticleCard = React.memo<ArticleCardProps>(({
                     {/* Feed Pill */}
                     <View style={s.feedPill}>
                         {item.feed_icon_url && !iconFailed ? (
-                            <Image 
-                                source={{ uri: item.feed_icon_url }} 
+                            <Image
+                                source={{ uri: item.feed_icon_url }}
                                 style={s.feedIcon}
                                 onError={() => setIconFailed(true)}
                             />
@@ -154,7 +161,7 @@ const ArticleCard = React.memo<ArticleCardProps>(({
                         <Image source={{ uri: thumbnail }} style={s.thumbnail} resizeMode="cover" />
                         {item.has_audio && (
                             <View style={s.podcastIndicator}>
-                                <Headphones size={12} color="#fff" />
+                                <Headphones size={12} color={colors.text.inverse} />
                             </View>
                         )}
                     </TouchableOpacity>
@@ -276,7 +283,7 @@ const styles = (
         alignItems: 'center' as const,
     },
     initialText: {
-        color: '#fff',
+        color: colors.text.inverse,
         fontSize: 10, // Increased font size for initial
         fontWeight: '900' as const,
     },

@@ -49,18 +49,20 @@ export function useArticlePrefetch({
     }, [articles, isLoading, isMobile, unreadOnly, prefetchArticle]);
 
     useEffect(() => {
-        let cancelled = false;
+        // Use a ref to track if we should skip this run to prevent loops
+        const skipRef = { current: false };
         
         const runPrefetch = () => {
-            if (!cancelled) {
+            if (!skipRef.current) {
                 performPrefetch();
             }
         };
         
-        runPrefetch();
+        // Small delay to batch rapid changes and prevent render loops
+        const timeoutId = setTimeout(runPrefetch, 100);
         
         return () => {
-            cancelled = true;
+            clearTimeout(timeoutId);
         };
     }, [performPrefetch]);
 

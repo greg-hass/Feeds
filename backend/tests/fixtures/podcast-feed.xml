@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+  <channel>
+    <title>Test Podcast Feed</title>
+    <link>https://example.com/podcast</link>
+    <description>A test podcast feed for unit testing</description>
+    <itunes:author>Podcast Host</itunes:author>
+    <itunes:image href="https://example.com/podcast-cover.jpg"/>
+    <language>en</language>
+    <item>
+      <title>Episode 1: Introduction</title>
+      <link>https://example.com/podcast/episode-1</link>
+      <guid>https://example.com/podcast/episode-1</guid>
+      <pubDate>Mon, 02 Feb 2026 10:00:00 GMT</pubDate>
+      <itunes:duration>32:15</itunes:duration>
+      <description>Welcome to the first episode of our test podcast.</description>
+      <enclosure url="https://example.com/podcast/episode-1.mp3" length="15456789" type="audio/mpeg"/>
+    </item>
+    <item>
+      <title>Episode 2: Deep Dive</title>
+      <link>https://example.com/podcast/episode-2</link>
+      <guid>episode-2-guid</guid>
+      <pubDate>Mon, 02 Feb 2026 09:00:00 GMT</pubDate>
+      <itunes:duration>45:30</itunes:duration>
+      <description>In this episode we dive deep into testing.</description>
+      <enclosure url="https://example.com/podcast/episode-2.mp3" length="21876543" type="audio/mpeg"/>
+    </item>
+  </channel>
+</rss>

@@ -8,6 +8,7 @@ import {
     Article,
     ArticleDetail,
     DiscoveredFeed,
+    FeedPreview,
     Settings,
     DigestSettings,
     ArticleListParams,
@@ -391,6 +392,10 @@ class ApiClient {
             method: 'POST',
             body: { url },
         });
+    }
+
+    async previewFeed(feedUrl: string) {
+        return this.request<{ articles: FeedPreview[] }>(`/feeds/preview?url=${encodeURIComponent(feedUrl)}`);
     }
 
     // Settings

@@ -24,9 +24,12 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
 
     // Global refresh timer (display only; backend is source of truth)
     useEffect(() => {
+        let hasFetchedForCurrentCycle = false; // Debounce flag to prevent excessive calls
+
         const timer = setInterval(() => {
             if (!globalNextRefreshAt) {
                 setTimeLeft(null);
+                hasFetchedForCurrentCycle = false; // Reset when we have no target time
                 return;
             }
 
@@ -37,16 +40,23 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
             if (diff <= 0) {
                 setTimeLeft('0s');
                 // If we are significantly past the due date (>10s) and not currently refreshing,
-                // check if we missed an update
-                if (diff < -10000 && !isRefreshing) {
-                    useSettingsStore.getState().fetchSettings().catch(() => {});
+                // check if we missed an update - but only once per cycle
+                const currentIsRefreshing = useFeedStore.getState().isLoading ||
+                    !!useFeedStore.getState().refreshProgress ||
+                    useFeedStore.getState().isBackgroundRefreshing;
+                if (diff < -10000 && !currentIsRefreshing && !hasFetchedForCurrentCycle) {
+                    hasFetchedForCurrentCycle = true; // Mark that we've tried for this cycle
+                    useSettingsStore.getState().fetchSettings().catch(() => { });
                 }
-            } else if (diff < 60000) {
-                setTimeLeft(`${Math.floor(diff / 1000)}s`);
-            } else if (diff < 3600000) {
-                setTimeLeft(`${Math.floor(diff / 60000)}m ${Math.floor((diff % 60000) / 1000)}s`);
             } else {
-                setTimeLeft(`${Math.floor(diff / 3600000)}h ${Math.floor((diff % 3600000) / 60000)}m`);
+                hasFetchedForCurrentCycle = false; // Reset when timer is back on track
+                if (diff < 60000) {
+                    setTimeLeft(`${Math.floor(diff / 1000)}s`);
+                } else if (diff < 3600000) {
+                    setTimeLeft(`${Math.floor(diff / 60000)}m ${Math.floor((diff % 60000) / 1000)}s`);
+                } else {
+                    setTimeLeft(`${Math.floor(diff / 3600000)}h ${Math.floor((diff % 3600000) / 60000)}m`);
+                }
             }
         }, 1000);
 

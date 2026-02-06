@@ -120,7 +120,7 @@ export const DigestView = () => {
                     style={s.button}
                     onPress={generateDigest}
                 >
-                    <Sparkles size={18} color="#fff" style={{ marginRight: 8 }} />
+                    <Sparkles size={18} color={colors.text.inverse} style={{ marginRight: 8 }} />
                     <Text style={s.buttonText}>Generate Daily Digest</Text>
                 </TouchableOpacity>
             </View>
@@ -488,7 +488,7 @@ const styles = (colors: any, textSize: 'small' | 'medium' | 'large' = 'medium', 
         elevation: 8,
     },
     buttonText: {
-        color: '#fff',
+        color: colors.text.inverse,
         fontWeight: '900',
         fontSize: 16,
     },
