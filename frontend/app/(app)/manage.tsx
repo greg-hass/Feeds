@@ -46,6 +46,8 @@ export default function ManageScreen() {
     const { show } = useToastStore();
     const { settings } = useSettingsStore();
 
+    const [discoveryType, setDiscoveryType] = useState<DiscoveryType>('all');
+
     // Use debounced discovery hook
     const {
         input: urlInput,
@@ -60,8 +62,6 @@ export default function ManageScreen() {
         type: discoveryType === 'all' ? undefined : discoveryType,
         onError: () => show('Discovery failed', 'error'),
     });
-
-    const [discoveryType, setDiscoveryType] = useState<DiscoveryType>('all');
     const [activeTab, setActiveTab] = useState<AddFeedTab>('search');
     const [isAdding, setIsAdding] = useState(false);
     const [addingId, setAddingId] = useState<string | null>(null);
