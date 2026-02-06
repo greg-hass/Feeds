@@ -57,7 +57,10 @@ export default function ManageScreen() {
         triggerDiscovery,
         clearDiscovery,
     } = useDebouncedDiscovery({
-        onError: () => show('Discovery failed', 'error'),
+        onError: (error) => {
+            const message = error instanceof Error ? error.message : 'Discovery failed';
+            show(message, 'error');
+        },
     });
 
     const [discoveryType, setDiscoveryType] = useState<DiscoveryType>('all');

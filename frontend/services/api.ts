@@ -34,6 +34,7 @@ interface RequestOptions {
     method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
     body?: unknown;
     headers?: Record<string, string>;
+    signal?: AbortSignal;
 }
 
 class ApiClient {
@@ -63,7 +64,7 @@ class ApiClient {
     }
 
     async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-        const { method = 'GET', body, headers = {} } = options;
+        const { method = 'GET', body, headers = {}, signal } = options;
 
         const requestHeaders: Record<string, string> = {
             'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -91,6 +92,7 @@ class ApiClient {
             method,
             headers: requestHeaders,
             body: body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined),
+            signal,
         });
 
         if (!response.ok) {
@@ -343,12 +345,12 @@ class ApiClient {
     }
 
     // Discovery
-    async discover(q: string, type?: string) {
+    async discover(q: string, type?: string, signal?: AbortSignal) {
         let url = `/discovery?q=${encodeURIComponent(q)}`;
         if (type) {
             url += `&type=${encodeURIComponent(type)}`;
         }
-        return this.request<{ discoveries: DiscoveredFeed[] }>(url);
+        return this.request<{ discoveries: DiscoveredFeed[] }>(url, { signal });
     }
 
     // OPML

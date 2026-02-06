@@ -64,13 +64,15 @@ export const useDebouncedDiscovery = (options: UseDebouncedDiscoveryOptions = {}
         setHasAttempted(true);
 
         try {
-            const result = await api.discover(query, type);
+            const result = await api.discover(query, type, abortControllerRef.current?.signal);
             setDiscoveries(result.discoveries);
             optionsRef.current.onSuccess?.(result.discoveries);
         } catch (err) {
-            if (err instanceof Error && err.name !== 'AbortError') {
-                optionsRef.current.onError?.(err);
+            if (err instanceof Error && err.name === 'AbortError') {
+                // Request was cancelled, don't treat as error
+                return;
             }
+            optionsRef.current.onError?.(err instanceof Error ? err : new Error('Discovery failed'));
             setDiscoveries([]);
         } finally {
             setIsDiscovering(false);

@@ -105,8 +105,9 @@ export async function discoveryRoutes(app: FastifyInstance) {
                 if (activeDiscoveries.length > 0) {
                     return { discoveries: activeDiscoveries };
                 }
-            } catch {
+            } catch (err) {
                 // Not a valid URL or fetch failed, fallback to keyword
+                console.error(`[Discovery] URL discovery failed for "${q}":`, err instanceof Error ? err.message : err);
             }
         }
 
