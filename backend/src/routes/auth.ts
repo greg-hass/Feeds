@@ -49,7 +49,7 @@ function checkRateLimit(ip: string): { allowed: boolean; remaining: number; rese
     // If no record exists, create one and allow
     if (!attempt) {
         run(
-            'INSERT INTO rate_limits (ip_address, attempt_count, reset_at, updated_at) VALUES (?, 1, ?, datetime('now'))',
+            'INSERT INTO rate_limits (ip_address, attempt_count, reset_at, updated_at) VALUES (?, 1, ?, datetime(\'now\'))',
             [ip, resetAt]
         );
         return { allowed: true, remaining: MAX_ATTEMPTS - 1, resetIn: WINDOW_MS };
@@ -64,7 +64,7 @@ function checkRateLimit(ip: string): { allowed: boolean; remaining: number; rese
     const resetTime = new Date(attempt.reset_at).getTime();
     if (resetTime < now) {
         run(
-            'UPDATE rate_limits SET attempt_count = 1, reset_at = ?, updated_at = datetime('now') WHERE ip_address = ?',
+            'UPDATE rate_limits SET attempt_count = 1, reset_at = ?, updated_at = datetime(\'now\') WHERE ip_address = ?',
             [resetAt, ip]
         );
         return { allowed: true, remaining: MAX_ATTEMPTS - 1, resetIn: WINDOW_MS };
@@ -77,7 +77,7 @@ function checkRateLimit(ip: string): { allowed: boolean; remaining: number; rese
 
     // Increment attempt count
     run(
-        'UPDATE rate_limits SET attempt_count = attempt_count + 1, updated_at = datetime('now') WHERE ip_address = ?',
+        'UPDATE rate_limits SET attempt_count = attempt_count + 1, updated_at = datetime(\'now\') WHERE ip_address = ?',
         [ip]
     );
 
