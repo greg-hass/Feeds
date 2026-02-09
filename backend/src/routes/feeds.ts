@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { FeedsController } from '../controllers/feeds.controller.js';
+import { rateLimiters } from '../middleware/rate-limit.js';
 
 // Schemas
 const addFeedSchema = z.object({
@@ -59,8 +60,13 @@ export async function feedsRoutes(app: FastifyInstance) {
         return FeedsController.bulk(request, reply);
     });
 
-    // Force refresh feed
-    app.post('/:id/refresh', FeedsController.refresh);
+    // Force refresh feed - rate limited to prevent abuse
+    app.post('/:id/refresh', { preHandler: async (req, reply) => {
+        const allowed = await rateLimiters.feeds(req, reply);
+        if (!allowed) {
+            return reply.status(429).send({ error: 'Too many refresh requests. Please try again later.' });
+        }
+    } }, FeedsController.refresh);
 
     // Pause feed (skip from scheduler)
     app.post('/:id/pause', FeedsController.pause);
@@ -74,11 +80,21 @@ export async function feedsRoutes(app: FastifyInstance) {
     // Get YouTube channel URL for a feed
     app.get('/:id/youtube-channel', FeedsController.getYouTubeChannelUrl);
 
-    // Force refresh feed icon (useful for YouTube channels)
-    app.post('/:id/refresh-icon', FeedsController.refreshIcon);
+    // Force refresh feed icon (useful for YouTube channels) - rate limited
+    app.post('/:id/refresh-icon', { preHandler: async (req, reply) => {
+        const allowed = await rateLimiters.feeds(req, reply);
+        if (!allowed) {
+            return reply.status(429).send({ error: 'Too many refresh requests. Please try again later.' });
+        }
+    } }, FeedsController.refreshIcon);
 
-    // Refetch all YouTube channel icons (one-time fix)
-    app.post('/refetch-youtube-icons', FeedsController.refetchYouTubeIcons);
+    // Refetch all YouTube channel icons (one-time fix) - rate limited
+    app.post('/refetch-youtube-icons', { preHandler: async (req, reply) => {
+        const allowed = await rateLimiters.feeds(req, reply);
+        if (!allowed) {
+            return reply.status(429).send({ error: 'Too many refresh requests. Please try again later.' });
+        }
+    } }, FeedsController.refetchYouTubeIcons);
 
     // Clear all icon caches
     app.post('/clear-icon-cache', FeedsController.clearIconCache);

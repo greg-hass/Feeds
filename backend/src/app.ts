@@ -41,8 +41,15 @@ export async function buildApp() {
     ensureThumbnailCacheDir();
 
     // CORS
+    const corsOrigin = process.env.CORS_ORIGIN;
+    if (!corsOrigin && process.env.NODE_ENV === 'production') {
+        console.error('FATAL: CORS_ORIGIN environment variable is required in production');
+        console.error('Please set it to your frontend URL (e.g., https://feeds.yourdomain.com)');
+        process.exit(1);
+    }
+    
     await app.register(cors, {
-        origin: process.env.CORS_ORIGIN || (process.env.NODE_ENV === 'development' ? ['http://localhost:8080', 'http://localhost:3000'] : 'https://yourdomain.com'),
+        origin: corsOrigin || ['http://localhost:8080', 'http://localhost:3000'],
         credentials: true,
         methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization'],

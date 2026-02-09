@@ -420,7 +420,52 @@ function validateUrl(url: string): void {
         if (parsed.hostname.length > 253) {
             throw new Error('Hostname too long');
         }
+        
+        // SSRF Protection - block internal/private IP addresses
+        const hostname = parsed.hostname.toLowerCase();
+        const hostParts = hostname.split('.');
+        
+        // Check for localhost variants
+        if (hostname === 'localhost' || hostname.endsWith('.localhost')) {
+            throw new Error('SSRF: localhost URLs are not allowed');
+        }
+        
+        // Check for IPv4 private ranges
+        if (hostParts.length === 4 && hostParts.every(p => /^\d+$/.test(p))) {
+            const [a, b, c, d] = hostParts.map(Number);
+            // 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 127.0.0.0/8, 169.254.0.0/16
+            if (a === 10 || 
+                (a === 172 && b >= 16 && b <= 31) || 
+                (a === 192 && b === 168) ||
+                (a === 127) ||
+                (a === 169 && b === 254) ||
+                (a === 0) ||
+                (a >= 224)) {
+                throw new Error('SSRF: Private IP addresses are not allowed');
+            }
+        }
+        
+        // Block IPv6 localhost and link-local
+        if (hostname === '[::1]' || hostname === '[::]' || hostname.startsWith('[fe80:')) {
+            throw new Error('SSRF: IPv6 internal addresses are not allowed');
+        }
+        
+        // Block cloud metadata endpoints
+        const blockedHosts = [
+            '169.254.169.254', // AWS/GCP/Azure metadata
+            'metadata.google.internal',
+            'metadata.google',
+            'alibaba.x-metadata',
+            '100.100.100.200', // Alibaba Cloud
+        ];
+        if (blockedHosts.includes(hostname)) {
+            throw new Error('SSRF: Cloud metadata endpoints are not allowed');
+        }
+        
     } catch (err) {
+        if (err instanceof Error && err.message.startsWith('SSRF:')) {
+            throw err;
+        }
         throw new Error(`Invalid URL: ${url} - ${err}`);
     }
 }

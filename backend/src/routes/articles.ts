@@ -1,11 +1,16 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
+import DOMPurify from 'isomorphic-dompurify';
 import { queryOne, queryAll, run } from '../db/index.js';
 import { extractReadability, fetchAndExtractReadability } from '../services/readability.js';
 import { getUserSettings } from '../services/settings.js';
 import { Article } from '../types/index.js';
 import { validateId } from '../utils/validation.js';
 import { ensureFeedsSchema } from '../utils/schema-ensure.js';
+
+const bookmarkSchema = z.object({
+    bookmarked: z.boolean(),
+});
 
 const listArticlesSchema = z.object({
     feed_id: z.coerce.number().optional(),
@@ -259,8 +264,33 @@ export async function articlesRoutes(app: FastifyInstance) {
             try {
                 const readable = await fetchAndExtractReadability(article.url);
                 if (readable.content) {
-                    run('UPDATE articles SET readability_content = ? WHERE id = ?', [readable.content, articleId]);
-                    article.readability_content = readable.content;
+                    // Limit content size to prevent abuse (1MB max)
+                    const MAX_CONTENT_SIZE = 1024 * 1024; // 1MB
+                    let content = readable.content;
+                    if (content.length > MAX_CONTENT_SIZE) {
+                        console.warn(`[Article ${articleId}] Content too large (${content.length} bytes), truncating to ${MAX_CONTENT_SIZE} bytes`);
+                        content = content.substring(0, MAX_CONTENT_SIZE) + '\n\n[Content truncated due to size limit]';
+                    }
+                    
+                    // Sanitize HTML to prevent XSS attacks
+                    const sanitizedContent = DOMPurify.sanitize(content, {
+                        ALLOWED_TAGS: [
+                            'p', 'br', 'strong', 'b', 'em', 'i', 'u', 'strike', 'del',
+                            'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+                            'ul', 'ol', 'li',
+                            'blockquote', 'code', 'pre',
+                            'a', 'img',
+                            'table', 'thead', 'tbody', 'tr', 'th', 'td',
+                            'figure', 'figcaption', 'article', 'section', 'div', 'span'
+                        ],
+                        ALLOWED_ATTR: [
+                            'href', 'title', 'src', 'alt', 'width', 'height',
+                            'class', 'id', 'target', 'rel'
+                        ]
+                    });
+                    
+                    run('UPDATE articles SET readability_content = ? WHERE id = ?', [sanitizedContent, articleId]);
+                    article.readability_content = sanitizedContent;
 
                     // Return all the metadata even if not stored yet
                     const iconUrl = resolveArticleIconUrl(article.feed_id, article.feed_icon_cached_path ?? null, article.feed_icon_url, article.feed_icon_updated_at);
@@ -411,9 +441,9 @@ export async function articlesRoutes(app: FastifyInstance) {
     });
 
     // Toggle bookmark on article
-    app.patch('/:id/bookmark', async (request: FastifyRequest<{ Params: { id: string }; Body: { bookmarked: boolean } }>, reply: FastifyReply) => {
+    app.patch('/:id/bookmark', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
         const articleId = parseInt(request.params.id, 10);
-        const { bookmarked } = request.body as { bookmarked: boolean };
+        const { bookmarked } = bookmarkSchema.parse(request.body);
 
         // Verify article belongs to user's feeds
         const article = queryOne<{ id: number }>(
@@ -490,8 +520,33 @@ export async function articlesRoutes(app: FastifyInstance) {
             const { content: readable } = await fetchAndExtractReadability(article.url);
 
             if (readable) {
-                run('UPDATE articles SET readability_content = ? WHERE id = ?', [readable, articleId]);
-                return { content: readable };
+                // Limit content size to prevent abuse (1MB max)
+                const MAX_CONTENT_SIZE = 1024 * 1024; // 1MB
+                let content = readable;
+                if (content.length > MAX_CONTENT_SIZE) {
+                    console.warn(`[Article ${articleId}] Content too large (${content.length} bytes), truncating to ${MAX_CONTENT_SIZE} bytes`);
+                    content = content.substring(0, MAX_CONTENT_SIZE) + '\n\n[Content truncated due to size limit]';
+                }
+                
+                // Sanitize HTML to prevent XSS attacks
+                const sanitizedContent = DOMPurify.sanitize(readable, {
+                    ALLOWED_TAGS: [
+                        'p', 'br', 'strong', 'b', 'em', 'i', 'u', 'strike', 'del',
+                        'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+                        'ul', 'ol', 'li',
+                        'blockquote', 'code', 'pre',
+                        'a', 'img',
+                        'table', 'thead', 'tbody', 'tr', 'th', 'td',
+                        'figure', 'figcaption', 'article', 'section', 'div', 'span'
+                    ],
+                    ALLOWED_ATTR: [
+                        'href', 'title', 'src', 'alt', 'width', 'height',
+                        'class', 'id', 'target', 'rel'
+                    ]
+                });
+                
+                run('UPDATE articles SET readability_content = ? WHERE id = ?', [sanitizedContent, articleId]);
+                return { content: sanitizedContent };
             } else {
                 return reply.status(422).send({ error: 'Could not extract content' });
             }

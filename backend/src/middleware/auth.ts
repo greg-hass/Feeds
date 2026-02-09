@@ -1,5 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import jwt from 'jsonwebtoken';
+import { queryOne, run } from '../db/index.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -48,14 +49,15 @@ function cleanupOldActivity(): void {
     }
 }
 
-// Run cleanup every hour
-setInterval(cleanupOldActivity, 60 * 60 * 1000);
+// Run cleanup every 10 minutes (more frequent to prevent memory bloat)
+setInterval(cleanupOldActivity, 10 * 60 * 1000);
 
 /**
  * Authentication Middleware
  * 
  * Enforces API access control using JWT tokens with sliding expiration.
  * Token expires after 30 days of inactivity.
+ * Tokens are invalidated when password is changed (via token_version).
  * 
  * Usage in app.ts:
  * import { authMiddleware } from './middleware/auth';
@@ -95,7 +97,32 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
     
     try {
         // First verify the JWT signature and basic validity
-        const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; username: string };
+        const decoded = jwt.verify(token, JWT_SECRET) as { 
+            userId: number; 
+            username: string;
+            tokenVersion?: number;
+        };
+        
+        // Check token version against database (for password change invalidation)
+        const user = queryOne<{ token_version: number }>(
+            'SELECT token_version FROM users WHERE id = ?',
+            [decoded.userId]
+        );
+        
+        if (!user) {
+            return reply.status(401).send({ 
+                error: 'Unauthorized: User not found',
+                code: 'USER_NOT_FOUND'
+            });
+        }
+        
+        // If token version doesn't match, the password was changed after this token was issued
+        if (decoded.tokenVersion !== undefined && decoded.tokenVersion !== user.token_version) {
+            return reply.status(401).send({ 
+                error: 'Unauthorized: Token invalidated due to password change',
+                code: 'TOKEN_INVALIDATED'
+            });
+        }
         
         // Check sliding expiration (inactivity-based)
         const now = Date.now();
@@ -137,10 +164,30 @@ export function generateToken(userId: number, username: string): string {
         throw new Error('JWT_SECRET not configured');
     }
     
+    // Get current token version from database
+    const user = queryOne<{ token_version: number }>(
+        'SELECT token_version FROM users WHERE id = ?',
+        [userId]
+    );
+    
+    const tokenVersion = user?.token_version ?? 1;
+    
     // Generate token with long expiry (1 year) - actual expiration handled by sliding window
     return jwt.sign(
-        { userId, username },
+        { userId, username, tokenVersion },
         JWT_SECRET,
         { expiresIn: '365d' } // JWT itself valid for 1 year
     );
+}
+
+/**
+ * Increment token version for a user (call when password is changed)
+ * This invalidates all existing tokens
+ */
+export function invalidateUserTokens(userId: number): void {
+    run(
+        'UPDATE users SET token_version = token_version + 1, updated_at = datetime("now") WHERE id = ?',
+        [userId]
+    );
+    console.log(`[Auth] Invalidated all tokens for user ${userId}`);
 }

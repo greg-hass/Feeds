@@ -455,34 +455,6 @@ class ApiClient {
         });
     }
 
-    // AI Discovery
-    async getRecommendations() {
-        return this.request<{ recommendations: Recommendation[] }>('/discovery/recommendations');
-    }
-
-    async refreshRecommendations() {
-        return this.request<{ recommendations: Recommendation[] }>('/discovery/refresh', {
-            method: 'POST',
-        });
-    }
-
-    async dismissRecommendation(id: number) {
-        return this.request<{ success: boolean }>(`/discovery/${id}/dismiss`, {
-            method: 'POST',
-        });
-    }
-
-    async getInterests() {
-        return this.request<{ interests: Interest[] }>('/discovery/interests');
-    }
-
-    async updateInterests(topics: string[]) {
-        return this.request<{ success: boolean }>('/discovery/interests', {
-            method: 'PUT',
-            body: { topics },
-        });
-    }
-
     // SSE Progress Methods
 
     /**

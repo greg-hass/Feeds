@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import bcrypt from 'bcrypt';
-import { generateToken } from '../middleware/auth.js';
+import { generateToken, invalidateUserTokens } from '../middleware/auth.js';
 import { queryOne, run } from '../db/index.js';
 import { z } from 'zod';
 
@@ -210,9 +210,10 @@ export async function authRoutes(app: FastifyInstance) {
                 });
             }
             
-            // Update password
+            // Update password and invalidate all existing tokens
             const hash = await bcrypt.hash(password, SALT_ROUNDS);
             run('UPDATE users SET password_hash = ? WHERE id = 1', [hash]);
+            invalidateUserTokens(1);
         } else {
             // First time setup
             const hash = await bcrypt.hash(password, SALT_ROUNDS);

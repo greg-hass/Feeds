@@ -400,9 +400,36 @@ async function checkFeeds() {
 }
 
 /**
- * Cleanup cycle - runs daily to delete old articles based on retention_days setting.
+ * Get database size in bytes
+ */
+function getDatabaseSize(): number {
+    try {
+        const result = queryOne<{ size_bytes: number }>(
+            'SELECT page_count * page_size as size_bytes FROM pragma_page_count(), pragma_page_size()'
+        );
+        return result?.size_bytes || 0;
+    } catch (err) {
+        console.error('[Cleanup] Failed to get database size:', err);
+        return 0;
+    }
+}
+
+/**
+ * Format bytes to human readable string
+ */
+function formatBytes(bytes: number): string {
+    if (bytes <= 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const order = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+    const value = bytes / Math.pow(1024, order);
+    return `${value.toFixed(order === 0 ? 0 : 1)} ${units[order]}`;
+}
+
+/**
+ * Cleanup cycle - runs daily to delete old articles based on retention settings.
  * IMPORTANT: Bookmarked articles are NEVER deleted, regardless of age.
  * Uses batch processing to avoid long-running transactions.
+ * Includes emergency cleanup if database exceeds 10GB.
  */
 async function runCleanupCycle() {
     if (!state.isRunning) return;
@@ -410,58 +437,94 @@ async function runCleanupCycle() {
     try {
         const userId = 1;
         const settings = getUserSettings(userId);
-        const retentionDays = settings.retention_days;
         const BATCH_SIZE = 1000; // Process in batches to avoid locking
+        const MAX_DB_SIZE_BYTES = 10 * 1024 * 1024 * 1024; // 10GB
 
-        console.log(`[Cleanup] Starting cleanup cycle (retention: ${retentionDays} days)`);
+        // Check database size first
+        const dbSize = getDatabaseSize();
+        const isEmergencyCleanup = dbSize > MAX_DB_SIZE_BYTES;
+
+        if (isEmergencyCleanup) {
+            console.error(`[Cleanup] EMERGENCY: Database size ${formatBytes(dbSize)} exceeds 10GB limit! Using aggressive retention (7 days for all feeds).`);
+        }
+
+        // Use feed-type specific retention, or emergency retention if DB is too large
+        const feedRetention = isEmergencyCleanup ? {
+            rss: 7,
+            youtube: 7,
+            reddit: 7,
+            podcast: 7,
+        } : {
+            rss: settings.feed_retention?.rss_days ?? 30,
+            youtube: settings.feed_retention?.youtube_days ?? 14,
+            reddit: settings.feed_retention?.reddit_days ?? 7,
+            podcast: settings.feed_retention?.podcast_days ?? 90,
+        };
 
         let totalDeleted = 0;
-        let batchDeleted = 0;
         let batchCount = 0;
 
-        // Process deletions in batches to avoid long-running transactions
-        do {
-            // Get batch of old article IDs to delete
-            const articlesToDelete = queryAll<{ id: number }>(
-                `SELECT a.id FROM articles a
-                 JOIN feeds f ON a.feed_id = f.id
-                 WHERE f.user_id = ?
-                 AND a.published_at < datetime('now', '-' || ? || ' days')
-                 AND (a.is_bookmarked = 0 OR a.is_bookmarked IS NULL)
-                 LIMIT ?`,
-                [userId, retentionDays, BATCH_SIZE]
-            );
+        // Clean up each feed type with its own retention period
+        for (const [feedType, retentionDays] of Object.entries(feedRetention)) {
+            let batchDeleted = 0;
+            let typeDeleted = 0;
 
-            if (articlesToDelete.length === 0) break;
+            console.log(`[Cleanup] Cleaning ${feedType} feeds (retention: ${retentionDays} days)`);
 
-            // Delete this batch
-            const ids = articlesToDelete.map(a => a.id);
-            const placeholders = ids.map(() => '?').join(',');
-            
-            const result = run(
-                `DELETE FROM articles WHERE id IN (${placeholders})`,
-                ids
-            );
+            do {
+                // Get batch of old article IDs to delete for this feed type
+                const articlesToDelete = queryAll<{ id: number }>(
+                    `SELECT a.id FROM articles a
+                     JOIN feeds f ON a.feed_id = f.id
+                     WHERE f.user_id = ?
+                     AND f.type = ?
+                     AND a.published_at < datetime('now', '-' || ? || ' days')
+                     AND (a.is_bookmarked = 0 OR a.is_bookmarked IS NULL)
+                     LIMIT ?`,
+                    [userId, feedType, retentionDays, BATCH_SIZE]
+                );
 
-            batchDeleted = result.changes;
-            totalDeleted += batchDeleted;
-            batchCount++;
+                if (articlesToDelete.length === 0) break;
 
-            // Small delay between batches to allow other operations
-            if (batchDeleted === BATCH_SIZE) {
-                await sleep(100);
+                // Delete this batch
+                const ids = articlesToDelete.map(a => a.id);
+                const placeholders = ids.map(() => '?').join(',');
+
+                const result = run(
+                    `DELETE FROM articles WHERE id IN (${placeholders})`,
+                    ids
+                );
+
+                batchDeleted = result.changes;
+                typeDeleted += batchDeleted;
+                totalDeleted += batchDeleted;
+                batchCount++;
+
+                // Small delay between batches to allow other operations
+                if (batchDeleted === BATCH_SIZE) {
+                    await sleep(100);
+                }
+
+            } while (batchDeleted === BATCH_SIZE && state.isRunning);
+
+            if (typeDeleted > 0) {
+                console.log(`[Cleanup] Deleted ${typeDeleted} old ${feedType} articles (older than ${retentionDays} days)`);
             }
-
-        } while (batchDeleted === BATCH_SIZE && state.isRunning);
+        }
 
         if (totalDeleted > 0) {
-            console.log(`[Cleanup] Deleted ${totalDeleted} old articles in ${batchCount} batches (older than ${retentionDays} days)`);
-            
+            console.log(`[Cleanup] Total: Deleted ${totalDeleted} old articles in ${batchCount} batches`);
+
             // Run OPTIMIZE after significant deletions to help query planner
             if (totalDeleted > 10000) {
                 console.log('[Cleanup] Running ANALYZE after large deletion...');
                 run('ANALYZE articles');
             }
+
+            // Log new database size after cleanup
+            const newDbSize = getDatabaseSize();
+            const reclaimed = dbSize - newDbSize;
+            console.log(`[Cleanup] Database size: ${formatBytes(dbSize)} → ${formatBytes(newDbSize)}${reclaimed > 0 ? ` (reclaimed ${formatBytes(reclaimed)})` : ''}`);
         } else {
             console.log(`[Cleanup] No articles to clean up`);
         }
@@ -484,14 +547,6 @@ async function runCleanupCycle() {
     if (state.isRunning) {
         state.cleanupTimeoutHandle = setTimeout(runCleanupCycle, CLEANUP_INTERVAL);
     }
-}
-
-function formatBytes(bytes: number): string {
-    if (bytes <= 0) return '0 B';
-    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const order = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-    const value = bytes / Math.pow(1024, order);
-    return `${value.toFixed(order === 0 ? 0 : 1)} ${units[order]}`;
 }
 
 async function cleanupThumbnailCache(retentionDays: number) {

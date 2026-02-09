@@ -2,7 +2,6 @@ import * as cheerio from 'cheerio';
 import { FeedType } from './feed-parser.js';
 import { fetchYouTubeIcon } from './youtube-parser.js';
 import { fetchRedditIcon } from './reddit-parser.js';
-import { getAiSuggestedFeeds } from './ai.js';
 import iconService from './icon-service.js';
 import { checkFeedActivity, checkYouTubeChannelActivity, checkRedditActivity } from './discovery/activity-check.js';
 import { searchRssFeeds } from './discovery/rss.js';
@@ -635,26 +634,7 @@ export async function discoverByKeyword(keyword: string, limit: number = 10, typ
         }
     }
 
-    // AI suggestions as enhancement (requires Gemini, not required for search to work)
-    const aiSuggestionsList = await getAiSuggestedFeeds(keyword);
-    if (aiSuggestionsList.length > 0) {
-        console.log(`[Discovery] AI suggests ${aiSuggestionsList.length} feeds`);
-        const aiResults = await Promise.all(
-            aiSuggestionsList.map(async (suggestion) => {
-                try {
-                    const foundFeeds = await discoverFeedsFromUrl(suggestion.url);
-                    return foundFeeds.map(f => ({
-                        ...f,
-                        title: (f.title === 'RSS Feed' || f.title === 'Discovered Feed') ? suggestion.title : f.title,
-                        confidence: 0.7 // AI suggestions have slightly lower confidence
-                    }));
-                } catch {
-                    return [];
-                }
-            })
-        );
-        results.push(...aiResults.flat());
-    }
+    // Note: AI suggestions removed - using only directory-based discovery
 
     // Deduplicate by feed_url
     const seen = new Set<string>();

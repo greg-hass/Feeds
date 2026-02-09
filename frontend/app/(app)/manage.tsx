@@ -3,13 +3,13 @@ import { useMemo, useState, useCallback, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, Modal, Image, Platform, useWindowDimensions, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFeedStore, useToastStore, useArticleStore, useSettingsStore } from '@/stores';
-import { api, DiscoveredFeed, Feed, Folder, Recommendation, FeedPreview } from '@/services/api';
+import { api, DiscoveredFeed, Feed, Folder, FeedPreview } from '@/services/api';
 import {
     ArrowLeft, Plus, Search, Rss, Youtube, Headphones, MessageSquare,
     Folder as FolderIcon, Trash2, Edit2, FolderInput,
     Check, FileUp, FileDown, AlertTriangle, RefreshCw, RefreshCcw,
     Info, Pause, Clock, Skull, X, Globe, AlertCircle, ChevronRight,
-    Sparkles, ChevronDown, ArrowUpRight
+    ChevronDown, ArrowUpRight
 } from 'lucide-react-native';
 import { FeedInfoSheet } from '@/components/FeedInfoSheet';
 import { useColors, borderRadius, spacing } from '@/theme';
@@ -31,7 +31,6 @@ import { openExternalLink } from '@/utils/externalLink';
 type ModalType = 'edit_feed' | 'rename_folder' | 'move_feed' | 'view_folder' | null;
 
 type DiscoveryType = 'all' | 'rss' | 'youtube' | 'reddit' | 'podcast';
-type AddFeedTab = 'search' | 'foryou';
 
 const discoveryTypes: DiscoveryType[] = ['all', 'rss', 'youtube', 'reddit', 'podcast'];
 
@@ -65,20 +64,12 @@ export default function ManageScreen() {
             show(message, 'error');
         },
     });
-    const [activeTab, setActiveTab] = useState<AddFeedTab>('search');
-    const [isAdding, setIsAdding] = useState(false);
+    const [activeTab, setActiveTab] = useState<'search'>('search');
     const [addingId, setAddingId] = useState<string | null>(null);
-    const [addingRecId, setAddingRecId] = useState<number | null>(null);
     const [newFolderName, setNewFolderName] = useState('');
     const [showMenu, setShowMenu] = useState(false);
     const [sidebarAnim] = useState(new Animated.Value(-300));
     const [expandedFolderIds, setExpandedFolderIds] = useState<Set<number>>(new Set());
-
-    // AI Recommendations state
-    const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
-    const [isLoadingRecs, setIsLoadingRecs] = useState(false);
-    const [recsError, setRecsError] = useState<string | null>(null);
-    const [hasFetchedRecs, setHasFetchedRecs] = useState(false);
 
     // Modal states
     const [modalType, setModalType] = useState<ModalType>(null);
@@ -161,103 +152,10 @@ export default function ManageScreen() {
 
     // If the type filter changes and we already searched, re-run discovery
     useEffect(() => {
-        if (activeTab !== 'search') return;
         if (!hasAttempted || !urlInput.trim()) return;
         const typeParam = discoveryType === 'all' ? undefined : discoveryType;
         triggerDiscovery(urlInput, typeParam);
-    }, [activeTab, discoveryType, hasAttempted, triggerDiscovery, urlInput]);
-
-    // Fetch AI recommendations
-    const fetchRecommendations = useCallback(async () => {
-        setIsLoadingRecs(true);
-        setRecsError(null);
-        try {
-            const res = await api.getRecommendations();
-            setRecommendations(res.recommendations.filter(r => r.status === 'pending'));
-            setHasFetchedRecs(true);
-        } catch (err) {
-            console.error('Failed to fetch recommendations:', err);
-            setRecsError('Failed to load recommendations');
-        } finally {
-            setIsLoadingRecs(false);
-        }
-    }, []);
-
-    // Refresh AI recommendations (triggers new discovery)
-    const handleRefreshRecommendations = useCallback(async () => {
-        setIsLoadingRecs(true);
-        setRecsError(null);
-        try {
-            // Call the refresh endpoint which triggers AI-powered discovery
-            const res = await api.refreshRecommendations();
-            setRecommendations(res.recommendations.filter(r => r.status === 'pending'));
-            setHasFetchedRecs(true);
-            show('Recommendations refreshed!', 'success');
-        } catch (err) {
-            console.error('Failed to refresh recommendations:', err);
-            setRecsError('Failed to refresh recommendations');
-            show('Failed to refresh recommendations', 'error');
-        } finally {
-            setIsLoadingRecs(false);
-        }
-    }, [show]);
-
-    // Load recommendations when tab changes to 'foryou'
-    useEffect(() => {
-        if (activeTab === 'foryou' && !hasFetchedRecs && !isLoadingRecs) {
-            fetchRecommendations();
-        }
-    }, [activeTab, fetchRecommendations, hasFetchedRecs, isLoadingRecs]);
-
-    // Convert Recommendation to DiscoveredFeed format for DiscoveryCard
-    const convertRecommendationToDiscovery = (rec: Recommendation): DiscoveredFeed => {
-        const metadata = JSON.parse(rec.metadata || '{}');
-        return {
-            feed_url: rec.feed_url,
-            title: rec.title,
-            description: rec.description,
-            type: rec.feed_type,
-            site_url: metadata.site_url || rec.feed_url,
-            icon_url: metadata.thumbnail || null,
-            confidence: rec.relevance_score / 100,
-            method: 'search',
-        };
-    };
-
-    // Handle subscribe to recommendation
-    const handleSubscribeRecommendation = async (rec: Recommendation) => {
-        if (addingRecId === rec.id) return;
-
-        setAddingRecId(rec.id);
-        show(`Subscribing to ${rec.title}…`, 'success');
-
-        try {
-            await addFeed(rec.feed_url, undefined, settings?.refresh_interval_minutes, false);
-            // Remove from list after successful subscription
-            setRecommendations(prev => prev.filter(r => r.id !== rec.id));
-            show(`Subscribed to ${rec.title}`, 'success');
-        } catch (err) {
-            if (err instanceof Error && 'status' in err && (err as any).status === 409) {
-                setRecommendations(prev => prev.filter(r => r.id !== rec.id));
-                show(`Already subscribed to ${rec.title}`, 'info');
-            } else {
-                const message = err instanceof Error ? err.message : 'Failed to subscribe';
-                show(message, 'error');
-            }
-        } finally {
-            setAddingRecId(null);
-        }
-    };
-
-    // Handle dismiss recommendation
-    const handleDismissRecommendation = async (id: number) => {
-        try {
-            await api.dismissRecommendation(id);
-            setRecommendations(prev => prev.filter(r => r.id !== id));
-        } catch (err) {
-            show('Failed to dismiss', 'error');
-        }
-    };
+    }, [discoveryType, hasAttempted, triggerDiscovery, urlInput]);
 
     // Handle add feed with smart folder suggestion
     const handleAddFeed = useCallback(async (discovery: DiscoveredFeed) => {
@@ -751,52 +649,50 @@ export default function ManageScreen() {
                 <View style={s.section}>
                     <SectionHeader title="Add Feed" />
 
-                    {/* Tab Switcher: Search / For You */}
-                    <View style={s.tabContainer}>
-                        <TouchableOpacity
-                            style={[s.tab, activeTab === 'search' && s.tabActive]}
-                            onPress={() => setActiveTab('search')}
+                    {/* Search Input */}
+                    <View style={s.inputRow}>
+                        <View style={s.inputWrapper}>
+                            <Globe size={18} color={colors.text.tertiary} style={s.inputIcon} />
+                            <TextInput
+                                style={s.input}
+                                placeholder={`Enter URL or keyword to find ${discoveryPlaceholder}`}
+                                placeholderTextColor={colors.text.tertiary}
+                                value={urlInput}
+                                onChangeText={setUrlInput}
+                                onSubmitEditing={handleDiscover}
+                                autoCapitalize="none"
+                                autoCorrect={false}
+                                keyboardType="url"
+                            />
+                        </View>
+                        <Button
+                            onPress={handleDiscover}
+                            loading={isDiscovering}
+                            disabled={!urlInput.trim() || isDiscovering}
+                            style={s.addButton}
                         >
-                            <Search size={16} color={activeTab === 'search' ? colors.primary?.DEFAULT ?? colors.primary : colors.text.secondary} />
-                            <Text style={[s.tabText, activeTab === 'search' && s.tabTextActive]}>
-                                Search
-                            </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[s.tab, activeTab === 'foryou' && s.tabActive]}
-                            onPress={() => setActiveTab('foryou')}
-                        >
-                            <Sparkles size={16} color={activeTab === 'foryou' ? colors.primary?.DEFAULT ?? colors.primary : colors.text.secondary} />
-                            <Text style={[s.tabText, activeTab === 'foryou' && s.tabTextActive]}>
-                                For You
-                            </Text>
-                        </TouchableOpacity>
+                            <Plus size={18} color="#fff" />
+                        </Button>
                     </View>
 
-                    {/* Tab Content Container - fixed minHeight prevents layout shift */}
-                    <View style={s.tabContentContainer}>
-
-                        {/* Search Tab Content */}
-                        {activeTab === 'search' && (
-                            <>
-                                {/* Type Filter Pills */}
-                                <ScrollView
-                                    horizontal
-                                    showsHorizontalScrollIndicator={false}
-                                    contentContainerStyle={s.filterPillsContainer}
-                                    style={s.filterPillsScroll}
-                                >
-                                    {discoveryTypes.map((type) => (
-                                        <TouchableOpacity
-                                            key={type}
-                                            style={[
-                                                s.filterPill,
-                                                discoveryType === type && s.filterPillActive,
-                                            ]}
-                                            onPress={() => setDiscoveryType(type)}
-                                        >
-                                            <Text style={[
-                                                s.filterPillText,
+                    {/* Type Filter Pills */}
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={s.filterPillsContainer}
+                        style={s.filterPillsScroll}
+                    >
+                        {discoveryTypes.map((type) => (
+                            <TouchableOpacity
+                                key={type}
+                                style={[
+                                    s.filterPill,
+                                    discoveryType === type && s.filterPillActive,
+                                ]}
+                                onPress={() => setDiscoveryType(type)}
+                            >
+                                <Text style={[
+                                    s.filterPillText,
                                                 discoveryType === type && s.filterPillTextActive
                                             ]}>
                                                 {type.charAt(0).toUpperCase() + type.slice(1)}
@@ -1007,77 +903,6 @@ export default function ManageScreen() {
                                     </View>
                                 )}
                             </>
-                        )}
-
-                        {/* For You Tab Content - AI Recommendations */}
-                        {activeTab === 'foryou' && (
-                            <View style={s.discoveries}>
-                                {/* Refresh Button Row */}
-                                <View style={s.refreshRow}>
-                                    <Text style={s.discoveriesTitle}>
-                                        {isLoadingRecs ? 'Finding recommendations…' :
-                                            recommendations.length > 0 ? `${recommendations.length} recommendation${recommendations.length === 1 ? '' : 's'}` :
-                                                'Personalized for you'}
-                                    </Text>
-                                    <TouchableOpacity
-                                        onPress={handleRefreshRecommendations}
-                                        disabled={isLoadingRecs}
-                                        style={[s.refreshButton, isLoadingRecs && s.refreshButtonDisabled]}
-                                    >
-                                        {isLoadingRecs ? (
-                                            <ActivityIndicator size={14} color={colors.primary?.DEFAULT ?? colors.primary} />
-                                        ) : (
-                                            <RefreshCw size={14} color={colors.primary?.DEFAULT ?? colors.primary} />
-                                        )}
-                                        <Text style={s.refreshButtonText}>
-                                            {isLoadingRecs ? 'Refreshing…' : 'Refresh'}
-                                        </Text>
-                                    </TouchableOpacity>
-                                </View>
-
-                                {(isLoadingRecs || !hasFetchedRecs) && recommendations.length === 0 ? (
-                                    <LoadingState variant="skeleton" count={2} />
-                                ) : recsError ? (
-                                    <View style={s.emptyDiscoveries}>
-                                        <AlertCircle size={48} color={colors.status.error} />
-                                        <Text style={s.emptyTitle}>{recsError}</Text>
-                                        <Button
-                                            title="Try Again"
-                                            onPress={fetchRecommendations}
-                                            variant="primary"
-                                            icon={<RefreshCw size={16} color={colors.text.inverse} />}
-                                        />
-                                    </View>
-                                ) : recommendations.length === 0 ? (
-                                    <View style={s.emptyDiscoveries}>
-                                        <Sparkles size={48} color={colors.text.tertiary} />
-                                        <Text style={s.emptyTitle}>All caught up!</Text>
-                                        <Text style={s.emptySubtitle}>
-                                            Check back later for personalized recommendations
-                                        </Text>
-                                    </View>
-                                ) : (
-                                    <>
-                                        {recommendations.map((rec) => {
-                                            const discovery = convertRecommendationToDiscovery(rec);
-                                            return (
-                                                <DiscoveryCard
-                                                    key={rec.id}
-                                                    discovery={discovery}
-                                                    previewArticles={previewArticles[discovery.feed_url] || []}
-                                                    isAdding={addingRecId === rec.id}
-                                                    isDuplicate={false}
-                                                    onPreview={() => handlePreview(discovery)}
-                                                    onAdd={() => handleSubscribeRecommendation(rec)}
-                                                    onOpenSite={() => handleOpenSite(discovery.site_url || discovery.feed_url)}
-                                                    expanded={expandedDiscoveries.has(discovery.feed_url)}
-                                                    onToggleExpand={() => toggleExpandDiscovery(discovery.feed_url)}
-                                                />
-                                            );
-                                        })}
-                                    </>
-                                )}
-                            </View>
                         )}
                     </View>
                 </View>

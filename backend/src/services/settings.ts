@@ -6,7 +6,7 @@ interface UserSettings {
 
 const defaultSettings = {
   refresh_interval_minutes: 15,
-  retention_days: 90,
+  retention_days: 30,
   fetch_full_content: true,
   readability_enabled: true,
   theme: "auto" as const,
@@ -19,6 +19,12 @@ const defaultSettings = {
     youtube_days: 30,
     reddit_days: 7,
     podcast_count: 5,
+  } as const,
+  feed_retention: {
+    rss_days: 30,
+    youtube_days: 14,
+    reddit_days: 7,
+    podcast_days: 90,
   } as const,
 };
 
