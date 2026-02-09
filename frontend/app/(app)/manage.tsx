@@ -902,10 +902,9 @@ export default function ManageScreen() {
                                         </Text>
                                     </View>
                                 )}
-                            </>
+                            </View>
                         )}
                     </View>
-                </View>
 
                 {/* Create Folder */}
                 <View style={s.section}>
