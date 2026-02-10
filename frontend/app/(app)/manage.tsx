@@ -188,6 +188,55 @@ export default function ManageScreen() {
   });
 
   const s = styles(colors);
+
+  // Memoized styles to prevent re-renders
+  const inputWrapperStyle = useMemo(
+    () => ({ flex: 1, minWidth: 0, position: "relative" as const }),
+    [],
+  );
+  const inputStyle = useMemo(
+    () => ({
+      flex: 1,
+      minWidth: 0,
+      paddingRight: urlInput ? 40 : spacing.md,
+    }),
+    [urlInput],
+  );
+  const searchButtonStyle = useMemo(
+    () => ({ width: 44, height: 44, paddingHorizontal: 0 }),
+    [],
+  );
+  const clearButtonHitSlop = useMemo(
+    () => ({ top: 10, right: 10, bottom: 10, left: 10 }),
+    [],
+  );
+  const searchIcon = useMemo(
+    () => <Search size={20} color={colors.text.inverse} />,
+    [colors.text.inverse],
+  );
+
+  // Memoized header actions to prevent re-renders
+  const headerRightActions = useMemo(
+    () => [
+      {
+        icon: (
+          <Check
+            size={18}
+            color={
+              isBulkMode
+                ? (colors.primary?.DEFAULT ?? colors.primary)
+                : colors.text.secondary
+            }
+          />
+        ),
+        onPress: toggleBulkMode,
+        accessibilityLabel: "Bulk mode",
+        variant: isBulkMode ? ("primary" as const) : ("default" as const),
+      },
+    ],
+    [isBulkMode, colors.primary, colors.text.secondary, toggleBulkMode],
+  );
+
   const folderNameById = useMemo(() => {
     const entries = folders.map((folder) => [folder.id, folder.name] as const);
     return new Map(entries);
@@ -685,10 +734,10 @@ export default function ManageScreen() {
     }
   };
 
-  const toggleBulkMode = () => {
-    setIsBulkMode(!isBulkMode);
+  const toggleBulkMode = useCallback(() => {
+    setIsBulkMode((prev) => !prev);
     setSelectedFeedIds(new Set());
-  };
+  }, []);
 
   const toggleSelectFeed = (id: number) => {
     const next = new Set(selectedFeedIds);
@@ -764,23 +813,7 @@ export default function ManageScreen() {
             useNativeDriver: true,
           }).start();
         }}
-        rightActions={[
-          {
-            icon: (
-              <Check
-                size={18}
-                color={
-                  isBulkMode
-                    ? (colors.primary?.DEFAULT ?? colors.primary)
-                    : colors.text.secondary
-                }
-              />
-            ),
-            onPress: toggleBulkMode,
-            accessibilityLabel: "Bulk mode",
-            variant: isBulkMode ? "primary" : "default",
-          },
-        ]}
+        rightActions={headerRightActions}
       />
 
       <ScrollView style={s.scrollView} contentContainerStyle={s.content}>
@@ -818,13 +851,9 @@ export default function ManageScreen() {
 
           {/* Search Input with Clear Button */}
           <View style={s.inputRow}>
-            <View style={{ flex: 1, minWidth: 0, position: "relative" }}>
+            <View style={inputWrapperStyle}>
               <Input
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  paddingRight: urlInput ? 40 : spacing.md,
-                }}
+                style={inputStyle}
                 placeholder={`Paste URL or search ${discoveryPlaceholder}…`}
                 value={urlInput}
                 onChangeText={setUrlInput}
@@ -842,7 +871,7 @@ export default function ManageScreen() {
                     setUrlInput("");
                     clearDiscovery();
                   }}
-                  hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+                  hitSlop={clearButtonHitSlop}
                 >
                   <X size={16} color={colors.text.tertiary} />
                 </TouchableOpacity>
@@ -852,12 +881,8 @@ export default function ManageScreen() {
               onPress={handleDiscover}
               disabled={isDiscovering || !urlInput.trim()}
               loading={isDiscovering}
-              icon={
-                !isDiscovering ? (
-                  <Search size={20} color={colors.text.inverse} />
-                ) : undefined
-              }
-              style={{ width: 44, height: 44, paddingHorizontal: 0 }}
+              icon={!isDiscovering ? searchIcon : undefined}
+              style={searchButtonStyle}
             />
           </View>
 
