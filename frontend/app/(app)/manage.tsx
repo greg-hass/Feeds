@@ -788,36 +788,6 @@ export default function ManageScreen() {
         <View style={s.section}>
           <SectionHeader title="Add Feed" />
 
-          {/* Search Input */}
-          <View style={s.inputRow}>
-            <View style={s.inputWrapper}>
-              <Globe
-                size={18}
-                color={colors.text.tertiary}
-                style={s.inputIcon}
-              />
-              <TextInput
-                style={s.input}
-                placeholder={`Enter URL or keyword to find ${discoveryPlaceholder}`}
-                placeholderTextColor={colors.text.tertiary}
-                value={urlInput}
-                onChangeText={setUrlInput}
-                onSubmitEditing={handleDiscover}
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="url"
-              />
-            </View>
-            <Button
-              onPress={handleDiscover}
-              loading={isDiscovering}
-              disabled={!urlInput.trim() || isDiscovering}
-              style={s.addButton}
-            >
-              <Plus size={18} color="#fff" />
-            </Button>
-          </View>
-
           {/* Type Filter Pills */}
           <ScrollView
             horizontal
