@@ -200,13 +200,14 @@ export default function ManageScreen() {
     () => ({ flex: 1, minWidth: 0, position: "relative" as const }),
     [],
   );
+  // Stable style - padding change handled by inner component to prevent flicker
   const inputStyle = useMemo(
     () => ({
       flex: 1,
       minWidth: 0,
-      paddingRight: urlInput ? 40 : spacing.md,
+      paddingRight: 40, // Always reserve space for clear button to prevent layout shift
     }),
-    [urlInput],
+    [],
   );
   const searchButtonStyle = useMemo(
     () => ({ width: 44, height: 44, paddingHorizontal: 0 }),
@@ -885,11 +886,11 @@ export default function ManageScreen() {
             />
           </View>
 
-          {/* Loading Shimmer */}
-          {isDiscovering && <LoadingState variant="skeleton" count={2} />}
+          {/* Loading Shimmer - only show on initial load, not when refreshing */}
+          {isDiscovering && discoveries.length === 0 && <LoadingState variant="skeleton" count={2} />}
 
-          {/* Discovery Results */}
-          {!isDiscovering && discoveries.length > 0 && (
+          {/* Discovery Results - show while loading to prevent flicker (stale-while-revalidate) */}
+          {discoveries.length > 0 && (
             <View style={s.discoveries}>
               {(() => {
                 // Filter out feeds that are already subscribed
