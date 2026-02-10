@@ -163,6 +163,12 @@ export default function ManageScreen() {
   );
   const [feedSearch, setFeedSearch] = useState("");
 
+  // Toggle bulk mode - defined early to avoid reference issues
+  const toggleBulkMode = useCallback(() => {
+    setIsBulkMode((prev) => !prev);
+    setSelectedFeedIds(new Set());
+  }, []);
+
   // Feed Info Sheet state
   const [feedInfoId, setFeedInfoId] = useState<number | null>(null);
   const [feedInfoVisible, setFeedInfoVisible] = useState(false);
@@ -286,7 +292,6 @@ export default function ManageScreen() {
   const handleAddFeed = useCallback(
     async (discovery: DiscoveredFeed) => {
       setAddingId(discovery.feed_url);
-      setIsAdding(true);
 
       try {
         // Check for suggested folder
@@ -327,7 +332,6 @@ export default function ManageScreen() {
           err instanceof Error ? err.message : "Failed to add feed";
         show(errorMessage, "error");
       } finally {
-        setIsAdding(false);
         setAddingId(null);
       }
     },
@@ -733,11 +737,6 @@ export default function ManageScreen() {
       setSelectedFeedIds(new Set(visibleFeeds.map((f: Feed) => f.id)));
     }
   };
-
-  const toggleBulkMode = useCallback(() => {
-    setIsBulkMode((prev) => !prev);
-    setSelectedFeedIds(new Set());
-  }, []);
 
   const toggleSelectFeed = (id: number) => {
     const next = new Set(selectedFeedIds);
