@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { TextInput, TextInputProps, StyleSheet, View, Text } from 'react-native';
 import { useColors, spacing, borderRadius } from '@/theme';
 
@@ -29,7 +29,7 @@ export const Input = React.forwardRef<TextInput, InputProps>(({
     ...props
 }, ref) => {
     const colors = useColors();
-    const s = styles(colors, size, multiline);
+    const s = useMemo(() => styles(colors, size, multiline), [colors, size, multiline]);
     const [isFocused, setIsFocused] = useState(false);
     const characterCount = value?.length ?? 0;
 
