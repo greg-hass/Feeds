@@ -287,7 +287,7 @@ export default function ManageScreen() {
     if (!hasAttempted || !urlInput.trim()) return;
     const typeParam = discoveryType === "all" ? undefined : discoveryType;
     triggerDiscovery(urlInput, typeParam);
-  }, [discoveryType, hasAttempted, triggerDiscovery, urlInput]);
+  }, [discoveryType, hasAttempted, triggerDiscovery]);
 
   // Handle add feed with smart folder suggestion
   const handleAddFeed = useCallback(
