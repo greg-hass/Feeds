@@ -275,21 +275,11 @@ export default function ManageScreen() {
   const discoveryPlaceholder =
     discoveryType === "all" ? "feeds" : discoveryType;
 
-  // Manual discovery trigger
   const handleDiscover = useCallback(async () => {
     if (!urlInput.trim()) return;
     const typeParam = discoveryType === "all" ? undefined : discoveryType;
     await triggerDiscovery(urlInput, typeParam);
   }, [urlInput, discoveryType, triggerDiscovery]);
-
-  // If the type filter changes and we already searched, re-run discovery
-  useEffect(() => {
-    if (!hasAttempted || !urlInput.trim()) return;
-    const typeParam = discoveryType === "all" ? undefined : discoveryType;
-    triggerDiscovery(urlInput, typeParam);
-  }, [discoveryType, hasAttempted, triggerDiscovery]);
-
-  // Handle add feed with smart folder suggestion
   const handleAddFeed = useCallback(
     async (discovery: DiscoveredFeed) => {
       setAddingId(discovery.feed_url);
