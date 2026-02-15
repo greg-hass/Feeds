@@ -43,8 +43,9 @@ export async function discoveryRoutes(app: FastifyInstance) {
             const discoveries = await discoverByKeyword(q, query.limit, query.type);
             console.log(`[Discovery Route] Total discoveries: ${discoveries.length}`);
             
-            // Filter out inactive feeds (discoverByKeyword already filters, but double-check)
-            const activeDiscoveries = discoveries.filter(d => d.isActive !== false);
+            // Include feeds where activity hasn't been checked (undefined) or is active
+            // Only exclude feeds explicitly marked as inactive with recent activity check
+            const activeDiscoveries = discoveries.filter(d => d.isActive === true || d.isActive === undefined);
             console.log(`[Discovery Route] Active discoveries: ${activeDiscoveries.length}`);
             
             return { discoveries: activeDiscoveries };

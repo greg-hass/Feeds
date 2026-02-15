@@ -12,32 +12,44 @@ const USER_AGENT = 'Feeds/1.0 (Feed Reader; +https://github.com/greg-hass/Feeds)
  */
 export async function searchRssFeeds(topic: string, maxResults: number = 5): Promise<DiscoveredFeedType[]> {
     console.log(`[RSS Discovery] Searching for: "${topic}"`);
+    const allDiscoveries: DiscoveredFeedType[] = [];
 
-    // Method 1: DuckDuckGo HTML scraping (free, no API key)
+    // Method 1: DuckDuckGo with multiple query variations
     const duckduckgoResults = await searchDuckDuckGo(topic, maxResults);
     if (duckduckgoResults.length > 0) {
         console.log(`[RSS Discovery] DuckDuckGo found ${duckduckgoResults.length} feeds`);
-        return duckduckgoResults;
+        allDiscoveries.push(...duckduckgoResults);
     }
 
-    // Method 2: Bing Web Search API (free tier available)
-    if (GOOGLE_SEARCH_API_KEY && GOOGLE_SEARCH_ENGINE_ID) {
-        const bingResults = await searchBing(topic, maxResults);
-        if (bingResults.length > 0) {
-            console.log(`[RSS Discovery] Bing found ${bingResults.length} feeds`);
-            return bingResults;
+    // Method 2: Feed directory/aggregator APIs (using known working services)
+    const directoryResults = await searchFeedDirectories(topic, maxResults - allDiscoveries.length);
+    if (directoryResults.length > 0) {
+        console.log(`[RSS Discovery] Directories found ${directoryResults.length} feeds`);
+        for (const feed of directoryResults) {
+            if (!allDiscoveries.some(d => d.feed_url === feed.feed_url)) {
+                allDiscoveries.push(feed);
+            }
         }
     }
 
-    // Method 3: Feed目录/aggregator APIs
-    const directoryResults = await searchFeedDirectories(topic, maxResults);
-    if (directoryResults.length > 0) {
-        console.log(`[RSS Discovery] Directories found ${directoryResults.length} feeds`);
-        return directoryResults;
+    // Method 3: Try Bing as fallback
+    if (allDiscoveries.length < maxResults) {
+        const bingResults = await searchBing(topic, maxResults - allDiscoveries.length);
+        if (bingResults.length > 0) {
+            console.log(`[RSS Discovery] Bing found ${bingResults.length} feeds`);
+            for (const feed of bingResults) {
+                if (!allDiscoveries.some(d => d.feed_url === feed.feed_url)) {
+                    allDiscoveries.push(feed);
+                }
+            }
+        }
     }
 
-    console.log(`[RSS Discovery] No results found for: "${topic}"`);
-    return [];
+    if (allDiscoveries.length === 0) {
+        console.log(`[RSS Discovery] No results found for: "${topic}"`);
+    }
+
+    return allDiscoveries.slice(0, maxResults);
 }
 
 /**
@@ -45,9 +57,34 @@ export async function searchRssFeeds(topic: string, maxResults: number = 5): Pro
  */
 async function searchDuckDuckGo(topic: string, limit: number): Promise<DiscoveredFeedType[]> {
     try {
-        const query = encodeURIComponent(`${topic} RSS feed`);
+        // Try multiple search query variations
+        const queryVariations = [
+            `${topic} RSS feed`,
+            `${topic} news feed`,
+            `${topic} blog RSS`,
+        ];
+
+        for (const query of queryVariations) {
+            const results = await searchDuckDuckGoQuery(query, limit);
+            if (results.length > 0) {
+                return results;
+            }
+        }
+
+        return [];
+    } catch (err) {
+        console.error('[RSS Discovery] DuckDuckGo search failed:', err);
+        return [];
+    }
+}
+
+/**
+ * Perform a single DuckDuckGo search query
+ */
+async function searchDuckDuckGoQuery(query: string, limit: number): Promise<DiscoveredFeedType[]> {
+    try {
         const response = await fetch(
-            `https://html.duckduckgo.com/html/?q=${query}`,
+            `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`,
             {
                 headers: { 'User-Agent': USER_AGENT },
                 signal: AbortSignal.timeout(15000),
@@ -57,19 +94,31 @@ async function searchDuckDuckGo(topic: string, limit: number): Promise<Discovere
         if (!response.ok) return [];
 
         const html = await response.text();
-        const siteUrls: string[] = [];
-
-        // Extract URLs from search results
-        const urlRegex = /href="([^"]*)"/g;
         const urls = new Set<string>();
-        let match;
 
-        while ((match = urlRegex.exec(html)) !== null) {
-            const url = match[1];
-            if (url && !url.includes('duckduckgo') && url.startsWith('http')) {
+        // Better URL extraction - target actual search result links
+        // DuckDuckGo HTML version uses 'result' class and 'href' in anchor tags
+        const linkPatterns = [
+            // Match result links (the a tags with results)
+            /<a[^>]+class="[^"]*result[^"]*"[^>]+href="([^"]+)"/gi,
+            // Match any external link
+            /href="(https?:\/\/[^\s"<>]+)"/gi,
+        ];
+
+        for (const pattern of linkPatterns) {
+            let match;
+            while ((match = pattern.exec(html)) !== null) {
+                const url = match[1];
+                if (!url || url.includes('duckduckgo') || url.includes('yahoo.com') || url.includes('bing.com')) {
+                    continue;
+                }
                 try {
                     const urlObj = new URL(url);
-                    if (urlObj.hostname !== 'duckduckgo.com') {
+                    // Exclude DuckDuckGo itself and other search engines
+                    if (!urlObj.hostname.includes('duckduckgo') && 
+                        !urlObj.hostname.includes('yahoo') && 
+                        !urlObj.hostname.includes('bing') &&
+                        url.startsWith('http')) {
                         urls.add(urlObj.origin + urlObj.pathname);
                     }
                 } catch {
@@ -80,7 +129,7 @@ async function searchDuckDuckGo(topic: string, limit: number): Promise<Discovere
 
         // Discover feeds from each URL
         const discoveries: DiscoveredFeedType[] = [];
-        const siteList = Array.from(urls).slice(0, 10); // Limit to 10 URLs
+        const siteList = Array.from(urls).slice(0, 10);
 
         for (const siteUrl of siteList) {
             try {
@@ -98,8 +147,7 @@ async function searchDuckDuckGo(topic: string, limit: number): Promise<Discovere
         }
 
         return discoveries.slice(0, limit);
-    } catch (err) {
-        console.error('[RSS Discovery] DuckDuckGo search failed:', err);
+    } catch {
         return [];
     }
 }
