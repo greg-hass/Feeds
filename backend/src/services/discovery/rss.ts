@@ -1,5 +1,4 @@
-import { discoverFeedsFromUrl, DiscoveredFeed } from '../discovery.js';
-import { checkRssFeedActivity } from './activity-check.js';
+import { discoverFeedsFromUrl } from './url-discovery.js';
 import { DiscoveredFeed as DiscoveredFeedType } from '../../types/discovery.js';
 
 const GOOGLE_SEARCH_API_KEY = process.env.GOOGLE_SEARCH_API_KEY;

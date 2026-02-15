@@ -38,14 +38,21 @@ export async function discoveryRoutes(app: FastifyInstance) {
             }
         }
 
-        const discoveries = await discoverByKeyword(q, query.limit, query.type);
-        console.log(`[Discovery Route] Total discoveries: ${discoveries.length}`);
-        
-        // Filter out inactive feeds (discoverByKeyword already filters, but double-check)
-        const activeDiscoveries = discoveries.filter(d => d.isActive !== false);
-        console.log(`[Discovery Route] Active discoveries: ${activeDiscoveries.length}`);
-        
-        return { discoveries: activeDiscoveries };
+        // Keyword-based discovery with proper error handling
+        try {
+            const discoveries = await discoverByKeyword(q, query.limit, query.type);
+            console.log(`[Discovery Route] Total discoveries: ${discoveries.length}`);
+            
+            // Filter out inactive feeds (discoverByKeyword already filters, but double-check)
+            const activeDiscoveries = discoveries.filter(d => d.isActive !== false);
+            console.log(`[Discovery Route] Active discoveries: ${activeDiscoveries.length}`);
+            
+            return { discoveries: activeDiscoveries };
+        } catch (err) {
+            console.error(`[Discovery Route] Keyword discovery failed for "${q}":`, err instanceof Error ? err.message : err);
+            // Return empty results instead of throwing an error
+            return { discoveries: [] };
+        }
     });
 
     // Explicit URL discovery
