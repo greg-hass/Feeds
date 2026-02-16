@@ -3,7 +3,12 @@ import { AppState, AppStateStatus } from 'react-native';
 import { api } from '@/services/api';
 import { useFeedStore } from '@/stores';
 
-export function useFeedChanges() {
+interface UseFeedChangesOptions {
+    enabled?: boolean;
+}
+
+export function useFeedChanges(options: UseFeedChangesOptions = {}) {
+    const { enabled = true } = options;
     const abortControllerRef = useRef<AbortController | null>(null);
     const appStateRef = useRef<AppStateStatus>('active');
 
@@ -117,6 +122,11 @@ export function useFeedChanges() {
     }, []);
 
     useEffect(() => {
+        // Don't set up listeners if not enabled
+        if (!enabled) {
+            return;
+        }
+
         const handleAppStateChange = (nextAppState: AppStateStatus) => {
             const previousState = appStateRef.current;
             appStateRef.current = nextAppState;
@@ -141,5 +151,5 @@ export function useFeedChanges() {
             subscription.remove();
             stopFeedChangesSSE();
         };
-    }, [startFeedChangesSSE, stopFeedChangesSSE]);
+    }, [startFeedChangesSSE, stopFeedChangesSSE, enabled]);
 }

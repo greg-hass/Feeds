@@ -35,8 +35,8 @@ export default function AppLayout() {
     const { fetchSettings, settings } = useSettingsStore();
     const lastIsRefreshingRef = useRef(false);
 
-    // Listen for real-time feed/folder changes from other devices
-    useFeedChanges();
+    // Listen for real-time feed/folder changes from other devices (only when authenticated)
+    useFeedChanges({ enabled: isAuthenticated === true });
 
     // Sync PWA theme color with accent color setting
     usePwaThemeColor(settings?.accent_color);
