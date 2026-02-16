@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef } from 'react';
-import { View, StyleSheet, useWindowDimensions, Platform, AppState, ActivityIndicator } from 'react-native';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { View, StyleSheet, useWindowDimensions, Platform, AppState, ActivityIndicator, AppStateStatus } from 'react-native';
 import { Slot } from 'expo-router';
 import { useArticleStore, useFeedStore, useSettingsStore } from '@/stores';
 import { useColors } from '@/theme';
@@ -130,7 +130,7 @@ export default function AppLayout() {
 
                             if (status.state === 'granted') {
                                 await (registration as any).periodicSync.register('feeds-background-sync', {
-                                    minInterval: 5 * 60 * 1000, // 5 minutes
+                                    minInterval: 15 * 60 * 1000, // 15 minutes (increased from 5 for battery)
                                 });
                                 console.log('Periodic background sync registered');
                             }
@@ -156,10 +156,21 @@ export default function AppLayout() {
         };
     }, []);
 
-    useEffect(() => {
+    // Track app state for pausing/resuming SSE connections
+    const appStateRef = useRef<AppStateStatus>('active');
+    const sseControllerRef = useRef<AbortController | null>(null);
+    const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const hasSyncedOnceRef = useRef(false);
+
+    // Function to start SSE connection for refresh events
+    const startRefreshEventsSSE = useCallback(() => {
+        // Don't start if already running or app is not active
+        if (sseControllerRef.current || appStateRef.current !== 'active') {
+            return;
+        }
+
         const controller = new AbortController();
-        let refreshTimeout: ReturnType<typeof setTimeout> | null = null;
-        let hasSyncedOnce = false;
+        sseControllerRef.current = controller;
 
         const syncNow = async () => {
             const syncResult = await fetchChanges('feeds,folders,articles,read_state', { skipCursorUpdate: true });
@@ -170,14 +181,14 @@ export default function AppLayout() {
         };
 
         const debouncedSync = () => {
-            if (!hasSyncedOnce) {
-                hasSyncedOnce = true;
+            if (!hasSyncedOnceRef.current) {
+                hasSyncedOnceRef.current = true;
                 syncNow();
                 return;
             }
 
-            if (refreshTimeout) clearTimeout(refreshTimeout);
-            refreshTimeout = setTimeout(() => {
+            if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current);
+            refreshTimeoutRef.current = setTimeout(() => {
                 syncNow();
             }, 800);
         };
@@ -253,16 +264,53 @@ export default function AppLayout() {
             },
             (error) => {
                 console.warn('[RefreshEvents] SSE stream error:', error);
+                // Clear controller on error so it can be restarted
+                sseControllerRef.current = null;
             },
             controller.signal
         );
+    }, [fetchFeeds, fetchFolders, fetchArticles, fetchSettings]);
+
+    // Function to stop SSE connection
+    const stopRefreshEventsSSE = useCallback(() => {
+        if (sseControllerRef.current) {
+            sseControllerRef.current.abort();
+            sseControllerRef.current = null;
+        }
+        if (refreshTimeoutRef.current) {
+            clearTimeout(refreshTimeoutRef.current);
+            refreshTimeoutRef.current = null;
+        }
+        useFeedStore.setState({ isBackgroundRefreshing: false, refreshProgress: null });
+    }, []);
+
+    // Handle app state changes to pause/resume SSE connections
+    useEffect(() => {
+        const handleAppStateChange = (nextAppState: AppStateStatus) => {
+            const previousState = appStateRef.current;
+            appStateRef.current = nextAppState;
+
+            if (nextAppState === 'active' && previousState !== 'active') {
+                // App came to foreground - restart SSE connections
+                startRefreshEventsSSE();
+            } else if (nextAppState !== 'active' && previousState === 'active') {
+                // App went to background - stop SSE connections to save battery
+                stopRefreshEventsSSE();
+            }
+        };
+
+        const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+        // Start SSE on mount if app is active
+        if (appStateRef.current === 'active') {
+            startRefreshEventsSSE();
+        }
 
         return () => {
-            controller.abort();
-            if (refreshTimeout) clearTimeout(refreshTimeout);
-            useFeedStore.setState({ isBackgroundRefreshing: false, refreshProgress: null });
+            subscription.remove();
+            stopRefreshEventsSSE();
         };
-    }, []);
+    }, [startRefreshEventsSSE, stopRefreshEventsSSE]);
 
     useEffect(() => {
         let lastRefreshAt = Date.now();
