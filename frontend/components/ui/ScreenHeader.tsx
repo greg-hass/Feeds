@@ -27,7 +27,7 @@ interface ScreenHeaderProps {
     refreshText?: string;
     showMenuButton?: boolean;
     onMenuPress?: () => void;
-    timeLeft?: string | null;
+    lastRefreshed?: Date | null;
 }
 
 export const ScreenHeader = ({
@@ -44,11 +44,23 @@ export const ScreenHeader = ({
     refreshText = 'Refreshing…',
     showMenuButton = false,
     onMenuPress,
-    timeLeft,
+    lastRefreshed,
 }: ScreenHeaderProps) => {
     const router = useRouter();
     const colors = useColors();
     const s = styles(colors);
+
+    const formatLastRefreshed = (date: Date | null | undefined): string => {
+        if (!date) return '';
+        const now = new Date();
+        const diff = now.getTime() - date.getTime();
+        const minutes = Math.floor(diff / 60000);
+        if (minutes < 1) return 'Just now';
+        if (minutes < 60) return `${minutes}m ago`;
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `${hours}h ago`;
+        return date.toLocaleDateString();
+    };
 
     const handleBack = () => {
         if (onBackPress) {
@@ -116,10 +128,10 @@ export const ScreenHeader = ({
             </View>
 
             {/* Right section */}
-            {(actions.length > 0 || timeLeft) && (
+            {(actions.length > 0 || lastRefreshed) && (
                 <View style={s.rightContainer}>
-                    {timeLeft && !isRefreshing && (
-                        <Text style={s.timerText}>{timeLeft}</Text>
+                    {lastRefreshed && !isRefreshing && (
+                        .timerText}>{format<Text style={sLastRefreshed(lastRefreshed)}</Text>
                     )}
                     {actions.map((action, index) => (
                         <TouchableOpacity

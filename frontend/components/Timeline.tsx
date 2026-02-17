@@ -46,7 +46,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     const previousArticlesRef = useRef<Article[]>([]);
 
     const {
-        articles, isLoading, hasMore, filter, isFeedLoading, headerTitle, timeLeft, isRefreshing, refreshProgress,
+        articles, isLoading, hasMore, filter, isFeedLoading, headerTitle, lastRefreshed, isRefreshing, refreshProgress,
         playingArticleId, isPlaying, activeVideoId, hotPulseAnim, feeds,
         fetchArticles, setFilter, refreshAllFeeds, handleMarkAllRead, prefetchArticle,
         handleArticlePress, handlePlayPress, handleVideoPress,
@@ -168,7 +168,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                 showMenuButton={isMobile}
                 onMenuPress={toggleMenu}
                 isRefreshing={isRefreshing}
-                timeLeft={timeLeft}
+                lastRefreshed={lastRefreshed}
                 rightActions={[
                     {
                         icon: <RefreshCw size={20} color={colors.text.secondary} />,

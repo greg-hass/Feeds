@@ -11,10 +11,10 @@ const ASSETS_TO_CACHE = [
 // Store the user's accent color (set via postMessage from the app)
 let userAccentColor = '#10b981'; // Default emerald
 
-// Background sync configuration - reduced frequency for better battery life
+// Background sync configuration
 const SYNC_TAG = 'feeds-background-sync';
 const LAST_SYNC_KEY = 'last-background-sync';
-const SYNC_INTERVAL_MINUTES = 15; // Check for updates every 15 minutes when possible (increased from 5)
+const SYNC_INTERVAL_MINUTES = 5; // Check for updates every 5 minutes when possible
 
 self.addEventListener('install', (event) => {
     event.waitUntil(

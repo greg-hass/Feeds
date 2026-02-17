@@ -47,8 +47,8 @@ export const FETCH = {
 // ============================================================================
 
 export const SYNC = {
-    /** Background sync interval in milliseconds (2 minutes - increased from 30s for better battery life on mobile/PWA) */
-    SYNC_INTERVAL: 2 * 60 * 1000,
+    /** Background sync interval in milliseconds (5 minutes) */
+    SYNC_INTERVAL: 5 * 60 * 1000,
 
     /** Sync cursor storage key */
     CURSOR_KEY: 'sync_cursor',
