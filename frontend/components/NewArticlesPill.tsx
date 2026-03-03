@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Animated, Platform, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFeedStore } from '@/stores';
 import { useColors, borderRadius, spacing } from '@/theme';
 
 interface NewArticlesPillProps {
@@ -9,20 +8,27 @@ interface NewArticlesPillProps {
     onPress?: () => void;
     visible?: boolean;
     count?: number;
+    onAutoDismiss?: () => void;
+    autoHideMs?: number;
 }
 
-export default function NewArticlesPill({ isDesktop, onPress, visible, count }: NewArticlesPillProps) {
+export default function NewArticlesPill({
+    isDesktop,
+    onPress,
+    visible,
+    count,
+    onAutoDismiss,
+    autoHideMs = 3000,
+}: NewArticlesPillProps) {
     const colors = useColors();
     const insets = useSafeAreaInsets();
-    const lastRefreshNewArticles = useFeedStore((state) => state.lastRefreshNewArticles);
     const [opacity] = useState(() => new Animated.Value(0));
     const [translateY] = useState(() => new Animated.Value(20));
     const [scale] = useState(() => new Animated.Value(0.8));
     const [isVisible, setIsVisible] = useState(false);
 
-    // Use external visible/count props if provided, otherwise fall back to store
-    const shouldShow = visible !== undefined ? visible : (lastRefreshNewArticles !== null && lastRefreshNewArticles > 0);
-    const displayCount = count !== undefined ? count : lastRefreshNewArticles;
+    const shouldShow = Boolean(visible && count && count > 0);
+    const displayCount = count ?? 0;
 
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Animation trigger
     useEffect(() => {
@@ -71,6 +77,16 @@ export default function NewArticlesPill({ isDesktop, onPress, visible, count }: 
             });
         }
     }, [shouldShow, displayCount, opacity, translateY, scale]);
+
+    useEffect(() => {
+        if (!shouldShow || !displayCount || displayCount <= 0) return;
+
+        const timeoutId = setTimeout(() => {
+            onAutoDismiss?.();
+        }, autoHideMs);
+
+        return () => clearTimeout(timeoutId);
+    }, [autoHideMs, displayCount, onAutoDismiss, shouldShow]);
 
     if (!isVisible && !shouldShow) return null;
 

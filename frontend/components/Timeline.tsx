@@ -85,6 +85,16 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
         previousArticlesRef.current = articles;
     }, [articles, isAtTop, prepareForNewArticles]);
 
+    useEffect(() => {
+        if (newArticlesCount <= 0) return;
+
+        const timeoutId = setTimeout(() => {
+            setNewArticlesCount(0);
+        }, 3000);
+
+        return () => clearTimeout(timeoutId);
+    }, [newArticlesCount]);
+
     // Connect saveScrollPosition to handleArticlePress
     const handleArticlePressWithSave = useCallback((item: Article) => {
         saveScrollPosition();
@@ -313,6 +323,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                 visible={newArticlesCount > 0}
                 count={newArticlesCount}
                 onPress={handleNewArticlesPress}
+                onAutoDismiss={() => setNewArticlesCount(0)}
             />
 
             <FeedInfoSheet

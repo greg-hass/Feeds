@@ -23,6 +23,7 @@ export const useFeedStore = create<FeedState>()(
             isBackgroundRefreshing: false,
             refreshProgress: null,
             lastRefreshNewArticles: null,
+            refreshAbortController: null,
 
             fetchFeeds: async () => {
                 set({ isLoading: true });
@@ -311,6 +312,24 @@ export const useFeedStore = create<FeedState>()(
                         isBackgroundRefreshing: isRefreshing ?? state.isBackgroundRefreshing
                     };
                 });
+            },
+
+            setIsLoading: (loading) => {
+                set({ isLoading: loading });
+            },
+
+            setRefreshProgress: (progress) => {
+                set((state) => ({
+                    refreshProgress: typeof progress === 'function' ? progress(state.refreshProgress) : progress,
+                }));
+            },
+
+            setLastRefreshNewArticles: (count) => {
+                set({ lastRefreshNewArticles: count });
+            },
+
+            updateLocalFeeds: (updater) => {
+                set((state) => ({ feeds: updater(state.feeds) }));
             },
         }),
         {

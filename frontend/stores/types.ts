@@ -28,7 +28,12 @@ export interface FeedState {
     
     // Simplified setters for useFeedRefresh hook
     setIsLoading: (loading: boolean) => void;
-    setRefreshProgress: (progress: { total: number; completed: number; currentTitle: string } | null) => void;
+    setRefreshProgress: (
+        progress:
+            | { total: number; completed: number; currentTitle: string }
+            | null
+            | ((prev: { total: number; completed: number; currentTitle: string } | null) => { total: number; completed: number; currentTitle: string } | null)
+    ) => void;
     setLastRefreshNewArticles: (count: number | null) => void;
     updateLocalFeeds: (updater: (feeds: Feed[]) => Feed[]) => void;
 }

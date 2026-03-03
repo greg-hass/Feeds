@@ -9,7 +9,6 @@ import MobileNav from '@/components/MobileNav';
 import Timeline from '@/components/Timeline';
 import BookmarksList from '@/components/BookmarksList';
 import { RefreshProgressDialog } from '@/components/RefreshProgressDialog';
-import NewArticlesPill from '@/components/NewArticlesPill';
 import { usePathname } from 'expo-router';
 import { FloatingPlayer } from '@/components/FloatingPlayer';
 import { PodcastPlayer } from '@/components/PodcastPlayer';
@@ -438,8 +437,6 @@ export default function AppLayout() {
                     currentTitle={refreshProgress?.currentTitle || ''}
                     onCancel={cancelRefresh}
                 />
-
-                <NewArticlesPill isDesktop={isDesktop} />
             </View >
         </ErrorBoundary>
     );
