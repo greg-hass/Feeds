@@ -2,9 +2,8 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Image, Animated, Platform } from 'react-native';
 import { Headphones } from 'lucide-react-native';
 import { Article } from '@/services/api';
-import { useColors, spacing, borderRadius, shadows, animations } from '@/theme';
+import { useColors, spacing, borderRadius, shadows } from '@/theme';
 import { extractVideoId } from '@/utils/youtube';
-import { useSettingsStore } from '@/stores';
 import { densitySpacing, thumbnailSize, fontSizes, featuredThumbnailHeight } from '@/utils/densitySpacing';
 import ArticleFooter from './ArticleFooter';
 import YouTubePlayer from './YouTubePlayer';
@@ -51,7 +50,6 @@ const ArticleCard = React.memo<ArticleCardProps>(({
     hotPulseAnim,
 }) => {
     const colors = useColors();
-    const { settings } = useSettingsStore();
     const [iconFailed, setIconFailed] = useState(false);
 
     const s = styles(colors, isMobile);
@@ -69,39 +67,112 @@ const ArticleCard = React.memo<ArticleCardProps>(({
         return !!(item.published_at && (new Date(item.published_at).getTime() > Date.now() - 4 * 60 * 60 * 1000));
     }, [item.published_at]);
 
-    const handleBookmarkPress = () => {
-        const scale = getBookmarkScale(item.id);
-        const rotation = getBookmarkRotation(item.id);
+    const cardHeader = (
+        <View style={isFeatured && !isYouTube ? [s.cardBody, s.featuredBody] : s.cardBody}>
+            <View style={{ flex: 1 }}>
+                <View style={s.feedPill}>
+                    {item.feed_icon_url && !iconFailed ? (
+                        <Image
+                            source={{ uri: item.feed_icon_url }}
+                            style={s.feedIcon}
+                            onError={() => setIconFailed(true)}
+                        />
+                    ) : (
+                        <View style={s.feedInitial}>
+                            <Text style={s.initialText}>{item.feed_title?.charAt(0)}</Text>
+                        </View>
+                    )}
+                    <Text style={s.feedName} numberOfLines={1}>{item.feed_title}</Text>
+                </View>
 
-        // Animate scale
-        Animated.sequence([
-            Animated.spring(scale, {
-                toValue: 1.3,
-                ...animations.spring,
-                useNativeDriver: true,
-            }),
-            Animated.spring(scale, {
-                toValue: 1,
-                ...animations.spring,
-                useNativeDriver: true,
-            }),
-        ]).start();
+                <Text style={[
+                    s.articleTitle,
+                    item.is_read && s.articleTitleRead
+                ]} numberOfLines={3}>
+                    {item.title}
+                </Text>
 
-        // Animate rotation
-        Animated.spring(rotation, {
-            toValue: item.is_bookmarked ? 0 : 1,
-            ...animations.spring,
-            useNativeDriver: true,
-        }).start();
+                {!isYouTube && isFeatured && (
+                    <Text style={s.featuredSummary} numberOfLines={3}>
+                        {item.summary?.replace(/<[^>]*>?/gm, '')}
+                    </Text>
+                )}
+            </View>
 
-        onBookmarkToggle(item.id);
-    };
+            {!isYouTube && thumbnail && (
+                <TouchableOpacity
+                    style={[s.thumbnailWrapper, isFeatured && s.featuredThumbnailWrapper]}
+                    onPress={item.has_audio ? () => onPlayPress(item) : undefined}
+                    activeOpacity={item.has_audio ? 0.8 : 1}
+                    disabled={!item.has_audio}
+                >
+                    <Image source={{ uri: thumbnail }} style={s.thumbnail} resizeMode="cover" />
+                    {item.has_audio && (
+                        <View style={s.podcastIndicator}>
+                            <Headphones size={12} color={colors.text.inverse} />
+                        </View>
+                    )}
+                </TouchableOpacity>
+            )}
+        </View>
+    );
+
+    const footer = (
+        <ArticleFooter
+            item={item}
+            isHot={isHot}
+            hotPulseAnim={hotPulseAnim}
+            onBookmarkToggle={onBookmarkToggle}
+            getBookmarkScale={getBookmarkScale}
+            getBookmarkRotation={getBookmarkRotation}
+        />
+    );
+
+    if (isYouTube) {
+        return (
+            <View
+                testID={testID || `article-card-${item.id}`}
+                style={[
+                    s.articleCard,
+                    item.is_read && s.articleRead,
+                    isActive && s.articleActive,
+                    isFeatured && s.articleFeatured
+                ]}
+                accessibilityRole="summary"
+                accessibilityLabel={`Article: ${item.title}`}
+                accessibilityState={{ selected: isActive }}
+            >
+                <TouchableOpacity
+                    activeOpacity={0.9}
+                    onPress={() => onVideoPress(item)}
+                    onLongPress={onLongPress}
+                    delayLongPress={200}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Play video: ${item.title}`}
+                    accessibilityHint="Double tap to open inline video"
+                >
+                    {cardHeader}
+                </TouchableOpacity>
+                {footer}
+                {videoId && (
+                    <YouTubePlayer
+                        videoId={videoId}
+                        thumbnail={thumbnail ?? null}
+                        isPlaying={isVideoPlaying}
+                        isShort={isShort}
+                        onPress={() => onVideoPress(item)}
+                    />
+                )}
+                {!item.is_read && <View style={s.unreadIndicator} />}
+            </View>
+        );
+    }
 
     return (
         <TouchableOpacity
             testID={testID || `article-card-${item.id}`}
             activeOpacity={0.9}
-            onPress={() => isYouTube ? onVideoPress(item) : onArticlePress(item)}
+            onPress={() => onArticlePress(item)}
             onLongPress={onLongPress}
             delayLongPress={200}
             style={[
@@ -115,81 +186,8 @@ const ArticleCard = React.memo<ArticleCardProps>(({
             accessibilityHint={item.is_read ? "Read article" : "Unread article, double tap to open"}
             accessibilityState={{ selected: isActive }}
         >
-            {/* Header + Info + Thumbnail section */}
-            <View style={isFeatured && !isYouTube ? [s.cardBody, s.featuredBody] : s.cardBody}>
-                <View style={{ flex: 1 }}>
-                    {/* Feed Pill */}
-                    <View style={s.feedPill}>
-                        {item.feed_icon_url && !iconFailed ? (
-                            <Image
-                                source={{ uri: item.feed_icon_url }}
-                                style={s.feedIcon}
-                                onError={() => setIconFailed(true)}
-                            />
-                        ) : (
-                            <View style={s.feedInitial}>
-                                <Text style={s.initialText}>{item.feed_title?.charAt(0)}</Text>
-                            </View>
-                        )}
-                        <Text style={s.feedName} numberOfLines={1}>{item.feed_title}</Text>
-                    </View>
-
-                    {/* Title */}
-                    <Text style={[
-                        s.articleTitle,
-                        item.is_read && s.articleTitleRead
-                    ]} numberOfLines={3}>
-                        {item.title}
-                    </Text>
-
-                    {/* Summary for featured non-YouTube articles */}
-                    {!isYouTube && isFeatured && (
-                        <Text style={s.featuredSummary} numberOfLines={3}>
-                            {item.summary?.replace(/<[^>]*>?/gm, '')}
-                        </Text>
-                    )}
-                </View>
-
-                {/* Thumbnail */}
-                {!isYouTube && thumbnail && (
-                    <TouchableOpacity
-                        style={[s.thumbnailWrapper, isFeatured && s.featuredThumbnailWrapper]}
-                        onPress={item.has_audio ? () => onPlayPress(item) : undefined}
-                        activeOpacity={item.has_audio ? 0.8 : 1}
-                        disabled={!item.has_audio}
-                    >
-                        <Image source={{ uri: thumbnail }} style={s.thumbnail} resizeMode="cover" />
-                        {item.has_audio && (
-                            <View style={s.podcastIndicator}>
-                                <Headphones size={12} color={colors.text.inverse} />
-                            </View>
-                        )}
-                    </TouchableOpacity>
-                )}
-            </View>
-
-            {/* Footer with metadata and bookmark */}
-            <ArticleFooter
-                item={item}
-                isHot={isHot}
-                hotPulseAnim={hotPulseAnim}
-                onBookmarkToggle={onBookmarkToggle}
-                getBookmarkScale={getBookmarkScale}
-                getBookmarkRotation={getBookmarkRotation}
-            />
-
-            {/* YouTube Video - shown after footer */}
-            {isYouTube && videoId && (
-                <YouTubePlayer
-                    videoId={videoId}
-                    thumbnail={thumbnail ?? null}
-                    isPlaying={isVideoPlaying}
-                    isShort={isShort}
-                    onPress={() => onVideoPress(item)}
-                />
-            )}
-
-            {/* Unread Indicator */}
+            {cardHeader}
+            {footer}
             {!item.is_read && <View style={s.unreadIndicator} />}
         </TouchableOpacity>
     );

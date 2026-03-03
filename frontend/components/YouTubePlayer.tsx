@@ -25,7 +25,7 @@ const YouTubePlayer = React.memo<YouTubePlayerProps>(({
     onPress,
 }) => {
     const colors = useColors();
-    const embedUrl = getEmbedUrl(videoId);
+    const embedUrl = getEmbedUrl(videoId, isPlaying, true);
 
     // 0: prop thumbnail, 1: maxres, 2: hq
     const [qualityLevel, setQualityLevel] = React.useState(thumbnail ? 0 : 1);
@@ -57,6 +57,9 @@ const YouTubePlayer = React.memo<YouTubePlayerProps>(({
                             style={{ border: 'none', width: '100%', height: '100%' }}
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                             allowFullScreen
+                            title="YouTube inline player"
+                            {...({ webkitplaysinline: 'true' } as any)}
+                            playsInline
                         />
                     ) : (
                         <WebView
