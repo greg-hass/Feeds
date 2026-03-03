@@ -66,7 +66,7 @@ export async function fetchChanges(
 ): Promise<SyncResult | null> {
     try {
         const cursor = await getSyncCursor();
-        const response = await api.sync(cursor || undefined);
+        const response = await api.sync(cursor || undefined, include);
 
         // Save the new cursor for next sync (unless skipped)
         if (response.next_cursor && !options.skipCursorUpdate) {

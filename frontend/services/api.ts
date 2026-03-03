@@ -98,7 +98,15 @@ class ApiClient {
 
         if (!response.ok) {
             const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-            throw new ApiError(error.error || 'Request failed', response.status);
+            throw new ApiError(
+                error.error || 'Request failed', 
+                response.status,
+                {
+                    code: error.code,
+                    retryAfter: error.retryAfter,
+                    payload: error
+                }
+            );
         }
 
         const contentType = response.headers.get('Content-Type');
@@ -411,9 +419,12 @@ class ApiClient {
     }
 
     // Sync
-    async sync(cursor?: string) {
-        const params = cursor ? `?cursor=${cursor}` : '';
-        return this.request<SyncResponse>(`/sync${params}`);
+    async sync(cursor?: string, include?: string) {
+        const searchParams = new URLSearchParams();
+        if (cursor) searchParams.set('cursor', cursor);
+        if (include) searchParams.set('include', include);
+        const query = searchParams.toString();
+        return this.request<SyncResponse>(`/sync${query ? `?${query}` : ''}`);
     }
 
     async pushSyncChanges(readState: Array<{ article_id: number; is_read: boolean }>) {
@@ -553,8 +564,15 @@ class ApiClient {
         signal?: AbortSignal
     ): Promise<void> {
         try {
+            // Build headers with auth token
+            const headers: Record<string, string> = {};
+            if (this.authToken) {
+                headers['Authorization'] = `Bearer ${this.authToken}`;
+            }
+
             const response = await fetch(`${API_URL}/feeds-stream/refresh-events`, {
                 method: 'GET',
+                headers,
                 signal,
             });
 
@@ -582,8 +600,15 @@ class ApiClient {
         signal?: AbortSignal
     ): Promise<void> {
         try {
+            // Build headers with auth token
+            const headers: Record<string, string> = {};
+            if (this.authToken) {
+                headers['Authorization'] = `Bearer ${this.authToken}`;
+            }
+
             const response = await fetch(`${API_URL}/feed-changes`, {
                 method: 'GET',
+                headers,
                 signal,
             });
 
@@ -605,9 +630,20 @@ class ApiClient {
 
 // Error class
 export class ApiError extends Error {
-    constructor(message: string, public status: number) {
+    code?: string;
+    retryAfter?: number;
+    payload?: Record<string, unknown>;
+
+    constructor(
+        message: string, 
+        public status: number,
+        options?: { code?: string; retryAfter?: number; payload?: Record<string, unknown> }
+    ) {
         super(message);
         this.name = 'ApiError';
+        this.code = options?.code;
+        this.retryAfter = options?.retryAfter;
+        this.payload = options?.payload;
     }
 }
 

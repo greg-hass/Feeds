@@ -137,11 +137,6 @@ function validateEnvironment(logger: typeof console): void {
     }
 }
 
-function generateTempPassword(): string {
-    const crypto = require('crypto');
-    return crypto.randomBytes(16).toString('hex');
-}
-
 export async function startServer() {
     // Validate environment before starting
     validateEnvironment(console);
@@ -149,28 +144,14 @@ export async function startServer() {
     // Initialize database
     initializeDatabase();
 
-    // Ensure default user exists
-    let tempPassword: string | null = null;
+    // Ensure default user exists (with disabled password - requires setup)
     try {
         const user = queryOne('SELECT id FROM users WHERE username = ?', ['admin']);
         if (!user) {
-            const startupLogger = { log: console.log, error: console.error };
-            startupLogger.log('Creating default admin user...');
-            tempPassword = generateTempPassword();
-            const bcrypt = require('bcrypt');
-            const hashedPassword = await bcrypt.hash(tempPassword, 12);
-            run('INSERT INTO users (username, password_hash, is_admin) VALUES (?, ?, 1)', ['admin', hashedPassword]);
-            
-            startupLogger.log('');
-            startupLogger.log('╔════════════════════════════════════════════════════════╗');
-            startupLogger.log('║              FIRST TIME SETUP                          ║');
-            startupLogger.log('╠════════════════════════════════════════════════════════╣');
-            startupLogger.log(`║  Username: admin                                       ║`);
-            startupLogger.log(`║  Password: ${tempPassword}              ║`);
-            startupLogger.log('║                                                        ║');
-            startupLogger.log('║  Please change this password immediately after login   ║');
-            startupLogger.log('╚════════════════════════════════════════════════════════╝');
-            startupLogger.log('');
+            console.log('Creating default admin user (password disabled, setup required)...');
+            // Create user with disabled password - setup flow will set the real password
+            run('INSERT INTO users (username, password_hash, is_admin, token_version) VALUES (?, ?, 1, 1)', ['admin', 'disabled']);
+            console.log('User created. Run setup to configure password.');
         }
     } catch (err) {
         console.error('Failed to ensure default admin user:', err);

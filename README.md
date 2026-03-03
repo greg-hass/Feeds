@@ -47,7 +47,7 @@ docker run -d \
   -p 3080:80 \
   -v feeds_data:/data \
   -e JWT_SECRET=your-secret-key-min-32-characters \
-  -e APP_PASSWORD=your-admin-password \
+  -e CORS_ORIGIN=http://localhost:3080 \
   ghcr.io/greg-hass/feeds:latest
 ```
 
@@ -58,7 +58,7 @@ Create a `.env` file with these variables:
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `JWT_SECRET` | **Yes** | Secret key for authentication (min 32 chars) |
-| `APP_PASSWORD` | **Yes** | Password for first-time setup |
+| `APP_PASSWORD` | No | Optional bootstrap password for first-time setup or password reset |
 | `CORS_ORIGIN` | Production | Your domain (e.g., `https://feeds.yourdomain.com`) |
 | `GEMINI_API_KEY` | No | Google AI key for feed discovery |
 | `YOUTUBE_API_KEY` | No | YouTube Data API key (improves channel info) |
@@ -82,7 +82,7 @@ node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 4. **Create password**: On first visit, you'll see a setup screen
 5. **Login**: Use the password you just created
 
-**Note:** The `APP_PASSWORD` env var is only needed for initial setup. After that, authentication uses the password you created.
+**Note:** `APP_PASSWORD` is optional. If set, it can be used as a bootstrap password for first-time setup and controlled resets. After setup, authentication uses the password you created in the app.
 
 ## Development
 
@@ -143,8 +143,8 @@ volumes:
 ## Troubleshooting
 
 ### "Authentication not configured" error
-- Make sure `APP_PASSWORD` is set in your `.env`
-- Restart container: `docker-compose restart`
+- Open the setup screen and create an initial password
+- If you want an environment-controlled bootstrap/reset flow, set `APP_PASSWORD` in your `.env` and restart the container
 
 ### Cannot login / "Invalid password"
 - Check that `JWT_SECRET` is set and hasn't changed

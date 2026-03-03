@@ -131,7 +131,7 @@ export const ScreenHeader = ({
             {(actions.length > 0 || lastRefreshed) && (
                 <View style={s.rightContainer}>
                     {lastRefreshed && !isRefreshing && (
-                        .timerText}>{format<Text style={sLastRefreshed(lastRefreshed)}</Text>
+                        <Text style={s.timerText}>{formatLastRefreshed(lastRefreshed)}</Text>
                     )}
                     {actions.map((action, index) => (
                         <TouchableOpacity

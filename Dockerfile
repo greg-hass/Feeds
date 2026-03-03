@@ -79,7 +79,7 @@ EXPOSE 80
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:80/health || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:80/api/v1/auth/status || exit 1
 
 # Environment
 ENV NODE_ENV=production

@@ -12,14 +12,21 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
 
 // Mock API
 vi.mock('@/services/api', () => ({
+    ApiError: class ApiError extends Error {
+        status: number;
+        constructor(message: string, status: number) {
+            super(message);
+            this.status = status;
+        }
+    },
     api: {
         getArticles: vi.fn(),
         getArticle: vi.fn(),
         getBookmarks: vi.fn(),
-        markRead: vi.fn(),
-        markUnread: vi.fn(),
-        markAllRead: vi.fn(),
-        toggleBookmark: vi.fn(),
+        markArticleRead: vi.fn(),
+        markArticleUnread: vi.fn(),
+        markArticlesRead: vi.fn(),
+        bookmarkArticle: vi.fn(),
     },
 }));
 
@@ -203,7 +210,7 @@ describe('Article Store', () => {
                 });
             });
             
-            (api.markRead as any).mockResolvedValue({ success: true });
+            (api.markArticleRead as any).mockResolvedValue({ success: true });
             
             await act(async () => {
                 await useArticleStore.getState().markRead(1);
@@ -211,7 +218,7 @@ describe('Article Store', () => {
             
             const article = useArticleStore.getState().articles[0];
             expect(article.is_read).toBe(true);
-            expect(api.markRead).toHaveBeenCalledWith(1);
+            expect(api.markArticleRead).toHaveBeenCalledWith(1);
         });
     });
 
@@ -226,7 +233,7 @@ describe('Article Store', () => {
                 });
             });
             
-            (api.markUnread as any).mockResolvedValue({ success: true });
+            (api.markArticleUnread as any).mockResolvedValue({ success: true });
             
             await act(async () => {
                 await useArticleStore.getState().markUnread(1);
@@ -234,7 +241,7 @@ describe('Article Store', () => {
             
             const article = useArticleStore.getState().articles[0];
             expect(article.is_read).toBe(false);
-            expect(api.markUnread).toHaveBeenCalledWith(1);
+            expect(api.markArticleUnread).toHaveBeenCalledWith(1);
         });
     });
 
@@ -249,7 +256,7 @@ describe('Article Store', () => {
                 });
             });
             
-            (api.toggleBookmark as any).mockResolvedValue({ success: true, is_bookmarked: true });
+            (api.bookmarkArticle as any).mockResolvedValue({ success: true });
             
             await act(async () => {
                 await useArticleStore.getState().toggleBookmark(1);
@@ -257,6 +264,7 @@ describe('Article Store', () => {
             
             const article = useArticleStore.getState().articles[0];
             expect(article.is_bookmarked).toBe(true);
+            expect(api.bookmarkArticle).toHaveBeenCalledWith(1, true);
         });
     });
 

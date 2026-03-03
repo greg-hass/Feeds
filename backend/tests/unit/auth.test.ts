@@ -2,6 +2,14 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import jwt from 'jsonwebtoken';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 
+// Mock the database module
+vi.mock('../../src/db/index.js', () => ({
+    queryOne: vi.fn().mockReturnValue({ token_version: 1 }),
+    queryAll: vi.fn(),
+    run: vi.fn(),
+    db: vi.fn().mockReturnValue({}),
+}));
+
 const TEST_JWT_SECRET = 'test-secret-key-that-is-at-least-32-characters-long-for-testing';
 
 describe('Auth - generateToken', () => {

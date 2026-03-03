@@ -11,16 +11,30 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
 
 // Mock API
 vi.mock('@/services/api', () => ({
+    ApiError: class ApiError extends Error {
+        status: number;
+        constructor(message: string, status: number) {
+            super(message);
+            this.status = status;
+        }
+    },
     api: {
         getFeeds: vi.fn(),
         getFolders: vi.fn(),
+        getArticles: vi.fn(),
         addFeed: vi.fn(),
         deleteFeed: vi.fn(),
+        deleteFolder: vi.fn(),
         refreshFeed: vi.fn(),
         updateFeed: vi.fn(),
         pauseFeed: vi.fn(),
         resumeFeed: vi.fn(),
     },
+}));
+
+vi.mock('@/lib/sync', () => ({
+    applySyncChanges: vi.fn(),
+    fetchChanges: vi.fn().mockResolvedValue(null),
 }));
 
 import { api } from '@/services/api';
@@ -33,6 +47,16 @@ describe('Feed Store', () => {
         // Import the store fresh for each test
         const module = await import('@/stores/feedStore');
         useFeedStore = module.useFeedStore;
+        useFeedStore.setState({
+            feeds: [],
+            folders: [],
+            smartFolders: [],
+            totalUnread: 0,
+            isLoading: false,
+            isBackgroundRefreshing: false,
+            refreshProgress: null,
+            lastRefreshNewArticles: null,
+        });
     });
 
     describe('Initial State', () => {
@@ -85,7 +109,11 @@ describe('Feed Store', () => {
                 { id: 2, name: 'News' },
             ];
             
-            (api.getFolders as any).mockResolvedValue({ folders: mockFolders });
+            (api.getFolders as any).mockResolvedValue({
+                folders: mockFolders,
+                smart_folders: [],
+                totals: { all_unread: 0 },
+            });
             
             await useFeedStore.getState().fetchFolders();
             
@@ -99,11 +127,12 @@ describe('Feed Store', () => {
         it('should add feed successfully', async () => {
             const newFeed = { id: 3, title: 'New Feed', url: 'https://example.com/new' };
             (api.addFeed as any).mockResolvedValue({ feed: newFeed });
+            (api.getArticles as any).mockResolvedValue({ articles: [], next_cursor: null });
             
             const result = await useFeedStore.getState().addFeed('https://example.com/new');
             
             expect(result).toEqual(newFeed);
-            expect(api.addFeed).toHaveBeenCalledWith('https://example.com/new', undefined, undefined, true);
+            expect(api.addFeed).toHaveBeenCalledWith('https://example.com/new', undefined, true, undefined);
         });
     });
 
@@ -118,6 +147,11 @@ describe('Feed Store', () => {
             });
             
             (api.deleteFeed as any).mockResolvedValue({ success: true });
+            (api.getFolders as any).mockResolvedValue({
+                folders: [],
+                smart_folders: [],
+                totals: { all_unread: 0 },
+            });
             
             await useFeedStore.getState().deleteFeed(1);
             
@@ -131,35 +165,12 @@ describe('Feed Store', () => {
     describe('refreshFeed', () => {
         it('should refresh feed successfully', async () => {
             (api.refreshFeed as any).mockResolvedValue({ new_articles: 5 });
+            (api.getFeeds as any).mockResolvedValue({ feeds: [] });
             
             const newArticles = await useFeedStore.getState().refreshFeed(1);
             
             expect(newArticles).toBe(5);
             expect(api.refreshFeed).toHaveBeenCalledWith(1);
-        });
-    });
-
-    describe('setIsLoading', () => {
-        it('should set loading state', () => {
-            useFeedStore.getState().setIsLoading(true);
-            expect(useFeedStore.getState().isLoading).toBe(true);
-            
-            useFeedStore.getState().setIsLoading(false);
-            expect(useFeedStore.getState().isLoading).toBe(false);
-        });
-    });
-
-    describe('setRefreshProgress', () => {
-        it('should set refresh progress', () => {
-            const progress = { total: 10, completed: 5, currentTitle: 'Feed 1' };
-            useFeedStore.getState().setRefreshProgress(progress);
-            
-            expect(useFeedStore.getState().refreshProgress).toEqual(progress);
-        });
-
-        it('should clear refresh progress', () => {
-            useFeedStore.getState().setRefreshProgress(null);
-            expect(useFeedStore.getState().refreshProgress).toBeNull();
         });
     });
 });

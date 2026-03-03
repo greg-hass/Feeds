@@ -19,12 +19,19 @@ vi.mock('../../src/services/feed-parser.js', () => ({
     detectFeedType: vi.fn(() => 'rss'),
 }));
 
-// Mock icon fetching
-vi.mock('../../src/services/icon-service.js', () => ({
-    fetchAndCacheIcon: vi.fn().mockResolvedValue(null),
+vi.mock('../../src/services/discovery.js', () => ({
+    discoverFeedsFromUrl: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock('../../src/services/feed-refresh.js', () => ({
+    refreshFeed: vi.fn().mockResolvedValue({
+        success: true,
+        newArticles: 1,
+    }),
 }));
 
 import { parseFeed } from '../../src/services/feed-parser.js';
+import { refreshFeed } from '../../src/services/feed-refresh.js';
 
 describe('Feeds API Routes', () => {
     let app: FastifyInstance;
@@ -32,6 +39,9 @@ describe('Feeds API Routes', () => {
     let db: Database.Database;
 
     beforeEach(async () => {
+        vi.resetModules();
+        vi.clearAllMocks();
+        
         testDbPath = join(tmpdir(), `feeds-api-test-${Date.now()}.db`);
         
         // Create test database
@@ -39,14 +49,18 @@ describe('Feeds API Routes', () => {
         db.pragma('journal_mode = WAL');
         db.pragma('foreign_keys = ON');
         
-        // Create tables
+        // Create tables with complete schema matching migrations
         db.exec(`
             CREATE TABLE users (
                 id INTEGER PRIMARY KEY,
                 username TEXT NOT NULL,
-                password_hash TEXT
+                password_hash TEXT,
+                is_admin INTEGER DEFAULT 0,
+                token_version INTEGER DEFAULT 1,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );
-            INSERT INTO users (id, username) VALUES (1, 'admin');
+            INSERT INTO users (id, username, token_version) VALUES (1, 'admin', 1);
         `);
         
         db.exec(`
@@ -65,14 +79,21 @@ describe('Feeds API Routes', () => {
                 user_id INTEGER NOT NULL,
                 folder_id INTEGER,
                 url TEXT UNIQUE NOT NULL,
+                site_url TEXT,
                 title TEXT,
                 description TEXT,
                 type TEXT DEFAULT 'rss',
-                favicon TEXT,
+                icon_url TEXT,
+                icon_cached_path TEXT,
+                icon_cached_content_type TEXT,
+                icon_updated_at TEXT,
                 refresh_interval_minutes INTEGER DEFAULT 60,
+                last_fetched_at DATETIME,
                 last_refresh_at DATETIME,
+                next_fetch_at DATETIME,
                 next_refresh_at DATETIME,
                 last_error TEXT,
+                last_error_at DATETIME,
                 error_count INTEGER DEFAULT 0,
                 paused_at DATETIME,
                 deleted_at DATETIME,
@@ -93,10 +114,23 @@ describe('Feeds API Routes', () => {
                 author TEXT,
                 thumbnail_url TEXT,
                 published_at DATETIME,
+                fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 is_read INTEGER DEFAULT 0,
                 is_starred INTEGER DEFAULT 0,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(feed_id, guid)
+            );
+        `);
+        
+        db.exec(`
+            CREATE TABLE read_state (
+                user_id INTEGER NOT NULL,
+                article_id INTEGER NOT NULL,
+                is_read INTEGER DEFAULT 0,
+                read_at DATETIME,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (user_id, article_id)
             );
         `);
         
@@ -122,11 +156,9 @@ describe('Feeds API Routes', () => {
         // Set database path
         process.env.DATABASE_PATH = testDbPath;
         
-        // Import and register routes
+        // Import and register routes (fresh import after resetModules)
         const { feedsRoutes } = await import('../../src/routes/feeds.js');
         await app.register(feedsRoutes, { prefix: '/api/v1/feeds' });
-        
-        vi.clearAllMocks();
     });
 
     afterEach(async () => {
@@ -145,13 +177,9 @@ describe('Feeds API Routes', () => {
                 url: '/api/v1/feeds',
             });
 
-            // The controller might return 200 or 500 depending on implementation
-            expect([200, 500]).toContain(response.statusCode);
-            
-            if (response.statusCode === 200) {
-                const body = JSON.parse(response.payload);
-                expect(body.feeds).toEqual([]);
-            }
+            expect(response.statusCode).toBe(200);
+            const body = JSON.parse(response.payload);
+            expect(body.feeds).toEqual([]);
         });
 
         it('should return list of feeds', async () => {
@@ -166,35 +194,27 @@ describe('Feeds API Routes', () => {
                 url: '/api/v1/feeds',
             });
 
-            // The controller might return 200 or 500 depending on implementation
-            expect([200, 500]).toContain(response.statusCode);
-            
-            if (response.statusCode === 200) {
-                const body = JSON.parse(response.payload);
-                expect(body.feeds).toHaveLength(2);
-                expect(body.feeds[0].title).toBe('Feed 1');
-                expect(body.feeds[1].title).toBe('Feed 2');
-            }
+            expect(response.statusCode).toBe(200);
+            const body = JSON.parse(response.payload);
+            expect(body.feeds).toHaveLength(2);
+            expect(body.feeds[0].title).toBe('Feed 1');
+            expect(body.feeds[1].title).toBe('Feed 2');
         });
     });
 
     describe('GET /api/v1/feeds/:id', () => {
         it('should return single feed', async () => {
-            const result = db.prepare('INSERT INTO feeds (user_id, folder_id, url, title) VALUES (?, ?, ?, ?)')
-                .run(1, 1, 'https://example.com/feed.xml', 'Test Feed');
+            const result = db.prepare('INSERT INTO feeds (user_id, folder_id, url, title, type) VALUES (?, ?, ?, ?, ?)')
+                .run(1, 1, 'https://example.com/feed.xml', 'Test Feed', 'rss');
             
             const response = await app.inject({
                 method: 'GET',
                 url: `/api/v1/feeds/${result.lastInsertRowid}`,
             });
 
-            // The controller might return 200 or 404 depending on implementation
-            expect([200, 404]).toContain(response.statusCode);
-            
-            if (response.statusCode === 200) {
-                const body = JSON.parse(response.payload);
-                expect(body.feed.title).toBe('Test Feed');
-            }
+            expect(response.statusCode).toBe(200);
+            const body = JSON.parse(response.payload);
+            expect(body.feed.title).toBe('Test Feed');
         });
 
         it('should return 404 for non-existent feed', async () => {
@@ -218,15 +238,11 @@ describe('Feeds API Routes', () => {
                 },
             });
 
-            // The controller might return 200 or 500 depending on implementation
-            expect([200, 500]).toContain(response.statusCode);
-            
-            if (response.statusCode === 200) {
-                const body = JSON.parse(response.payload);
-                expect(body.feed.title).toBe('Test Feed');
-                expect(body.feed.url).toBe('https://example.com/feed.xml');
-                expect(parseFeed).toHaveBeenCalledWith('https://example.com/feed.xml', expect.any(Object));
-            }
+            expect(response.statusCode).toBe(200);
+            const body = JSON.parse(response.payload);
+            expect(body.feed.title).toBe('Test Feed');
+            expect(body.feed.url).toBe('https://example.com/feed.xml');
+            expect(parseFeed).toHaveBeenCalledWith('https://example.com/feed.xml');
         });
 
         it('should return 400 for invalid URL', async () => {
@@ -277,21 +293,16 @@ describe('Feeds API Routes', () => {
                 },
             });
 
-            // Should return the existing feed (may return 200 or 500 depending on implementation)
-            expect([200, 500]).toContain(response.statusCode);
-            
-            if (response.statusCode === 200) {
-                const body = JSON.parse(response.payload);
-                // May have restored flag or just return the feed
-                expect(body).toBeDefined();
-            }
+            expect(response.statusCode).toBe(409);
+            const body = JSON.parse(response.payload);
+            expect(body.error).toBe('Feed already exists');
         });
     });
 
     describe('PATCH /api/v1/feeds/:id', () => {
         it('should update feed title', async () => {
-            const result = db.prepare('INSERT INTO feeds (user_id, folder_id, url, title) VALUES (?, ?, ?, ?)')
-                .run(1, 1, 'https://example.com/feed.xml', 'Old Title');
+            const result = db.prepare('INSERT INTO feeds (user_id, folder_id, url, title, type) VALUES (?, ?, ?, ?, ?)')
+                .run(1, 1, 'https://example.com/feed.xml', 'Old Title', 'rss');
             
             const response = await app.inject({
                 method: 'PATCH',
@@ -301,19 +312,15 @@ describe('Feeds API Routes', () => {
                 },
             });
 
-            // The controller might return 200 or 404 depending on implementation
-            expect([200, 404]).toContain(response.statusCode);
-            
-            if (response.statusCode === 200) {
-                const body = JSON.parse(response.payload);
-                expect(body.feed.title).toBe('New Title');
-            }
+            expect(response.statusCode).toBe(200);
+            const body = JSON.parse(response.payload);
+            expect(body.feed.title).toBe('New Title');
         });
 
         it('should update feed folder', async () => {
             db.prepare('INSERT INTO folders (user_id, name) VALUES (?, ?)').run(1, 'New Folder');
-            const result = db.prepare('INSERT INTO feeds (user_id, folder_id, url, title) VALUES (?, ?, ?, ?)')
-                .run(1, 1, 'https://example.com/feed.xml', 'Test Feed');
+            const result = db.prepare('INSERT INTO feeds (user_id, folder_id, url, title, type) VALUES (?, ?, ?, ?, ?)')
+                .run(1, 1, 'https://example.com/feed.xml', 'Test Feed', 'rss');
             
             const response = await app.inject({
                 method: 'PATCH',
@@ -323,8 +330,7 @@ describe('Feeds API Routes', () => {
                 },
             });
 
-            // The controller might return 200 or 404 depending on implementation
-            expect([200, 404]).toContain(response.statusCode);
+            expect(response.statusCode).toBe(200);
         });
 
         it('should return 404 for non-existent feed', async () => {
@@ -342,22 +348,18 @@ describe('Feeds API Routes', () => {
 
     describe('DELETE /api/v1/feeds/:id', () => {
         it('should delete feed', async () => {
-            const result = db.prepare('INSERT INTO feeds (user_id, folder_id, url, title) VALUES (?, ?, ?, ?)')
-                .run(1, 1, 'https://example.com/feed.xml', 'Test Feed');
+            const result = db.prepare('INSERT INTO feeds (user_id, folder_id, url, title, type) VALUES (?, ?, ?, ?, ?)')
+                .run(1, 1, 'https://example.com/feed.xml', 'Test Feed', 'rss');
             
             const response = await app.inject({
                 method: 'DELETE',
                 url: `/api/v1/feeds/${result.lastInsertRowid}`,
             });
 
-            // The controller might return 200 or 404 depending on implementation
-            expect([200, 404]).toContain(response.statusCode);
-            
-            if (response.statusCode === 200) {
-                // Verify feed is soft-deleted
-                const feed = db.prepare('SELECT * FROM feeds WHERE id = ?').get(result.lastInsertRowid) as any;
-                expect(feed.deleted_at).toBeDefined();
-            }
+            expect(response.statusCode).toBe(200);
+            // Verify feed is soft-deleted
+            const feed = db.prepare('SELECT * FROM feeds WHERE id = ?').get(result.lastInsertRowid) as any;
+            expect(feed.deleted_at).toBeDefined();
         });
 
         it('should return 404 for non-existent feed', async () => {
@@ -432,20 +434,16 @@ describe('Feeds API Routes', () => {
 
     describe('POST /api/v1/feeds/:id/refresh', () => {
         it('should refresh feed', async () => {
-            const result = db.prepare('INSERT INTO feeds (user_id, folder_id, url, title) VALUES (?, ?, ?, ?)')
-                .run(1, 1, 'https://example.com/feed.xml', 'Test Feed');
+            const result = db.prepare('INSERT INTO feeds (user_id, folder_id, url, title, type) VALUES (?, ?, ?, ?, ?)')
+                .run(1, 1, 'https://example.com/feed.xml', 'Test Feed', 'rss');
             
             const response = await app.inject({
                 method: 'POST',
                 url: `/api/v1/feeds/${result.lastInsertRowid}/refresh`,
             });
 
-            // The controller might return 200 or 404 depending on implementation
-            expect([200, 404]).toContain(response.statusCode);
-            
-            if (response.statusCode === 200) {
-                expect(parseFeed).toHaveBeenCalled();
-            }
+            expect(response.statusCode).toBe(200);
+            expect(refreshFeed).toHaveBeenCalled();
         });
 
         it('should return 404 for non-existent feed', async () => {
@@ -460,44 +458,35 @@ describe('Feeds API Routes', () => {
 
     describe('POST /api/v1/feeds/:id/pause', () => {
         it('should pause feed', async () => {
-            const result = db.prepare('INSERT INTO feeds (user_id, folder_id, url, title) VALUES (?, ?, ?, ?)')
-                .run(1, 1, 'https://example.com/feed.xml', 'Test Feed');
+            const result = db.prepare('INSERT INTO feeds (user_id, folder_id, url, title, type) VALUES (?, ?, ?, ?, ?)')
+                .run(1, 1, 'https://example.com/feed.xml', 'Test Feed', 'rss');
             
             const response = await app.inject({
                 method: 'POST',
                 url: `/api/v1/feeds/${result.lastInsertRowid}/pause`,
             });
 
-            // The controller might return 200 or 404 depending on implementation
-            expect([200, 404]).toContain(response.statusCode);
-            
-            if (response.statusCode === 200) {
-                const feed = db.prepare('SELECT * FROM feeds WHERE id = ?').get(result.lastInsertRowid) as any;
-                expect(feed.paused_at).toBeDefined();
-            }
+            expect(response.statusCode).toBe(200);
+            const feed = db.prepare('SELECT * FROM feeds WHERE id = ?').get(result.lastInsertRowid) as any;
+            expect(feed.paused_at).toBeDefined();
         });
     });
 
     describe('POST /api/v1/feeds/:id/resume', () => {
         it('should resume paused feed', async () => {
             const result = db.prepare(`
-                INSERT INTO feeds (user_id, folder_id, url, title, paused_at) 
-                VALUES (?, ?, ?, ?, datetime('now'))
-            `).run(1, 1, 'https://example.com/feed.xml', 'Test Feed');
+                INSERT INTO feeds (user_id, folder_id, url, title, type, paused_at) 
+                VALUES (?, ?, ?, ?, ?, datetime('now'))
+            `).run(1, 1, 'https://example.com/feed.xml', 'Test Feed', 'rss');
             
             const response = await app.inject({
                 method: 'POST',
                 url: `/api/v1/feeds/${result.lastInsertRowid}/resume`,
             });
 
-            // The controller might return 200 or 404 depending on implementation
-            // Just verify it doesn't crash
-            expect([200, 404]).toContain(response.statusCode);
-            
-            if (response.statusCode === 200) {
-                const feed = db.prepare('SELECT * FROM feeds WHERE id = ?').get(result.lastInsertRowid) as any;
-                expect(feed.paused_at).toBeNull();
-            }
+            expect(response.statusCode).toBe(200);
+            const feed = db.prepare('SELECT * FROM feeds WHERE id = ?').get(result.lastInsertRowid) as any;
+            expect(feed.paused_at).toBeNull();
         });
     });
 });

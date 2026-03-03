@@ -179,15 +179,8 @@ export async function authRoutes(app: FastifyInstance) {
      * Initial password setup (only works if no password is set)
      */
     app.post('/setup', async (request: FastifyRequest, reply) => {
-        // Check if APP_PASSWORD is configured in env
-        const envPassword = process.env.APP_PASSWORD;
-        if (!envPassword) {
-            return reply.status(400).send({ 
-                error: 'APP_PASSWORD not configured in environment' 
-            });
-        }
-        
         const { password } = setupSchema.parse(request.body);
+        const envPassword = process.env.APP_PASSWORD;
         
         // Get current user
         const user = queryOne<{ id: number; password_hash: string }>(
@@ -202,6 +195,12 @@ export async function authRoutes(app: FastifyInstance) {
                 ['admin', hash]
             );
         } else if (user.password_hash !== 'disabled' && user.password_hash) {
+            if (!envPassword) {
+                return reply.status(403).send({
+                    error: 'Password already configured. Use login instead.'
+                });
+            }
+
             // Password already set - verify against env password for security
             const isValid = await bcrypt.compare(envPassword, user.password_hash);
             if (!isValid) {

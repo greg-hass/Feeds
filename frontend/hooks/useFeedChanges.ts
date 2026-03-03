@@ -84,7 +84,7 @@ export function useFeedChanges() {
                         useFeedStore.setState((state) => ({
                             folders: state.folders.filter(f => f.id !== event.folderId),
                             feeds: state.feeds.map(f => 
-                                f.folder_id === event.folderId ? { ...f, folder_id: undefined } : f
+                                f.folder_id === event.folderId ? { ...f, folder_id: null } : f
                             ),
                         }));
                     }
