@@ -209,7 +209,7 @@ const styles = (colors: any, isMobile: boolean) => StyleSheet.create({
         width: '100%',
     },
     halfWidth: {
-        width: `calc(50% - ${spacing.md / 2}px)`,
+        width: '48%',
         minWidth: 400,
     },
 });

@@ -122,7 +122,7 @@ export const Button = ({
                 <Text style={[
                     s.text, 
                     { color: getTextColor(), fontSize: getTextSize() },
-                    (icon || loading) && !isIconOnly && { marginLeft: spacing.sm },
+                    ((icon || loading) && !isIconOnly) ? { marginLeft: spacing.sm } : null,
                     textStyle
                 ]}>
                     {title}

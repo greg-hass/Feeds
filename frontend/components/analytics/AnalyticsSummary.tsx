@@ -69,11 +69,11 @@ export function AnalyticsSummary() {
             />
 
             <StatCard
-                icon={<TrendingUp size={24} color={colors.success.DEFAULT} />}
+                icon={<TrendingUp size={24} color={colors.success} />}
                 label="Top Feeds"
                 value={overview.top_feeds.length}
                 subtitle={overview.top_feeds[0]?.feed_title || 'No data'}
-                color={colors.success.DEFAULT}
+                color={colors.success}
             />
         </View>
     );

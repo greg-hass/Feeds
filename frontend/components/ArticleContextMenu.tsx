@@ -40,6 +40,7 @@ export const ArticleContextMenu: React.FC<ArticleContextMenuProps> = ({
     article,
     onClose,
     onArticlePress,
+    onFeedInfoPress,
 }) => {
     const colors = useColors();
     const { markRead, markUnread, toggleBookmark } = useArticleStore();

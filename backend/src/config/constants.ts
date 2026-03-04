@@ -79,8 +79,8 @@ export const FEEDS = {
 // ============================================================================
 
 export const SCHEDULING = {
-    /** Default feed refresh interval in milliseconds (1 hour) */
-    DEFAULT_REFRESH_INTERVAL: 60 * 60 * 1000,
+    /** Fixed feed refresh interval in milliseconds (15 minutes) */
+    DEFAULT_REFRESH_INTERVAL: 15 * 60 * 1000,
 
     /** Minimum refresh interval in milliseconds (5 minutes) */
     MIN_REFRESH_INTERVAL: 5 * 60 * 1000,

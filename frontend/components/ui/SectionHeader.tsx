@@ -4,15 +4,17 @@ import { useColors, spacing } from '@/theme';
 
 interface SectionHeaderProps {
     title: string;
+    icon?: React.ReactNode;
     style?: ViewStyle;
 }
 
-export const SectionHeader = ({ title, style }: SectionHeaderProps) => {
+export const SectionHeader = ({ title, icon, style }: SectionHeaderProps) => {
     const colors = useColors();
     const s = styles(colors);
 
     return (
         <Text style={[s.text, style]}>
+            {icon ? <>{icon} </> : null}
             {title}
         </Text>
     );

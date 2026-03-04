@@ -270,7 +270,7 @@ export default function ArticleContent({ html }: ArticleContentProps) {
                     ` }}
                     style={{ backgroundColor: contentColors.bg }}
                     scrollEnabled={false} // Container scroll handles it
-                    onShouldStartLoadWithRequest={(request) => {
+                    onShouldStartLoadWithRequest={(request: { url?: string }) => {
                         const url = request.url;
                         if (!url || url === 'about:blank' || url.startsWith('data:')) return true;
 

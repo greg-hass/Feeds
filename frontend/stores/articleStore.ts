@@ -7,6 +7,19 @@ import { handleError } from "@/services/errorHandler";
 import { sortArticlesByDateAndId } from "@/utils/sorting";
 import { ArticleState } from "./types";
 
+function mergeSortedArticles(existingArticles: Article[], incomingArticles: Article[]): Article[] {
+  if (incomingArticles.length === 0) {
+    return existingArticles;
+  }
+
+  const merged = new Map(existingArticles.map((article) => [article.id, article]));
+  incomingArticles.forEach((article) => {
+    merged.set(article.id, article);
+  });
+
+  return sortArticlesByDateAndId(Array.from(merged.values()));
+}
+
 export const useArticleStore = create<ArticleState>()(
   persist(
     (set, get) => ({
@@ -79,45 +92,14 @@ export const useArticleStore = create<ArticleState>()(
             // On reset, just use new articles (already sorted from backend)
             finalArticles = articles;
           } else if (isLiveUpdate) {
-            // Live update: Prepend ONLY truly new articles (those with higher IDs or newer dates than our top one)
-            // This prevents duplicating articles the user is already looking at
-            const existingIds = new Set(state.articles.map((a) => a.id));
-            const trulyNew = articles.filter((a) => !existingIds.has(a.id));
+            finalArticles = mergeSortedArticles(state.articles, articles);
 
-            if (trulyNew.length === 0) {
+            if (finalArticles.length === state.articles.length) {
               set({ isLoading: false });
               return;
             }
-
-            // Combine and re-sort just in case, though backend usually handles it
-            finalArticles = sortArticlesByDateAndId([
-              ...trulyNew,
-              ...state.articles,
-            ]);
           } else {
-            // Merge new articles into existing sorted list
-            // Backend returns sorted articles, so we can do efficient merge
-            const existingMap = new Map(state.articles.map((a) => [a.id, a]));
-            const newMap = new Map(articles.map((a) => [a.id, a]));
-
-            // Deduplicate: prefer new data over existing
-            for (const [id, article] of newMap) {
-              existingMap.set(id, article);
-            }
-
-            // Only sort if we actually have duplicates (rare case)
-            if (
-              newMap.size < articles.length ||
-              existingMap.size !== state.articles.length + articles.length
-            ) {
-              // Had duplicates, need to sort
-              finalArticles = sortArticlesByDateAndId(
-                Array.from(existingMap.values()),
-              );
-            } else {
-              // No duplicates, just concatenate (backend already sorted)
-              finalArticles = [...state.articles, ...articles];
-            }
+            finalArticles = mergeSortedArticles(state.articles, articles);
           }
 
           set({
@@ -375,14 +357,29 @@ export const useArticleStore = create<ArticleState>()(
             }
           }
 
+          if (changes.articles?.deleted?.length) {
+            const deletedIds = new Set(changes.articles.deleted);
+            newArticles = newArticles.filter((article) => !deletedIds.has(article.id));
+          }
+
+          if (changes.articles?.updated?.length) {
+            const updatedArticles = changes.articles.updated as Article[];
+            const filteredUpdates = updatedArticles.filter((article) => {
+              if (state.filter.unread_only && article.is_read) return false;
+              if (state.filter.feed_id && article.feed_id !== state.filter.feed_id) return false;
+              if (state.filter.type && article.feed_type !== state.filter.type) return false;
+
+              return true;
+            });
+
+            newArticles = mergeSortedArticles(newArticles, filteredUpdates);
+          }
+
           // Prepend newly created articles if they match filters
           if (syncData.articlesCreated.length > 0) {
-            const existingIds = new Set(newArticles.map((a) => a.id));
             const addedArticles = (
               syncData.articlesCreated as Article[]
             ).filter((a) => {
-              if (existingIds.has(a.id)) return false;
-
               // Apply filters
               if (state.filter.unread_only && a.is_read) return false;
               if (state.filter.feed_id && a.feed_id !== state.filter.feed_id)
@@ -396,9 +393,7 @@ export const useArticleStore = create<ArticleState>()(
             });
 
             if (addedArticles.length > 0) {
-              newArticles = [...addedArticles, ...newArticles];
-              // Sort by date then ID
-              newArticles = sortArticlesByDateAndId(newArticles);
+              newArticles = mergeSortedArticles(newArticles, addedArticles);
             }
           }
 

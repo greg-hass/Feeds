@@ -259,6 +259,50 @@ class ApiClient {
         }>('/health/db-vacuum');
     }
 
+    async getRetentionSettings() {
+        return this.get<{
+            enabled: boolean;
+            maxArticleAgeDays: number;
+            maxArticlesPerFeed: number;
+            keepStarred: boolean;
+            keepUnread: boolean;
+        }>('/maintenance/retention');
+    }
+
+    async updateRetentionSettings(settings: {
+        enabled: boolean;
+        maxArticleAgeDays: number;
+        maxArticlesPerFeed: number;
+        keepStarred: boolean;
+        keepUnread: boolean;
+    }) {
+        return this.put('/maintenance/retention', settings);
+    }
+
+    async getMaintenanceStats() {
+        return this.get<{
+            totalSizeBytes: number;
+            articleCount: number;
+            feedCount: number;
+            oldestArticleDate: string | null;
+        }>('/maintenance/stats');
+    }
+
+    async getCleanupPreview() {
+        return this.get<{
+            articlesAffected: number;
+            oldestArticleDate: string | null;
+            estimatedSpaceSaved: number;
+        }>('/maintenance/cleanup/preview');
+    }
+
+    async runCleanup() {
+        return this.post<{
+            articlesDeleted: number;
+            bytesReclaimed: number;
+        }>('/maintenance/cleanup');
+    }
+
     async bulkFeedAction(action: 'move' | 'delete' | 'mark_read' | 'update_refresh_interval', feedIds: number[], folderId?: number | null, refreshInterval?: number) {
         return this.request<{ affected: number }>('/feeds/bulk', {
             method: 'POST',

@@ -323,7 +323,6 @@ const styles = (colors: any, isMobile: boolean) =>
             paddingVertical: spacing.sm,
             fontSize: 16,
             color: colors.text.primary,
-            outlineStyle: 'none',
         },
         button: {
             backgroundColor: colors.primary.DEFAULT,

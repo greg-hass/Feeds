@@ -33,6 +33,22 @@ export interface TocItem {
     id: string;
 }
 
+interface HighlightsResponse {
+    highlights: Highlight[];
+}
+
+interface CreateHighlightResponse {
+    highlight: Highlight;
+}
+
+interface ReadingProgressResponse {
+    progress: ReadingProgress | null;
+}
+
+interface TocResponse {
+    toc: TocItem[];
+}
+
 export interface CreateHighlightParams {
     article_id: number;
     text: string;
@@ -44,7 +60,7 @@ export interface CreateHighlightParams {
 
 export interface UpdateHighlightParams {
     color?: Highlight['color'];
-    note?: string;
+    note?: string | null;
 }
 
 export interface UpdateProgressParams {
@@ -92,7 +108,7 @@ export const useHighlightsStore = create<HighlightsState>((set, get) => ({
     fetchHighlights: async (articleId: number) => {
         set({ isLoading: true, error: null });
         try {
-            const response = await api.get(`/highlights/article/${articleId}`);
+            const response = await api.get<HighlightsResponse>(`/highlights/article/${articleId}`);
             set({ highlights: response.highlights, isLoading: false });
         } catch (error: any) {
             set({ error: error.message, isLoading: false });
@@ -104,7 +120,7 @@ export const useHighlightsStore = create<HighlightsState>((set, get) => ({
     createHighlight: async (params: CreateHighlightParams) => {
         set({ error: null });
         try {
-            const response = await api.post('/highlights/', params);
+            const response = await api.post<CreateHighlightResponse>('/highlights/', params);
 
             // Optimistic update
             set((state) => ({
@@ -164,7 +180,7 @@ export const useHighlightsStore = create<HighlightsState>((set, get) => ({
     fetchReadingProgress: async (articleId: number) => {
         set({ error: null });
         try {
-            const response = await api.get(`/highlights/progress/${articleId}`);
+            const response = await api.get<ReadingProgressResponse>(`/highlights/progress/${articleId}`);
             set({ readingProgress: response.progress });
         } catch (error: any) {
             // 404 is expected if no progress exists
@@ -213,7 +229,7 @@ export const useHighlightsStore = create<HighlightsState>((set, get) => ({
     generateTableOfContents: async (htmlContent: string) => {
         set({ error: null });
         try {
-            const response = await api.post('/highlights/toc/generate', {
+            const response = await api.post<TocResponse>('/highlights/toc/generate', {
                 html_content: htmlContent,
             });
             set({ tableOfContents: response.toc });

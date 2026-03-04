@@ -383,11 +383,9 @@ async function checkFeeds() {
 
         run(
             `UPDATE feeds SET
-                refresh_interval_minutes = ?,
-                next_fetch_at = datetime('now', '+' || ? || ' minutes'),
-                updated_at = datetime('now')
+                next_fetch_at = datetime('now', '+' || refresh_interval_minutes || ' minutes')
              WHERE user_id = ? AND deleted_at IS NULL`,
-            [settings.refresh_interval_minutes, settings.refresh_interval_minutes, userId]
+            [userId]
         );
         
     } catch (err) {

@@ -33,6 +33,7 @@ export default function AppLayout() {
     const { showPlayer } = useAudioStore();
     const { fetchSettings, settings } = useSettingsStore();
     const lastIsRefreshingRef = useRef(false);
+    const requiresFullArticleRefresh = () => Boolean(useArticleStore.getState().filter.folder_id);
 
     // Listen for real-time feed/folder changes from other devices
     useFeedChanges();
@@ -95,9 +96,9 @@ export default function AppLayout() {
             }
 
             if (wasRefreshing && !nowRefreshing) {
-                feedStore.fetchFeeds();
-                feedStore.fetchFolders();
-                articleStore.fetchArticles(true, true);
+                if (requiresFullArticleRefresh()) {
+                    articleStore.fetchArticles(true, true);
+                }
                 settingsStore.fetchSettings().catch(() => { });
             }
 
@@ -110,10 +111,10 @@ export default function AppLayout() {
                     const registration = await navigator.serviceWorker.register('/sw.js');
                     console.log('SW registered:', registration);
 
-                    // Register for background sync if supported
-                    if ('sync' in registration) {
-                        try {
-                            await registration.sync.register('feeds-background-sync');
+                        // Register for background sync if supported
+                        if ('sync' in registration) {
+                            try {
+                            await (registration as ServiceWorkerRegistration & { sync: { register: (tag: string) => Promise<void> } }).sync.register('feeds-background-sync');
                             console.log('Background sync registered');
                         } catch (syncError) {
                             console.log('Background sync registration failed:', syncError);
@@ -175,27 +176,33 @@ export default function AppLayout() {
     useEffect(() => {
         const controller = new AbortController();
         let refreshTimeout: ReturnType<typeof setTimeout> | null = null;
-        let hasSyncedOnce = false;
 
-        const syncNow = async () => {
-            const syncResult = await fetchChanges('feeds,folders,articles,read_state', { skipCursorUpdate: true });
+        const syncNow = async (skipCursorUpdate: boolean, isRefreshing = true) => {
+            const syncResult = await fetchChanges('feeds,folders,articles,read_state', { skipCursorUpdate });
             if (syncResult) {
-                useFeedStore.getState().applySyncChanges(syncResult.changes, true);
+                useFeedStore.getState().applySyncChanges(syncResult.changes, isRefreshing);
                 useArticleStore.getState().applySyncChanges(syncResult.changes);
             }
         };
 
         const debouncedSync = () => {
-            if (!hasSyncedOnce) {
-                hasSyncedOnce = true;
-                syncNow();
-                return;
-            }
-
             if (refreshTimeout) clearTimeout(refreshTimeout);
             refreshTimeout = setTimeout(() => {
-                syncNow();
-            }, 800);
+                void syncNow(true);
+            }, 300);
+        };
+
+        const finalizeRefresh = async () => {
+            if (refreshTimeout) {
+                clearTimeout(refreshTimeout);
+                refreshTimeout = null;
+            }
+
+            await syncNow(false, false);
+            await Promise.all([
+                requiresFullArticleRefresh() ? fetchArticles(true) : Promise.resolve(),
+            ]);
+            fetchSettings().catch(() => { });
         };
 
         api.listenForRefreshEvents(
@@ -259,11 +266,7 @@ export default function AppLayout() {
 
                 if (event.type === 'complete') {
                     useFeedStore.setState({ isBackgroundRefreshing: false, refreshProgress: null });
-                    // Fetch new articles after background refresh completes
-                    fetchFeeds();
-                    fetchFolders();
-                    fetchArticles(true);
-                    fetchSettings().catch(() => { });
+                    void finalizeRefresh();
                     return;
                 }
             },
@@ -284,7 +287,7 @@ export default function AppLayout() {
         let lastRefreshAt = Date.now();
         let wasHidden = false;
         let backgroundedAt: number | null = null;
-        const STALE_MS = 30 * 1000;
+        const STALE_MS = 60 * 1000;
         const BACKGROUND_REFRESH_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutes - if backgrounded longer than this, do a full refresh
 
         // Initial data load - fetch settings first for timer
@@ -297,9 +300,6 @@ export default function AppLayout() {
             if (!force && timeSinceLast < STALE_MS) return;
             lastRefreshAt = now;
 
-            // Just fetch latest data from backend - do NOT trigger a crawl
-            // This ensures instant updates if the backend has been working in the background
-
             // Clear any stuck loading/refresh states to ensure fetch happens immediately
             useArticleStore.setState({ isLoading: false });
             useFeedStore.setState({
@@ -307,10 +307,14 @@ export default function AppLayout() {
                 refreshProgress: null
             });
 
+            const syncResult = await fetchChanges();
+            if (syncResult) {
+                useFeedStore.getState().applySyncChanges(syncResult.changes);
+                useArticleStore.getState().applySyncChanges(syncResult.changes);
+            }
+
             await Promise.all([
-                fetchFeeds(),
-                fetchFolders(),
-                fetchArticles(true)
+                force || requiresFullArticleRefresh() ? fetchArticles(true) : Promise.resolve()
             ]);
             fetchSettings().catch(() => { });
         };
@@ -369,7 +373,7 @@ export default function AppLayout() {
                 window.removeEventListener('focus', onFocus);
             }
         };
-    }, [fetchArticles, fetchFeeds, fetchFolders]);
+    }, [fetchArticles]);
 
     const pathname = usePathname() || '';
     const colors = useColors();

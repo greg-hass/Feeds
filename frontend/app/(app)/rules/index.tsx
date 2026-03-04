@@ -90,7 +90,7 @@ export default function RulesScreen() {
 
                 {error && (
                     <View style={s.errorContainer}>
-                        <AlertCircle size={20} color={colors.error.DEFAULT} />
+                        <AlertCircle size={20} color={colors.error} />
                         <Text style={s.errorText}>{error}</Text>
                         <Pressable onPress={clearError}>
                             <Text style={s.dismissText}>Dismiss</Text>
@@ -202,7 +202,7 @@ const styles = (colors: any) =>
         errorContainer: {
             flexDirection: 'row',
             alignItems: 'center',
-            backgroundColor: colors.error.DEFAULT + '20',
+            backgroundColor: colors.error + '20',
             padding: spacing.md,
             marginHorizontal: spacing.lg,
             marginTop: spacing.md,
@@ -211,12 +211,12 @@ const styles = (colors: any) =>
         },
         errorText: {
             ...typography.body,
-            color: colors.error.DEFAULT,
+            color: colors.error,
             flex: 1,
         },
         dismissText: {
             ...typography.small,
-            color: colors.error.DEFAULT,
+            color: colors.error,
             fontWeight: '600',
         },
         loadingContainer: {

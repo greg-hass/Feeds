@@ -27,7 +27,7 @@ export const DigestView = () => {
     }, []);
 
     const handleTextSizeChange = (size: 'small' | 'medium' | 'large') => {
-        updateSettings({ reader_text_size: size });
+        updateSettings({ font_size: size });
         setShowTextSizeMenu(false);
     };
 
@@ -40,7 +40,7 @@ export const DigestView = () => {
         }).start();
     };
 
-    const s = styles(colors, settings?.reader_text_size || 'medium', isMobile);
+    const s = styles(colors, settings?.font_size || 'medium', isMobile);
 
     // Render header wrapper for non-digest states
     const renderWithHeader = (content: React.ReactNode) => (
@@ -135,19 +135,19 @@ export const DigestView = () => {
             {showTextSizeMenu && (
                 <View style={s.textSizeMenu}>
                     <TouchableOpacity
-                        style={[s.textSizeOption, settings?.reader_text_size === 'small' && s.textSizeOptionActive]}
+                        style={[s.textSizeOption, settings?.font_size === 'small' && s.textSizeOptionActive]}
                         onPress={() => handleTextSizeChange('small')}
                     >
                         <Text style={s.textSizeLabel}>A</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                        style={[s.textSizeOption, settings?.reader_text_size === 'medium' && s.textSizeOptionActive]}
+                        style={[s.textSizeOption, settings?.font_size === 'medium' && s.textSizeOptionActive]}
                         onPress={() => handleTextSizeChange('medium')}
                     >
                         <Text style={[s.textSizeLabel, { fontSize: 16 }]}>A</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                        style={[s.textSizeOption, settings?.reader_text_size === 'large' && s.textSizeOptionActive]}
+                        style={[s.textSizeOption, settings?.font_size === 'large' && s.textSizeOptionActive]}
                         onPress={() => handleTextSizeChange('large')}
                     >
                         <Text style={[s.textSizeLabel, { fontSize: 20 }]}>A</Text>

@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { run, db } from '../db/index.js';
-import { getUserSettings, updateUserSettingsRaw, getUserSettingsRaw } from '../services/settings.js';
+import { getUserSettings, updateUserSettingsRaw, getUserSettingsRaw, FIXED_REFRESH_INTERVAL_MINUTES } from '../services/settings.js';
 import { cleanupOldArticles } from '../services/feed-cleanup.js';
 
 const feedFetchLimitsSchema = z.object({
@@ -49,11 +49,28 @@ export async function settingsRoutes(app: FastifyInstance): Promise<void> {
 
     app.get('/', async () => {
         ensureSettingsColumn();
-        const settings = getUserSettings(userId);
         const rawSettings = getUserSettingsRaw(userId);
+
+        if (rawSettings.refresh_interval_minutes !== FIXED_REFRESH_INTERVAL_MINUTES) {
+            updateUserSettingsRaw(userId, {
+                global_next_refresh_at: new Date(Date.now() + FIXED_REFRESH_INTERVAL_MINUTES * 60 * 1000).toISOString(),
+            });
+
+            run(
+                `UPDATE feeds SET
+                    refresh_interval_minutes = ?,
+                    next_fetch_at = datetime('now', '+' || ? || ' minutes'),
+                    updated_at = datetime('now')
+                 WHERE user_id = ? AND deleted_at IS NULL`,
+                [FIXED_REFRESH_INTERVAL_MINUTES, FIXED_REFRESH_INTERVAL_MINUTES, userId]
+            );
+        }
+
+        const settings = getUserSettings(userId);
+        const refreshedRawSettings = getUserSettingsRaw(userId);
         return {
             settings,
-            global_next_refresh_at: rawSettings.global_next_refresh_at || null
+            global_next_refresh_at: refreshedRawSettings.global_next_refresh_at || null
         };
     });
 
@@ -62,15 +79,19 @@ export async function settingsRoutes(app: FastifyInstance): Promise<void> {
         ensureSettingsColumn();
 
         const currentSettings = getUserSettings(userId);
-        const newSettings = { ...currentSettings, ...body };
+        const newSettings = {
+            ...currentSettings,
+            ...body,
+            refresh_interval_minutes: FIXED_REFRESH_INTERVAL_MINUTES,
+        };
 
         run(
             'UPDATE users SET settings_json = ? WHERE id = ?',
             [JSON.stringify(newSettings), userId]
         );
 
-        if (body.refresh_interval_minutes !== undefined) {
-            const interval = body.refresh_interval_minutes;
+        if (body.refresh_interval_minutes !== undefined || currentSettings.refresh_interval_minutes !== FIXED_REFRESH_INTERVAL_MINUTES) {
+            const interval = FIXED_REFRESH_INTERVAL_MINUTES;
             run(
                 `UPDATE feeds SET
                     refresh_interval_minutes = ?,

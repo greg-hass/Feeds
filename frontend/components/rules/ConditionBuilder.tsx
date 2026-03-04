@@ -116,7 +116,7 @@ export function ConditionBuilder({ condition, onChange, onRemove }: ConditionBui
                 </View>
 
                 <Pressable style={s.removeButton} onPress={onRemove}>
-                    <X size={18} color={colors.error.DEFAULT} />
+                    <X size={18} color={colors.error} />
                 </Pressable>
             </View>
 
@@ -207,7 +207,7 @@ const styles = (colors: any) =>
         removeButton: {
             padding: spacing.sm,
             borderRadius: borderRadius.full,
-            backgroundColor: colors.error.DEFAULT + '10',
+            backgroundColor: colors.error + '10',
         },
         caseSensitiveToggle: {
             flexDirection: 'row',

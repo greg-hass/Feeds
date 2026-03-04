@@ -58,6 +58,7 @@ import { ProgressDialog, ProgressState } from "@/components/ProgressDialog";
 import { useProgressHandler } from "@/hooks/useProgressHandler";
 import { getFeedHealth, getFeedHealthInfo } from "@/utils/feedHealth";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
+import type { ProgressEvent as FeedImportProgressEvent } from "@/services/api";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Button } from "@/components/ui/Button";
 import { LoadingState } from "@/components/ui/LoadingState";
@@ -304,7 +305,6 @@ export default function ManageScreen() {
         await addFeed(
           discovery.feed_url,
           folderId,
-          settings?.refresh_interval_minutes,
         );
         setDiscoveries((prev) =>
           prev.filter((d) => d.feed_url !== discovery.feed_url),
@@ -330,7 +330,6 @@ export default function ManageScreen() {
       addFeed,
       folders,
       setDiscoveries,
-      settings?.refresh_interval_minutes,
       show,
     ],
   );
@@ -622,7 +621,7 @@ export default function ManageScreen() {
       // Use SSE for real-time progress
       await api.importOpmlWithProgress(
         file,
-        (event: ProgressEvent) => handleProgressEvent(event),
+        (event: FeedImportProgressEvent) => handleProgressEvent(event),
         (error: Error) => {
           setProgressState((prev) => ({
             ...prev,
@@ -1426,7 +1425,7 @@ export default function ManageScreen() {
                       <Text
                         style={[
                           s.feedUrl,
-                          feed.folder_id && s.folderTextHighlight,
+                          feed.folder_id ? s.folderTextHighlight : null,
                         ]}
                         numberOfLines={1}
                       >

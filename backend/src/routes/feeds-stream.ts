@@ -265,8 +265,7 @@ export async function feedsStreamRoutes(app: FastifyInstance) {
 
                 run(
                     `UPDATE feeds SET
-                        next_fetch_at = datetime('now', '+' || refresh_interval_minutes || ' minutes'),
-                        updated_at = datetime('now')
+                        next_fetch_at = datetime('now', '+' || refresh_interval_minutes || ' minutes')
                      WHERE user_id = ? AND deleted_at IS NULL`,
                     [userId]
                 );

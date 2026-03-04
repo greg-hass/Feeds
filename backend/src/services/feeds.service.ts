@@ -7,7 +7,7 @@ import { cacheFeedIcon, clearAllIconCaches, clearFeedIconCache } from '../servic
 import { emitFeedChange } from '../services/feed-changes.js';
 import { ensureFeedsSchema } from '../utils/schema-ensure.js';
 import { NotFoundError, ConflictError, ValidationError, BusinessLogicError } from '../utils/errors.js';
-import { getUserSettings } from '../services/settings.js';
+import { FIXED_REFRESH_INTERVAL_MINUTES } from '../services/settings.js';
 
 const ICON_ENDPOINT_PREFIX = '/api/v1/icons';
 
@@ -305,7 +305,7 @@ export class FeedsService {
                 feedData.link || null,
                 iconForInsert,
                 feedData.description || null,
-                input.refresh_interval_minutes ?? getUserSettings(userId).refresh_interval_minutes,
+                FIXED_REFRESH_INTERVAL_MINUTES,
             ]
         );
 
@@ -369,7 +369,7 @@ export class FeedsService {
 
         if (input.title !== undefined) { updates.push('title = ?'); params.push(input.title); }
         if (input.folder_id !== undefined) { updates.push('folder_id = ?'); params.push(input.folder_id); }
-        if (input.refresh_interval_minutes !== undefined) { updates.push('refresh_interval_minutes = ?'); params.push(input.refresh_interval_minutes); }
+        if (input.refresh_interval_minutes !== undefined) { updates.push('refresh_interval_minutes = ?'); params.push(FIXED_REFRESH_INTERVAL_MINUTES); }
 
         if (updates.length > 0) {
             updates.push(`updated_at = datetime('now')`);
@@ -447,7 +447,7 @@ export class FeedsService {
                 if (input.refresh_interval_minutes === undefined) {
                     throw new ValidationError('refresh_interval_minutes required');
                 }
-                affected = run(`UPDATE feeds SET refresh_interval_minutes = ?, updated_at = datetime('now') WHERE id IN (${input.feed_ids.map(() => '?').join(',')}) AND user_id = ? AND deleted_at IS NULL`, [input.refresh_interval_minutes, ...input.feed_ids, userId]).changes;
+                affected = run(`UPDATE feeds SET refresh_interval_minutes = ?, updated_at = datetime('now') WHERE id IN (${input.feed_ids.map(() => '?').join(',')}) AND user_id = ? AND deleted_at IS NULL`, [FIXED_REFRESH_INTERVAL_MINUTES, ...input.feed_ids, userId]).changes;
                 break;
         }
         return { affected };

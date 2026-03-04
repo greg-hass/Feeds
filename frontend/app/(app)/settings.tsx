@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSettingsStore, useToastStore, useFeedStore, useArticleStore, useDigestStore } from '@/stores';
-import { Settings, api } from '@/services/api';
+import { Settings, FeedFetchLimits, api } from '@/services/api';
 import { Sun, Moon, Monitor, Check, Trash2, Type, HardDrive } from 'lucide-react-native';
 import { useColors, spacing, borderRadius, shadows, ACCENT_COLORS, AccentColor } from '@/theme';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
@@ -50,10 +50,10 @@ export default function SettingsScreen() {
         }
     };
 
-    const handleToggle = async (key: keyof Settings, value: string | number | boolean) => {
+    const handleToggle = async <K extends keyof Settings>(key: K, value: Settings[K]) => {
         if (settings) {
             try {
-                await updateSettings({ [key]: value });
+                await updateSettings({ [key]: value } as Partial<Settings>);
                 show('Setting updated', 'success');
             } catch (error) {
                 show('Failed to update setting', 'error');
@@ -88,6 +88,13 @@ export default function SettingsScreen() {
     }
 
     const isDigestEnabled = !!digestSettings?.enabled;
+    const feedFetchLimits: FeedFetchLimits = {
+        rss_days: settings.feed_fetch_limits?.rss_days ?? 14,
+        youtube_count: settings.feed_fetch_limits?.youtube_count ?? 10,
+        youtube_days: settings.feed_fetch_limits?.youtube_days ?? 30,
+        reddit_days: settings.feed_fetch_limits?.reddit_days ?? 7,
+        podcast_count: settings.feed_fetch_limits?.podcast_count ?? 5,
+    };
 
     return (
         <View style={s.container}>
@@ -278,7 +285,7 @@ export default function SettingsScreen() {
                                 <Text style={s.hint}>Articles newer than</Text>
                             </View>
                             <Dropdown
-                                value={String(settings.feed_fetch_limits?.rss_days || 14)}
+                                value={String(feedFetchLimits.rss_days)}
                                 options={[
                                     { label: '7 days', value: 7 },
                                     { label: '14 days', value: 14 },
@@ -286,7 +293,7 @@ export default function SettingsScreen() {
                                     { label: '60 days', value: 60 },
                                     { label: '90 days', value: 90 },
                                 ]}
-                                onSelect={(value) => handleToggle('feed_fetch_limits', { ...settings.feed_fetch_limits, rss_days: value })}
+                                onSelect={(value) => handleToggle('feed_fetch_limits', { ...feedFetchLimits, rss_days: Number(value) })}
                             />
                         </View>
 
@@ -302,7 +309,7 @@ export default function SettingsScreen() {
                         <View style={[s.row, { marginTop: 12 }]}>
                             <Text style={s.sublabel}>Videos</Text>
                             <Dropdown
-                                value={String(settings.feed_fetch_limits?.youtube_count || 10)}
+                                value={String(feedFetchLimits.youtube_count)}
                                 options={[
                                     { label: '5 videos', value: 5 },
                                     { label: '10 videos', value: 10 },
@@ -310,13 +317,13 @@ export default function SettingsScreen() {
                                     { label: '20 videos', value: 20 },
                                     { label: '30 videos', value: 30 },
                                 ]}
-                                onSelect={(value) => handleToggle('feed_fetch_limits', { ...settings.feed_fetch_limits, youtube_count: value })}
+                                onSelect={(value) => handleToggle('feed_fetch_limits', { ...feedFetchLimits, youtube_count: Number(value) })}
                             />
                         </View>
                         <View style={[s.row, { marginTop: 12 }]}>
                             <Text style={s.sublabel}>Timeframe</Text>
                             <Dropdown
-                                value={String(settings.feed_fetch_limits?.youtube_days || 30)}
+                                value={String(feedFetchLimits.youtube_days)}
                                 options={[
                                     { label: '7 days', value: 7 },
                                     { label: '14 days', value: 14 },
@@ -324,7 +331,7 @@ export default function SettingsScreen() {
                                     { label: '60 days', value: 60 },
                                     { label: '90 days', value: 90 },
                                 ]}
-                                onSelect={(value) => handleToggle('feed_fetch_limits', { ...settings.feed_fetch_limits, youtube_days: value })}
+                                onSelect={(value) => handleToggle('feed_fetch_limits', { ...feedFetchLimits, youtube_days: Number(value) })}
                             />
                         </View>
 
@@ -337,14 +344,14 @@ export default function SettingsScreen() {
                                 <Text style={s.hint}>Posts newer than</Text>
                             </View>
                             <Dropdown
-                                value={String(settings.feed_fetch_limits?.reddit_days || 7)}
+                                value={String(feedFetchLimits.reddit_days)}
                                 options={[
                                     { label: '3 days', value: 3 },
                                     { label: '7 days', value: 7 },
                                     { label: '14 days', value: 14 },
                                     { label: '30 days', value: 30 },
                                 ]}
-                                onSelect={(value) => handleToggle('feed_fetch_limits', { ...settings.feed_fetch_limits, reddit_days: value })}
+                                onSelect={(value) => handleToggle('feed_fetch_limits', { ...feedFetchLimits, reddit_days: Number(value) })}
                             />
                         </View>
 
@@ -357,7 +364,7 @@ export default function SettingsScreen() {
                                 <Text style={s.hint}>Keep last N episodes</Text>
                             </View>
                             <Dropdown
-                                value={String(settings.feed_fetch_limits?.podcast_count || 5)}
+                                value={String(feedFetchLimits.podcast_count)}
                                 options={[
                                     { label: '3 episodes', value: 3 },
                                     { label: '5 episodes', value: 5 },
@@ -365,7 +372,7 @@ export default function SettingsScreen() {
                                     { label: '15 episodes', value: 15 },
                                     { label: '20 episodes', value: 20 },
                                 ]}
-                                onSelect={(value) => handleToggle('feed_fetch_limits', { ...settings.feed_fetch_limits, podcast_count: value })}
+                                onSelect={(value) => handleToggle('feed_fetch_limits', { ...feedFetchLimits, podcast_count: Number(value) })}
                             />
                         </View>
                     </View>
@@ -438,20 +445,9 @@ export default function SettingsScreen() {
                         <View style={s.row}>
                             <View style={{ flex: 1 }}>
                                 <Text style={s.label}>Refresh Interval</Text>
-                                <Text style={s.hint}>Backend schedule</Text>
+                                <Text style={s.hint}>Backend schedule, fixed for stability</Text>
                             </View>
-                            <Dropdown
-                                value={String(settings.refresh_interval_minutes || 15)}
-                                options={[
-                                    { label: '15 minutes', value: 15 },
-                                    { label: '30 minutes', value: 30 },
-                                    { label: '1 hour', value: 60 },
-                                    { label: '4 hours', value: 240 },
-                                    { label: '12 hours', value: 720 },
-                                    { label: '24 hours', value: 1440 },
-                                ]}
-                                onSelect={(value) => handleToggle('refresh_interval_minutes', value)}
-                            />
+                            <Text style={s.value}>Every 15 minutes</Text>
                         </View>
 
                         <View style={s.divider} />
@@ -470,7 +466,7 @@ export default function SettingsScreen() {
                                     { label: '1 Year', value: 365 },
                                     { label: 'Forever', value: 3650 },
                                 ]}
-                                onSelect={(value) => handleToggle('retention_days', value)}
+                                onSelect={(value) => handleToggle('retention_days', Number(value))}
                             />
                         </View>
 

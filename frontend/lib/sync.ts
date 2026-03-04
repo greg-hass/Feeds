@@ -141,7 +141,9 @@ class SyncManager {
             return; // Already running
         }
 
-        this.onSyncCallback = callback || null;
+        if (callback !== undefined) {
+            this.onSyncCallback = callback;
+        }
 
         // Initial sync
         this.sync();

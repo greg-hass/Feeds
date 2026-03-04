@@ -4,8 +4,10 @@ interface UserSettings {
   settings_json?: string;
 }
 
+export const FIXED_REFRESH_INTERVAL_MINUTES = 15;
+
 const defaultSettings = {
-  refresh_interval_minutes: 15,
+  refresh_interval_minutes: FIXED_REFRESH_INTERVAL_MINUTES,
   retention_days: 30,
   fetch_full_content: true,
   readability_enabled: true,
@@ -50,7 +52,11 @@ export function getUserSettings(userId: number): Settings {
       [userId],
     );
     if (!user?.settings_json) return { ...defaultSettings };
-    return { ...defaultSettings, ...JSON.parse(user.settings_json) };
+    return {
+      ...defaultSettings,
+      ...JSON.parse(user.settings_json),
+      refresh_interval_minutes: FIXED_REFRESH_INTERVAL_MINUTES,
+    };
   } catch {
     return { ...defaultSettings };
   }
@@ -61,7 +67,11 @@ export function updateUserSettingsRaw(
   updates: Record<string, unknown>,
 ): Record<string, any> {
   const current = getUserSettingsRaw(userId);
-  const next = { ...current, ...updates };
+  const next = {
+    ...current,
+    ...updates,
+    refresh_interval_minutes: FIXED_REFRESH_INTERVAL_MINUTES,
+  };
   run("UPDATE users SET settings_json = ? WHERE id = ?", [
     JSON.stringify(next),
     userId,

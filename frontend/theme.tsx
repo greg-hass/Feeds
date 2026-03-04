@@ -5,6 +5,7 @@ import { useSettingsStore } from './stores';
 
 export const darkColors = {
     background: {
+        DEFAULT: '#0d0d0d',
         primary: '#0d0d0d',    // Darker main background
         secondary: '#161616',   // Darker cards/surfaces
         tertiary: '#1f1f1f',    // Darker tertiary
@@ -24,6 +25,7 @@ export const darkColors = {
 
 const lightColors = {
     background: {
+        DEFAULT: '#ffffff',
         primary: '#ffffff',
         secondary: '#f4f4f5',
         tertiary: '#e4e4e7',
@@ -50,6 +52,8 @@ const sharedColors = {
     },
     accent: {
         primary: '#10b981',
+        purple: '#a855f7',
+        orange: '#f97316',
     },
     secondary: {
         DEFAULT: '#0d9488', // Teal 600
@@ -103,10 +107,40 @@ export const typography = {
         fontSize: 24,
         fontWeight: '700' as const,
     },
+    h2: {
+        fontFamily: sansFamily,
+        fontSize: 20,
+        fontWeight: '700' as const,
+    },
+    h3: {
+        fontFamily: sansFamily,
+        fontSize: 18,
+        fontWeight: '600' as const,
+    },
+    h4: {
+        fontFamily: sansFamily,
+        fontSize: 16,
+        fontWeight: '600' as const,
+    },
     body: {
         fontFamily: sansFamily,
         fontSize: 14,
         fontWeight: '400' as const,
+    },
+    caption: {
+        fontFamily: sansFamily,
+        fontSize: 12,
+        fontWeight: '500' as const,
+    },
+    small: {
+        fontFamily: sansFamily,
+        fontSize: 13,
+        fontWeight: '400' as const,
+    },
+    button: {
+        fontFamily: sansFamily,
+        fontSize: 14,
+        fontWeight: '600' as const,
     },
 };
 
@@ -255,6 +289,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         primary: accent,
         accent: {
             primary: accent.DEFAULT,
+            purple: ACCENT_COLORS.purple.DEFAULT,
+            orange: ACCENT_COLORS.orange.DEFAULT,
         },
         success: accent.DEFAULT,
         status: {

@@ -99,6 +99,7 @@ export const useFeedStore = create<FeedState>()(
                 let totalNewArticles = 0;
                 const articleStore = useArticleStore.getState();
                 const estimatedTotal = ids?.length ?? get().feeds.length;
+                const requiresFullArticleRefresh = () => Boolean(useArticleStore.getState().filter.folder_id);
                 set({
                     refreshProgress: {
                         total: estimatedTotal,
@@ -107,21 +108,20 @@ export const useFeedStore = create<FeedState>()(
                     }
                 });
 
-                // Optimized debounce: fetch immediately on first new article, then debounce subsequent
                 let refreshTimeout: ReturnType<typeof setTimeout> | null = null;
-                let hasRefreshedOnce = false;
-                const debouncedRefresh = () => {
-                    if (!hasRefreshedOnce) {
-                        // First new article: refresh immediately for instant feedback
-                        hasRefreshedOnce = true;
-                        articleStore.fetchArticles(true, true);
-                    } else {
-                        // Subsequent updates: debounce to avoid hammering the server
-                        if (refreshTimeout) clearTimeout(refreshTimeout);
-                        refreshTimeout = setTimeout(() => {
-                            articleStore.fetchArticles(true, true);
-                        }, 800);
-                    }
+                const syncArticleChanges = async (skipCursorUpdate: boolean) => {
+                    const syncResult = await fetchChanges('feeds,folders,articles,read_state', { skipCursorUpdate });
+                    if (!syncResult) return;
+
+                    get().applySyncChanges(syncResult.changes);
+                    articleStore.applySyncChanges(syncResult.changes);
+                };
+
+                const debouncedSync = () => {
+                    if (refreshTimeout) clearTimeout(refreshTimeout);
+                    refreshTimeout = setTimeout(() => {
+                        void syncArticleChanges(true);
+                    }, 300);
                 };
 
 
@@ -139,7 +139,7 @@ export const useFeedStore = create<FeedState>()(
                             } else if (event.type === 'feed_complete' || event.type === 'feed_error') {
                                 if (event.type === 'feed_complete' && event.new_articles > 0) {
                                     totalNewArticles += event.new_articles;
-                                    debouncedRefresh();
+                                    debouncedSync();
                                 }
 
                                 // Update progress and feed list
@@ -188,19 +188,14 @@ export const useFeedStore = create<FeedState>()(
                         return;
                     }
 
-                    // Final fetch to ensure everything is in sync
                     if (refreshTimeout) clearTimeout(refreshTimeout);
+                    await syncArticleChanges(false);
+
                     await Promise.all([
                         get().fetchFeeds(),
                         get().fetchFolders(),
-                        articleStore.fetchArticles(true)
+                        requiresFullArticleRefresh() ? articleStore.fetchArticles(true) : Promise.resolve()
                     ]);
-
-                    const syncResult = await fetchChanges();
-                    if (syncResult) {
-                        get().applySyncChanges(syncResult.changes);
-                        articleStore.applySyncChanges(syncResult.changes);
-                    }
                 } catch (error) {
                     if (!isAbortError(error)) {
                         handleError(error, { context: 'refreshAllFeeds' });
@@ -314,23 +309,6 @@ export const useFeedStore = create<FeedState>()(
                 });
             },
 
-            setIsLoading: (loading) => {
-                set({ isLoading: loading });
-            },
-
-            setRefreshProgress: (progress) => {
-                set((state) => ({
-                    refreshProgress: typeof progress === 'function' ? progress(state.refreshProgress) : progress,
-                }));
-            },
-
-            setLastRefreshNewArticles: (count) => {
-                set({ lastRefreshNewArticles: count });
-            },
-
-            updateLocalFeeds: (updater) => {
-                set((state) => ({ feeds: updater(state.feeds) }));
-            },
         }),
         {
             name: 'feeds-list',

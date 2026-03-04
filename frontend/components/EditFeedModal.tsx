@@ -1,3 +1,4 @@
+import React from 'react';
 import { View, Text, StyleSheet, Modal } from 'react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
 import { Feed } from '@/services/api';

@@ -132,7 +132,7 @@ export function RulesList({ rules }: RulesListProps) {
                         </Pressable>
 
                         <Pressable style={[s.actionButton, s.deleteButton]} onPress={() => handleDelete(rule)}>
-                            <Trash2 size={16} color={colors.error.DEFAULT} />
+                            <Trash2 size={16} color={colors.error} />
                             <Text style={[s.actionButtonText, s.deleteButtonText]}>Delete</Text>
                         </Pressable>
                     </View>
@@ -140,7 +140,7 @@ export function RulesList({ rules }: RulesListProps) {
                     {/* Warning if disabled */}
                     {!rule.enabled && (
                         <View style={s.disabledBanner}>
-                            <AlertTriangle size={14} color={colors.warning.DEFAULT} />
+                            <AlertTriangle size={14} color={colors.warning} />
                             <Text style={s.disabledText}>This rule is disabled and won't execute</Text>
                         </View>
                     )}
@@ -233,10 +233,10 @@ const styles = (colors: any) =>
             color: colors.text.secondary,
         },
         deleteButton: {
-            backgroundColor: colors.error.DEFAULT + '10',
+            backgroundColor: colors.error + '10',
         },
         deleteButtonText: {
-            color: colors.error.DEFAULT,
+            color: colors.error,
         },
         disabledBanner: {
             flexDirection: 'row',
@@ -248,7 +248,7 @@ const styles = (colors: any) =>
         },
         disabledText: {
             ...typography.caption,
-            color: colors.warning.DEFAULT,
+            color: colors.warning,
             fontStyle: 'italic',
         },
     });

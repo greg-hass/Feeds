@@ -218,6 +218,11 @@ const styles = (colors: any) =>
         field: {
             gap: spacing.xs,
         },
+        fieldLabel: {
+            ...typography.caption,
+            color: colors.text.secondary,
+            fontWeight: '600',
+        },
         fieldHint: {
             ...typography.caption,
             color: colors.text.tertiary,

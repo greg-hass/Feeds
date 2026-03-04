@@ -47,7 +47,7 @@ export function HighlightPopover({ highlight, visible, onClose }: HighlightPopov
 
     const handleSaveNote = async () => {
         try {
-            await updateHighlight(highlight.id, { note: note.trim() || null });
+            await updateHighlight(highlight.id, { note: note.trim() || undefined });
             setIsEditingNote(false);
             showToast('Note saved', 'success');
         } catch (error) {
@@ -152,14 +152,16 @@ export function HighlightPopover({ highlight, visible, onClose }: HighlightPopov
                                 </View>
                             </View>
                         ) : (
-                            <Text style={s.notePreview}>{highlight.note || 'No note added'}</Text>
+                            <Text style={[s.notePreview, !highlight.note ? s.notePreviewEmpty : null]}>
+                                {highlight.note || 'No note added'}
+                            </Text>
                         )}
                     </View>
 
                     {/* Actions */}
                     <View style={s.actions}>
                         <Pressable style={s.deleteButton} onPress={handleDelete}>
-                            <Trash2 size={18} color={colors.error.DEFAULT} />
+                            <Trash2 size={18} color={colors.error} />
                             <Text style={s.deleteButtonText}>Delete Highlight</Text>
                         </Pressable>
                     </View>
@@ -267,7 +269,9 @@ const styles = (colors: any) =>
         notePreview: {
             ...typography.body,
             color: colors.text.secondary,
-            fontStyle: highlight?.note ? 'normal' : 'italic',
+        },
+        notePreviewEmpty: {
+            fontStyle: 'italic',
         },
         actions: {
             padding: spacing.lg,
@@ -279,10 +283,10 @@ const styles = (colors: any) =>
             gap: spacing.sm,
             paddingVertical: spacing.md,
             borderRadius: borderRadius.md,
-            backgroundColor: colors.error.DEFAULT + '15',
+            backgroundColor: colors.error + '15',
         },
         deleteButtonText: {
             ...typography.button,
-            color: colors.error.DEFAULT,
+            color: colors.error,
         },
     });

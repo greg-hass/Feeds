@@ -32,6 +32,25 @@ vi.mock('@/services/api', () => ({
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '@/services/api';
+import type { Article } from '@/services/api';
+
+const buildArticle = (overrides: Partial<Article> = {}): Article => ({
+    id: 1,
+    feed_id: 1,
+    feed_title: 'Test Feed',
+    feed_icon_url: null,
+    feed_type: 'rss',
+    title: 'Test Article',
+    url: 'https://example.com/article',
+    author: null,
+    summary: null,
+    published_at: '2026-01-01T00:00:00.000Z',
+    is_read: false,
+    is_bookmarked: false,
+    has_audio: false,
+    enclosure_url: null,
+    ...overrides,
+});
 
 describe('Article Store', () => {
     beforeEach(() => {
@@ -177,6 +196,33 @@ describe('Article Store', () => {
             // API should not be called
             expect(api.getArticles).not.toHaveBeenCalled();
         });
+
+        it('should keep newest articles at the top during live updates', async () => {
+            const { useArticleStore } = await import('@/stores/articleStore');
+
+            act(() => {
+                useArticleStore.setState({
+                    articles: [
+                        buildArticle({ id: 1, title: 'Older' }),
+                    ],
+                    isLoading: false,
+                });
+            });
+
+            (api.getArticles as any).mockResolvedValue({
+                articles: [
+                    buildArticle({ id: 2, title: 'Newest', published_at: '2026-01-02T00:00:00.000Z' }),
+                    buildArticle({ id: 1, title: 'Older' }),
+                ],
+                next_cursor: null,
+            });
+
+            await act(async () => {
+                await useArticleStore.getState().fetchArticles(true, true);
+            });
+
+            expect(useArticleStore.getState().articles.map((article: any) => article.id)).toEqual([2, 1]);
+        });
     });
 
     describe('fetchBookmarks', () => {
@@ -184,7 +230,7 @@ describe('Article Store', () => {
             const { useArticleStore } = await import('@/stores/articleStore');
             
             const mockBookmarks = [
-                { id: 1, title: 'Bookmarked 1', is_bookmarked: true },
+                buildArticle({ id: 1, title: 'Bookmarked 1', is_bookmarked: true }),
             ];
             
             (api.getBookmarks as any).mockResolvedValue({
@@ -206,7 +252,7 @@ describe('Article Store', () => {
             // Set up initial state with an unread article
             act(() => {
                 useArticleStore.setState({
-                    articles: [{ id: 1, title: 'Test', is_read: false }],
+                    articles: [buildArticle({ id: 1, title: 'Test', is_read: false })],
                 });
             });
             
@@ -229,7 +275,7 @@ describe('Article Store', () => {
             // Set up initial state with a read article
             act(() => {
                 useArticleStore.setState({
-                    articles: [{ id: 1, title: 'Test', is_read: true }],
+                    articles: [buildArticle({ id: 1, title: 'Test', is_read: true })],
                 });
             });
             
@@ -252,7 +298,7 @@ describe('Article Store', () => {
             // Set up initial state
             act(() => {
                 useArticleStore.setState({
-                    articles: [{ id: 1, title: 'Test', is_bookmarked: false }],
+                    articles: [buildArticle({ id: 1, title: 'Test', is_bookmarked: false })],
                 });
             });
             
@@ -282,6 +328,36 @@ describe('Article Store', () => {
             });
             
             expect(useArticleStore.getState().error).toBeNull();
+        });
+    });
+
+    describe('applySyncChanges', () => {
+        it('should merge created articles newest-first without duplicates', async () => {
+            const { useArticleStore } = await import('@/stores/articleStore');
+
+            act(() => {
+                useArticleStore.setState({
+                    articles: [
+                        buildArticle({ id: 1, title: 'Existing' }),
+                    ],
+                    filter: { unread_only: true },
+                });
+            });
+
+            act(() => {
+                useArticleStore.getState().applySyncChanges({
+                    articles: {
+                        created: [
+                            buildArticle({ id: 2, title: 'Newest', published_at: '2026-01-02T00:00:00.000Z' }),
+                            buildArticle({ id: 1, title: 'Existing' }),
+                        ],
+                        updated: [],
+                        deleted: [],
+                    },
+                });
+            });
+
+            expect(useArticleStore.getState().articles.map((article: any) => article.id)).toEqual([2, 1]);
         });
     });
 });

@@ -8,6 +8,7 @@
       ]
     },
     "jsx": "react-native",
+    "module": "ESNext",
     "lib": [
       "DOM",
       "ESNext"

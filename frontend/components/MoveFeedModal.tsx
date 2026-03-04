@@ -1,6 +1,7 @@
 import { View, Text, TouchableOpacity, StyleSheet, Modal } from 'react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
-import { Folder, FolderIcon } from 'lucide-react-native';
+import { FolderIcon } from 'lucide-react-native';
+import type { Folder } from '@/services/api';
 
 interface MoveFeedModalProps {
     visible: boolean;

@@ -25,17 +25,6 @@ export interface FeedState {
     resumeFeed: (id: number) => Promise<void>;
     updateLocalFeed: (id: number, updates: Partial<Feed>) => void;
     applySyncChanges: (changes: SyncChanges, isRefreshing?: boolean) => void;
-    
-    // Simplified setters for useFeedRefresh hook
-    setIsLoading: (loading: boolean) => void;
-    setRefreshProgress: (
-        progress:
-            | { total: number; completed: number; currentTitle: string }
-            | null
-            | ((prev: { total: number; completed: number; currentTitle: string } | null) => { total: number; completed: number; currentTitle: string } | null)
-    ) => void;
-    setLastRefreshNewArticles: (count: number | null) => void;
-    updateLocalFeeds: (updater: (feeds: Feed[]) => Feed[]) => void;
 }
 
 export interface ArticleState {
@@ -60,7 +49,7 @@ export interface ArticleState {
     setScrollPosition: (position: number) => void;
     setArticleScrollPosition: (articleId: number, position: number) => void;
     getArticleScrollPosition: (articleId: number) => number;
-    fetchArticles: (reset?: boolean, isLiveUpdate?: boolean) => Promise<void>;
+    fetchArticles: (reset?: boolean, isLiveUpdate?: boolean, skipLoadingSet?: boolean) => Promise<void>;
     fetchBookmarks: () => Promise<void>;
     fetchArticle: (id: number) => Promise<void>;
     prefetchArticle: (id: number) => Promise<void>;
