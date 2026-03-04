@@ -210,6 +210,11 @@ export default function AppLayout() {
 
         api.listenForRefreshEvents(
             (event) => {
+                const estimateTotalFeeds = () => {
+                    const feedCount = useFeedStore.getState().feeds.length;
+                    return Math.max(feedCount, 1);
+                };
+
                 if (event.type === 'start') {
                     refreshCycleNewArticlesRef.current = 0;
                     useFeedStore.setState({
@@ -223,7 +228,7 @@ export default function AppLayout() {
                     useFeedStore.setState((state) => ({
                         refreshProgress: state.refreshProgress
                             ? { ...state.refreshProgress, currentTitle: event.title }
-                            : { total: 0, completed: 0, currentTitle: event.title },
+                            : { total: estimateTotalFeeds(), completed: 0, currentTitle: event.title },
                     }));
                     return;
                 }
@@ -235,13 +240,23 @@ export default function AppLayout() {
                     }
 
                     useFeedStore.setState((state) => ({
-                        refreshProgress: state.refreshProgress
-                            ? {
-                                ...state.refreshProgress,
-                                completed: state.refreshProgress.completed + 1,
-                                currentTitle: event.title || state.refreshProgress.currentTitle,
-                            }
-                            : null,
+                        refreshProgress: (() => {
+                            const current = state.refreshProgress ?? {
+                                total: estimateTotalFeeds(),
+                                completed: 0,
+                                currentTitle: '',
+                            };
+                            const nextCompleted = current.completed + 1;
+                            const nextTotal = current.total > 0
+                                ? Math.max(current.total, nextCompleted)
+                                : Math.max(estimateTotalFeeds(), nextCompleted);
+                            return {
+                                ...current,
+                                total: nextTotal,
+                                completed: nextCompleted,
+                                currentTitle: event.title || current.currentTitle,
+                            };
+                        })(),
                     }));
 
                     if (event.type === 'feed_complete') {
