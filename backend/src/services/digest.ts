@@ -1,5 +1,9 @@
 import { queryAll, queryOne, run } from '../db/index.js';
-import { GEMINI_API_KEY, GEMINI_API_URL } from './ai.js';
+import {
+    canGenerateDailyDigestWithAi,
+    generateDailyDigestText,
+    getDailyDigestAiProviderName,
+} from './ai.js';
 
 export type DigestEdition = 'morning' | 'evening';
 
@@ -7,6 +11,10 @@ export interface GenerateDigestResult {
     success: boolean;
     digestId?: number;
     error?: string;
+}
+
+export function canGenerateDailyDigest(): boolean {
+    return canGenerateDailyDigestWithAi();
 }
 
 /**
@@ -43,8 +51,9 @@ export async function generateDailyDigest(
     userId: number = 1,
     edition?: DigestEdition
 ): Promise<GenerateDigestResult> {
-    if (!GEMINI_API_KEY) {
-        console.warn('GEMINI_API_KEY not set, skipping digest generation');
+    if (!canGenerateDailyDigest()) {
+        const provider = getDailyDigestAiProviderName();
+        console.warn(`[Digest] ${provider} API key not set, skipping digest generation`);
         return { success: false, error: 'API key not configured' };
     }
 
@@ -144,33 +153,13 @@ ${JSON.stringify(articleData)}
 
 Return your response as Markdown.`;
 
-        // 5. Call Gemini
+        // 5. Call configured AI provider
         console.log(`[Digest] Generating ${digestEdition} edition with ${unreadArticles.length} articles...`);
-        
-        const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: {
-                    temperature: 0.3,
-                    topP: 0.9,
-                },
-            }),
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Gemini API error for digest:', errorText);
-            return { success: false, error: 'AI generation failed' };
+        const aiResult = await generateDailyDigestText(prompt);
+        if (!aiResult.text) {
+            return { success: false, error: aiResult.error || 'AI generation failed' };
         }
-
-        const data = await response.json();
-        const digestContent = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-        if (!digestContent) {
-            return { success: false, error: 'Empty response from AI' };
-        }
+        const digestContent = aiResult.text;
 
         // 6. Extract metadata
         const topics = extractTopics(digestContent);
@@ -192,4 +181,3 @@ Return your response as Markdown.`;
         return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
     }
 }
-

@@ -2,7 +2,8 @@ import { queryAll, queryOne, run } from '../db/index.js';
 import { refreshFeed, FeedToRefresh } from './feed-refresh.js';
 import { FeedType } from './feed-parser.js';
 import { getUserSettings, getUserSettingsRaw, updateUserSettingsRaw } from './settings.js';
-import { generateDailyDigest, getCurrentEdition, DigestEdition } from './digest.js';
+import { generateDailyDigest, canGenerateDailyDigest, DigestEdition } from './digest.js';
+import { getDailyDigestAiProviderName } from './ai.js';
 import { emitRefreshEvent, RefreshFeedUpdate, RefreshStats } from './refresh-events.js';
 import { existsSync } from 'node:fs';
 import { readdir, stat, unlink } from 'node:fs/promises';
@@ -45,6 +46,7 @@ interface SchedulerState {
     isProcessing: boolean;
     lastCleanupAt: number;
     lastDigestCheck: number;
+    lastDigestSkipKey: string | null;
 }
 
 let state: SchedulerState = {
@@ -57,7 +59,8 @@ let state: SchedulerState = {
     isPaused: false,
     isProcessing: false,
     lastCleanupAt: 0,
-    lastDigestCheck: 0
+    lastDigestCheck: 0,
+    lastDigestSkipKey: null,
 };
 
 export function isRefreshing() {
@@ -666,8 +669,19 @@ async function runDigestCycle() {
                 return;
             }
 
+            if (!canGenerateDailyDigest()) {
+                const skipKey = `${today}:${edition}:missing-ai-key`;
+                if (state.lastDigestSkipKey !== skipKey) {
+                    const provider = getDailyDigestAiProviderName().toUpperCase();
+                    console.warn(`[Digest] Skipping scheduled ${edition} digest: ${provider}_API_KEY is not configured`);
+                    state.lastDigestSkipKey = skipKey;
+                }
+                return;
+            }
+
             console.log(`[Digest] Scheduled ${edition} digest generation at ${currentTimeStr}`);
             const result = await generateDailyDigest(userId, edition);
+            state.lastDigestSkipKey = null;
 
             if (result.success) {
                 console.log(`[Digest] ${edition} digest generated successfully (ID: ${result.digestId})`);
