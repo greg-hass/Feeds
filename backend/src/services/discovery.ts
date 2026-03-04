@@ -10,6 +10,60 @@ export type { DiscoveredFeed } from '../types/discovery.js';
 
 const USER_AGENT = 'Feeds/1.0 (Feed Reader; +https://github.com/feeds)';
 
+export function mergeDiscoveryResults(results: DiscoveredFeed[], limit: number, type?: string): DiscoveredFeed[] {
+    const seen = new Set<string>();
+    const unique = results.filter((feed) => {
+        if (seen.has(feed.feed_url)) return false;
+        seen.add(feed.feed_url);
+        return true;
+    });
+
+    if (type) {
+        return unique
+            .sort((a, b) => b.confidence - a.confidence)
+            .slice(0, limit);
+    }
+
+    const grouped = new Map<DiscoveredFeed['type'], DiscoveredFeed[]>();
+    for (const feed of unique) {
+        const current = grouped.get(feed.type) ?? [];
+        current.push(feed);
+        grouped.set(feed.type, current);
+    }
+
+    for (const feeds of grouped.values()) {
+        feeds.sort((a, b) => b.confidence - a.confidence);
+    }
+
+    const typeOrder: DiscoveredFeed['type'][] = ['rss', 'youtube', 'reddit', 'podcast'];
+    const merged: DiscoveredFeed[] = [];
+
+    while (merged.length < limit) {
+        let added = false;
+
+        for (const feedType of typeOrder) {
+            const feeds = grouped.get(feedType);
+            if (!feeds || feeds.length === 0) continue;
+
+            const next = feeds.shift();
+            if (!next) continue;
+
+            merged.push(next);
+            added = true;
+
+            if (merged.length >= limit) {
+                break;
+            }
+        }
+
+        if (!added) {
+            break;
+        }
+    }
+
+    return merged;
+}
+
 async function discoverYouTubeByKeyword(keyword: string, limit: number): Promise<DiscoveredFeed[]> {
     console.log(`[YouTube Discovery] Searching for: "${keyword}"`);
     const discoveries: DiscoveredFeed[] = [];
@@ -229,17 +283,11 @@ export async function discoverByKeyword(keyword: string, limit: number = 10, typ
         }
     }
 
-    // Deduplicate by feed_url
-    const seen = new Set<string>();
-    const unique = results.filter(f => {
-        if (seen.has(f.feed_url)) return false;
-        seen.add(f.feed_url);
-        return true;
-    });
+    const merged = mergeDiscoveryResults(results, limit, type);
 
-    console.log(`[Discovery] Total unique results: ${unique.length}`);
+    console.log(`[Discovery] Total unique results: ${merged.length}`);
 
-    return unique.sort((a, b) => b.confidence - a.confidence).slice(0, limit);
+    return merged;
 }
 
 /**

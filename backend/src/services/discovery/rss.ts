@@ -135,7 +135,7 @@ async function searchDuckDuckGoQuery(query: string, limit: number): Promise<Disc
             try {
                 const feeds = await discoverFeedsFromUrl(siteUrl);
                 for (const feed of feeds) {
-                    if (feed.type === 'rss' || feed.type === 'podcast') {
+                    if (feed.type === 'rss') {
                         discoveries.push(feed);
                     }
                 }
@@ -196,7 +196,9 @@ async function searchBing(topic: string, limit: number): Promise<DiscoveredFeedT
             try {
                 const feeds = await discoverFeedsFromUrl(siteUrl);
                 for (const feed of feeds) {
-                    discoveries.push(feed);
+                    if (feed.type === 'rss') {
+                        discoveries.push(feed);
+                    }
                 }
             } catch {
                 // Continue
