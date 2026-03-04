@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
-import { View, StyleSheet, useWindowDimensions, Platform, AppState, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, useWindowDimensions, Platform, AppState, ActivityIndicator, Text } from 'react-native';
 import { Slot } from 'expo-router';
-import { useArticleStore, useFeedStore, useSettingsStore } from '@/stores';
+import { useArticleStore, useFeedStore, useSettingsStore, useToastStore } from '@/stores';
 import { useColors } from '@/theme';
 import Sidebar from '@/components/Sidebar';
 import { enableSync, fetchChanges, syncManager } from '@/lib/sync';
@@ -24,15 +24,18 @@ import { usePwaThemeColor } from '@/hooks/usePwaThemeColor';
 export default function AppLayout() {
     const [mounted, setMounted] = useState(false);
     const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+    const [isForegroundSyncing, setIsForegroundSyncing] = useState(false);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Mounting pattern for hydration
     useEffect(() => setMounted(true), []);
     const { width } = useWindowDimensions();
     const isDesktop = width >= 1024;
     const { fetchFeeds, fetchFolders, refreshProgress, cancelRefresh } = useFeedStore();
     const { fetchArticles } = useArticleStore();
+    const { show } = useToastStore();
     const { showPlayer } = useAudioStore();
     const { fetchSettings, settings } = useSettingsStore();
     const lastIsRefreshingRef = useRef(false);
+    const refreshCycleNewArticlesRef = useRef(0);
     const requiresFullArticleRefresh = () => Boolean(useArticleStore.getState().filter.folder_id);
 
     // Listen for real-time feed/folder changes from other devices
@@ -208,6 +211,7 @@ export default function AppLayout() {
         api.listenForRefreshEvents(
             (event) => {
                 if (event.type === 'start') {
+                    refreshCycleNewArticlesRef.current = 0;
                     useFeedStore.setState({
                         isBackgroundRefreshing: true,
                         refreshProgress: { total: event.total_feeds, completed: 0, currentTitle: '' },
@@ -226,6 +230,7 @@ export default function AppLayout() {
 
                 if (event.type === 'feed_complete' || event.type === 'feed_error') {
                     if (event.type === 'feed_complete' && event.new_articles > 0) {
+                        refreshCycleNewArticlesRef.current += event.new_articles;
                         debouncedSync();
                     }
 
@@ -265,6 +270,14 @@ export default function AppLayout() {
                 }
 
                 if (event.type === 'complete') {
+                    const totalNewArticles = refreshCycleNewArticlesRef.current;
+                    if (totalNewArticles > 0) {
+                        show(
+                            `${totalNewArticles} new article${totalNewArticles === 1 ? '' : 's'} loaded`,
+                            'success'
+                        );
+                    }
+                    refreshCycleNewArticlesRef.current = 0;
                     useFeedStore.setState({ isBackgroundRefreshing: false, refreshProgress: null });
                     void finalizeRefresh();
                     return;
@@ -299,24 +312,35 @@ export default function AppLayout() {
 
             if (!force && timeSinceLast < STALE_MS) return;
             lastRefreshAt = now;
+            const indicatorStart = Date.now();
+            setIsForegroundSyncing(true);
 
-            // Clear any stuck loading/refresh states to ensure fetch happens immediately
-            useArticleStore.setState({ isLoading: false });
-            useFeedStore.setState({
-                isBackgroundRefreshing: false,
-                refreshProgress: null
-            });
+            try {
+                // Clear any stuck loading/refresh states to ensure fetch happens immediately
+                useArticleStore.setState({ isLoading: false });
+                useFeedStore.setState({
+                    isBackgroundRefreshing: false,
+                    refreshProgress: null
+                });
 
-            const syncResult = await fetchChanges();
-            if (syncResult) {
-                useFeedStore.getState().applySyncChanges(syncResult.changes);
-                useArticleStore.getState().applySyncChanges(syncResult.changes);
+                const syncResult = await fetchChanges();
+                if (syncResult) {
+                    useFeedStore.getState().applySyncChanges(syncResult.changes);
+                    useArticleStore.getState().applySyncChanges(syncResult.changes);
+                }
+
+                await Promise.all([
+                    force || requiresFullArticleRefresh() ? fetchArticles(true) : Promise.resolve()
+                ]);
+                fetchSettings().catch(() => { });
+            } finally {
+                const elapsed = Date.now() - indicatorStart;
+                const minVisibleMs = 700;
+                if (elapsed < minVisibleMs) {
+                    await new Promise((resolve) => setTimeout(resolve, minVisibleMs - elapsed));
+                }
+                setIsForegroundSyncing(false);
             }
-
-            await Promise.all([
-                force || requiresFullArticleRefresh() ? fetchArticles(true) : Promise.resolve()
-            ]);
-            fetchSettings().catch(() => { });
         };
 
         const appStateSub = AppState.addEventListener('change', (state) => {
@@ -441,6 +465,13 @@ export default function AppLayout() {
                     currentTitle={refreshProgress?.currentTitle || ''}
                     onCancel={cancelRefresh}
                 />
+
+                {isForegroundSyncing && !refreshProgress && (
+                    <View style={s.foregroundSyncBadge}>
+                        <ActivityIndicator size="small" color={colors.text.primary} />
+                        <Text style={s.foregroundSyncText}>Syncing latest articles…</Text>
+                    </View>
+                )}
             </View >
         </ErrorBoundary>
     );
@@ -478,5 +509,30 @@ const styles = (isDesktop: boolean, isReaderRoute: boolean, colors: any) => Styl
         ...(Platform.OS === 'web' && isDesktop && isReaderRoute && {
             minWidth: 400,
         }),
+    },
+    foregroundSyncBadge: {
+        position: 'absolute',
+        top: isDesktop ? 20 : 12,
+        alignSelf: 'center',
+        zIndex: 30,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        borderRadius: 999,
+        backgroundColor: colors.background.elevated,
+        borderWidth: 1,
+        borderColor: colors.border.DEFAULT,
+        shadowColor: '#000',
+        shadowOpacity: 0.12,
+        shadowOffset: { width: 0, height: 4 },
+        shadowRadius: 12,
+        elevation: 8,
+    },
+    foregroundSyncText: {
+        color: colors.text.primary,
+        fontSize: 14,
+        fontWeight: '600',
     },
 });
