@@ -157,7 +157,7 @@ export default function AppLayout() {
         return () => {
             cleanupSync();
         };
-    }, []);
+    }, [isAuthenticated]);
 
     // Pause sync when app is backgrounded to save battery
     useEffect(() => {
@@ -177,6 +177,8 @@ export default function AppLayout() {
     }, []);
 
     useEffect(() => {
+        if (!isAuthenticated) return;
+
         const controller = new AbortController();
         let refreshTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -309,9 +311,11 @@ export default function AppLayout() {
             if (refreshTimeout) clearTimeout(refreshTimeout);
             useFeedStore.setState({ isBackgroundRefreshing: false, refreshProgress: null });
         };
-    }, []);
+    }, [isAuthenticated, fetchArticles, fetchSettings, show]);
 
     useEffect(() => {
+        if (!isAuthenticated) return;
+
         let lastRefreshAt = Date.now();
         let wasHidden = false;
         let backgroundedAt: number | null = null;
@@ -412,7 +416,7 @@ export default function AppLayout() {
                 window.removeEventListener('focus', onFocus);
             }
         };
-    }, [fetchArticles]);
+    }, [isAuthenticated, fetchArticles, fetchSettings]);
 
     const pathname = usePathname() || '';
     const colors = useColors();
