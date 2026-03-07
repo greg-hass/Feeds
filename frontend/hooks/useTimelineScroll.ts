@@ -32,6 +32,7 @@ export const useTimelineScroll = (articles: any[], filter: any) => {
     const hasRestoredScroll = useRef(false);
     const pendingScrollPosition = useRef<number | null>(null);
     const currentScrollKey = useRef<string>('');
+    const currentScrollOffset = useRef<number>(0);
 
     // Scroll compensation refs for Twitter/X-style prepending
     const scrollOffsetBeforeUpdate = useRef<number>(0);
@@ -199,7 +200,7 @@ export const useTimelineScroll = (articles: any[], filter: any) => {
 
     // Save scroll position to global ref with the current filter key
     const saveScrollPosition = useCallback(() => {
-        const position = pendingScrollPosition.current || scrollPositions[scrollKey] || 0;
+        const position = currentScrollOffset.current || pendingScrollPosition.current || scrollPositions[scrollKey] || 0;
         scrollPositions[scrollKey] = position;
     }, [scrollKey]);
 
@@ -211,6 +212,7 @@ export const useTimelineScroll = (articles: any[], filter: any) => {
         }
 
         const offset = e.nativeEvent.contentOffset.y;
+        currentScrollOffset.current = offset;
 
         // Only save if it's a valid positive offset to avoid jitter
         if (offset > 0) {
@@ -251,6 +253,14 @@ export const useTimelineScroll = (articles: any[], filter: any) => {
         return (scrollPositions[scrollKey] || 0) < 50;
     }, [scrollKey]);
 
+    const shouldMaintainVisibleContentPosition = useCallback(() => {
+        if (!hasRestoredScroll.current) {
+            return false;
+        }
+
+        return (scrollPositions[scrollKey] || 0) < 50;
+    }, [scrollKey]);
+
     return {
         flatListRef,
         onViewableItemsChanged,
@@ -258,6 +268,7 @@ export const useTimelineScroll = (articles: any[], filter: any) => {
         saveScrollPosition,
         scrollToTop,
         isAtTop,
+        shouldMaintainVisibleContentPosition,
         prepareForNewArticles,
         applyScrollCompensation,
     };

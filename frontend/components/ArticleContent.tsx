@@ -59,8 +59,10 @@ export default function ArticleContent({ html }: ArticleContentProps) {
 
     const containerRef = useRef<HTMLDivElement>(null);
 
-    // Use system font stack matching the app's default text rendering
-    const FONT_STACK = "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+    const readerFontStack = settings?.font_family === 'serif'
+        ? typography.serif.family
+        : typography.sans.family;
+    const monoFontStack = "'SF Mono', Monaco, monospace";
 
     // CSS for both web div and native webview
     const getBaseStyles = (prefix = '') => {
@@ -69,7 +71,7 @@ export default function ArticleContent({ html }: ArticleContentProps) {
 
         return `
         ${bodySelector} {
-            font-family: ${FONT_STACK} !important;
+            font-family: ${readerFontStack} !important;
             font-size: ${sizes.body}px;
             line-height: ${customLineHeight || (sizes.lineHeight * 1.05)};
             color: ${contentColors.text} !important;
@@ -79,22 +81,22 @@ export default function ArticleContent({ html }: ArticleContentProps) {
             word-wrap: break-word;
             -webkit-font-smoothing: antialiased;
             letter-spacing: -0.011em;
-            font-weight: 450;
+            font-weight: 400;
         }
 
         /* Extremely aggressive override for ALL elements to prevent source styles from leaking */
         ${s}*, ${s}*::before, ${s}*::after {
-            font-family: ${FONT_STACK} !important;
+            font-family: ${readerFontStack} !important;
         }
 
         /* Force color and font for common text containers */
         ${s}p, ${s}span, ${s}div, ${s}li, ${s}section, ${s}article, ${s}main, ${s}header, ${s}footer {
             color: ${contentColors.text} !important;
-            font-family: ${FONT_STACK} !important;
+            font-family: ${readerFontStack} !important;
         }
 
         ${s}h1, ${s}h2, ${s}h3, ${s}h4 {
-            font-family: ${FONT_STACK} !important;
+            font-family: ${readerFontStack} !important;
             color: ${contentColors.text} !important;
             line-height: 1.2;
             margin-top: 2em;
@@ -113,7 +115,7 @@ export default function ArticleContent({ html }: ArticleContentProps) {
             text-decoration: underline !important;
             text-decoration-thickness: 1px !important;
             text-underline-offset: 4px !important;
-            font-family: ${FONT_STACK} !important;
+            font-family: ${readerFontStack} !important;
         }
         
         ${s}img {
@@ -138,7 +140,7 @@ export default function ArticleContent({ html }: ArticleContentProps) {
             padding: 2em !important;
             border-radius: ${borderRadius.xl}px !important;
             overflow-x: auto !important;
-            font-family: 'SF Mono', Monaco, monospace !important;
+            font-family: ${monoFontStack} !important;
             font-size: 0.9em !important;
             line-height: 1.6 !important;
             margin: 2.5em 0 !important;
@@ -148,7 +150,7 @@ export default function ArticleContent({ html }: ArticleContentProps) {
             background: ${colors.background.tertiary} !important;
             padding: 0.25em 0.5em !important;
             border-radius: ${borderRadius.sm}px !important;
-            font-family: 'SF Mono', Monaco, monospace !important;
+            font-family: ${monoFontStack} !important;
         }
 
         ${s}table {
@@ -160,7 +162,7 @@ export default function ArticleContent({ html }: ArticleContentProps) {
             text-align: left !important;
             padding: 16px !important;
             border-bottom: 1px solid ${contentColors.border} !important;
-            font-family: ${FONT_STACK} !important;
+            font-family: ${readerFontStack} !important;
         }
 
         /* Reddit-specific cleanup - simplified for Safari compatibility */
@@ -173,6 +175,19 @@ export default function ArticleContent({ html }: ArticleContentProps) {
         ${s}a[href*="reddit.com/r/"]:only-child,
         ${s}a[href*="reddit.com/user/"]:only-child {
             display: none !important;
+        }
+
+        ${s}p:has(> a:only-child[href*="reddit.com/r/"]),
+        ${s}p:has(> a:only-child[href*="reddit.com/user/"]) {
+            display: none !important;
+        }
+
+        ${s}p {
+            white-space: normal !important;
+        }
+
+        ${s}p, ${s}div {
+            word-break: break-word;
         }
 
         /* Clean up truly empty elements */

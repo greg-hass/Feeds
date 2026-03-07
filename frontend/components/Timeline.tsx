@@ -55,7 +55,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
 
     const {
         flatListRef, onViewableItemsChanged, handleScroll, saveScrollPosition,
-        scrollToTop, isAtTop, prepareForNewArticles
+        scrollToTop, isAtTop, shouldMaintainVisibleContentPosition, prepareForNewArticles
     } = useTimelineScroll(articles, filter);
 
     useEffect(() => {
@@ -299,10 +299,14 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                         windowSize={11}
                         updateCellsBatchingPeriod={50}
                         // Maintain visible content position when prepending items (Twitter/X style)
-                        maintainVisibleContentPosition={{
-                            minIndexForVisible: 0,
-                            autoscrollToTopThreshold: undefined,
-                        }}
+                        maintainVisibleContentPosition={
+                            shouldMaintainVisibleContentPosition()
+                                ? {
+                                    minIndexForVisible: 0,
+                                    autoscrollToTopThreshold: undefined,
+                                }
+                                : undefined
+                        }
                     />
                 </View>
             ) : null}

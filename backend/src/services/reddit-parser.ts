@@ -25,7 +25,15 @@ export async function fetchRedditIcon(subreddit: string): Promise<string | null>
 }
 
 export function cleanRedditContent(html: string): string {
-    return html.replace(/<table[^>]*>[\s\S]*?<\/table>/gi, '').trim();
+    return html
+        .replace(/<table[^>]*>[\s\S]*?<\/table>/gi, '')
+        .replace(/<p>\s*submitted by[\s\S]*?<\/p>/gi, '')
+        .replace(/<p>\s*\[[^\]]+\]\s*\([^)]+\)\s*<\/p>/gi, '')
+        .replace(/<p>\s*<a[^>]+href="https?:\/\/(?:www\.)?reddit\.com\/r\/[^"]+"[^>]*>[\s\S]*?<\/a>\s*<\/p>/gi, '')
+        .replace(/<p>\s*<a[^>]+href="https?:\/\/(?:www\.)?reddit\.com\/user\/[^"]+"[^>]*>[\s\S]*?<\/a>\s*<\/p>/gi, '')
+        .replace(/<a[^>]+href="https?:\/\/(?:www\.)?reddit\.com\/(?:r|user)\/[^"]+"[^>]*>[\s\S]*?<\/a>/gi, '')
+        .replace(/<p>\s*(?:&nbsp;|\s|<br\s*\/?>)*<\/p>/gi, '')
+        .trim();
 }
 
 export function upgradeRedditImageUrl(url: string): string {
