@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable, ActivityIndicator, Animated, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Pressable, ActivityIndicator, Animated, TouchableOpacity, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Plus, AlertCircle, RefreshCw, Filter, X, Menu } from 'lucide-react-native';
 import { useColors, spacing, typography, borderRadius } from '@/theme';
@@ -18,6 +18,7 @@ export default function RulesScreen() {
     const router = useRouter();
     const { width } = useWindowDimensions();
     const isMobile = width < 1024;
+    const useNativeDriver = Platform.OS !== 'web';
     const { rules, loading, error, fetchRules, clearError } = useRulesStore();
     const [showEnabledOnly, setShowEnabledOnly] = useState(false);
     const [showMenu, setShowMenu] = useState(false);
@@ -30,7 +31,7 @@ export default function RulesScreen() {
         Animated.timing(sidebarAnim, {
             toValue: showMenu ? -300 : 0,
             duration: 250,
-            useNativeDriver: true,
+            useNativeDriver,
         }).start();
     };
 

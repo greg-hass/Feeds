@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Animated, StyleSheet } from 'react-native';
+import { View, Animated, StyleSheet, Platform } from 'react-native';
 import { useColors } from '@/theme';
 
 export const PlayingWaveform = ({ color, size = 16 }: { color: string; size?: number }) => {
@@ -9,6 +9,7 @@ export const PlayingWaveform = ({ color, size = 16 }: { color: string; size?: nu
         new Animated.Value(0.3),
         new Animated.Value(0.9),
     ]);
+    const useNativeDriver = Platform.OS !== 'web';
 
     useEffect(() => {
         anims.forEach((anim, i) => {
@@ -17,17 +18,17 @@ export const PlayingWaveform = ({ color, size = 16 }: { color: string; size?: nu
                     Animated.timing(anim, {
                         toValue: 0.2 + Math.random() * 0.8,
                         duration: 300 + Math.random() * 500,
-                        useNativeDriver: true,
+                        useNativeDriver,
                     }),
                     Animated.timing(anim, {
                         toValue: 0.2 + Math.random() * 0.8,
                         duration: 300 + Math.random() * 500,
-                        useNativeDriver: true,
+                        useNativeDriver,
                     }),
                 ])
             ).start();
         });
-    }, []);
+    }, [anims, useNativeDriver]);
 
     return (
         <View style={[s.container, { width: size, height: size }]}>

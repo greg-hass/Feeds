@@ -41,6 +41,7 @@ export default function BookmarksList({
   isMobile = false,
 }: BookmarksListProps) {
   const colors = useColors();
+  const useNativeDriver = Platform.OS !== "web";
   const router = useRouter();
   const { bookmarkedArticles, fetchBookmarks, isLoading, error, markRead } =
     useArticleStore();
@@ -60,7 +61,7 @@ export default function BookmarksList({
     Animated.timing(sidebarAnim, {
       toValue: showMenu ? -300 : 0,
       duration: 250,
-      useNativeDriver: true,
+      useNativeDriver,
     }).start();
   };
 

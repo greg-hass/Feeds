@@ -10,6 +10,7 @@ export const FloatingPlayer = () => {
     const colors = useColors();
     const { width, height } = useWindowDimensions();
     const isMobile = width < 1024;
+    const useNativeDriver = Platform.OS !== 'web';
 
     const [pan] = useState(() => new Animated.ValueXY({ x: 0, y: 0 }));
     const [opacity] = useState(() => new Animated.Value(0));
@@ -19,16 +20,16 @@ export const FloatingPlayer = () => {
             Animated.timing(opacity, {
                 toValue: 1,
                 duration: 300,
-                useNativeDriver: true,
+                useNativeDriver,
             }).start();
         } else {
             Animated.timing(opacity, {
                 toValue: 0,
                 duration: 200,
-                useNativeDriver: true,
+                useNativeDriver,
             }).start();
         }
-    }, [activeVideoId, isMinimized]);
+    }, [activeVideoId, isMinimized, opacity, useNativeDriver]);
 
     const panResponder = useMemo(
         () =>
@@ -40,9 +41,9 @@ export const FloatingPlayer = () => {
                         y: (pan.y as any)._value,
                     });
                 },
-                onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], {
-                    useNativeDriver: false,
-                }),
+                onPanResponderMove: (_event, gestureState) => {
+                    pan.setValue({ x: gestureState.dx, y: gestureState.dy });
+                },
                 onPanResponderRelease: () => {
                     pan.flattenOffset();
                 },

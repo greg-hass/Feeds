@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, StyleSheet, Animated } from 'react-native';
+import { View, StyleSheet, Animated, Platform } from 'react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
 
 export const AddFeedShimmer = () => {
     const colors = useColors();
     const [animation] = React.useState(() => new Animated.Value(0));
+    const useNativeDriver = Platform.OS !== 'web';
 
     React.useEffect(() => {
         const animate = () => {
@@ -13,18 +14,18 @@ export const AddFeedShimmer = () => {
                     Animated.timing(animation, {
                         toValue: 1,
                         duration: 1000,
-                        useNativeDriver: true,
+                        useNativeDriver,
                     }),
                     Animated.timing(animation, {
                         toValue: 0,
                         duration: 1000,
-                        useNativeDriver: true,
+                        useNativeDriver,
                     }),
                 ])
             ).start();
         };
         animate();
-    }, []);
+    }, [animation, useNativeDriver]);
 
     const opacity = animation.interpolate({
         inputRange: [0, 1],

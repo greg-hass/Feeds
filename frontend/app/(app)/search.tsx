@@ -103,7 +103,7 @@ export default function SearchScreen() {
             Animated.timing(fadeAnim, {
                 toValue: 1,
                 duration: 400,
-                useNativeDriver: true,
+                useNativeDriver: Platform.OS !== 'web',
             }).start();
         } catch (err) {
             console.error('Search failed:', err);

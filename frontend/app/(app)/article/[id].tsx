@@ -90,7 +90,7 @@ export default function ArticleScreen() {
                     Animated.timing(fadeAnim, {
                         toValue: 1,
                         duration: 400,
-                        useNativeDriver: true,
+                        useNativeDriver: Platform.OS !== 'web',
                     }).start();
                 })
                 .finally(() => setIsLoading(false));
@@ -182,13 +182,13 @@ export default function ArticleScreen() {
             Animated.timing(headerOpacity, {
                 toValue: 0,
                 duration: 250,
-                useNativeDriver: true,
+                useNativeDriver: Platform.OS !== 'web',
             }).start();
         } else if (offset < scrollOffset || offset < 50) {
             Animated.timing(headerOpacity, {
                 toValue: 1,
                 duration: 200,
-                useNativeDriver: true,
+                useNativeDriver: Platform.OS !== 'web',
             }).start();
         }
         setScrollOffset(offset);

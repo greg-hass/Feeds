@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Animated } from 'react-native';
+import { View, StyleSheet, Animated, Platform } from 'react-native';
 import { useColors, spacing } from '@/theme';
 
 interface SkeletonProps {
@@ -12,6 +12,7 @@ interface SkeletonProps {
 export const Skeleton = ({ width = '100%', height = 16, borderRadius = 4, style }: SkeletonProps) => {
   const colors = useColors();
   const [shimmerAnim] = React.useState(() => new Animated.Value(0));
+  const useNativeDriver = Platform.OS !== 'web';
 
   React.useEffect(() => {
     Animated.loop(
@@ -19,16 +20,16 @@ export const Skeleton = ({ width = '100%', height = 16, borderRadius = 4, style 
         Animated.timing(shimmerAnim, {
           toValue: 1,
           duration: 1000,
-          useNativeDriver: true,
+          useNativeDriver,
         }),
         Animated.timing(shimmerAnim, {
           toValue: 0,
           duration: 1000,
-          useNativeDriver: true,
+          useNativeDriver,
         }),
       ])
     ).start();
-  }, []);
+  }, [shimmerAnim, useNativeDriver]);
 
   const opacity = shimmerAnim.interpolate({
     inputRange: [0, 1],

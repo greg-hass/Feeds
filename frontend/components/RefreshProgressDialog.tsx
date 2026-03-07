@@ -18,6 +18,7 @@ export function RefreshProgressDialog({ visible, total, completed, currentTitle,
     const { width } = useWindowDimensions();
     const isDesktop = width >= 1024;
     const isMobileWeb = Platform.OS === 'web' && width < 768;
+    const useNativeDriver = Platform.OS !== 'web';
 
     // Animation
     const [fadeAnim] = React.useState(() => new Animated.Value(0));
@@ -35,7 +36,7 @@ export function RefreshProgressDialog({ visible, total, completed, currentTitle,
                 Animated.timing(spinAnim, {
                     toValue: 1,
                     duration: 1500,
-                    useNativeDriver: true,
+                    useNativeDriver,
                 })
             ).start();
 
@@ -43,12 +44,12 @@ export function RefreshProgressDialog({ visible, total, completed, currentTitle,
                 Animated.timing(fadeAnim, {
                     toValue: 1,
                     duration: 400,
-                    useNativeDriver: true,
+                    useNativeDriver,
                 }),
                 Animated.timing(slideAnim, {
                     toValue: 0,
                     duration: 400,
-                    useNativeDriver: true,
+                    useNativeDriver,
                 })
             ]).start();
         } else {
@@ -57,16 +58,16 @@ export function RefreshProgressDialog({ visible, total, completed, currentTitle,
                 Animated.timing(fadeAnim, {
                     toValue: 0,
                     duration: 300,
-                    useNativeDriver: true,
+                    useNativeDriver,
                 }),
                 Animated.timing(slideAnim, {
                     toValue: 20,
                     duration: 300,
-                    useNativeDriver: true,
+                    useNativeDriver,
                 })
             ]).start();
         }
-    }, [visible, fadeAnim, slideAnim, spinAnim]);
+    }, [visible, fadeAnim, slideAnim, spinAnim, useNativeDriver]);
 
     const spin = spinAnim.interpolate({
         inputRange: [0, 1],

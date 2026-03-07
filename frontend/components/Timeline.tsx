@@ -31,6 +31,7 @@ interface TimelineProps {
  */
 export default function Timeline({ onArticlePress, activeArticleId }: TimelineProps) {
     const colors = useColors();
+    const useNativeDriver = Platform.OS !== 'web';
     const isDesktop = useIsDesktop();
     const isMobile = !isDesktop;
     const styles = timelineStyles(colors, isMobile);
@@ -99,7 +100,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
         Animated.timing(sidebarAnim, {
             toValue: showMenu ? -300 : 0,
             duration: 250,
-            useNativeDriver: true,
+            useNativeDriver,
         }).start();
     };
 
@@ -135,7 +136,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
             Animated.timing(refreshSpin, {
                 toValue: 1,
                 duration: 900,
-                useNativeDriver: true,
+                useNativeDriver,
             })
         );
         loop.start();
@@ -145,7 +146,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
             refreshSpin.stopAnimation();
             refreshSpin.setValue(0);
         };
-    }, [isRefreshing, refreshSpin]);
+    }, [isRefreshing, refreshSpin, useNativeDriver]);
 
     // Use the prefetch hook for article content
     useArticlePrefetch({

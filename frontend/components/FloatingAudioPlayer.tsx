@@ -14,6 +14,7 @@ export const FloatingAudioPlayer = ({ onRestore }: FloatingAudioPlayerProps) => 
     const { width } = useWindowDimensions();
     const isMobile = width < 1024;
     const isMobileWeb = Platform.OS === 'web' && width < 768;
+    const useNativeDriver = Platform.OS !== 'web';
 
     const [opacity] = useState(() => new Animated.Value(0));
     const [slideAnim] = useState(() => new Animated.Value(100));
@@ -24,13 +25,13 @@ export const FloatingAudioPlayer = ({ onRestore }: FloatingAudioPlayerProps) => 
                 Animated.timing(opacity, {
                     toValue: 1,
                     duration: 300,
-                    useNativeDriver: true,
+                    useNativeDriver,
                 }),
                 Animated.spring(slideAnim, {
                     toValue: 0,
                     tension: 50,
                     friction: 8,
-                    useNativeDriver: true,
+                    useNativeDriver,
                 })
             ]).start();
         } else {
@@ -38,16 +39,16 @@ export const FloatingAudioPlayer = ({ onRestore }: FloatingAudioPlayerProps) => 
                 Animated.timing(opacity, {
                     toValue: 0,
                     duration: 200,
-                    useNativeDriver: true,
+                    useNativeDriver,
                 }),
                 Animated.timing(slideAnim, {
                     toValue: 100,
                     duration: 200,
-                    useNativeDriver: true,
+                    useNativeDriver,
                 })
             ]).start();
         }
-    }, [title, isMinimized]);
+    }, [title, isMinimized, opacity, slideAnim, useNativeDriver]);
 
     if (!title || !isMinimized) return null;
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Animated, Alert } from 'react-native';
+import { Animated, Alert, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useArticleStore, useFeedStore, useAudioStore, useVideoStore, useDigestStore } from '@/stores';
 import { extractVideoId } from '@/utils/youtube';
@@ -7,6 +7,7 @@ import { Article } from '@/services/api';
 import { getRefreshPresentation } from '@/utils/refreshStatus';
 
 export const useTimeline = (onArticlePress?: (article: Article) => void) => {
+    const useNativeDriver = Platform.OS !== 'web';
     const router = useRouter();
     const { articles, isLoading, hasMore, filter, fetchArticles, setFilter, markAllRead, prefetchArticle } = useArticleStore();
     const { feeds, folders, refreshAllFeeds, isLoading: isFeedLoading, refreshState } = useFeedStore();
@@ -36,13 +37,13 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
     useEffect(() => {
         const pulse = Animated.loop(
             Animated.sequence([
-                Animated.timing(hotPulseAnim, { toValue: 1.05, duration: 1000, useNativeDriver: true }),
-                Animated.timing(hotPulseAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
+                Animated.timing(hotPulseAnim, { toValue: 1.05, duration: 1000, useNativeDriver }),
+                Animated.timing(hotPulseAnim, { toValue: 1, duration: 1000, useNativeDriver }),
             ])
         );
         pulse.start();
         return () => pulse.stop();
-    }, []);
+    }, [hotPulseAnim, useNativeDriver]);
 
     const getBookmarkScale = (id: number) => {
         if (!bookmarkScales.has(id)) bookmarkScales.set(id, new Animated.Value(1));

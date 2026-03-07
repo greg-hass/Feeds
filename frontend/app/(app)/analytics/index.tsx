@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { View, ScrollView, StyleSheet, useWindowDimensions, Animated, TouchableOpacity, Alert } from 'react-native';
+import { View, ScrollView, StyleSheet, useWindowDimensions, Animated, TouchableOpacity, Alert, Platform } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { useColors, spacing } from '@/theme';
 import { useAnalyticsStore } from '@/stores/analyticsStore';
@@ -20,6 +20,7 @@ export default function AnalyticsScreen() {
     const colors = useColors();
     const { width } = useWindowDimensions();
     const isMobile = width < 1024;
+    const useNativeDriver = Platform.OS !== 'web';
     const [showMenu, setShowMenu] = useState(false);
     const [sidebarAnim] = useState(new Animated.Value(-300));
 
@@ -37,7 +38,7 @@ export default function AnalyticsScreen() {
         Animated.timing(sidebarAnim, {
             toValue: showMenu ? -300 : 0,
             duration: 250,
-            useNativeDriver: true,
+            useNativeDriver,
         }).start();
     };
 

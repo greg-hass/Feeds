@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, Animated, Platform } from 'react-native';
 import { Bookmark, Clock, Flame, Share2 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { formatDistanceToNow } from 'date-fns';
@@ -29,6 +29,7 @@ const ArticleFooter = React.memo<ArticleFooterProps>(({
     getBookmarkRotation,
 }) => {
     const colors = useColors();
+    const useNativeDriver = Platform.OS !== 'web';
 
     const handleBookmarkPress = () => {
         const scale = getBookmarkScale(item.id);
@@ -40,19 +41,19 @@ const ArticleFooter = React.memo<ArticleFooterProps>(({
                 Animated.timing(scale, {
                     toValue: 1.3,
                     duration: 150,
-                    useNativeDriver: true,
+                    useNativeDriver,
                 }),
                 Animated.spring(scale, {
                     toValue: 1,
                     friction: 3,
                     tension: 40,
-                    useNativeDriver: true,
+                    useNativeDriver,
                 }),
             ]),
             Animated.timing(rotation, {
                 toValue: 1,
                 duration: 300,
-                useNativeDriver: true,
+                useNativeDriver,
             }),
         ]).start();
 

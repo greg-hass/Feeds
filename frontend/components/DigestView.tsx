@@ -17,6 +17,7 @@ export const DigestView = () => {
     const { latestDigest, isLoading, error, fetchLatestDigest, generateDigest } = useDigestStore();
     const { settings, updateSettings } = useSettingsStore();
     const colors = useColors();
+    const useNativeDriver = Platform.OS !== 'web';
     const [showTextSizeMenu, setShowTextSizeMenu] = useState(false);
     const [showMenu, setShowMenu] = useState(false);
     const [headerOpacity] = useState(() => new Animated.Value(1));
@@ -36,7 +37,7 @@ export const DigestView = () => {
         Animated.timing(sidebarAnim, {
             toValue: showMenu ? -300 : 0,
             duration: 250,
-            useNativeDriver: true,
+            useNativeDriver,
         }).start();
     };
 

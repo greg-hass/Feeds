@@ -799,7 +799,7 @@ export default function ManageScreen() {
           Animated.timing(sidebarAnim, {
             toValue: 0,
             duration: 250,
-            useNativeDriver: true,
+            useNativeDriver: Platform.OS !== "web",
           }).start();
         }}
         rightActions={headerRightActions}
@@ -2031,7 +2031,7 @@ export default function ManageScreen() {
                 Animated.timing(sidebarAnim, {
                   toValue: -300,
                   duration: 250,
-                  useNativeDriver: true,
+                  useNativeDriver: Platform.OS !== "web",
                 }).start();
               }}
             />
@@ -2053,7 +2053,7 @@ export default function ManageScreen() {
                   Animated.timing(sidebarAnim, {
                     toValue: -300,
                     duration: 250,
-                    useNativeDriver: true,
+                    useNativeDriver: Platform.OS !== "web",
                   }).start();
                 }}
                 style={{ padding: spacing.sm }}
@@ -2068,7 +2068,7 @@ export default function ManageScreen() {
                 Animated.timing(sidebarAnim, {
                   toValue: -300,
                   duration: 250,
-                  useNativeDriver: true,
+                  useNativeDriver: Platform.OS !== "web",
                 }).start();
               }}
             />

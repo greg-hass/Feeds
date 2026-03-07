@@ -8,14 +8,15 @@ const ToastItem = ({ id, message, type }: { id: string; message: string; type: '
     const { hide } = useToastStore();
     const colors = useColors();
     const [opacity] = React.useState(() => new Animated.Value(0));
+    const useNativeDriver = Platform.OS !== 'web';
 
     React.useEffect(() => {
         Animated.timing(opacity, {
             toValue: 1,
             duration: 300,
-            useNativeDriver: true,
+            useNativeDriver,
         }).start();
-    }, [opacity]);
+    }, [opacity, useNativeDriver]);
 
     const getIcon = () => {
         switch (type) {

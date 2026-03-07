@@ -26,6 +26,7 @@ export default function NewArticlesPill({
     const [translateY] = useState(() => new Animated.Value(20));
     const [scale] = useState(() => new Animated.Value(0.8));
     const [isVisible, setIsVisible] = useState(false);
+    const useNativeDriver = Platform.OS !== 'web';
 
     const shouldShow = Boolean(visible && count && count > 0);
     const displayCount = count ?? 0;
@@ -39,19 +40,19 @@ export default function NewArticlesPill({
                 Animated.timing(opacity, {
                     toValue: 1,
                     duration: 300,
-                    useNativeDriver: true,
+                    useNativeDriver,
                 }),
                 Animated.spring(translateY, {
                     toValue: 0,
                     friction: 8,
                     tension: 100,
-                    useNativeDriver: true,
+                    useNativeDriver,
                 }),
                 Animated.spring(scale, {
                     toValue: 1,
                     friction: 8,
                     tension: 100,
-                    useNativeDriver: true,
+                    useNativeDriver,
                 }),
             ]).start();
         } else {
@@ -60,23 +61,23 @@ export default function NewArticlesPill({
                 Animated.timing(opacity, {
                     toValue: 0,
                     duration: 200,
-                    useNativeDriver: true,
+                    useNativeDriver,
                 }),
                 Animated.timing(translateY, {
                     toValue: 20,
                     duration: 200,
-                    useNativeDriver: true,
+                    useNativeDriver,
                 }),
                 Animated.timing(scale, {
                     toValue: 0.8,
                     duration: 200,
-                    useNativeDriver: true,
+                    useNativeDriver,
                 }),
             ]).start(() => {
                 setIsVisible(false);
             });
         }
-    }, [shouldShow, displayCount, opacity, translateY, scale]);
+    }, [shouldShow, displayCount, opacity, translateY, scale, useNativeDriver]);
 
     useEffect(() => {
         if (!shouldShow || !displayCount || displayCount <= 0) return;
