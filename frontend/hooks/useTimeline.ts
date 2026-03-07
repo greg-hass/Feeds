@@ -22,6 +22,11 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
     const refreshStatus = useMemo(() => {
         const completedAt = refreshState.lastCompletedAt ? new Date(refreshState.lastCompletedAt) : null;
         const staleSince = refreshState.staleSince ? new Date(refreshState.staleSince) : null;
+        const shouldDisplayStale = (() => {
+            if (!staleSince) return false;
+            if (!completedAt) return true;
+            return Date.now() - completedAt.getTime() > 10 * 60 * 1000;
+        })();
         const formatAge = (date: Date | null) => {
             if (!date) return null;
             const diffMs = Date.now() - date.getTime();
@@ -55,7 +60,7 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
             };
         }
 
-        if (staleSince) {
+        if (shouldDisplayStale) {
             return {
                 label: completedAt ? `Stale. Last updated ${formatAge(completedAt)}` : 'Stale. Refresh needed',
                 refreshText: 'Stale',

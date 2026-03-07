@@ -122,12 +122,6 @@ export const ScreenHeader = ({
                     >
                         {title}
                     </Text>
-                    {isRefreshing && (
-                        <View style={s.refreshPill}>
-                            <ActivityIndicator size={10} color={colors.primary?.DEFAULT ?? colors.primary} />
-                            <Text style={s.refreshText}>{refreshText}</Text>
-                        </View>
-                    )}
                 </View>
             </View>
 
@@ -234,6 +228,7 @@ const styles = (colors: any) => StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: spacing.sm,
+        flexShrink: 1,
     },
     actionButton: {
         padding: spacing.sm,
@@ -249,25 +244,13 @@ const styles = (colors: any) => StyleSheet.create({
     actionButtonDanger: {
         backgroundColor: colors.status.error + '22',
     },
-    refreshPill: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        backgroundColor: colors.background.secondary,
-        paddingHorizontal: spacing.sm,
-        paddingVertical: 4,
-        borderRadius: borderRadius.full,
-    },
-    refreshText: {
-        fontSize: 11,
-        color: colors.text.tertiary,
-        fontWeight: '500',
-    },
     timerText: {
         fontSize: 11,
         fontWeight: '700',
         color: colors.primary?.DEFAULT ?? colors.primary,
         fontFamily: Platform.OS === 'web' ? 'monospace' : undefined,
-        marginRight: spacing.sm,
+        marginRight: spacing.xs,
+        flexShrink: 1,
+        maxWidth: Platform.OS === 'web' ? 220 : 110,
     },
 });
