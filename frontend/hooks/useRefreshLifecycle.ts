@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
-import { useArticleStore, useFeedStore, useSettingsStore, useToastStore } from '@/stores';
+import { useArticleStore, useFeedStore, useSettingsStore } from '@/stores';
 import { enableSync, fetchChanges, syncManager } from '@/lib/sync';
 import { api } from '@/services/api';
 import { createRefreshEventController } from '@/lib/refreshEvents';
@@ -10,7 +10,6 @@ interface UseRefreshLifecycleOptions {
 }
 
 export function useRefreshLifecycle({ enabled }: UseRefreshLifecycleOptions) {
-    const { show } = useToastStore();
     const { fetchSettings } = useSettingsStore();
     const { fetchArticles } = useArticleStore();
     const {
@@ -123,13 +122,7 @@ export function useRefreshLifecycle({ enabled }: UseRefreshLifecycleOptions) {
         const refreshController = createRefreshEventController({
             scope: 'background',
             requestSync: () => debouncedSync(),
-            onComplete: (totalNewArticles) => {
-                if (totalNewArticles > 0) {
-                    show(
-                        `${totalNewArticles} new article${totalNewArticles === 1 ? '' : 's'} loaded`,
-                        'success'
-                    );
-                }
+            onComplete: () => {
                 void finalizeRefresh();
             },
         });
@@ -157,7 +150,7 @@ export function useRefreshLifecycle({ enabled }: UseRefreshLifecycleOptions) {
 
             await syncNow(false, false);
             await Promise.all([
-                requiresFullArticleRefresh() ? fetchArticles(true) : Promise.resolve(),
+                fetchArticles(true),
             ]);
             fetchSettings().catch(() => { });
         };
@@ -185,7 +178,7 @@ export function useRefreshLifecycle({ enabled }: UseRefreshLifecycleOptions) {
                 },
             }));
         };
-    }, [enabled, fetchArticles, fetchSettings, show]);
+    }, [enabled, fetchArticles, fetchSettings]);
 
     useEffect(() => {
         if (!enabled) return;
@@ -219,7 +212,7 @@ export function useRefreshLifecycle({ enabled }: UseRefreshLifecycleOptions) {
                 }
 
                 await Promise.all([
-                    requiresFullArticleRefresh() ? fetchArticles(true) : Promise.resolve()
+                    fetchArticles(true)
                 ]);
                 fetchSettings().catch(() => { });
                 completeRefreshCycle({ message: 'Timeline synced' });

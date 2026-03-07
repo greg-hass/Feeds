@@ -40,12 +40,11 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     const [feedInfoId, setFeedInfoId] = useState<number | null>(null);
     const [feedInfoVisible, setFeedInfoVisible] = useState(false);
 
-    // Track new articles for Twitter/X-style timeline behavior
     const [newArticlesCount, setNewArticlesCount] = useState<number>(0);
-    const previousArticlesRef = useRef<Article[]>([]);
+    const previousRefreshPhaseRef = useRef<string>('idle');
 
     const {
-        articles, isLoading, hasMore, filter, isFeedLoading, headerTitle, lastRefreshed, isRefreshing, refreshStatus,
+        articles, isLoading, hasMore, filter, isFeedLoading, headerTitle, lastRefreshed, isRefreshing, refreshStatus, refreshState,
         playingArticleId, isPlaying, activeVideoId, hotPulseAnim, feeds,
         fetchArticles, setFilter, refreshAllFeeds, handleMarkAllRead, prefetchArticle,
         handleArticlePress, handlePlayPress, handleVideoPress,
@@ -57,42 +56,30 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
         scrollToTop, isAtTop, prepareForNewArticles
     } = useTimelineScroll(articles, filter);
 
-    // Detect new articles being prepended and handle scroll compensation
     useEffect(() => {
-        if (previousArticlesRef.current.length === 0) {
-            previousArticlesRef.current = articles;
-            return;
-        }
+        const previousPhase = previousRefreshPhaseRef.current;
+        const currentPhase = refreshState.phase;
+        const completedRefresh =
+            (previousPhase === 'refreshing' || previousPhase === 'syncing') &&
+            currentPhase === 'success';
 
-        // Check if new articles were prepended (new articles at the beginning)
-        if (articles.length > previousArticlesRef.current.length) {
-            const oldFirstId = previousArticlesRef.current[0]?.id;
-            const newFirstIndex = articles.findIndex(a => a.id === oldFirstId);
-
-            if (newFirstIndex > 0) {
-                // New articles were prepended
-                const addedCount = newFirstIndex;
-
-                // Only show notification and prepare compensation if user is not at top
-                if (!isAtTop()) {
-                    setNewArticlesCount(prev => prev + addedCount);
+        if (completedRefresh) {
+            const addedCount = refreshState.newArticles || 0;
+            if (addedCount > 0) {
+                if (isAtTop()) {
+                    scrollToTop(false);
+                    setNewArticlesCount(0);
+                } else {
                     prepareForNewArticles(addedCount);
+                    setNewArticlesCount(addedCount);
                 }
+            } else {
+                setNewArticlesCount(0);
             }
         }
 
-        previousArticlesRef.current = articles;
-    }, [articles, isAtTop, prepareForNewArticles]);
-
-    useEffect(() => {
-        if (newArticlesCount <= 0) return;
-
-        const timeoutId = setTimeout(() => {
-            setNewArticlesCount(0);
-        }, 3000);
-
-        return () => clearTimeout(timeoutId);
-    }, [newArticlesCount]);
+        previousRefreshPhaseRef.current = currentPhase;
+    }, [refreshState.phase, refreshState.newArticles, isAtTop, prepareForNewArticles, scrollToTop]);
 
     // Connect saveScrollPosition to handleArticlePress
     const handleArticlePressWithSave = useCallback((item: Article) => {

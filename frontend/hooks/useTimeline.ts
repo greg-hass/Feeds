@@ -145,7 +145,7 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
     })();
 
     return {
-        articles, isLoading, hasMore, filter, feeds, isFeedLoading, headerTitle, lastRefreshed, isRefreshing, refreshStatus,
+        articles, isLoading, hasMore, filter, feeds, isFeedLoading, headerTitle, lastRefreshed, isRefreshing, refreshStatus, refreshState,
         playingArticleId, isPlaying, activeVideoId, hotPulseAnim,
         fetchArticles, setFilter, refreshAllFeeds, handleMarkAllRead, handleArticlePress,
         handlePlayPress, handleVideoPress, getBookmarkScale, getBookmarkRotation, prefetchArticle,
