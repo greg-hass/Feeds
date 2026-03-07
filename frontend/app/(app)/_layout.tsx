@@ -19,6 +19,7 @@ import { useFeedChanges } from '@/hooks/useFeedChanges';
 import { usePwaThemeColor } from '@/hooks/usePwaThemeColor';
 import { useAuthBootstrap } from '@/hooks/useAuthBootstrap';
 import { useRefreshLifecycle } from '@/hooks/useRefreshLifecycle';
+import { useWakeLock } from '@/hooks/useWakeLock';
 
 export default function AppLayout() {
     const [mounted, setMounted] = useState(false);
@@ -51,6 +52,8 @@ export default function AppLayout() {
     const activeArticleId = isArticle ? parseInt(pathname.split('/').pop() || '') : null;
 
     const s = styles(isDesktop, isReaderRoute, colors);
+
+    useWakeLock(!isDesktop && !!isAuthenticated);
 
     // Show loading state while checking auth
     if (!mounted || isAuthenticated === null) {

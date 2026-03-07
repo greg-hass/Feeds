@@ -15,9 +15,9 @@ interface ArticleContentProps {
 }
 
 const fontSizes = {
-    small: { body: 15, h1: 26, h2: 22, h3: 19, lineHeight: 1.5 },
-    medium: { body: 18, h1: 32, h2: 26, h3: 22, lineHeight: 1.65 },
-    large: { body: 21, h1: 38, h2: 30, h3: 26, lineHeight: 1.75 },
+    small: { body: 13, h1: 20, h2: 18, h3: 16, lineHeight: 1.5 },
+    medium: { body: 14, h1: 24, h2: 20, h3: 18, lineHeight: 1.6 },
+    large: { body: 16, h1: 28, h2: 24, h3: 20, lineHeight: 1.7 },
 };
 
 export default function ArticleContent({ html }: ArticleContentProps) {

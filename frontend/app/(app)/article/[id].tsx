@@ -605,18 +605,18 @@ const styles = (colors: any, isMobile: boolean, readerTheme?: string) => {
             fontWeight: '900',
         },
         feedName: {
-            fontSize: 13,
+            ...typography.small,
             color: colors.text.secondary,
             fontWeight: '700',
         },
         title: {
             fontFamily: typography.sans.family,
-            fontSize: isMobile ? 34 : 48,
-            fontWeight: '900',
+            fontSize: isMobile ? 28 : 32,
+            fontWeight: '800',
             color: colors.text.primary,
-            lineHeight: isMobile ? 42 : 58,
+            lineHeight: isMobile ? 34 : 38,
             marginBottom: spacing.md,
-            letterSpacing: isMobile ? -1.2 : -1.8,
+            letterSpacing: isMobile ? -0.8 : -1,
         },
         meta: {
             flexDirection: 'row',
@@ -625,12 +625,12 @@ const styles = (colors: any, isMobile: boolean, readerTheme?: string) => {
             opacity: 0.7,
         },
         author: {
-            fontSize: 14,
+            ...typography.body,
             color: colors.text.primary,
             fontWeight: '700',
         },
         date: {
-            fontSize: 14,
+            ...typography.body,
             color: colors.text.secondary,
         },
         videoContainer: {
