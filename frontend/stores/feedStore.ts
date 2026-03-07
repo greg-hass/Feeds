@@ -19,10 +19,20 @@ const createInitialRefreshState = () => ({
     startedAt: null,
     lastAttemptAt: null,
     lastCompletedAt: null,
-    staleSince: null,
     message: 'Awaiting first refresh',
     error: null,
-    newArticles: null,
+    activity: {
+        isRefreshing: false,
+        isSyncing: false,
+    },
+    freshness: {
+        staleSince: null,
+        status: 'fresh' as const,
+        lastSuccessfulRefreshAt: null,
+    },
+    newContent: {
+        count: 0,
+    },
     progress: null,
 });
 
@@ -47,7 +57,13 @@ export const useFeedStore = create<FeedState>()(
                         lastAttemptAt: now,
                         message: phase === 'refreshing' ? 'Refreshing feeds…' : 'Checking for updates…',
                         error: null,
-                        newArticles: null,
+                        activity: {
+                            isRefreshing: phase === 'refreshing',
+                            isSyncing: phase === 'syncing',
+                        },
+                        newContent: {
+                            count: 0,
+                        },
                         progress: phase === 'refreshing' ? state.refreshState.progress : null,
                     },
                 }));
@@ -63,6 +79,10 @@ export const useFeedStore = create<FeedState>()(
                             ? `Refreshing ${progress.currentTitle}`
                             : 'Refreshing feeds…',
                         error: null,
+                        activity: {
+                            isRefreshing: true,
+                            isSyncing: false,
+                        },
                     },
                 }));
             },
@@ -77,12 +97,22 @@ export const useFeedStore = create<FeedState>()(
                         scope: state.refreshState.scope,
                         startedAt: null,
                         lastCompletedAt: now,
-                        staleSince: null,
                         message: result?.message ?? (newArticles && newArticles > 0
                             ? `${newArticles} new article${newArticles === 1 ? '' : 's'} loaded`
                             : 'Up to date'),
                         error: null,
-                        newArticles,
+                        activity: {
+                            isRefreshing: false,
+                            isSyncing: false,
+                        },
+                        freshness: {
+                            staleSince: null,
+                            status: 'fresh',
+                            lastSuccessfulRefreshAt: now,
+                        },
+                        newContent: {
+                            count: newArticles ?? 0,
+                        },
                         progress: null,
                     },
                 }));
@@ -95,9 +125,17 @@ export const useFeedStore = create<FeedState>()(
                         ...state.refreshState,
                         phase: 'error',
                         startedAt: null,
-                        staleSince: state.refreshState.staleSince ?? now,
                         message: 'Refresh failed',
                         error,
+                        activity: {
+                            isRefreshing: false,
+                            isSyncing: false,
+                        },
+                        freshness: {
+                            ...state.refreshState.freshness,
+                            staleSince: state.refreshState.freshness.staleSince ?? now,
+                            status: 'stale',
+                        },
                         progress: null,
                     },
                 }));
@@ -109,8 +147,12 @@ export const useFeedStore = create<FeedState>()(
                     refreshState: {
                         ...state.refreshState,
                         phase: state.refreshState.phase === 'refreshing' ? state.refreshState.phase : 'idle',
-                        staleSince: state.refreshState.staleSince ?? now,
                         message: message ?? state.refreshState.message ?? 'Timeline may be out of date',
+                        freshness: {
+                            ...state.refreshState.freshness,
+                            staleSince: state.refreshState.freshness.staleSince ?? now,
+                            status: 'stale',
+                        },
                     },
                 }));
             },
@@ -271,6 +313,10 @@ export const useFeedStore = create<FeedState>()(
                     isLoading: false,
                     refreshState: {
                         ...state.refreshState,
+                        activity: {
+                            isRefreshing: false,
+                            isSyncing: false,
+                        },
                         phase: 'idle',
                         startedAt: null,
                         message: 'Refresh cancelled',
@@ -364,6 +410,11 @@ export const useFeedStore = create<FeedState>()(
                         folders: newFolders,
                         refreshState: {
                             ...state.refreshState,
+                            activity: {
+                                ...state.refreshState.activity,
+                                isRefreshing: !!isRefreshing || state.refreshState.activity.isRefreshing,
+                                isSyncing: false,
+                            },
                             phase: isRefreshing ? 'refreshing' : state.refreshState.phase,
                         },
                     };

@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+import React from 'react';
 
 export const useRouter = vi.fn(() => ({
     push: vi.fn(),
@@ -9,6 +10,9 @@ export const useRouter = vi.fn(() => ({
 export const usePathname = vi.fn(() => '/');
 
 export const useLocalSearchParams = vi.fn(() => ({}));
+export const useFocusEffect = (effect) => {
+    React.useEffect(() => effect(), [effect]);
+};
 
 export const Slot = ({ children }) => children;
 

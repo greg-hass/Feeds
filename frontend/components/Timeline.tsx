@@ -54,7 +54,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     } = useTimeline(onArticlePress);
 
     const {
-        flatListRef, onViewableItemsChanged, handleScroll, saveScrollPosition,
+        flatListRef, onViewableItemsChanged, handleScroll, handleScrollToIndexFailed, saveScrollPosition,
         scrollToTop, isAtTop, shouldMaintainVisibleContentPosition, prepareForNewArticles
     } = useTimelineScroll(articles, filter);
 
@@ -66,7 +66,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
             currentPhase === 'success';
 
         if (completedRefresh) {
-            const addedCount = refreshState.newArticles || 0;
+            const addedCount = refreshState.newContent.count || 0;
             if (addedCount > 0) {
                 if (isAtTop()) {
                     scrollToTop(false);
@@ -81,7 +81,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
         }
 
         previousRefreshPhaseRef.current = currentPhase;
-    }, [refreshState.phase, refreshState.newArticles, isAtTop, prepareForNewArticles, scrollToTop]);
+    }, [refreshState.phase, refreshState.newContent.count, isAtTop, prepareForNewArticles, scrollToTop]);
 
     // Connect saveScrollPosition to handleArticlePress
     const handleArticlePressWithSave = useCallback((item: Article) => {
@@ -289,6 +289,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                             />
                         }
                         onViewableItemsChanged={onViewableItemsChanged}
+                        onScrollToIndexFailed={handleScrollToIndexFailed}
                         viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
                         scrollEventThrottle={16}
                         onScroll={handleScroll}

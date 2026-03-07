@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useArticleStore, useFeedStore, useAudioStore, useVideoStore, useDigestStore } from '@/stores';
 import { extractVideoId } from '@/utils/youtube';
 import { Article } from '@/services/api';
+import { getRefreshPresentation } from '@/utils/refreshStatus';
 
 export const useTimeline = (onArticlePress?: (article: Article) => void) => {
     const router = useRouter();
@@ -17,61 +18,15 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
         fetchPendingDigest();
     }, []);
 
-    const isRefreshing = refreshState.phase === 'refreshing' || refreshState.phase === 'syncing';
-    const lastRefreshed = refreshState.lastCompletedAt ? new Date(refreshState.lastCompletedAt) : null;
-    const refreshStatus = useMemo(() => {
-        const completedAt = refreshState.lastCompletedAt ? new Date(refreshState.lastCompletedAt) : null;
-        const staleSince = refreshState.staleSince ? new Date(refreshState.staleSince) : null;
-        const shouldDisplayStale = (() => {
-            if (!staleSince) return false;
-            if (!completedAt) return true;
-            return Date.now() - completedAt.getTime() > 10 * 60 * 1000;
-        })();
-        const formatAge = (date: Date | null) => {
-            if (!date) return null;
-            const diffMs = Date.now() - date.getTime();
-            const minutes = Math.floor(diffMs / 60000);
-            if (minutes < 1) return 'just now';
-            if (minutes < 60) return `${minutes}m ago`;
-            const hours = Math.floor(minutes / 60);
-            if (hours < 24) return `${hours}h ago`;
-            const days = Math.floor(hours / 24);
-            return `${days}d ago`;
-        };
-
-        if (refreshState.phase === 'refreshing') {
-            return {
-                label: refreshState.message || 'Refreshing feeds…',
-                refreshText: 'Refreshing…',
-            };
-        }
-
-        if (refreshState.phase === 'syncing') {
-            return {
-                label: refreshState.message || 'Checking for updates…',
-                refreshText: 'Syncing…',
-            };
-        }
-
-        if (refreshState.phase === 'error') {
-            return {
-                label: refreshState.error ? `Refresh failed: ${refreshState.error}` : 'Refresh failed',
-                refreshText: 'Refresh failed',
-            };
-        }
-
-        if (shouldDisplayStale) {
-            return {
-                label: completedAt ? `Stale. Last updated ${formatAge(completedAt)}` : 'Stale. Refresh needed',
-                refreshText: 'Stale',
-            };
-        }
-
-        return {
-            label: completedAt ? `Updated ${formatAge(completedAt)}` : 'Awaiting first refresh',
-            refreshText: 'Up to date',
-        };
-    }, [refreshState]);
+    const refreshPresentation = useMemo(() => getRefreshPresentation(refreshState), [refreshState]);
+    const isRefreshing = refreshPresentation.isRefreshing;
+    const lastRefreshed = refreshPresentation.lastRefreshedAt
+        ? new Date(refreshPresentation.lastRefreshedAt)
+        : null;
+    const refreshStatus = useMemo(() => ({
+        label: refreshPresentation.label,
+        refreshText: refreshPresentation.shortLabel,
+    }), [refreshPresentation]);
 
     const [hotPulseAnim] = useState(() => new Animated.Value(1));
     const [bookmarkScales] = useState(() => new Map<number, Animated.Value>());

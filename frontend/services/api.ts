@@ -53,6 +53,9 @@ function resolveApiUrl(): string {
 }
 
 const API_URL = resolveApiUrl();
+const canUseClientStorage =
+    Platform.OS !== 'web' ||
+    (typeof window !== 'undefined' && typeof document !== 'undefined');
 
 interface RequestOptions {
     method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
@@ -63,31 +66,70 @@ interface RequestOptions {
 
 class ApiClient {
     private authToken: string | null = null;
+    private initPromise: Promise<void> | null = null;
+    private initialized = false;
 
-    constructor() {
-        // Load token from storage on init
-        this.loadAuthToken();
+    async init(): Promise<void> {
+        if (this.initialized) {
+            return;
+        }
+
+        if (!this.initPromise) {
+            this.initPromise = this.loadAuthToken()
+                .finally(() => {
+                    this.initialized = true;
+                });
+        }
+
+        await this.initPromise;
     }
 
-    async loadAuthToken(): Promise<void> {
+    async ensureInitialized(): Promise<void> {
+        if (this.initialized) {
+            return;
+        }
+
+        await this.init();
+    }
+
+    private async loadAuthToken(): Promise<void> {
+        if (!canUseClientStorage) {
+            this.authToken = null;
+            return;
+        }
+
         try {
             this.authToken = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
         } catch (e) {
             console.error('Failed to load auth token:', e);
+            this.authToken = null;
         }
     }
 
     async setAuthToken(token: string): Promise<void> {
+        await this.ensureInitialized();
         this.authToken = token;
+
+        if (!canUseClientStorage) {
+            return;
+        }
+
         await AsyncStorage.setItem(AUTH_TOKEN_KEY, token);
     }
 
     async clearAuthToken(): Promise<void> {
+        await this.ensureInitialized();
         this.authToken = null;
+
+        if (!canUseClientStorage) {
+            return;
+        }
+
         await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
     }
 
     async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
+        await this.ensureInitialized();
         const { method = 'GET', body, headers = {}, signal } = options;
 
         const requestHeaders: Record<string, string> = {

@@ -235,6 +235,10 @@ export interface AuthStatus {
     authEnabled: boolean;
     needsSetup: boolean;
     hasEnvPassword: boolean;
+    build?: {
+        version: string;
+        sha: string;
+    };
 }
 
 // ============================================================================

@@ -27,9 +27,9 @@ export default function MobileNav() {
     const s = styles(colors);
     const refreshDotStyle = refreshState.phase === 'error'
         ? s.refreshDotError
-        : refreshState.staleSince
+        : refreshState.freshness.status === 'stale'
             ? s.refreshDotStale
-            : refreshState.phase === 'refreshing' || refreshState.phase === 'syncing'
+            : refreshState.activity.isRefreshing || refreshState.activity.isSyncing
                 ? s.refreshDotActive
                 : null;
 

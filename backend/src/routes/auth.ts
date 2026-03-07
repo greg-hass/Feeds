@@ -258,6 +258,10 @@ export async function authRoutes(app: FastifyInstance) {
             authEnabled: !!jwtSecret,
             needsSetup,
             hasEnvPassword: !!envPassword,
+            build: {
+                version: process.env.BACKEND_BUILD_VERSION || 'dev',
+                sha: process.env.BACKEND_BUILD_SHA || 'dev',
+            },
         };
     });
 }

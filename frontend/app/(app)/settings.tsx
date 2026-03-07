@@ -1,6 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
+import Constants from 'expo-constants';
 import { useSettingsStore, useToastStore, useFeedStore, useArticleStore, useDigestStore } from '@/stores';
 import { Settings, FeedFetchLimits, api } from '@/services/api';
 import { Sun, Moon, Monitor, Check, Trash2, Type, HardDrive } from 'lucide-react-native';
@@ -17,8 +18,15 @@ export default function SettingsScreen() {
     const { settings: digestSettings, fetchSettings: fetchDigestSettings, updateSettings: updateDigestSettings } = useDigestStore();
     const { fetchFeeds, refreshAllFeeds } = useFeedStore();
     const { show } = useToastStore();
+    const [backendBuild, setBackendBuild] = useState<{ version: string; sha: string } | null>(null);
 
     const s = styles(colors);
+    const frontendVersion =
+        process.env.EXPO_PUBLIC_APP_VERSION ||
+        Constants.expoConfig?.version ||
+        Constants.manifest?.version ||
+        'dev';
+    const frontendBuildSha = process.env.EXPO_PUBLIC_BUILD_SHA || 'dev';
 
     // Handle legacy accent colors by falling back to emerald if the stored value isn't in the new palette
     const activeAccent = settings?.accent_color && Object.keys(ACCENT_COLORS).includes(settings.accent_color)
@@ -28,6 +36,9 @@ export default function SettingsScreen() {
     useEffect(() => {
         fetchSettings();
         fetchDigestSettings();
+        api.getAuthStatus()
+            .then((status) => setBackendBuild(status.build || null))
+            .catch(() => setBackendBuild(null));
     }, []);
 
     const timeOptions = Array.from({ length: 48 }).map((_, i) => {
@@ -492,7 +503,8 @@ export default function SettingsScreen() {
                 </View>
 
                 {/* Version */}
-                <Text style={s.version}>Feeds v1.0.0</Text>
+                <Text style={s.version}>Frontend v{frontendVersion} ({frontendBuildSha})</Text>
+                <Text style={s.version}>Backend v{backendBuild?.version || 'unknown'} ({backendBuild?.sha || 'unknown'})</Text>
             </ScrollView>
         </View>
     );

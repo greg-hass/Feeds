@@ -9,6 +9,7 @@ import {
 import { useColors, borderRadius, spacing, shadows } from '@/theme';
 import { useIsDesktop } from '@/hooks/useBreakpoint';
 import { formatCount } from '@/utils/formatters';
+import { getRefreshPresentation } from '@/utils/refreshStatus';
 
 const FEED_TYPE_ICONS: Record<string, React.ComponentType<any>> = {
     rss: Rss,
@@ -61,34 +62,13 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
     const isHome = pathname === '/' || pathname === '/index';
     const isAllActive = isHome && !filter.feed_id && !filter.folder_id && !filter.type;
-    const formatAge = (iso: string | null) => {
-        if (!iso) return null;
-        const diffMs = Date.now() - new Date(iso).getTime();
-        const minutes = Math.floor(diffMs / 60000);
-        if (minutes < 1) return 'just now';
-        if (minutes < 60) return `${minutes}m ago`;
-        const hours = Math.floor(minutes / 60);
-        if (hours < 24) return `${hours}h ago`;
-        const days = Math.floor(hours / 24);
-        return `${days}d ago`;
-    };
-    const refreshSummary = (() => {
-        if (refreshState.phase === 'refreshing') return refreshState.message || 'Refreshing feeds…';
-        if (refreshState.phase === 'syncing') return refreshState.message || 'Checking for updates…';
-        if (refreshState.phase === 'error') return 'Refresh failed';
-        if (refreshState.staleSince) {
-            const age = formatAge(refreshState.lastCompletedAt);
-            return age ? `Stale · Updated ${age}` : 'Stale · Refresh needed';
-        }
-        const age = formatAge(refreshState.lastCompletedAt);
-        return age ? `Updated ${age}` : 'Awaiting first refresh';
-    })();
-    const refreshMetaStyle = refreshState.phase === 'error'
+    const refreshPresentation = getRefreshPresentation(refreshState);
+    const refreshMetaStyle = refreshPresentation.isError
         ? s.refreshMetaError
-        : refreshState.staleSince
+        : refreshPresentation.isStale
             ? s.refreshMetaStale
             : s.refreshMetaDefault;
-    const isBackgroundRefreshing = refreshState.phase === 'refreshing' && refreshState.scope === 'background';
+    const isBackgroundRefreshing = refreshState.activity.isRefreshing && refreshState.scope === 'background';
 
     return (
         <View style={s.container}>
@@ -101,7 +81,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                         {isBackgroundRefreshing && <View style={s.refreshDot} />}
                     </View>
                     <Text style={[s.refreshMeta, refreshMetaStyle]} numberOfLines={1}>
-                        {refreshSummary}
+                        {refreshPresentation.sidebarLabel}
                     </Text>
                 </View>
                 <TouchableOpacity

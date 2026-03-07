@@ -13,10 +13,20 @@ export interface FeedState {
         startedAt: string | null;
         lastAttemptAt: string | null;
         lastCompletedAt: string | null;
-        staleSince: string | null;
         message: string | null;
         error: string | null;
-        newArticles: number | null;
+        activity: {
+            isRefreshing: boolean;
+            isSyncing: boolean;
+        };
+        freshness: {
+            staleSince: string | null;
+            status: 'fresh' | 'stale';
+            lastSuccessfulRefreshAt: string | null;
+        };
+        newContent: {
+            count: number;
+        };
         progress: { total: number; completed: number; currentTitle: string } | null;
     };
 

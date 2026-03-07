@@ -59,10 +59,20 @@ describe('Feed Store', () => {
                 startedAt: null,
                 lastAttemptAt: null,
                 lastCompletedAt: null,
-                staleSince: null,
                 message: null,
                 error: null,
-                newArticles: null,
+                activity: {
+                    isRefreshing: false,
+                    isSyncing: false,
+                },
+                freshness: {
+                    staleSince: null,
+                    status: 'fresh',
+                    lastSuccessfulRefreshAt: null,
+                },
+                newContent: {
+                    count: 0,
+                },
                 progress: null,
             },
         });

@@ -223,6 +223,30 @@ describe('Article Store', () => {
 
             expect(useArticleStore.getState().articles.map((article: any) => article.id)).toEqual([2, 1]);
         });
+
+        it('should preserve article identity for unchanged live updates', async () => {
+            const { useArticleStore } = await import('@/stores/articleStore');
+
+            const existingArticle = buildArticle({ id: 7, title: 'Stable article' });
+
+            act(() => {
+                useArticleStore.setState({
+                    articles: [existingArticle],
+                    isLoading: false,
+                });
+            });
+
+            (api.getArticles as any).mockResolvedValue({
+                articles: [{ ...existingArticle }],
+                next_cursor: null,
+            });
+
+            await act(async () => {
+                await useArticleStore.getState().fetchArticles(true, true);
+            });
+
+            expect(useArticleStore.getState().articles[0]).toBe(existingArticle);
+        });
     });
 
     describe('fetchBookmarks', () => {

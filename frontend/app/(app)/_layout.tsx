@@ -20,10 +20,17 @@ import { usePwaThemeColor } from '@/hooks/usePwaThemeColor';
 import { useAuthBootstrap } from '@/hooks/useAuthBootstrap';
 import { useRefreshLifecycle } from '@/hooks/useRefreshLifecycle';
 import { useWakeLock } from '@/hooks/useWakeLock';
+import { usePwaUpdate } from '@/hooks/usePwaUpdate';
+import { PwaUpdateBanner } from '@/components/PwaUpdateBanner';
 
 export default function AppLayout() {
     const [mounted, setMounted] = useState(false);
-    const { isAuthenticated, setIsAuthenticated } = useAuthBootstrap();
+    const {
+        isAuthenticated,
+        needsSetup,
+        sessionExpired,
+        completeLogin,
+    } = useAuthBootstrap();
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Mounting pattern for hydration
     useEffect(() => setMounted(true), []);
     const { width } = useWindowDimensions();
@@ -52,6 +59,11 @@ export default function AppLayout() {
     const activeArticleId = isArticle ? parseInt(pathname.split('/').pop() || '') : null;
 
     const s = styles(isDesktop, isReaderRoute, colors);
+    const {
+        updateAvailable,
+        applyUpdate,
+        dismissUpdate,
+    } = usePwaUpdate(!!isAuthenticated);
 
     useWakeLock(!isDesktop && !!isAuthenticated);
 
@@ -67,7 +79,11 @@ export default function AppLayout() {
     // Show login screen if not authenticated
     if (!isAuthenticated) {
         return (
-            <LoginScreen onLogin={() => setIsAuthenticated(true)} />
+            <LoginScreen
+                needsSetup={needsSetup}
+                sessionExpired={sessionExpired}
+                onLogin={completeLogin}
+            />
         );
     }
 
@@ -106,6 +122,11 @@ export default function AppLayout() {
                     completed={refreshState.progress?.completed || 0}
                     currentTitle={refreshState.progress?.currentTitle || ''}
                     onCancel={cancelRefresh}
+                />
+                <PwaUpdateBanner
+                    visible={updateAvailable}
+                    onReload={applyUpdate}
+                    onDismiss={dismissUpdate}
                 />
             </View >
         </ErrorBoundary>

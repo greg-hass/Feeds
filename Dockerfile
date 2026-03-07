@@ -22,7 +22,11 @@ RUN npm ci
 COPY frontend/ ./
 
 ARG EXPO_PUBLIC_API_URL=/api/v1
+ARG EXPO_PUBLIC_APP_VERSION=1.0.0
+ARG EXPO_PUBLIC_BUILD_SHA=dev
 ENV EXPO_PUBLIC_API_URL=${EXPO_PUBLIC_API_URL}
+ENV EXPO_PUBLIC_APP_VERSION=${EXPO_PUBLIC_APP_VERSION}
+ENV EXPO_PUBLIC_BUILD_SHA=${EXPO_PUBLIC_BUILD_SHA}
 
 # Remove expo-web-browser from plugins for web build (causes issues with New Architecture in Docker)
 # The plugin is only needed for native iOS/Android builds
@@ -85,6 +89,10 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 ENV NODE_ENV=production
 ENV DATABASE_PATH=/data/feeds.db
 ENV PORT=3001
+ARG BACKEND_BUILD_VERSION=1.0.0
+ARG BACKEND_BUILD_SHA=dev
+ENV BACKEND_BUILD_VERSION=${BACKEND_BUILD_VERSION}
+ENV BACKEND_BUILD_SHA=${BACKEND_BUILD_SHA}
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD []

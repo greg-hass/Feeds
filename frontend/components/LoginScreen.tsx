@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
     View,
     Text,
@@ -12,71 +12,28 @@ import {
     ScrollView,
 } from 'react-native';
 import { useColors, spacing, borderRadius, shadows } from '@/theme';
-import { Lock, User, AlertCircle, Check } from 'lucide-react-native';
+import { Lock, AlertCircle, Check } from 'lucide-react-native';
 import { api } from '@/services/api';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from 'expo-router';
-
-const AUTH_TOKEN_KEY = '@feeds_auth_token';
 
 interface LoginScreenProps {
+    needsSetup?: boolean;
+    sessionExpired?: boolean;
     onLogin?: () => void;
 }
 
-export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
+export const LoginScreen: React.FC<LoginScreenProps> = ({
+    needsSetup = false,
+    sessionExpired = false,
+    onLogin,
+}) => {
     const colors = useColors();
     const { width } = useWindowDimensions();
     const isMobile = width < 1024;
-    const router = useRouter();
 
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
-    const [isChecking, setIsChecking] = useState(true);
-    const [needsSetup, setNeedsSetup] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
-    const [sessionExpired, setSessionExpired] = useState(false);
-
-    // Check auth status on mount
-    useEffect(() => {
-        checkAuthStatus();
-    }, []);
-
-    const checkAuthStatus = async () => {
-        try {
-            // Check if we already have a token
-            const existingToken = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
-            if (existingToken) {
-                // Verify token is still valid by making a test request
-                try {
-                    await api.getFeeds();
-                    onLogin?.();
-                    return;
-                } catch (e: any) {
-                    // Check if session expired due to inactivity
-                    if (e.code === 'SESSION_EXPIRED') {
-                        setSessionExpired(true);
-                    }
-                    // Token invalid, remove it
-                    await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
-                }
-            }
-
-            // Check if auth is configured
-            const status = await api.getAuthStatus();
-            if (!status.authEnabled) {
-                // Auth not enabled, allow access
-                onLogin?.();
-                return;
-            }
-
-            setNeedsSetup(status.needsSetup);
-        } catch (e) {
-            console.error('Auth check failed:', e);
-        } finally {
-            setIsChecking(false);
-        }
-    };
 
     const handleLogin = async () => {
         if (!password.trim()) {
@@ -88,8 +45,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
         setError('');
 
         try {
-            const response = await api.login(password);
-            await AsyncStorage.setItem(AUTH_TOKEN_KEY, response.token);
+            await api.login(password);
             onLogin?.();
         } catch (e: any) {
             if (e.status === 429 && e.retryAfter) {
@@ -113,8 +69,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
         setError('');
 
         try {
-            const response = await api.setupPassword(password);
-            await AsyncStorage.setItem(AUTH_TOKEN_KEY, response.token);
+            await api.setupPassword(password);
             onLogin?.();
         } catch (e: any) {
             setError(e.message || 'Setup failed. Please try again.');
@@ -124,14 +79,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
     };
 
     const s = styles(colors, isMobile);
-
-    if (isChecking) {
-        return (
-            <View style={s.container}>
-                <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
-            </View>
-        );
-    }
 
     return (
         <KeyboardAvoidingView

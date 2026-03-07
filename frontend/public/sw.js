@@ -1,5 +1,5 @@
 /* eslint-env serviceworker */
-const CACHE_NAME = 'feeds-cache-v2';
+const CACHE_NAME = 'feeds-cache-v3';
 const ASSETS_TO_CACHE = [
     '/',
     '/index.html',
@@ -22,7 +22,6 @@ self.addEventListener('install', (event) => {
             return cache.addAll(ASSETS_TO_CACHE);
         })
     );
-    self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -42,6 +41,10 @@ self.addEventListener('message', (event) => {
     if (event.data && event.data.type === 'SET_ACCENT_COLOR') {
         userAccentColor = event.data.color;
         console.log('[SW] Accent color updated:', userAccentColor);
+    }
+
+    if (event.data && event.data.type === 'SKIP_WAITING') {
+        self.skipWaiting();
     }
     
     if (event.data && event.data.type === 'TRIGGER_BACKGROUND_SYNC') {
@@ -211,6 +214,28 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
+    if (event.request.mode === 'navigate') {
+        event.respondWith(
+            fetch(event.request)
+                .then((networkResponse) => {
+                    const clonedResponse = networkResponse.clone();
+                    caches.open(CACHE_NAME).then((cache) => {
+                        cache.put('/', clonedResponse);
+                    });
+                    return networkResponse;
+                })
+                .catch(async () => {
+                    const cachedResponse = await caches.match('/');
+                    if (cachedResponse) {
+                        return cachedResponse;
+                    }
+
+                    return caches.match('/index.html');
+                })
+        );
+        return;
+    }
+
     // For API requests, use network-first strategy
     // This ensures the UI gets fresh data when online, with cache fallback offline
     if (url.pathname.startsWith('/api/v1/articles') || 
@@ -242,10 +267,22 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // For other requests (assets), use cache-first strategy
+    // For versioned assets, prefer cached response but refresh in the background.
     event.respondWith(
-        caches.match(event.request).then((response) => {
-            return response || fetch(event.request);
+        caches.match(event.request).then((cachedResponse) => {
+            const networkFetch = fetch(event.request)
+                .then((networkResponse) => {
+                    if (networkResponse && networkResponse.ok) {
+                        caches.open(CACHE_NAME).then((cache) => {
+                            cache.put(event.request, networkResponse.clone());
+                        });
+                    }
+
+                    return networkResponse;
+                })
+                .catch(() => cachedResponse);
+
+            return cachedResponse || networkFetch;
         })
     );
 });

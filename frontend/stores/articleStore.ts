@@ -7,6 +7,59 @@ import { handleError } from "@/services/errorHandler";
 import { sortArticlesByDateAndId } from "@/utils/sorting";
 import { ArticleState } from "./types";
 
+function areArticlesEqual(left: Article, right: Article): boolean {
+  const leftKeys = Object.keys(left) as Array<keyof Article>;
+  const rightKeys = Object.keys(right) as Array<keyof Article>;
+
+  if (leftKeys.length !== rightKeys.length) {
+    return false;
+  }
+
+  for (const key of leftKeys) {
+    if (left[key] !== right[key]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function mergeArticleRecord(
+  existingArticle: Article | undefined,
+  incomingArticle: Article,
+): Article {
+  if (!existingArticle) {
+    return incomingArticle;
+  }
+
+  return areArticlesEqual(existingArticle, incomingArticle)
+    ? existingArticle
+    : { ...existingArticle, ...incomingArticle };
+}
+
+function updateArticlesInList(
+  articles: Article[],
+  shouldUpdate: (article: Article) => boolean,
+  updater: (article: Article) => Article,
+): Article[] {
+  let changed = false;
+
+  const nextArticles = articles.map((article) => {
+    if (!shouldUpdate(article)) {
+      return article;
+    }
+
+    const updatedArticle = updater(article);
+    if (updatedArticle !== article) {
+      changed = true;
+    }
+
+    return updatedArticle;
+  });
+
+  return changed ? nextArticles : articles;
+}
+
 function mergeSortedArticles(existingArticles: Article[], incomingArticles: Article[]): Article[] {
   if (incomingArticles.length === 0) {
     return existingArticles;
@@ -14,10 +67,15 @@ function mergeSortedArticles(existingArticles: Article[], incomingArticles: Arti
 
   const merged = new Map(existingArticles.map((article) => [article.id, article]));
   incomingArticles.forEach((article) => {
-    merged.set(article.id, article);
+    merged.set(article.id, mergeArticleRecord(merged.get(article.id), article));
   });
 
-  return sortArticlesByDateAndId(Array.from(merged.values()));
+  const sortedArticles = sortArticlesByDateAndId(Array.from(merged.values()));
+  const hasChanged =
+    sortedArticles.length !== existingArticles.length ||
+    sortedArticles.some((article, index) => article !== existingArticles[index]);
+
+  return hasChanged ? sortedArticles : existingArticles;
 }
 
 export const useArticleStore = create<ArticleState>()(
@@ -145,8 +203,10 @@ export const useArticleStore = create<ArticleState>()(
           set({ currentArticle: state.contentCache[id] });
           // Still mark as read
           set((state) => ({
-            articles: state.articles.map((a) =>
-              a.id === id ? { ...a, is_read: true } : a,
+            articles: updateArticlesInList(
+              state.articles,
+              (article) => article.id === id && !article.is_read,
+              (article) => ({ ...article, is_read: true }),
             ),
           }));
           return;
@@ -194,8 +254,10 @@ export const useArticleStore = create<ArticleState>()(
 
         // Update in list too
         set((state) => ({
-          articles: state.articles.map((a) =>
-            a.id === id ? { ...a, is_read: true } : a,
+          articles: updateArticlesInList(
+            state.articles,
+            (article) => article.id === id && !article.is_read,
+            (article) => ({ ...article, is_read: true }),
           ),
         }));
       },
@@ -221,8 +283,10 @@ export const useArticleStore = create<ArticleState>()(
           /* ignore offline and hope for sync later */
         }
         set((state) => ({
-          articles: state.articles.map((a) =>
-            a.id === id ? { ...a, is_read: true } : a,
+          articles: updateArticlesInList(
+            state.articles,
+            (article) => article.id === id && !article.is_read,
+            (article) => ({ ...article, is_read: true }),
           ),
         }));
       },
@@ -234,8 +298,10 @@ export const useArticleStore = create<ArticleState>()(
           /* ignore */
         }
         set((state) => ({
-          articles: state.articles.map((a) =>
-            a.id === id ? { ...a, is_read: false } : a,
+          articles: updateArticlesInList(
+            state.articles,
+            (article) => article.id === id && article.is_read,
+            (article) => ({ ...article, is_read: false }),
           ),
         }));
       },
@@ -272,8 +338,15 @@ export const useArticleStore = create<ArticleState>()(
               : state.bookmarkedArticles.filter((b) => b.id !== id);
 
             return {
-              articles: state.articles.map((a) =>
-                a.id === id ? { ...a, is_bookmarked: bookmarked } : a,
+              articles: updateArticlesInList(
+                state.articles,
+                (existingArticle) =>
+                  existingArticle.id === id &&
+                  existingArticle.is_bookmarked !== bookmarked,
+                (existingArticle) => ({
+                  ...existingArticle,
+                  is_bookmarked: bookmarked,
+                }),
               ),
               currentArticle:
                 state.currentArticle?.id === id
@@ -306,7 +379,8 @@ export const useArticleStore = create<ArticleState>()(
 
         const updateArticle = <T extends Article>(article: T): T => {
           if (article.feed_id !== feedId) return article;
-          return { ...article, ...patch };
+          const nextArticle = { ...article, ...patch };
+          return areArticlesEqual(article, nextArticle) ? article : nextArticle;
         };
 
         set((state) => {
@@ -346,10 +420,15 @@ export const useArticleStore = create<ArticleState>()(
 
           // Apply read state changes and filter out newly read articles if unread_only is on
           if (readMap.size > 0) {
-            newArticles = newArticles.map((a) =>
-              readMap.has(a.id)
-                ? { ...a, is_read: readMap.get(a.id) ?? a.is_read }
-                : a,
+            newArticles = updateArticlesInList(
+              newArticles,
+              (article) =>
+                readMap.has(article.id) &&
+                article.is_read !== (readMap.get(article.id) ?? article.is_read),
+              (article) => ({
+                ...article,
+                is_read: readMap.get(article.id) ?? article.is_read,
+              }),
             );
 
             if (state.filter.unread_only) {

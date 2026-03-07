@@ -50,7 +50,7 @@ export function useRefreshLifecycle({ enabled }: UseRefreshLifecycleOptions) {
         });
 
         if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-            window.addEventListener('load', async () => {
+            const registerServiceWorker = async () => {
                 try {
                     const registration = await navigator.serviceWorker.register('/sw.js');
                     console.log('SW registered:', registration);
@@ -91,7 +91,13 @@ export function useRefreshLifecycle({ enabled }: UseRefreshLifecycleOptions) {
                 } catch (error) {
                     console.log('SW registration failed: ', error);
                 }
-            });
+            };
+
+            if (document.readyState === 'complete') {
+                void registerServiceWorker();
+            } else {
+                window.addEventListener('load', registerServiceWorker, { once: true });
+            }
         }
 
         return () => {
@@ -174,6 +180,11 @@ export function useRefreshLifecycle({ enabled }: UseRefreshLifecycleOptions) {
             useFeedStore.setState((state) => ({
                 refreshState: {
                     ...state.refreshState,
+                    activity: {
+                        ...state.refreshState.activity,
+                        isRefreshing: false,
+                        isSyncing: false,
+                    },
                     progress: null,
                 },
             }));

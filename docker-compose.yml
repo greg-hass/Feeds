@@ -1,6 +1,13 @@
 services:
   feeds:
-    build: .
+    build:
+      context: .
+      args:
+        EXPO_PUBLIC_API_URL: ${EXPO_PUBLIC_API_URL:-/api/v1}
+        EXPO_PUBLIC_APP_VERSION: ${FEEDS_APP_VERSION:-1.0.0}
+        EXPO_PUBLIC_BUILD_SHA: ${FEEDS_BUILD_SHA:-dev}
+        BACKEND_BUILD_VERSION: ${FEEDS_APP_VERSION:-1.0.0}
+        BACKEND_BUILD_SHA: ${FEEDS_BUILD_SHA:-dev}
     image: ghcr.io/greg-hass/feeds:latest
     restart: unless-stopped
     ports:
