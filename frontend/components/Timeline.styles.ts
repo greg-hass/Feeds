@@ -69,16 +69,18 @@ export const timelineStyles = (colors: any, isMobile: boolean) => StyleSheet.cre
         padding: spacing.sm,
     },
     list: {
-        padding: spacing.lg,
+        paddingHorizontal: spacing.lg,
+        paddingTop: spacing.sm,
+        paddingBottom: spacing.lg,
     },
     loader: {
         marginVertical: spacing.xl,
     },
     swipeableContainer: {
-        marginBottom: spacing.md,
-        borderRadius: borderRadius.xl,
+        marginBottom: 0,
+        borderRadius: 0,
         overflow: 'hidden',
-        backgroundColor: colors.background.secondary,
+        backgroundColor: 'transparent',
     },
     swipeActionRight: {
         backgroundColor: colors.primary.DEFAULT,

@@ -91,8 +91,8 @@ const ArticleFooter = React.memo<ArticleFooterProps>(({
                 )}
                 
                 {/* Time */}
-                <Clock size={12} color={colors.text.tertiary} />
-                <Text style={styles.articleMeta}>
+                <Clock size={12} color={colors.primary.DEFAULT} />
+                <Text style={[styles.articleMeta, { color: colors.primary.DEFAULT }]}>
                     {item.published_at ? formatDistanceToNow(new Date(item.published_at), { addSuffix: true }) : ''}
                 </Text>
             </View>
@@ -158,7 +158,7 @@ const styles = {
         flexDirection: 'row' as const,
         alignItems: 'center' as const,
         justifyContent: 'space-between' as const,
-        paddingTop: 12,
+        paddingTop: 8,
     },
     metaRow: {
         flexDirection: 'row' as const,
@@ -166,7 +166,7 @@ const styles = {
         gap: 6,
     },
     articleMeta: {
-        fontSize: 12,
+        fontSize: 11,
         color: '#6b7280',
     },
     hotBadge: {
@@ -186,9 +186,10 @@ const styles = {
     actionsRow: {
         flexDirection: 'row' as const,
         alignItems: 'center' as const,
-        gap: 4,
+        gap: 0,
     },
     cardAction: {
-        padding: 8,
+        paddingHorizontal: 6,
+        paddingVertical: 4,
     },
 };

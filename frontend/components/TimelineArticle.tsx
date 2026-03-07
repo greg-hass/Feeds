@@ -11,7 +11,6 @@ import { timelineStyles } from './Timeline.styles';
 
 interface TimelineArticleProps {
     item: Article;
-    index: number;
     isActive: boolean;
     isMobile: boolean;
     activeVideoId: string | null;
@@ -28,7 +27,7 @@ interface TimelineArticleProps {
 }
 
 const TimelineArticle: React.FC<TimelineArticleProps> = ({
-    item, index, isActive, isMobile, activeVideoId, playingArticleId, isPlaying,
+    item, isActive, isMobile, activeVideoId, playingArticleId, isPlaying,
     colors, hotPulseAnim, onArticlePress, onVideoPress, onPlayPress,
     getBookmarkScale, getBookmarkRotation, onFeedInfoPress
 }) => {
@@ -83,7 +82,6 @@ const TimelineArticle: React.FC<TimelineArticleProps> = ({
             <ArticleCard
                 testID={`article-item-${item.id}`}
                 item={item}
-                index={index}
                 isActive={isActive}
                 isMobile={isMobile}
                 activeVideoId={activeVideoId}

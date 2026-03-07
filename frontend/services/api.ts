@@ -1,5 +1,7 @@
 import { parseSSEStream } from '@/utils/sse';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 import {
     Feed,
     FeedInfo,
@@ -28,8 +30,29 @@ import {
     RefreshProgressEvent,
 } from './api.types';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || '/api/v1';
 const AUTH_TOKEN_KEY = '@feeds_auth_token';
+
+function resolveApiUrl(): string {
+    const configApiUrl =
+        Constants.expoConfig?.extra?.apiUrl ||
+        Constants.manifest2?.extra?.expoClient?.extra?.apiUrl ||
+        Constants.manifest?.extra?.apiUrl;
+
+    const envApiUrl = process.env.EXPO_PUBLIC_API_URL;
+    const configuredApiUrl = envApiUrl || configApiUrl;
+
+    if (configuredApiUrl) {
+        return configuredApiUrl.replace(/\/$/, '');
+    }
+
+    if (Platform.OS === 'web') {
+        return '/api/v1';
+    }
+
+    return 'http://localhost:3001/api/v1';
+}
+
+const API_URL = resolveApiUrl();
 
 interface RequestOptions {
     method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
@@ -89,12 +112,26 @@ class ApiClient {
             requestHeaders['Content-Type'] = 'application/json';
         }
 
-        const response = await fetch(`${API_URL}${endpoint}`, {
-            method,
-            headers: requestHeaders,
-            body: body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined),
-            signal,
-        });
+        let response: Response;
+
+        try {
+            response = await fetch(`${API_URL}${endpoint}`, {
+                method,
+                headers: requestHeaders,
+                body: body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined),
+                signal,
+            });
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Network request failed';
+            throw new ApiError(
+                `Unable to reach the Feeds server at ${API_URL}. Check that the server is running and that EXPO_PUBLIC_API_URL or expo.extra.apiUrl points to the correct address.`,
+                0,
+                {
+                    code: 'NETWORK_ERROR',
+                    payload: { message },
+                }
+            );
+        }
 
         if (!response.ok) {
             const error = await response.json().catch(() => ({ error: 'Unknown error' }));

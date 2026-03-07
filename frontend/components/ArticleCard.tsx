@@ -2,16 +2,15 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Image, Animated, Platform } from 'react-native';
 import { Headphones } from 'lucide-react-native';
 import { Article } from '@/services/api';
-import { useColors, spacing, borderRadius, shadows } from '@/theme';
+import { useColors, spacing, borderRadius } from '@/theme';
 import { extractVideoId } from '@/utils/youtube';
-import { densitySpacing, thumbnailSize, fontSizes, featuredThumbnailHeight } from '@/utils/densitySpacing';
+import { densitySpacing, thumbnailSize, fontSizes } from '@/utils/densitySpacing';
 import ArticleFooter from './ArticleFooter';
 import YouTubePlayer from './YouTubePlayer';
 
 interface ArticleCardProps {
     testID?: string;
     item: Article;
-    index: number;
     isActive: boolean;
     isMobile: boolean;
     activeVideoId: string | null;
@@ -34,7 +33,6 @@ interface ArticleCardProps {
 const ArticleCard = React.memo<ArticleCardProps>(({
     testID,
     item,
-    index,
     isActive,
     isMobile,
     activeVideoId,
@@ -59,7 +57,7 @@ const ArticleCard = React.memo<ArticleCardProps>(({
     const videoId = isYouTube ? extractVideoId(item.url || '') : null;
     const isShort = !!(isYouTube && item.url?.includes('/shorts/'));
     const isVideoPlaying = !!(isYouTube && videoId && activeVideoId === videoId);
-    const isFeatured = (index % 5 === 0 && !isMobile && thumbnail) || isYouTube;
+    const isFeatured = !!(isYouTube && thumbnail);
     // Calculate isHot using useMemo to avoid recalculation on every render
     // This is impure due to Date.now() but memoized to prevent unnecessary recalculations
     // eslint-disable-next-line react-hooks/purity -- Date.now() is stable enough for this display-only check
@@ -68,7 +66,7 @@ const ArticleCard = React.memo<ArticleCardProps>(({
     }, [item.published_at]);
 
     const cardHeader = (
-        <View style={isFeatured && !isYouTube ? [s.cardBody, s.featuredBody] : s.cardBody}>
+        <View style={s.cardBody}>
             <View style={{ flex: 1 }}>
                 <View style={s.feedPill}>
                     {item.feed_icon_url && !iconFailed ? (
@@ -82,18 +80,20 @@ const ArticleCard = React.memo<ArticleCardProps>(({
                             <Text style={s.initialText}>{item.feed_title?.charAt(0)}</Text>
                         </View>
                     )}
-                    <Text style={s.feedName} numberOfLines={1}>{item.feed_title}</Text>
+                    <Text style={s.feedName} numberOfLines={1}>
+                        {item.feed_title}
+                    </Text>
                 </View>
 
                 <Text style={[
                     s.articleTitle,
                     item.is_read && s.articleTitleRead
-                ]} numberOfLines={3}>
+                ]} numberOfLines={2}>
                     {item.title}
                 </Text>
 
-                {!isYouTube && isFeatured && (
-                    <Text style={s.featuredSummary} numberOfLines={3}>
+                {!isYouTube && item.summary && (
+                    <Text style={s.featuredSummary} numberOfLines={2}>
                         {item.summary?.replace(/<[^>]*>?/gm, '')}
                     </Text>
                 )}
@@ -164,6 +164,7 @@ const ArticleCard = React.memo<ArticleCardProps>(({
                     />
                 )}
                 {!item.is_read && <View style={s.unreadIndicator} />}
+                <View style={s.separator} />
             </View>
         );
     }
@@ -189,6 +190,7 @@ const ArticleCard = React.memo<ArticleCardProps>(({
             {cardHeader}
             {footer}
             {!item.is_read && <View style={s.unreadIndicator} />}
+            <View style={s.separator} />
         </TouchableOpacity>
     );
 }, (prevProps, nextProps) => {
@@ -214,44 +216,33 @@ const styles = (
     isMobile: boolean
 ) => ({
     articleCard: {
-        backgroundColor: colors.background.secondary,
-        borderRadius: borderRadius.xl,
-        padding: densitySpacing.lg,
-        marginBottom: densitySpacing.md,
-        borderWidth: 1,
-        borderColor: colors.border.DEFAULT,
+        backgroundColor: 'transparent',
+        paddingHorizontal: densitySpacing.lg,
+        paddingVertical: densitySpacing.md,
+        marginBottom: 0,
         position: 'relative' as const,
         overflow: 'hidden' as const,
-        ...shadows.md,
         ...Platform.select({
             web: {
                 cursor: 'pointer' as const,
-                transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                transition: 'background-color 0.2s ease',
             } as any,
         }),
     },
     articleActive: {
-        backgroundColor: colors.background.elevated,
-        borderColor: colors.primary.DEFAULT + '44',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 4,
+        backgroundColor: colors.primary.soft,
     },
     articleFeatured: {
-        padding: densitySpacing.xl,
+        paddingHorizontal: densitySpacing.lg,
+        paddingVertical: densitySpacing.md,
     },
     articleRead: {
-        opacity: 0.6,
+        opacity: 0.78,
     },
     cardBody: {
         flexDirection: 'row' as const,
         gap: densitySpacing.md,
-    },
-    featuredBody: {
-        flexDirection: 'column-reverse' as const,
-        gap: densitySpacing.lg,
+        alignItems: 'flex-start' as const,
     },
     cardInfo: {
         flex: 1,
@@ -259,67 +250,64 @@ const styles = (
     feedPill: {
         flexDirection: 'row' as const,
         alignItems: 'center' as const,
-        backgroundColor: colors.background.tertiary,
-        paddingHorizontal: densitySpacing.sm,
-        paddingVertical: 4,
-        borderRadius: borderRadius.sm,
+        paddingVertical: 2,
         alignSelf: 'flex-start' as const,
-        marginBottom: densitySpacing.sm,
-        gap: 8, // Increased gap for larger icon
+        marginBottom: 6,
+        gap: 6,
     },
     feedIcon: {
-        width: 20, // Updated to 20
-        height: 20, // Updated to 20
-        borderRadius: 4, // Slightly larger radius
+        width: 16,
+        height: 16,
+        borderRadius: 3,
     },
     feedInitial: {
-        width: 20, // Updated to 20
-        height: 20, // Updated to 20
-        borderRadius: 4, // Slightly larger radius
+        width: 16,
+        height: 16,
+        borderRadius: 3,
         backgroundColor: colors.primary.DEFAULT,
         justifyContent: 'center' as const,
         alignItems: 'center' as const,
     },
     initialText: {
         color: colors.text.inverse,
-        fontSize: 10, // Increased font size for initial
+        fontSize: 9,
         fontWeight: '900' as const,
     },
     feedName: {
-        fontSize: fontSizes.feedName,
-        fontWeight: '700' as const,
-        color: colors.text.secondary,
-        maxWidth: 150,
+        fontSize: 12,
+        fontWeight: '600' as const,
+        color: colors.text.tertiary,
+        maxWidth: 220,
     },
     articleTitle: {
-        fontSize: fontSizes.title,
+        fontSize: fontSizes.title - 1,
         fontWeight: '700' as const,
         color: colors.text.primary,
-        lineHeight: 22,
-        marginBottom: densitySpacing.md,
+        lineHeight: 21,
+        marginBottom: 6,
     },
     articleTitleRead: {
         color: colors.text.secondary,
     },
     featuredSummary: {
-        fontSize: fontSizes.summary,
+        fontSize: fontSizes.summary - 1,
         color: colors.text.secondary,
-        lineHeight: 20,
-        marginBottom: densitySpacing.md,
+        lineHeight: 18,
+        marginBottom: 4,
     },
     thumbnailWrapper: {
-        width: thumbnailSize.width,
-        height: thumbnailSize.height,
-        borderRadius: borderRadius.lg,
+        width: isMobile ? 72 : 84,
+        height: isMobile ? 72 : 84,
+        borderRadius: borderRadius.md,
         overflow: 'hidden' as const,
         position: 'relative' as const,
-        aspectRatio: 1, // Ensure it stays square
+        aspectRatio: 1,
     },
     featuredThumbnailWrapper: {
-        width: '100%' as const,
-        height: featuredThumbnailHeight,
-        aspectRatio: 16 / 9,
-        borderRadius: borderRadius.xl,
+        width: isMobile ? 72 : 84,
+        height: isMobile ? 72 : 84,
+        aspectRatio: 1,
+        borderRadius: borderRadius.md,
     },
     thumbnail: {
         width: '100%' as const,
@@ -344,11 +332,19 @@ const styles = (
     },
     unreadIndicator: {
         position: 'absolute' as const,
-        top: spacing.lg,
-        right: spacing.lg,
-        width: 8,
-        height: 8,
-        borderRadius: 4,
+        top: densitySpacing.md,
+        left: 0,
+        width: 3,
+        height: 20,
+        borderRadius: borderRadius.full,
         backgroundColor: colors.primary.DEFAULT,
+    },
+    separator: {
+        position: 'absolute' as const,
+        left: densitySpacing.lg,
+        right: densitySpacing.lg,
+        bottom: 0,
+        height: 1,
+        backgroundColor: colors.border.light ?? colors.border.DEFAULT,
     },
 });

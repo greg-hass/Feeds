@@ -137,10 +137,9 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
         : feeds;
     const clearFilters = () => setFilter({ unread_only: false, type: undefined });
 
-    const renderArticle = ({ item, index }: { item: Article; index: number }) => (
+    const renderArticle = ({ item }: { item: Article; index: number }) => (
         <TimelineArticle
             item={item}
-            index={index}
             isActive={activeArticleId === item.id}
             isMobile={isMobile}
             activeVideoId={activeVideoId}
