@@ -41,12 +41,14 @@ import { api } from '@/services/api';
 
 describe('Feed Store', () => {
     let useFeedStore: any;
+    let feedStoreTestUtils: any;
 
     beforeEach(async () => {
         vi.clearAllMocks();
         // Import the store fresh for each test
         const module = await import('@/stores/feedStore');
         useFeedStore = module.useFeedStore;
+        feedStoreTestUtils = module.__feedStoreTestUtils;
         useFeedStore.setState({
             feeds: [],
             folders: [],
@@ -88,6 +90,57 @@ describe('Feed Store', () => {
             expect(state.totalUnread).toBe(0);
             expect(state.isLoading).toBe(false);
             expect(state.refreshState.phase).toBeDefined();
+        });
+
+        it('should normalize legacy persisted refresh state shape', () => {
+            const normalized = feedStoreTestUtils.normalizeRefreshState({
+                phase: 'success',
+                scope: 'manual',
+                startedAt: null,
+                lastAttemptAt: '2026-03-07T10:00:00.000Z',
+                lastCompletedAt: '2026-03-07T09:58:00.000Z',
+                staleSince: '2026-03-07T09:59:00.000Z',
+                message: 'Up to date',
+                error: null,
+                newArticles: 4,
+                progress: null,
+            });
+
+            expect(normalized.freshness.lastSuccessfulRefreshAt).toBe('2026-03-07T09:58:00.000Z');
+            expect(normalized.freshness.staleSince).toBe('2026-03-07T09:59:00.000Z');
+            expect(normalized.newContent.count).toBe(4);
+            expect(normalized.activity.isRefreshing).toBe(false);
+            expect(normalized.activity.isSyncing).toBe(false);
+        });
+
+        it('should preserve modern refresh state fields when already present', () => {
+            const normalized = feedStoreTestUtils.normalizeRefreshState({
+                phase: 'refreshing',
+                scope: 'background',
+                startedAt: '2026-03-07T10:00:00.000Z',
+                lastAttemptAt: '2026-03-07T10:00:00.000Z',
+                lastCompletedAt: '2026-03-07T09:58:00.000Z',
+                message: 'Refreshing feeds…',
+                error: null,
+                activity: {
+                    isRefreshing: true,
+                    isSyncing: false,
+                },
+                freshness: {
+                    staleSince: null,
+                    status: 'fresh',
+                    lastSuccessfulRefreshAt: '2026-03-07T09:57:00.000Z',
+                },
+                newContent: {
+                    count: 2,
+                },
+                progress: { total: 10, completed: 3, currentTitle: 'Feed A' },
+            });
+
+            expect(normalized.freshness.lastSuccessfulRefreshAt).toBe('2026-03-07T09:57:00.000Z');
+            expect(normalized.newContent.count).toBe(2);
+            expect(normalized.activity.isRefreshing).toBe(true);
+            expect(normalized.progress.currentTitle).toBe('Feed A');
         });
     });
 

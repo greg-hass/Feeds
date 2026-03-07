@@ -198,7 +198,7 @@ export async function digestRoutes(app: FastifyInstance) {
             // Initialize default settings if not exists
             run(
                 `INSERT INTO digest_settings (user_id, enabled, schedule, schedule_morning, schedule_evening, style) 
-                 VALUES (?, 1, "08:00", "08:00", "20:00", "bullets")`,
+                 VALUES (?, 1, '08:00', '08:00', '20:00', 'bullets')`,
                 [userId]
             );
             settings = queryOne<RawSettings>(
@@ -231,7 +231,7 @@ export async function digestRoutes(app: FastifyInstance) {
         if (!current) {
             run(
                 `INSERT INTO digest_settings (user_id, enabled, schedule, schedule_morning, schedule_evening, style) 
-                 VALUES (?, 1, "08:00", "08:00", "20:00", "bullets")`,
+                 VALUES (?, 1, '08:00', '08:00', '20:00', 'bullets')`,
                 [userId]
             );
         }

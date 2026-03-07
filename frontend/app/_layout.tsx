@@ -1,11 +1,11 @@
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { useEffect } from 'react';
+import { startTransition, useEffect, useState } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useSettingsStore } from '@/stores';
 import { initializeSync } from '@/stores';
-import { ThemeProvider } from '@/theme';
+import { ThemeProvider, useColors } from '@/theme';
 import ToastContainer from '@/components/Toast';
 
 const queryClient = new QueryClient({
@@ -19,8 +19,7 @@ const queryClient = new QueryClient({
 
 function AppInitializer() {
     useEffect(() => {
-        // Initialize settings and sync on app start
-        useSettingsStore.getState().fetchSettings().catch(() => { });
+        // Initialize sync infrastructure on app start.
         initializeSync();
     }, []);
 
@@ -31,16 +30,39 @@ function AppInitializer() {
     );
 }
 
+function RootShell() {
+    const [mounted, setMounted] = useState(false);
+    const colors = useColors();
 
+    useEffect(() => {
+        startTransition(() => {
+            setMounted(true);
+        });
+    }, []);
+
+    if (!mounted) {
+        return (
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background.primary }}>
+                <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
+            </View>
+        );
+    }
+
+    return (
+        <>
+            <StatusBar style="auto" />
+            <AppInitializer />
+            <ToastContainer />
+        </>
+    );
+}
 
 export default function RootLayout() {
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
             <QueryClientProvider client={queryClient}>
                 <ThemeProvider>
-                    <StatusBar style="auto" />
-                    <AppInitializer />
-                    <ToastContainer />
+                    <RootShell />
                 </ThemeProvider>
             </QueryClientProvider>
         </GestureHandlerRootView>

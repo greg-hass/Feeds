@@ -128,6 +128,10 @@ class ApiClient {
         await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
     }
 
+    hasAuthToken(): boolean {
+        return !!this.authToken;
+    }
+
     async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
         await this.ensureInitialized();
         const { method = 'GET', body, headers = {}, signal } = options;

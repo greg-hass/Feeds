@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { startTransition, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import { useColors, spacing, typography } from '@/theme';
 import Timeline from '@/components/Timeline';
@@ -7,7 +7,11 @@ import { FileText } from 'lucide-react-native';
 export default function ArticleListScreen() {
     const [mounted, setMounted] = useState(false);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Mounting pattern for hydration
-    useEffect(() => setMounted(true), []);
+    useEffect(() => {
+        startTransition(() => {
+            setMounted(true);
+        });
+    }, []);
     const colors = useColors();
     const { width } = useWindowDimensions();
     const isMobile = width < 1024;

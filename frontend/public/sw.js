@@ -1,11 +1,12 @@
 /* eslint-env serviceworker */
-const CACHE_NAME = 'feeds-cache-v3';
+const BUILD_SHA = '__FEEDS_BUILD_SHA__';
+const CACHE_NAME = `feeds-cache-${BUILD_SHA}`;
 const ASSETS_TO_CACHE = [
     '/',
     '/index.html',
     '/manifest.json',
-    '/assets/icon.png',
-    '/assets/favicon.png',
+    '/apple-touch-icon.png',
+    '/icon-512.png',
 ];
 
 // Store the user's accent color (set via postMessage from the app)

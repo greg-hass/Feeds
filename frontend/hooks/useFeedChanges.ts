@@ -2,10 +2,16 @@ import { useEffect, useRef } from 'react';
 import { api } from '@/services/api';
 import { useFeedStore } from '@/stores';
 
-export function useFeedChanges() {
+export function useFeedChanges(enabled: boolean) {
     const abortControllerRef = useRef<AbortController | null>(null);
 
     useEffect(() => {
+        if (!enabled) {
+            abortControllerRef.current?.abort();
+            abortControllerRef.current = null;
+            return;
+        }
+
         // Create abort controller for this session
         abortControllerRef.current = new AbortController();
 
@@ -104,5 +110,5 @@ export function useFeedChanges() {
         return () => {
             abortControllerRef.current?.abort();
         };
-    }, []);
+    }, [enabled]);
 }

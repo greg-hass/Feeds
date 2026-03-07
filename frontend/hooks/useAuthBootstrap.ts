@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { startTransition, useCallback, useEffect, useState } from 'react';
 import { api } from '@/services/api';
 
 export type AuthBootstrapState =
@@ -16,13 +16,18 @@ interface UseAuthBootstrapResult {
     refreshAuth: () => Promise<void>;
 }
 
-export function useAuthBootstrap(): UseAuthBootstrapResult {
+export function useAuthBootstrap(enabled = true): UseAuthBootstrapResult {
     const [authState, setAuthState] = useState<AuthBootstrapState>('checking');
     const [needsSetup, setNeedsSetup] = useState(false);
     const [sessionExpired, setSessionExpired] = useState(false);
+    const transitionAuthState = useCallback((nextState: AuthBootstrapState) => {
+        startTransition(() => {
+            setAuthState(nextState);
+        });
+    }, []);
 
     const refreshAuth = useCallback(async () => {
-        setAuthState('checking');
+        transitionAuthState('checking');
 
         try {
             await api.init();
@@ -31,16 +36,22 @@ export function useAuthBootstrap(): UseAuthBootstrapResult {
             if (!status.authEnabled) {
                 setNeedsSetup(false);
                 setSessionExpired(false);
-                setAuthState('authenticated');
+                transitionAuthState('authenticated');
                 return;
             }
 
             setNeedsSetup(status.needsSetup);
 
+            if (!api.hasAuthToken()) {
+                setSessionExpired(false);
+                transitionAuthState('unauthenticated');
+                return;
+            }
+
             try {
                 await api.getFeeds();
                 setSessionExpired(false);
-                setAuthState('authenticated');
+                transitionAuthState('authenticated');
             } catch (error: any) {
                 if (error?.code === 'SESSION_EXPIRED') {
                     setSessionExpired(true);
@@ -49,28 +60,31 @@ export function useAuthBootstrap(): UseAuthBootstrapResult {
                 }
 
                 await api.logout();
-                setAuthState('unauthenticated');
+                transitionAuthState('unauthenticated');
             }
         } catch (error) {
             console.error('Auth bootstrap failed:', error);
-            setAuthState('unauthenticated');
+            transitionAuthState('unauthenticated');
         }
-    }, []);
+    }, [transitionAuthState]);
 
     useEffect(() => {
+        if (!enabled) {
+            return;
+        }
         void refreshAuth();
-    }, [refreshAuth]);
+    }, [enabled, refreshAuth]);
 
     const completeLogin = useCallback(() => {
         setSessionExpired(false);
-        setAuthState('authenticated');
-    }, []);
+        transitionAuthState('authenticated');
+    }, [transitionAuthState]);
 
     const logout = useCallback(async () => {
         await api.logout();
         setSessionExpired(false);
-        setAuthState('unauthenticated');
-    }, []);
+        transitionAuthState('unauthenticated');
+    }, [transitionAuthState]);
 
     return {
         authState,

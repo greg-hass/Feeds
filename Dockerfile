@@ -33,7 +33,8 @@ ENV EXPO_PUBLIC_BUILD_SHA=${EXPO_PUBLIC_BUILD_SHA}
 RUN sed -i 's/"expo-web-browser"//g' app.json && \
     sed -i 's/,,/,/g' app.json && \
     sed -i 's/\[, /[/g' app.json && \
-    sed -i 's/, \]/]/g' app.json
+    sed -i 's/, \]/]/g' app.json && \
+    sed -i "s/__FEEDS_BUILD_SHA__/${EXPO_PUBLIC_BUILD_SHA}/g" public/sw.js
 
 RUN npx expo export --platform web
 

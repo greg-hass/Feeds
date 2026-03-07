@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { startTransition, useEffect, useState } from 'react';
 import { View, StyleSheet, useWindowDimensions, Platform, ActivityIndicator } from 'react-native';
 import { Slot } from 'expo-router';
 import { useFeedStore, useSettingsStore } from '@/stores';
@@ -30,21 +30,28 @@ export default function AppLayout() {
         needsSetup,
         sessionExpired,
         completeLogin,
-    } = useAuthBootstrap();
+    } = useAuthBootstrap(mounted);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Mounting pattern for hydration
-    useEffect(() => setMounted(true), []);
+    useEffect(() => {
+        startTransition(() => {
+            setMounted(true);
+        });
+    }, []);
     const { width } = useWindowDimensions();
     const isDesktop = width >= 1024;
     const { refreshState, cancelRefresh } = useFeedStore();
     const { showPlayer } = useAudioStore();
     const { settings } = useSettingsStore();
 
+    const lifecycleEnabled = mounted && !!isAuthenticated;
+    const realtimeEnabled = mounted && !!isAuthenticated && Platform.OS !== 'web';
+
     // Listen for real-time feed/folder changes from other devices
-    useFeedChanges();
+    useFeedChanges(realtimeEnabled);
 
     // Sync PWA theme color with accent color setting
     usePwaThemeColor(settings?.accent_color);
-    useRefreshLifecycle({ enabled: !!isAuthenticated });
+    useRefreshLifecycle({ enabled: lifecycleEnabled, realtimeEnabled });
 
     const pathname = usePathname() || '';
     const colors = useColors();
@@ -63,9 +70,9 @@ export default function AppLayout() {
         updateAvailable,
         applyUpdate,
         dismissUpdate,
-    } = usePwaUpdate(!!isAuthenticated);
+    } = usePwaUpdate(mounted && !!isAuthenticated);
 
-    useWakeLock(!isDesktop && !!isAuthenticated);
+    useWakeLock(mounted && !isDesktop && !!isAuthenticated);
 
     // Show loading state while checking auth
     if (!mounted || isAuthenticated === null) {

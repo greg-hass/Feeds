@@ -7,9 +7,13 @@ import { createRefreshEventController } from '@/lib/refreshEvents';
 
 interface UseRefreshLifecycleOptions {
     enabled: boolean;
+    realtimeEnabled?: boolean;
 }
 
-export function useRefreshLifecycle({ enabled }: UseRefreshLifecycleOptions) {
+export function useRefreshLifecycle({
+    enabled,
+    realtimeEnabled = enabled,
+}: UseRefreshLifecycleOptions) {
     const { fetchSettings } = useSettingsStore();
     const { fetchArticles } = useArticleStore();
     const {
@@ -54,10 +58,11 @@ export function useRefreshLifecycle({ enabled }: UseRefreshLifecycleOptions) {
                 try {
                     const registration = await navigator.serviceWorker.register('/sw.js');
                     console.log('SW registered:', registration);
+                    const activeRegistration = await navigator.serviceWorker.ready;
 
-                    if ('sync' in registration) {
+                    if ('sync' in activeRegistration) {
                         try {
-                            await (registration as ServiceWorkerRegistration & {
+                            await (activeRegistration as ServiceWorkerRegistration & {
                                 sync: { register: (tag: string) => Promise<void> }
                             }).sync.register('feeds-background-sync');
                             console.log('Background sync registered');
@@ -66,14 +71,14 @@ export function useRefreshLifecycle({ enabled }: UseRefreshLifecycleOptions) {
                         }
                     }
 
-                    if ('periodicSync' in registration) {
+                    if ('periodicSync' in activeRegistration) {
                         try {
                             const status = await navigator.permissions.query({
                                 name: 'periodic-background-sync' as PermissionName,
                             });
 
                             if (status.state === 'granted') {
-                                await (registration as any).periodicSync.register('feeds-background-sync', {
+                                await (activeRegistration as any).periodicSync.register('feeds-background-sync', {
                                     minInterval: 5 * 60 * 1000,
                                 });
                                 console.log('Periodic background sync registered');
@@ -121,7 +126,7 @@ export function useRefreshLifecycle({ enabled }: UseRefreshLifecycleOptions) {
     }, []);
 
     useEffect(() => {
-        if (!enabled) return;
+        if (!enabled || !realtimeEnabled) return;
 
         const controller = new AbortController();
         let refreshTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -189,7 +194,7 @@ export function useRefreshLifecycle({ enabled }: UseRefreshLifecycleOptions) {
                 },
             }));
         };
-    }, [enabled, fetchArticles, fetchSettings]);
+    }, [enabled, realtimeEnabled, fetchArticles, fetchSettings]);
 
     useEffect(() => {
         if (!enabled) return;

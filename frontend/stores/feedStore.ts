@@ -64,6 +64,11 @@ function normalizeRefreshState(refreshState: any) {
     };
 }
 
+export const __feedStoreTestUtils = {
+    createInitialRefreshState,
+    normalizeRefreshState,
+};
+
 export const useFeedStore = create<FeedState>()(
     persist(
         (set, get) => ({
