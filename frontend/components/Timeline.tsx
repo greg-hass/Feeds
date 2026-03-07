@@ -42,9 +42,11 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
 
     const [newArticlesCount, setNewArticlesCount] = useState<number>(0);
     const previousRefreshPhaseRef = useRef<string>('idle');
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Animated.Value stable for component lifetime
+    const [refreshSpin] = useState(new Animated.Value(0));
 
     const {
-        articles, isLoading, hasMore, filter, isFeedLoading, headerTitle, lastRefreshed, isRefreshing, refreshStatus, refreshState,
+        articles, isLoading, hasMore, filter, isFeedLoading, headerTitle, lastRefreshed, isRefreshing, refreshState,
         playingArticleId, isPlaying, activeVideoId, hotPulseAnim, feeds,
         fetchArticles, setFilter, refreshAllFeeds, handleMarkAllRead, prefetchArticle,
         handleArticlePress, handlePlayPress, handleVideoPress,
@@ -122,6 +124,29 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
         prevArticleCount.current = articles.length;
     }, [articles.length]);
 
+    useEffect(() => {
+        if (!isRefreshing) {
+            refreshSpin.stopAnimation();
+            refreshSpin.setValue(0);
+            return;
+        }
+
+        const loop = Animated.loop(
+            Animated.timing(refreshSpin, {
+                toValue: 1,
+                duration: 900,
+                useNativeDriver: true,
+            })
+        );
+        loop.start();
+
+        return () => {
+            loop.stop();
+            refreshSpin.stopAnimation();
+            refreshSpin.setValue(0);
+        };
+    }, [isRefreshing, refreshSpin]);
+
     // Use the prefetch hook for article content
     useArticlePrefetch({
         articles,
@@ -156,6 +181,11 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
         />
     );
 
+    const refreshRotation = refreshSpin.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['0deg', '360deg'],
+    });
+
     return (
         <View testID="timeline-screen" style={styles.container}>
             <ScreenHeader
@@ -163,15 +193,18 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                 showBackButton={false}
                 showMenuButton={isMobile}
                 onMenuPress={toggleMenu}
-                isRefreshing={isRefreshing}
                 lastRefreshed={lastRefreshed}
-                refreshText={refreshStatus.refreshText}
-                statusText={refreshStatus.label}
                 rightActions={[
                     {
-                        icon: <RefreshCw size={20} color={colors.text.secondary} />,
+                        icon: (
+                            <Animated.View style={{ transform: [{ rotate: refreshRotation }] }}>
+                                <RefreshCw
+                                    size={20}
+                                    color={isRefreshing ? colors.primary.DEFAULT : colors.text.secondary}
+                                />
+                            </Animated.View>
+                        ),
                         onPress: refreshAllFeeds,
-                        loading: isFeedLoading,
                         accessibilityLabel: 'Refresh feeds',
                     },
                     {

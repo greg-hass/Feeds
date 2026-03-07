@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ViewStyle, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ViewStyle, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, X, Menu } from 'lucide-react-native';
 import { useColors, spacing, borderRadius } from '@/theme';
@@ -23,9 +23,6 @@ interface ScreenHeaderProps {
     centerTitle?: boolean;
     showBorder?: boolean;
     style?: ViewStyle;
-    isRefreshing?: boolean;
-    refreshText?: string;
-    statusText?: string;
     showMenuButton?: boolean;
     onMenuPress?: () => void;
     lastRefreshed?: Date | null;
@@ -41,9 +38,6 @@ export const ScreenHeader = ({
     centerTitle = false,
     showBorder = true,
     style,
-    isRefreshing = false,
-    refreshText = 'Refreshing…',
-    statusText,
     showMenuButton = false,
     onMenuPress,
     lastRefreshed,
@@ -126,13 +120,9 @@ export const ScreenHeader = ({
             </View>
 
             {/* Right section */}
-            {(actions.length > 0 || lastRefreshed || statusText) && (
+            {(actions.length > 0 || lastRefreshedLabel) && (
                 <View style={s.rightContainer}>
-                    {isRefreshing ? (
-                        <Text style={s.timerText}>{statusText || refreshText}</Text>
-                    ) : (
-                        <Text style={s.timerText}>{statusText || lastRefreshedLabel}</Text>
-                    )}
+                    {lastRefreshedLabel ? <Text style={s.timerText}>{lastRefreshedLabel}</Text> : null}
                     {actions.map((action, index) => (
                         <TouchableOpacity
                             key={index}
@@ -146,12 +136,7 @@ export const ScreenHeader = ({
                             accessibilityLabel={action.accessibilityLabel}
                             accessibilityRole="button"
                         >
-                            {action.loading ? (
-                                <ActivityIndicator 
-                                    size="small" 
-                                    color={action.variant === 'primary' ? colors.text.inverse : colors.text.secondary} 
-                                />
-                            ) : action.icon}
+                            {action.icon}
                         </TouchableOpacity>
                     ))}
                 </View>
