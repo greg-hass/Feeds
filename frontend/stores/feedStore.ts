@@ -36,6 +36,34 @@ const createInitialRefreshState = () => ({
     progress: null,
 });
 
+function normalizeRefreshState(refreshState: any) {
+    const initial = createInitialRefreshState();
+    const state = refreshState || {};
+
+    return {
+        ...initial,
+        ...state,
+        activity: {
+            ...initial.activity,
+            ...(state.activity || {}),
+        },
+        freshness: {
+            ...initial.freshness,
+            ...(state.freshness || {}),
+            staleSince: state.freshness?.staleSince ?? state.staleSince ?? initial.freshness.staleSince,
+            lastSuccessfulRefreshAt:
+                state.freshness?.lastSuccessfulRefreshAt ??
+                state.lastCompletedAt ??
+                initial.freshness.lastSuccessfulRefreshAt,
+        },
+        newContent: {
+            ...initial.newContent,
+            ...(state.newContent || {}),
+            count: state.newContent?.count ?? state.newArticles ?? initial.newContent.count,
+        },
+    };
+}
+
 export const useFeedStore = create<FeedState>()(
     persist(
         (set, get) => ({
@@ -44,7 +72,7 @@ export const useFeedStore = create<FeedState>()(
             smartFolders: [],
             totalUnread: 0,
             isLoading: false,
-            refreshState: createInitialRefreshState(),
+            refreshState: normalizeRefreshState(null),
 
             beginRefreshCycle: (scope, phase) => {
                 const now = new Date().toISOString();
@@ -424,7 +452,29 @@ export const useFeedStore = create<FeedState>()(
         }),
         {
             name: 'feeds-list',
+            version: 2,
             storage: createJSONStorage(() => AsyncStorage),
+            migrate: (persistedState: any) => {
+                if (!persistedState) {
+                    return persistedState;
+                }
+
+                return {
+                    ...persistedState,
+                    refreshState: normalizeRefreshState(persistedState.refreshState),
+                };
+            },
+            merge: (persistedState: any, currentState) => {
+                if (!persistedState) {
+                    return currentState;
+                }
+
+                return {
+                    ...currentState,
+                    ...persistedState,
+                    refreshState: normalizeRefreshState(persistedState.refreshState),
+                };
+            },
             partialize: (state: FeedState) => ({
                 feeds: state.feeds,
                 folders: state.folders,

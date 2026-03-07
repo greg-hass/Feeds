@@ -19,11 +19,21 @@ export function formatRefreshAge(iso: string | null): string | null {
 }
 
 export function getRefreshPresentation(refreshState: RefreshState) {
-    const lastSuccessfulRefreshAt = refreshState.freshness.lastSuccessfulRefreshAt;
-    const lastRefreshAge = formatRefreshAge(lastSuccessfulRefreshAt);
-    const isStale = refreshState.freshness.status === 'stale';
+    const freshness = refreshState.freshness || {
+        staleSince: null,
+        status: 'fresh' as const,
+        lastSuccessfulRefreshAt: refreshState.lastCompletedAt || null,
+    };
+    const activity = refreshState.activity || {
+        isRefreshing: refreshState.phase === 'refreshing',
+        isSyncing: refreshState.phase === 'syncing',
+    };
 
-    if (refreshState.activity.isRefreshing) {
+    const lastSuccessfulRefreshAt = freshness.lastSuccessfulRefreshAt;
+    const lastRefreshAge = formatRefreshAge(lastSuccessfulRefreshAt);
+    const isStale = freshness.status === 'stale';
+
+    if (activity.isRefreshing) {
         return {
             label: refreshState.message || 'Refreshing feeds…',
             shortLabel: 'Refreshing…',
@@ -35,7 +45,7 @@ export function getRefreshPresentation(refreshState: RefreshState) {
         };
     }
 
-    if (refreshState.activity.isSyncing) {
+    if (activity.isSyncing) {
         return {
             label: refreshState.message || 'Checking for updates…',
             shortLabel: 'Syncing…',
