@@ -27,14 +27,13 @@ function getScrollKey(filter: any): string {
 
 export const useTimelineScroll = (articles: any[], filter: any) => {
     const { prefetchArticle } = useArticleStore();
-    const [isScrollRestored, setIsScrollRestored] = useState(false);
+    const [restoreAttempt, setRestoreAttempt] = useState(0);
     const flatListRef = useRef<FlatList>(null);
     const hasRestoredScroll = useRef(false);
     const pendingScrollPosition = useRef<number | null>(null);
     const currentScrollKey = useRef<string>('');
 
     // Scroll compensation refs for Twitter/X-style prepending
-    const contentHeightBeforeUpdate = useRef<number>(0);
     const scrollOffsetBeforeUpdate = useRef<number>(0);
     const firstArticleIdBeforeUpdate = useRef<number | null>(null);
     const isCompensatingScroll = useRef(false);
@@ -49,7 +48,6 @@ export const useTimelineScroll = (articles: any[], filter: any) => {
         // Only reset if the key actually changed
         if (currentScrollKey.current !== scrollKey) {
             hasRestoredScroll.current = false;
-            setIsScrollRestored(false);
             pendingScrollPosition.current = null;
             currentScrollKey.current = scrollKey;
         }
@@ -65,7 +63,7 @@ export const useTimelineScroll = (articles: any[], filter: any) => {
             if (savedPosition > 0 && hasRestoredScroll.current) {
                 // Reset to allow scroll restoration
                 hasRestoredScroll.current = false;
-                setIsScrollRestored(false);
+                setRestoreAttempt((attempt) => attempt + 1);
             }
         }, [scrollKey])
     );
@@ -81,8 +79,6 @@ export const useTimelineScroll = (articles: any[], filter: any) => {
         // If there's no saved position, we're done
         if (savedPosition <= 0) {
             hasRestoredScroll.current = true;
-            // eslint-disable-next-line react-hooks/set-state-in-effect -- Scroll restoration complete
-            setIsScrollRestored(true);
             return;
         }
 
@@ -108,14 +104,13 @@ export const useTimelineScroll = (articles: any[], filter: any) => {
                     setTimeout(() => {
                         hasRestoredScroll.current = true;
                         pendingScrollPosition.current = null;
-                        setIsScrollRestored(true);
                     }, 50);
                 }
             }, 250); // Increased delay for layout stability
 
             return () => clearTimeout(timeoutId);
         }
-    }, [articles.length, scrollKey]);
+    }, [articles.length, scrollKey, restoreAttempt]);
 
     // Track new articles and prepare for scroll compensation
     const prepareForNewArticles = useCallback((newArticlesCount: number) => {
@@ -125,7 +120,6 @@ export const useTimelineScroll = (articles: any[], filter: any) => {
         flatListRef.current?.getScrollableNode?.().then?.((node: any) => {
             if (node) {
                 scrollOffsetBeforeUpdate.current = node.scrollTop || 0;
-                contentHeightBeforeUpdate.current = node.scrollHeight || 0;
             }
         }).catch(() => {
             // Fallback: try to get from native event if available
@@ -259,7 +253,6 @@ export const useTimelineScroll = (articles: any[], filter: any) => {
 
     return {
         flatListRef,
-        isScrollRestored,
         onViewableItemsChanged,
         handleScroll,
         saveScrollPosition,

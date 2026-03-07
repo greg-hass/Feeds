@@ -22,8 +22,8 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     const pathname = usePathname();
     const colors = useColors();
     const {
-        feeds, folders, smartFolders, totalUnread, fetchFeeds, fetchFolders,
-        isLoading, isBackgroundRefreshing, refreshAllFeeds
+        feeds, folders, smartFolders, totalUnread,
+        isLoading, refreshAllFeeds, refreshState
     } = useFeedStore();
     const { filter, setFilter } = useArticleStore();
 
@@ -61,15 +61,48 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
     const isHome = pathname === '/' || pathname === '/index';
     const isAllActive = isHome && !filter.feed_id && !filter.folder_id && !filter.type;
+    const formatAge = (iso: string | null) => {
+        if (!iso) return null;
+        const diffMs = Date.now() - new Date(iso).getTime();
+        const minutes = Math.floor(diffMs / 60000);
+        if (minutes < 1) return 'just now';
+        if (minutes < 60) return `${minutes}m ago`;
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `${hours}h ago`;
+        const days = Math.floor(hours / 24);
+        return `${days}d ago`;
+    };
+    const refreshSummary = (() => {
+        if (refreshState.phase === 'refreshing') return refreshState.message || 'Refreshing feeds…';
+        if (refreshState.phase === 'syncing') return refreshState.message || 'Checking for updates…';
+        if (refreshState.phase === 'error') return 'Refresh failed';
+        if (refreshState.staleSince) {
+            const age = formatAge(refreshState.lastCompletedAt);
+            return age ? `Stale · Updated ${age}` : 'Stale · Refresh needed';
+        }
+        const age = formatAge(refreshState.lastCompletedAt);
+        return age ? `Updated ${age}` : 'Awaiting first refresh';
+    })();
+    const refreshMetaStyle = refreshState.phase === 'error'
+        ? s.refreshMetaError
+        : refreshState.staleSince
+            ? s.refreshMetaStale
+            : s.refreshMetaDefault;
+    const isBackgroundRefreshing = refreshState.phase === 'refreshing' && refreshState.scope === 'background';
 
     return (
         <View style={s.container}>
             {/* Header */}
             <View style={s.header}>
-                <View style={s.logoRow}>
-                    <Rss size={24} color={colors.primary.DEFAULT} />
-                    <Text style={s.logoText}>Feeds</Text>
-                    {isBackgroundRefreshing && <View style={s.refreshDot} />}
+                <View style={s.headerText}>
+                    <View style={s.logoRow}>
+                        <Rss size={24} color={colors.primary.DEFAULT} />
+                        <Text style={s.logoText}>Feeds</Text>
+                        {isBackgroundRefreshing && <View style={s.refreshDot} />}
+                    </View>
+                    <Text style={[s.refreshMeta, refreshMetaStyle]} numberOfLines={1}>
+                        {refreshSummary}
+                    </Text>
                 </View>
                 <TouchableOpacity
                     onPress={handleRefresh}
@@ -315,9 +348,13 @@ const styles = (colors: any, isDesktop: boolean) => StyleSheet.create({
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         padding: spacing.lg,
         paddingTop: Platform.OS === 'ios' ? 60 : 20,
+    },
+    headerText: {
+        flex: 1,
+        marginRight: spacing.md,
     },
     logoRow: {
         flexDirection: 'row',
@@ -329,6 +366,20 @@ const styles = (colors: any, isDesktop: boolean) => StyleSheet.create({
         fontWeight: '800',
         color: colors.text.primary,
         letterSpacing: -0.5,
+    },
+    refreshMeta: {
+        marginTop: spacing.xs,
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    refreshMetaDefault: {
+        color: colors.text.tertiary,
+    },
+    refreshMetaStale: {
+        color: colors.warning,
+    },
+    refreshMetaError: {
+        color: colors.error,
     },
     iconButton: {
         padding: spacing.md,

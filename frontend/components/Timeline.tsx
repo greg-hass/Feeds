@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { View, FlatList, RefreshControl, ActivityIndicator, Platform, LayoutAnimation, UIManager, InteractionManager, Animated, TouchableOpacity } from 'react-native';
+import { View, FlatList, RefreshControl, ActivityIndicator, Platform, LayoutAnimation, UIManager, Animated, TouchableOpacity } from 'react-native';
 import { Article } from '@/services/api';
 import { useColors, spacing } from '@/theme';
 import { useTimeline } from '@/hooks/useTimeline';
@@ -13,7 +13,6 @@ import NewArticlesPill from './NewArticlesPill';
 import { TimelineEmptyState } from './TimelineEmptyState';
 import { DigestCard } from './DigestCard';
 import { PodcastSection } from './PodcastSection';
-import TimelineHeader from './TimelineHeader';
 import { FeedInfoSheet } from './FeedInfoSheet';
 import { timelineStyles } from './Timeline.styles';
 import { ScrollView } from 'react-native';
@@ -46,7 +45,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     const previousArticlesRef = useRef<Article[]>([]);
 
     const {
-        articles, isLoading, hasMore, filter, isFeedLoading, headerTitle, lastRefreshed, isRefreshing, refreshProgress,
+        articles, isLoading, hasMore, filter, isFeedLoading, headerTitle, lastRefreshed, isRefreshing, refreshStatus,
         playingArticleId, isPlaying, activeVideoId, hotPulseAnim, feeds,
         fetchArticles, setFilter, refreshAllFeeds, handleMarkAllRead, prefetchArticle,
         handleArticlePress, handlePlayPress, handleVideoPress,
@@ -54,7 +53,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     } = useTimeline(onArticlePress);
 
     const {
-        flatListRef, isScrollRestored, onViewableItemsChanged, handleScroll, saveScrollPosition,
+        flatListRef, onViewableItemsChanged, handleScroll, saveScrollPosition,
         scrollToTop, isAtTop, prepareForNewArticles
     } = useTimelineScroll(articles, filter);
 
@@ -149,6 +148,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     const feedsForCurrentFilter = filter.type
         ? feeds.filter(f => f.type === filter.type)
         : feeds;
+    const clearFilters = () => setFilter({ unread_only: false, type: undefined });
 
     const renderArticle = ({ item, index }: { item: Article; index: number }) => (
         <TimelineArticle
@@ -179,6 +179,8 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                 onMenuPress={toggleMenu}
                 isRefreshing={isRefreshing}
                 lastRefreshed={lastRefreshed}
+                refreshText={refreshStatus.refreshText}
+                statusText={refreshStatus.label}
                 rightActions={[
                     {
                         icon: <RefreshCw size={20} color={colors.text.secondary} />,
@@ -226,7 +228,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                     hasFeeds={true}
                     isFiltered={true}
                     filterType={filter.type}
-                    onClearFilter={() => setFilter({ unread_only: false, type: undefined })}
+                    onClearFilter={clearFilters}
                 />
             )}
 
@@ -236,7 +238,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                     hasFeeds={false}
                     isFiltered={!!filter.type}
                     filterType={filter.type}
-                    onClearFilter={() => setFilter({ unread_only: false, type: undefined })}
+                    onClearFilter={clearFilters}
                 />
             ) : isLoading && articles.length === 0 ? (
                 <TimelineSkeleton />
@@ -264,7 +266,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                                 hasFeeds={true}
                                 isFiltered={filter.unread_only || !!filter.feed_id || !!filter.folder_id || !!filter.type}
                                 filterType={filter.type}
-                                onClearFilter={() => setFilter({ unread_only: false, type: undefined })}
+                                onClearFilter={clearFilters}
                             />
                         }
                         onViewableItemsChanged={onViewableItemsChanged}

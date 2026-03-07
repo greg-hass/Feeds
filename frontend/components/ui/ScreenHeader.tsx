@@ -25,6 +25,7 @@ interface ScreenHeaderProps {
     style?: ViewStyle;
     isRefreshing?: boolean;
     refreshText?: string;
+    statusText?: string;
     showMenuButton?: boolean;
     onMenuPress?: () => void;
     lastRefreshed?: Date | null;
@@ -42,6 +43,7 @@ export const ScreenHeader = ({
     style,
     isRefreshing = false,
     refreshText = 'Refreshing…',
+    statusText,
     showMenuButton = false,
     onMenuPress,
     lastRefreshed,
@@ -130,10 +132,12 @@ export const ScreenHeader = ({
             </View>
 
             {/* Right section */}
-            {(actions.length > 0 || lastRefreshed) && (
+            {(actions.length > 0 || lastRefreshed || statusText) && (
                 <View style={s.rightContainer}>
-                    {lastRefreshedLabel && !isRefreshing && (
-                        <Text style={s.timerText}>{lastRefreshedLabel}</Text>
+                    {isRefreshing ? (
+                        <Text style={s.timerText}>{statusText || refreshText}</Text>
+                    ) : (
+                        <Text style={s.timerText}>{statusText || lastRefreshedLabel}</Text>
                     )}
                     {actions.map((action, index) => (
                         <TouchableOpacity

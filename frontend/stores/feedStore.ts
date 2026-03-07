@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api, Feed, Folder } from '@/services/api';
 import { applySyncChanges, SyncChanges, fetchChanges } from '@/lib/sync';
+import { createRefreshEventController } from '@/lib/refreshEvents';
 import { handleError } from '@/services/errorHandler';
 import { useArticleStore } from './articleStore';
 import { FeedState } from './types';
@@ -12,6 +13,19 @@ let refreshAbortController: AbortController | null = null;
 const isAbortError = (error: unknown) =>
     error instanceof Error && error.name === 'AbortError';
 
+const createInitialRefreshState = () => ({
+    phase: 'idle' as const,
+    scope: null,
+    startedAt: null,
+    lastAttemptAt: null,
+    lastCompletedAt: null,
+    staleSince: new Date().toISOString(),
+    message: 'Timeline needs refresh',
+    error: null,
+    newArticles: null,
+    progress: null,
+});
+
 export const useFeedStore = create<FeedState>()(
     persist(
         (set, get) => ({
@@ -20,10 +34,86 @@ export const useFeedStore = create<FeedState>()(
             smartFolders: [],
             totalUnread: 0,
             isLoading: false,
-            isBackgroundRefreshing: false,
-            refreshProgress: null,
-            lastRefreshNewArticles: null,
-            refreshAbortController: null,
+            refreshState: createInitialRefreshState(),
+
+            beginRefreshCycle: (scope, phase) => {
+                const now = new Date().toISOString();
+                set((state) => ({
+                    refreshState: {
+                        ...state.refreshState,
+                        phase,
+                        scope,
+                        startedAt: now,
+                        lastAttemptAt: now,
+                        message: phase === 'refreshing' ? 'Refreshing feeds…' : 'Checking for updates…',
+                        error: null,
+                        newArticles: null,
+                        progress: phase === 'refreshing' ? state.refreshState.progress : null,
+                    },
+                }));
+            },
+
+            updateRefreshProgressState: (progress) => {
+                set((state) => ({
+                    refreshState: {
+                        ...state.refreshState,
+                        phase: 'refreshing',
+                        progress,
+                        message: progress?.currentTitle
+                            ? `Refreshing ${progress.currentTitle}`
+                            : 'Refreshing feeds…',
+                        error: null,
+                    },
+                }));
+            },
+
+            completeRefreshCycle: (result) => {
+                const now = new Date().toISOString();
+                const newArticles = result?.newArticles ?? null;
+                set((state) => ({
+                    refreshState: {
+                        ...state.refreshState,
+                        phase: 'success',
+                        scope: state.refreshState.scope,
+                        startedAt: null,
+                        lastCompletedAt: now,
+                        staleSince: null,
+                        message: result?.message ?? (newArticles && newArticles > 0
+                            ? `${newArticles} new article${newArticles === 1 ? '' : 's'} loaded`
+                            : 'Up to date'),
+                        error: null,
+                        newArticles,
+                        progress: null,
+                    },
+                }));
+            },
+
+            failRefreshCycle: (error) => {
+                const now = new Date().toISOString();
+                set((state) => ({
+                    refreshState: {
+                        ...state.refreshState,
+                        phase: 'error',
+                        startedAt: null,
+                        staleSince: state.refreshState.staleSince ?? now,
+                        message: 'Refresh failed',
+                        error,
+                        progress: null,
+                    },
+                }));
+            },
+
+            markRefreshStale: (message) => {
+                const now = new Date().toISOString();
+                set((state) => ({
+                    refreshState: {
+                        ...state.refreshState,
+                        phase: state.refreshState.phase === 'refreshing' ? state.refreshState.phase : 'idle',
+                        staleSince: state.refreshState.staleSince ?? now,
+                        message: message ?? state.refreshState.message ?? 'Timeline may be out of date',
+                    },
+                }));
+            },
 
             fetchFeeds: async () => {
                 set({ isLoading: true });
@@ -93,20 +183,18 @@ export const useFeedStore = create<FeedState>()(
             },
 
             refreshAllFeeds: async (ids) => {
-                set({ isLoading: true, lastRefreshNewArticles: null });
+                set({ isLoading: true });
                 const controller = new AbortController();
                 refreshAbortController = controller;
-                let totalNewArticles = 0;
                 const articleStore = useArticleStore.getState();
                 const estimatedTotal = ids?.length ?? get().feeds.length;
                 const requiresFullArticleRefresh = () => Boolean(useArticleStore.getState().filter.folder_id);
-                set({
-                    refreshProgress: {
-                        total: estimatedTotal,
-                        completed: 0,
-                        currentTitle: '',
-                    }
+                const refreshController = createRefreshEventController({
+                    scope: 'manual',
+                    requestSync: () => debouncedSync(),
                 });
+                get().beginRefreshCycle('manual', 'refreshing');
+                get().updateRefreshProgressState({ total: estimatedTotal, completed: 0, currentTitle: '' });
 
                 let refreshTimeout: ReturnType<typeof setTimeout> | null = null;
                 const syncArticleChanges = async (skipCursorUpdate: boolean) => {
@@ -128,52 +216,7 @@ export const useFeedStore = create<FeedState>()(
                 try {
                     await api.refreshFeedsWithProgress(
                         ids,
-                        (event) => {
-                            if (event.type === 'start') {
-                                set({ refreshProgress: { total: event.total_feeds, completed: 0, currentTitle: '' } });
-                            } else if (event.type === 'feed_refreshing') {
-                                // Show every feed name as it starts
-                                set((state) => ({
-                                    refreshProgress: state.refreshProgress ? { ...state.refreshProgress, currentTitle: event.title } : null
-                                }));
-                            } else if (event.type === 'feed_complete' || event.type === 'feed_error') {
-                                if (event.type === 'feed_complete' && event.new_articles > 0) {
-                                    totalNewArticles += event.new_articles;
-                                    debouncedSync();
-                                }
-
-                                // Update progress and feed list
-                                set((state) => ({
-                                    refreshProgress: state.refreshProgress ? {
-                                        ...state.refreshProgress,
-                                        completed: state.refreshProgress.completed + 1,
-                                        currentTitle: event.title // Show name on completion too
-                                    } : null,
-                                    feeds: state.feeds.map(f =>
-                                        f.id === (event as any).id
-                                            ? {
-                                                ...f,
-                                                title: event.type === 'feed_complete' && event.feed ? event.feed.title : f.title,
-                                                icon_url: event.type === 'feed_complete' && event.feed?.icon_url !== undefined ? event.feed.icon_url : f.icon_url,
-                                                type: event.type === 'feed_complete' && event.feed ? event.feed.type : f.type,
-                                                unread_count: event.type === 'feed_complete' ? (f.unread_count || 0) + event.new_articles : f.unread_count,
-                                                last_fetched_at: new Date().toISOString(),
-                                                next_fetch_at: event.type === 'feed_complete' ? event.next_fetch_at || f.next_fetch_at : f.next_fetch_at
-                                            }
-                                            : f
-                                    )
-                                }));
-
-                                if (event.type === 'feed_complete' && event.feed) {
-                                    const articleStore = useArticleStore.getState();
-                                    articleStore.updateFeedMetadata(event.feed.id, {
-                                        feed_title: event.feed.title,
-                                        feed_icon_url: event.feed.icon_url,
-                                        feed_type: event.feed.type,
-                                    });
-                                }
-                            }
-                        },
+                        refreshController.handleEvent,
                         (error) => {
                             // Don't show error toast for SSE stream interruptions (e.g., phone lock, app background)
                             // The final fetches will still get the updated data
@@ -198,17 +241,24 @@ export const useFeedStore = create<FeedState>()(
                     ]);
                 } catch (error) {
                     if (!isAbortError(error)) {
+                        get().failRefreshCycle(error instanceof Error ? error.message : 'Failed to refresh feeds');
                         handleError(error, { context: 'refreshAllFeeds' });
                     }
                 } finally {
                     if (refreshAbortController === controller) {
                         refreshAbortController = null;
                     }
+                    if (!controller.signal.aborted && get().refreshState.phase !== 'error') {
+                        const totalNewArticles = refreshController.getTotalNewArticles();
+                        get().completeRefreshCycle({
+                            newArticles: totalNewArticles,
+                            message: totalNewArticles > 0
+                                ? `${totalNewArticles} new article${totalNewArticles === 1 ? '' : 's'} loaded`
+                                : 'Up to date',
+                        });
+                    }
                     set({
                         isLoading: false,
-                        isBackgroundRefreshing: false,
-                        refreshProgress: null,
-                        lastRefreshNewArticles: totalNewArticles > 0 ? totalNewArticles : null
                     });
                 }
             },
@@ -218,7 +268,16 @@ export const useFeedStore = create<FeedState>()(
                     refreshAbortController.abort();
                     refreshAbortController = null;
                 }
-                set({ isLoading: false, isBackgroundRefreshing: false, refreshProgress: null });
+                set((state) => ({
+                    isLoading: false,
+                    refreshState: {
+                        ...state.refreshState,
+                        phase: 'idle',
+                        startedAt: null,
+                        message: 'Refresh cancelled',
+                        progress: null,
+                    },
+                }));
             },
 
             updateFeed: async (id, updates) => {
@@ -304,7 +363,10 @@ export const useFeedStore = create<FeedState>()(
                     return {
                         feeds: newFeeds,
                         folders: newFolders,
-                        isBackgroundRefreshing: isRefreshing ?? state.isBackgroundRefreshing
+                        refreshState: {
+                            ...state.refreshState,
+                            phase: isRefreshing ? 'refreshing' : state.refreshState.phase,
+                        },
                     };
                 });
             },
@@ -317,7 +379,8 @@ export const useFeedStore = create<FeedState>()(
                 feeds: state.feeds,
                 folders: state.folders,
                 smartFolders: state.smartFolders,
-                totalUnread: state.totalUnread
+                totalUnread: state.totalUnread,
+                refreshState: state.refreshState,
             }),
         }
     )

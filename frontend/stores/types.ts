@@ -7,10 +7,18 @@ export interface FeedState {
     smartFolders: SmartFolder[];
     totalUnread: number;
     isLoading: boolean;
-    isBackgroundRefreshing: boolean;
-    refreshProgress: { total: number; completed: number; currentTitle: string } | null;
-    lastRefreshNewArticles: number | null;
-    refreshAbortController: AbortController | null;
+    refreshState: {
+        phase: 'idle' | 'syncing' | 'refreshing' | 'success' | 'error';
+        scope: 'foreground' | 'background' | 'manual' | null;
+        startedAt: string | null;
+        lastAttemptAt: string | null;
+        lastCompletedAt: string | null;
+        staleSince: string | null;
+        message: string | null;
+        error: string | null;
+        newArticles: number | null;
+        progress: { total: number; completed: number; currentTitle: string } | null;
+    };
 
     fetchFeeds: () => Promise<void>;
     fetchFolders: () => Promise<void>;
@@ -25,6 +33,11 @@ export interface FeedState {
     resumeFeed: (id: number) => Promise<void>;
     updateLocalFeed: (id: number, updates: Partial<Feed>) => void;
     applySyncChanges: (changes: SyncChanges, isRefreshing?: boolean) => void;
+    beginRefreshCycle: (scope: FeedState['refreshState']['scope'], phase: FeedState['refreshState']['phase']) => void;
+    updateRefreshProgressState: (progress: FeedState['refreshState']['progress']) => void;
+    completeRefreshCycle: (result?: { newArticles?: number; message?: string }) => void;
+    failRefreshCycle: (error: string) => void;
+    markRefreshStale: (message?: string) => void;
 }
 
 export interface ArticleState {

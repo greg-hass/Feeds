@@ -1,10 +1,9 @@
-import { useEffect, useState, useRef } from 'react';
-import { View, StyleSheet, useWindowDimensions, Platform, AppState, ActivityIndicator, Text } from 'react-native';
+import { useEffect, useState } from 'react';
+import { View, StyleSheet, useWindowDimensions, Platform, ActivityIndicator } from 'react-native';
 import { Slot } from 'expo-router';
-import { useArticleStore, useFeedStore, useSettingsStore, useToastStore } from '@/stores';
+import { useFeedStore, useSettingsStore } from '@/stores';
 import { useColors } from '@/theme';
 import Sidebar from '@/components/Sidebar';
-import { enableSync, fetchChanges, syncManager } from '@/lib/sync';
 import MobileNav from '@/components/MobileNav';
 import Timeline from '@/components/Timeline';
 import BookmarksList from '@/components/BookmarksList';
@@ -15,408 +14,29 @@ import { PodcastPlayer } from '@/components/PodcastPlayer';
 import { FloatingAudioPlayer } from '@/components/FloatingAudioPlayer';
 import { useAudioStore } from '@/stores/audioStore';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { api } from '@/services/api';
 import { LoginScreen } from '@/components/LoginScreen';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFeedChanges } from '@/hooks/useFeedChanges';
 import { usePwaThemeColor } from '@/hooks/usePwaThemeColor';
+import { useAuthBootstrap } from '@/hooks/useAuthBootstrap';
+import { useRefreshLifecycle } from '@/hooks/useRefreshLifecycle';
 
 export default function AppLayout() {
     const [mounted, setMounted] = useState(false);
-    const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-    const [isForegroundSyncing, setIsForegroundSyncing] = useState(false);
+    const { isAuthenticated, setIsAuthenticated } = useAuthBootstrap();
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Mounting pattern for hydration
     useEffect(() => setMounted(true), []);
     const { width } = useWindowDimensions();
     const isDesktop = width >= 1024;
-    const { fetchFeeds, fetchFolders, refreshProgress, cancelRefresh } = useFeedStore();
-    const { fetchArticles } = useArticleStore();
-    const { show } = useToastStore();
+    const { refreshState, cancelRefresh } = useFeedStore();
     const { showPlayer } = useAudioStore();
-    const { fetchSettings, settings } = useSettingsStore();
-    const lastIsRefreshingRef = useRef(false);
-    const refreshCycleNewArticlesRef = useRef(0);
-    const requiresFullArticleRefresh = () => Boolean(useArticleStore.getState().filter.folder_id);
+    const { settings } = useSettingsStore();
 
     // Listen for real-time feed/folder changes from other devices
     useFeedChanges();
 
     // Sync PWA theme color with accent color setting
     usePwaThemeColor(settings?.accent_color);
-
-    // Check authentication status on mount
-    useEffect(() => {
-        const checkAuth = async () => {
-            try {
-                const status = await api.getAuthStatus();
-                if (!status.authEnabled) {
-                    // Auth not enabled, allow access
-                    setIsAuthenticated(true);
-                    return;
-                }
-
-                // Check if we have a valid token
-                const token = await AsyncStorage.getItem('@feeds_auth_token');
-                if (token) {
-                    // Try to make an authenticated request to verify token
-                    try {
-                        await api.getFeeds();
-                        setIsAuthenticated(true);
-                    } catch (e) {
-                        // Token invalid
-                        await api.logout();
-                        setIsAuthenticated(false);
-                    }
-                } else {
-                    setIsAuthenticated(false);
-                }
-            } catch (e) {
-                console.error('Auth check failed:', e);
-                setIsAuthenticated(false);
-            }
-        };
-
-        checkAuth();
-    }, []);
-
-    useEffect(() => {
-        if (!isAuthenticated) return;
-
-        const cleanupSync = enableSync((changes, isRefreshing) => {
-            useFeedStore.getState().applySyncChanges(changes, isRefreshing);
-            useArticleStore.getState().applySyncChanges(changes);
-
-            const articleStore = useArticleStore.getState();
-            const feedStore = useFeedStore.getState();
-            const settingsStore = useSettingsStore.getState();
-            const createdCount = Array.isArray(changes.articles?.created) ? changes.articles?.created.length : 0;
-            const hasFolderFilter = !!articleStore.filter.folder_id;
-            const wasRefreshing = lastIsRefreshingRef.current;
-            const nowRefreshing = !!isRefreshing;
-
-            if (hasFolderFilter && createdCount > 0) {
-                articleStore.fetchArticles(true, true);
-            }
-
-            if (wasRefreshing && !nowRefreshing) {
-                if (requiresFullArticleRefresh()) {
-                    articleStore.fetchArticles(true, true);
-                }
-                settingsStore.fetchSettings().catch(() => { });
-            }
-
-            lastIsRefreshingRef.current = nowRefreshing;
-        });
-
-        if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-            window.addEventListener('load', async () => {
-                try {
-                    const registration = await navigator.serviceWorker.register('/sw.js');
-                    console.log('SW registered:', registration);
-
-                        // Register for background sync if supported
-                        if ('sync' in registration) {
-                            try {
-                            await (registration as ServiceWorkerRegistration & { sync: { register: (tag: string) => Promise<void> } }).sync.register('feeds-background-sync');
-                            console.log('Background sync registered');
-                        } catch (syncError) {
-                            console.log('Background sync registration failed:', syncError);
-                        }
-                    }
-
-                    // Register for periodic background sync if supported
-                    if ('periodicSync' in registration) {
-                        try {
-                            const status = await navigator.permissions.query({
-                                name: 'periodic-background-sync' as PermissionName,
-                            });
-
-                            if (status.state === 'granted') {
-                                await (registration as any).periodicSync.register('feeds-background-sync', {
-                                    minInterval: 5 * 60 * 1000, // 5 minutes
-                                });
-                                console.log('Periodic background sync registered');
-                            }
-                        } catch (periodicError) {
-                            console.log('Periodic sync registration failed:', periodicError);
-                        }
-                    }
-
-                    // Listen for messages from service worker
-                    navigator.serviceWorker.addEventListener('message', (event) => {
-                        if (event.data?.type === 'BACKGROUND_SYNC_COMPLETE') {
-                            console.log('Background sync completed:', event.data);
-                        }
-                    });
-                } catch (err) {
-                    console.log('SW registration failed: ', err);
-                }
-            });
-        }
-
-        return () => {
-            cleanupSync();
-        };
-    }, [isAuthenticated]);
-
-    // Pause sync when app is backgrounded to save battery
-    useEffect(() => {
-        const handleAppStateChange = (nextAppState: string) => {
-            if (nextAppState === 'background' || nextAppState === 'inactive') {
-                syncManager.stop();
-            } else if (nextAppState === 'active') {
-                syncManager.start();
-            }
-        };
-
-        const subscription = AppState.addEventListener('change', handleAppStateChange);
-        
-        return () => {
-            subscription.remove();
-        };
-    }, []);
-
-    useEffect(() => {
-        if (!isAuthenticated) return;
-
-        const controller = new AbortController();
-        let refreshTimeout: ReturnType<typeof setTimeout> | null = null;
-
-        const syncNow = async (skipCursorUpdate: boolean, isRefreshing = true) => {
-            const syncResult = await fetchChanges('feeds,folders,articles,read_state', { skipCursorUpdate });
-            if (syncResult) {
-                useFeedStore.getState().applySyncChanges(syncResult.changes, isRefreshing);
-                useArticleStore.getState().applySyncChanges(syncResult.changes);
-            }
-        };
-
-        const debouncedSync = () => {
-            if (refreshTimeout) clearTimeout(refreshTimeout);
-            refreshTimeout = setTimeout(() => {
-                void syncNow(true);
-            }, 300);
-        };
-
-        const finalizeRefresh = async () => {
-            if (refreshTimeout) {
-                clearTimeout(refreshTimeout);
-                refreshTimeout = null;
-            }
-
-            await syncNow(false, false);
-            await Promise.all([
-                requiresFullArticleRefresh() ? fetchArticles(true) : Promise.resolve(),
-            ]);
-            fetchSettings().catch(() => { });
-        };
-
-        api.listenForRefreshEvents(
-            (event) => {
-                const estimateTotalFeeds = () => {
-                    const feedCount = useFeedStore.getState().feeds.length;
-                    return Math.max(feedCount, 1);
-                };
-
-                if (event.type === 'start') {
-                    refreshCycleNewArticlesRef.current = 0;
-                    useFeedStore.setState({
-                        isBackgroundRefreshing: true,
-                        refreshProgress: { total: event.total_feeds, completed: 0, currentTitle: '' },
-                    });
-                    return;
-                }
-
-                if (event.type === 'feed_refreshing') {
-                    useFeedStore.setState((state) => ({
-                        refreshProgress: state.refreshProgress
-                            ? { ...state.refreshProgress, currentTitle: event.title }
-                            : { total: estimateTotalFeeds(), completed: 0, currentTitle: event.title },
-                    }));
-                    return;
-                }
-
-                if (event.type === 'feed_complete' || event.type === 'feed_error') {
-                    if (event.type === 'feed_complete' && event.new_articles > 0) {
-                        refreshCycleNewArticlesRef.current += event.new_articles;
-                        debouncedSync();
-                    }
-
-                    useFeedStore.setState((state) => ({
-                        refreshProgress: (() => {
-                            const current = state.refreshProgress ?? {
-                                total: estimateTotalFeeds(),
-                                completed: 0,
-                                currentTitle: '',
-                            };
-                            const nextCompleted = current.completed + 1;
-                            const nextTotal = current.total > 0
-                                ? Math.max(current.total, nextCompleted)
-                                : Math.max(estimateTotalFeeds(), nextCompleted);
-                            return {
-                                ...current,
-                                total: nextTotal,
-                                completed: nextCompleted,
-                                currentTitle: event.title || current.currentTitle,
-                            };
-                        })(),
-                    }));
-
-                    if (event.type === 'feed_complete') {
-                        const feedStore = useFeedStore.getState();
-                        const existing = feedStore.feeds.find((feed) => feed.id === event.id);
-                        const unreadCount = (existing?.unread_count ?? 0) + event.new_articles;
-                        feedStore.updateLocalFeed(event.id, {
-                            title: event.feed ? event.feed.title : existing?.title,
-                            icon_url: event.feed ? event.feed.icon_url : existing?.icon_url,
-                            type: event.feed ? event.feed.type : existing?.type,
-                            unread_count: unreadCount,
-                            last_fetched_at: new Date().toISOString(),
-                            next_fetch_at: event.next_fetch_at ?? existing?.next_fetch_at ?? null,
-                        });
-
-                        if (event.feed) {
-                            const articleStore = useArticleStore.getState();
-                            articleStore.updateFeedMetadata(event.feed.id, {
-                                feed_title: event.feed.title,
-                                feed_icon_url: event.feed.icon_url,
-                                feed_type: event.feed.type,
-                            });
-                        }
-                    }
-                    return;
-                }
-
-                if (event.type === 'complete') {
-                    const totalNewArticles = refreshCycleNewArticlesRef.current;
-                    if (totalNewArticles > 0) {
-                        show(
-                            `${totalNewArticles} new article${totalNewArticles === 1 ? '' : 's'} loaded`,
-                            'success'
-                        );
-                    }
-                    refreshCycleNewArticlesRef.current = 0;
-                    useFeedStore.setState({ isBackgroundRefreshing: false, refreshProgress: null });
-                    void finalizeRefresh();
-                    return;
-                }
-            },
-            (error) => {
-                console.warn('[RefreshEvents] SSE stream error:', error);
-            },
-            controller.signal
-        );
-
-        return () => {
-            controller.abort();
-            if (refreshTimeout) clearTimeout(refreshTimeout);
-            useFeedStore.setState({ isBackgroundRefreshing: false, refreshProgress: null });
-        };
-    }, [isAuthenticated, fetchArticles, fetchSettings, show]);
-
-    useEffect(() => {
-        if (!isAuthenticated) return;
-
-        let lastRefreshAt = Date.now();
-        let wasHidden = false;
-        let backgroundedAt: number | null = null;
-        const STALE_MS = 60 * 1000;
-        const BACKGROUND_REFRESH_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutes - if backgrounded longer than this, do a full refresh
-
-        // Initial data load - fetch settings first for timer
-        fetchSettings().catch(() => { });
-
-        const refreshNow = async (force = false) => {
-            const now = Date.now();
-            const timeSinceLast = now - lastRefreshAt;
-
-            if (!force && timeSinceLast < STALE_MS) return;
-            lastRefreshAt = now;
-            const indicatorStart = Date.now();
-            setIsForegroundSyncing(true);
-
-            try {
-                // Clear any stuck loading/refresh states to ensure fetch happens immediately
-                useArticleStore.setState({ isLoading: false });
-                useFeedStore.setState({
-                    isBackgroundRefreshing: false,
-                    refreshProgress: null
-                });
-
-                const syncResult = await fetchChanges();
-                if (syncResult) {
-                    useFeedStore.getState().applySyncChanges(syncResult.changes);
-                    useArticleStore.getState().applySyncChanges(syncResult.changes);
-                }
-
-                await Promise.all([
-                    force || requiresFullArticleRefresh() ? fetchArticles(true) : Promise.resolve()
-                ]);
-                fetchSettings().catch(() => { });
-            } finally {
-                const elapsed = Date.now() - indicatorStart;
-                const minVisibleMs = 700;
-                if (elapsed < minVisibleMs) {
-                    await new Promise((resolve) => setTimeout(resolve, minVisibleMs - elapsed));
-                }
-                setIsForegroundSyncing(false);
-            }
-        };
-
-        const appStateSub = AppState.addEventListener('change', (state) => {
-            if (state === 'active') {
-                // Check if we were backgrounded for a significant time
-                const backgroundedDuration = backgroundedAt ? Date.now() - backgroundedAt : 0;
-                const forceRefresh = backgroundedDuration > BACKGROUND_REFRESH_THRESHOLD_MS;
-                backgroundedAt = null;
-                refreshNow(forceRefresh);
-            } else if (state === 'background' || state === 'inactive') {
-                backgroundedAt = Date.now();
-            }
-        });
-
-        const onVisibility = () => {
-            if (document.visibilityState === 'visible') {
-                // Check if we were hidden for a significant time
-                const hiddenDuration = backgroundedAt ? Date.now() - backgroundedAt : 0;
-                const forceRefresh = hiddenDuration > BACKGROUND_REFRESH_THRESHOLD_MS;
-                backgroundedAt = null;
-                wasHidden = true;
-                refreshNow(forceRefresh);
-            } else if (document.visibilityState === 'hidden') {
-                wasHidden = true;
-                backgroundedAt = Date.now();
-            }
-        };
-
-        const onFocus = () => {
-            // Only refresh if the page was actually hidden (tab switch), not on internal navigation
-            if (wasHidden) {
-                wasHidden = false;
-                // Check if significant time passed while hidden
-                const hiddenDuration = backgroundedAt ? Date.now() - backgroundedAt : 0;
-                const forceRefresh = hiddenDuration > BACKGROUND_REFRESH_THRESHOLD_MS;
-                backgroundedAt = null;
-                refreshNow(forceRefresh);
-            }
-        };
-
-        if (typeof document !== 'undefined') {
-            document.addEventListener('visibilitychange', onVisibility);
-        }
-        if (typeof window !== 'undefined') {
-            window.addEventListener('focus', onFocus);
-        }
-
-        return () => {
-            appStateSub.remove();
-            if (typeof document !== 'undefined') {
-                document.removeEventListener('visibilitychange', onVisibility);
-            }
-            if (typeof window !== 'undefined') {
-                window.removeEventListener('focus', onFocus);
-            }
-        };
-    }, [isAuthenticated, fetchArticles, fetchSettings]);
+    useRefreshLifecycle({ enabled: !!isAuthenticated });
 
     const pathname = usePathname() || '';
     const colors = useColors();
@@ -478,19 +98,12 @@ export default function AppLayout() {
                 <PodcastPlayer />
 
                 <RefreshProgressDialog
-                    visible={!!refreshProgress}
-                    total={refreshProgress?.total || 0}
-                    completed={refreshProgress?.completed || 0}
-                    currentTitle={refreshProgress?.currentTitle || ''}
+                    visible={!!refreshState.progress}
+                    total={refreshState.progress?.total || 0}
+                    completed={refreshState.progress?.completed || 0}
+                    currentTitle={refreshState.progress?.currentTitle || ''}
                     onCancel={cancelRefresh}
                 />
-
-                {isForegroundSyncing && !refreshProgress && (
-                    <View style={s.foregroundSyncBadge}>
-                        <ActivityIndicator size="small" color={colors.text.primary} />
-                        <Text style={s.foregroundSyncText}>Syncing latest articles…</Text>
-                    </View>
-                )}
             </View >
         </ErrorBoundary>
     );
@@ -528,30 +141,5 @@ const styles = (isDesktop: boolean, isReaderRoute: boolean, colors: any) => Styl
         ...(Platform.OS === 'web' && isDesktop && isReaderRoute && {
             minWidth: 400,
         }),
-    },
-    foregroundSyncBadge: {
-        position: 'absolute',
-        top: isDesktop ? 20 : 12,
-        alignSelf: 'center',
-        zIndex: 30,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        borderRadius: 999,
-        backgroundColor: colors.background.elevated,
-        borderWidth: 1,
-        borderColor: colors.border.DEFAULT,
-        shadowColor: '#000',
-        shadowOpacity: 0.12,
-        shadowOffset: { width: 0, height: 4 },
-        shadowRadius: 12,
-        elevation: 8,
-    },
-    foregroundSyncText: {
-        color: colors.text.primary,
-        fontSize: 14,
-        fontWeight: '600',
     },
 });

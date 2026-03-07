@@ -53,9 +53,18 @@ describe('Feed Store', () => {
             smartFolders: [],
             totalUnread: 0,
             isLoading: false,
-            isBackgroundRefreshing: false,
-            refreshProgress: null,
-            lastRefreshNewArticles: null,
+            refreshState: {
+                phase: 'idle',
+                scope: null,
+                startedAt: null,
+                lastAttemptAt: null,
+                lastCompletedAt: null,
+                staleSince: null,
+                message: null,
+                error: null,
+                newArticles: null,
+                progress: null,
+            },
         });
     });
 
@@ -68,9 +77,7 @@ describe('Feed Store', () => {
             expect(state.smartFolders).toEqual([]);
             expect(state.totalUnread).toBe(0);
             expect(state.isLoading).toBe(false);
-            expect(state.isBackgroundRefreshing).toBe(false);
-            expect(state.refreshProgress).toBeNull();
-            expect(state.lastRefreshNewArticles).toBeNull();
+            expect(state.refreshState.phase).toBeDefined();
         });
     });
 
