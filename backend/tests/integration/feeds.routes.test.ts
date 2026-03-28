@@ -158,7 +158,9 @@ describe('Feeds API Routes', () => {
         
         // Import and register routes (fresh import after resetModules)
         const { feedsRoutes } = await import('../../src/routes/feeds.js');
+        const { feedsStreamRoutes } = await import('../../src/routes/feeds-stream.js');
         await app.register(feedsRoutes, { prefix: '/api/v1/feeds' });
+        await app.register(feedsStreamRoutes, { prefix: '/api/v1/feeds-stream' });
     });
 
     afterEach(async () => {
@@ -487,6 +489,28 @@ describe('Feeds API Routes', () => {
             expect(response.statusCode).toBe(200);
             const feed = db.prepare('SELECT * FROM feeds WHERE id = ?').get(result.lastInsertRowid) as any;
             expect(feed.paused_at).toBeNull();
+        });
+    });
+
+    describe('GET /api/v1/feeds-stream/refresh-multiple', () => {
+        it('should skip paused feeds during bulk refresh', async () => {
+            const active = db.prepare('INSERT INTO feeds (user_id, folder_id, url, title, type) VALUES (?, ?, ?, ?, ?)')
+                .run(1, 1, 'https://example.com/active.xml', 'Active Feed', 'rss');
+            const paused = db.prepare(`
+                INSERT INTO feeds (user_id, folder_id, url, title, type, paused_at)
+                VALUES (?, ?, ?, ?, ?, datetime('now'))
+            `).run(1, 1, 'https://example.com/paused.xml', 'Paused Feed', 'rss');
+
+            const response = await app.inject({
+                method: 'GET',
+                url: `/api/v1/feeds-stream/refresh-multiple?ids=${active.lastInsertRowid},${paused.lastInsertRowid}`,
+            });
+
+            expect(response.statusCode).toBe(200);
+            expect(refreshFeed).toHaveBeenCalledTimes(1);
+            expect(refreshFeed).toHaveBeenCalledWith(expect.objectContaining({
+                id: Number(active.lastInsertRowid),
+            }));
         });
     });
 });

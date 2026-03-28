@@ -40,6 +40,7 @@ export const useSettingsStore = create<SettingsState>()(
                         theme: 'auto',
                         font_size: 'medium',
                         show_images: true,
+                        keep_screen_awake: true,
                         accent_color: 'emerald',
                         feed_fetch_limits: {
                             rss_days: 14,

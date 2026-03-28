@@ -28,6 +28,9 @@ export function useRefreshLifecycle({
     useEffect(() => {
         if (!enabled) return;
 
+        let serviceWorkerMessageHandler: ((event: MessageEvent) => void) | null = null;
+        let serviceWorkerLoadHandler: (() => void) | null = null;
+
         const cleanupSync = enableSync((changes, isRefreshing) => {
             useFeedStore.getState().applySyncChanges(changes, isRefreshing);
             useArticleStore.getState().applySyncChanges(changes);
@@ -88,11 +91,12 @@ export function useRefreshLifecycle({
                         }
                     }
 
-                    navigator.serviceWorker.addEventListener('message', (event) => {
+                    serviceWorkerMessageHandler = (event) => {
                         if (event.data?.type === 'BACKGROUND_SYNC_COMPLETE') {
                             console.log('Background sync completed:', event.data);
                         }
-                    });
+                    };
+                    navigator.serviceWorker.addEventListener('message', serviceWorkerMessageHandler);
                 } catch (error) {
                     console.log('SW registration failed: ', error);
                 }
@@ -101,11 +105,20 @@ export function useRefreshLifecycle({
             if (document.readyState === 'complete') {
                 void registerServiceWorker();
             } else {
-                window.addEventListener('load', registerServiceWorker, { once: true });
+                serviceWorkerLoadHandler = registerServiceWorker;
+                window.addEventListener('load', serviceWorkerLoadHandler, { once: true });
             }
         }
 
         return () => {
+            if (serviceWorkerLoadHandler && typeof window !== 'undefined') {
+                window.removeEventListener('load', serviceWorkerLoadHandler);
+                serviceWorkerLoadHandler = null;
+            }
+            if (serviceWorkerMessageHandler && 'serviceWorker' in navigator) {
+                navigator.serviceWorker.removeEventListener('message', serviceWorkerMessageHandler);
+                serviceWorkerMessageHandler = null;
+            }
             cleanupSync();
         };
     }, [enabled]);
@@ -160,9 +173,9 @@ export function useRefreshLifecycle({
             }
 
             await syncNow(false, false);
-            await Promise.all([
-                fetchArticles(true),
-            ]);
+            if (requiresFullArticleRefresh()) {
+                await fetchArticles(true);
+            }
             fetchSettings().catch(() => { });
         };
 
@@ -201,14 +214,14 @@ export function useRefreshLifecycle({
 
         let lastRefreshAt = Date.now();
         let backgroundedAt: number | null = null;
-        const staleMs = 60 * 1000;
-        const backgroundRefreshThresholdMs = 2 * 60 * 1000;
+        const getForegroundRefreshIntervalMs = () =>
+            (useSettingsStore.getState().settings?.refresh_interval_minutes ?? 15) * 60 * 1000;
 
         fetchSettings().catch(() => { });
 
         const refreshNow = async (force = false) => {
             const now = Date.now();
-            if (!force && now - lastRefreshAt < staleMs) return;
+            if (!force && now - lastRefreshAt < getForegroundRefreshIntervalMs()) return;
             lastRefreshAt = now;
 
             try {
@@ -227,9 +240,9 @@ export function useRefreshLifecycle({
                     useArticleStore.getState().applySyncChanges(syncResult.changes);
                 }
 
-                await Promise.all([
-                    fetchArticles(true)
-                ]);
+                if (requiresFullArticleRefresh()) {
+                    await fetchArticles(true);
+                }
                 fetchSettings().catch(() => { });
                 completeRefreshCycle({ message: 'Timeline synced' });
             } catch (error) {
@@ -237,12 +250,22 @@ export function useRefreshLifecycle({
             }
         };
 
+        const maybeRefreshOnResume = () => {
+            if (!backgroundedAt) return;
+
+            const backgroundedDuration = Date.now() - backgroundedAt;
+            backgroundedAt = null;
+
+            if (backgroundedDuration < getForegroundRefreshIntervalMs()) {
+                return;
+            }
+
+            void refreshNow(false);
+        };
+
         const appStateSub = AppState.addEventListener('change', (state) => {
             if (state === 'active') {
-                const backgroundedDuration = backgroundedAt ? Date.now() - backgroundedAt : 0;
-                const forceRefresh = backgroundedDuration > backgroundRefreshThresholdMs;
-                backgroundedAt = null;
-                refreshNow(forceRefresh);
+                maybeRefreshOnResume();
             } else if (state === 'background' || state === 'inactive') {
                 backgroundedAt = Date.now();
                 markRefreshStale('Timeline may be out of date');
@@ -251,10 +274,7 @@ export function useRefreshLifecycle({
 
         const onVisibility = () => {
             if (document.visibilityState === 'visible') {
-                const hiddenDuration = backgroundedAt ? Date.now() - backgroundedAt : 0;
-                const forceRefresh = hiddenDuration > backgroundRefreshThresholdMs;
-                backgroundedAt = null;
-                refreshNow(forceRefresh);
+                maybeRefreshOnResume();
             } else if (document.visibilityState === 'hidden') {
                 backgroundedAt = Date.now();
                 markRefreshStale('Timeline may be out of date');
@@ -262,11 +282,7 @@ export function useRefreshLifecycle({
         };
 
         const onFocus = () => {
-            if (!backgroundedAt) return;
-            const hiddenDuration = Date.now() - backgroundedAt;
-            const forceRefresh = hiddenDuration > backgroundRefreshThresholdMs;
-            backgroundedAt = null;
-            refreshNow(forceRefresh);
+            maybeRefreshOnResume();
         };
 
         if (typeof document !== 'undefined') {

@@ -2,6 +2,7 @@ import iconService from './icon-service.js';
 import { checkFeedActivity, checkYouTubeChannelActivity, checkRedditActivity } from './discovery/activity-check.js';
 import { searchRssFeeds } from './discovery/rss.js';
 import { discoverFeedsFromUrl } from './discovery/url-discovery.js';
+import { buildDiscoverySearchQueries, compactDiscoveryKeyword, normalizeDiscoveryKeyword, scoreDiscoveryRelevance } from './discovery/query-utils.js';
 import { DiscoveredFeed } from '../types/discovery.js';
 
 // Re-export from url-discovery for backward compatibility
@@ -9,6 +10,68 @@ export { discoverFeedsFromUrl } from './discovery/url-discovery.js';
 export type { DiscoveredFeed } from '../types/discovery.js';
 
 const USER_AGENT = 'Feeds/1.0 (Feed Reader; +https://github.com/feeds)';
+
+export function buildYouTubeSearchQueries(keyword: string): string[] {
+    return buildDiscoverySearchQueries(keyword);
+}
+
+function scoreYouTubeDiscovery(candidate: DiscoveredFeed, keyword: string): number {
+    const normalizedQuery = compactDiscoveryKeyword(keyword);
+    const queryTokens = normalizeDiscoveryKeyword(keyword).split(' ').filter(Boolean);
+    const candidateText = compactDiscoveryKeyword([
+        candidate.title,
+        candidate.site_url || '',
+        candidate.feed_url,
+    ].join(' '));
+
+    let score = candidate.confidence;
+
+    if (normalizedQuery && candidateText.includes(normalizedQuery)) {
+        score += 0.3;
+    }
+
+    if (queryTokens.length > 0 && queryTokens.every(token => candidateText.includes(token))) {
+        score += 0.2;
+    }
+
+    if (queryTokens.length > 1) {
+        const handleLike = `${queryTokens[0]}${queryTokens.slice(1).map(token => token[0]).join('')}`;
+        if (candidate.site_url?.toLowerCase().includes(`@${handleLike}`)) {
+            score += 0.4;
+        }
+        if (candidate.title.toLowerCase().includes(queryTokens[0])) {
+            score += 0.1;
+        }
+    }
+
+    return score;
+}
+
+function extractYouTubeHandle(authorUrl: string | undefined | null): string | null {
+    if (!authorUrl) return null;
+
+    try {
+        const url = authorUrl.startsWith('http') ? new URL(authorUrl) : new URL(`https://www.youtube.com${authorUrl.startsWith('/') ? authorUrl : `/${authorUrl}`}`);
+        const handleMatch = url.pathname.match(/\/@([a-zA-Z0-9_-]+)/);
+        return handleMatch ? handleMatch[1] : null;
+    } catch {
+        const handleMatch = authorUrl.match(/\/@([a-zA-Z0-9_-]+)/);
+        return handleMatch ? handleMatch[1] : null;
+    }
+}
+
+function extractYouTubeChannelId(authorUrl: string | undefined | null): string | null {
+    if (!authorUrl) return null;
+
+    try {
+        const url = authorUrl.startsWith('http') ? new URL(authorUrl) : new URL(`https://www.youtube.com${authorUrl.startsWith('/') ? authorUrl : `/${authorUrl}`}`);
+        const channelIdMatch = url.pathname.match(/\/channel\/([a-zA-Z0-9_-]+)/);
+        return channelIdMatch ? channelIdMatch[1] : null;
+    } catch {
+        const channelIdMatch = authorUrl.match(/\/channel\/([a-zA-Z0-9_-]+)/);
+        return channelIdMatch ? channelIdMatch[1] : null;
+    }
+}
 
 export function mergeDiscoveryResults(results: DiscoveredFeed[], limit: number, type?: string): DiscoveredFeed[] {
     const seen = new Set<string>();
@@ -66,7 +129,35 @@ export function mergeDiscoveryResults(results: DiscoveredFeed[], limit: number, 
 
 async function discoverYouTubeByKeyword(keyword: string, limit: number): Promise<DiscoveredFeed[]> {
     console.log(`[YouTube Discovery] Searching for: "${keyword}"`);
-    const discoveries: DiscoveredFeed[] = [];
+    const discoveries: Array<DiscoveredFeed & { searchScore: number }> = [];
+    const seenFeeds = new Set<string>();
+    const searchQueries = buildYouTubeSearchQueries(keyword);
+    const maxResultsPerQuery = Math.max(limit * 3, 10);
+
+    const pushDiscovery = (discovery: DiscoveredFeed) => {
+        if (!discovery.feed_url || seenFeeds.has(discovery.feed_url)) return;
+        seenFeeds.add(discovery.feed_url);
+        discoveries.push({
+            ...discovery,
+            searchScore: scoreYouTubeDiscovery(discovery, keyword),
+        });
+    };
+
+    const addResolvedHandleDiscovery = async (authorUrl: string) => {
+        try {
+            const resolved = await discoverFeedsFromUrl(authorUrl);
+            const ytFeed = resolved.find(feed => feed.type === 'youtube');
+            if (ytFeed) {
+                pushDiscovery({
+                    ...ytFeed,
+                    confidence: Math.max(ytFeed.confidence, 0.94),
+                    method: 'youtube',
+                });
+            }
+        } catch (err) {
+            console.error(`[YouTube Discovery] Failed to resolve handle URL ${authorUrl}:`, err);
+        }
+    };
 
     // Method 1: Invidious (alternative YouTube frontend, more stable)
     const invidiousInstances = [
@@ -76,108 +167,121 @@ async function discoverYouTubeByKeyword(keyword: string, limit: number): Promise
         'invidious.jingl.xyz',
     ];
 
-    for (const instance of invidiousInstances) {
+    let foundInvidiousMatch = false;
+
+    for (const query of searchQueries) {
         if (discoveries.length >= limit) break;
 
-        try {
-            const encodedKeyword = encodeURIComponent(keyword);
-            const response = await fetch(
-                `https://${instance}/api/v1/search?q=${encodedKeyword}&type=channel&max_results=${limit}`,
-                {
-                    headers: { 'User-Agent': USER_AGENT },
-                    signal: AbortSignal.timeout(10000),
-                }
-            );
+        for (const instance of invidiousInstances) {
+            if (discoveries.length >= limit) break;
 
-            if (response.ok) {
+            try {
+                const encodedKeyword = encodeURIComponent(query);
+                const response = await fetch(
+                    `https://${instance}/api/v1/search?q=${encodedKeyword}&type=channel&max_results=${maxResultsPerQuery}`,
+                    {
+                        headers: { 'User-Agent': USER_AGENT },
+                        signal: AbortSignal.timeout(10000),
+                    }
+                );
+
+                if (!response.ok) {
+                    continue;
+                }
+
                 const data = await response.json();
                 const channels = data || [];
 
                 for (const channel of channels) {
-                    if (channel.author && channel.author_url) {
-                        // Extract channel ID from URL
-                        const channelIdMatch = channel.author_url.match(/channel\/([a-zA-Z0-9_-]+)/);
-                        const channelId = channelIdMatch ? channelIdMatch[1] : null;
+                    if (!channel.author_url) continue;
 
-                        if (channelId) {
-                            // Check activity
-                            const activity = await checkYouTubeChannelActivity(channelId);
+                    const authorUrl = channel.author_url.startsWith('http')
+                        ? channel.author_url
+                        : `https://www.youtube.com${channel.author_url.startsWith('/') ? channel.author_url : `/${channel.author_url}`}`;
 
-                            discoveries.push({
-                                type: 'youtube',
-                                title: channel.author,
-                                feed_url: `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`,
-                                site_url: channel.author_url,
-                                icon_url: channel.author_thumbnail || `https://www.google.com/s2/favicons?domain=youtube.com&sz=64`,
-                                confidence: 0.9,
-                                method: 'youtube',
-                                isActive: activity.isActive,
-                                lastPostDate: activity.lastPostDate?.toISOString()
-                            });
-                        }
+                    const channelId = extractYouTubeChannelId(authorUrl);
+                    if (channelId) {
+                        const activity = await checkYouTubeChannelActivity(channelId);
+                        pushDiscovery({
+                            type: 'youtube',
+                            title: channel.author || 'YouTube Channel',
+                            feed_url: `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`,
+                            site_url: authorUrl,
+                            icon_url: channel.author_thumbnail || `https://www.google.com/s2/favicons?domain=youtube.com&sz=64`,
+                            confidence: 0.9,
+                            method: 'youtube',
+                            isActive: activity.isActive,
+                            lastPostDate: activity.lastPostDate?.toISOString()
+                        });
+                        continue;
                     }
-                    if (discoveries.length >= limit) break;
+
+                    const handle = extractYouTubeHandle(authorUrl);
+                    if (handle) {
+                        await addResolvedHandleDiscovery(authorUrl);
+                    }
                 }
 
                 if (discoveries.length > 0) {
-                    console.log(`[YouTube Discovery] Found ${discoveries.length} channels via Invidious (${instance})`);
-                    return discoveries.slice(0, limit);
+                    foundInvidiousMatch = true;
                 }
+            } catch (err) {
+                console.error(`[YouTube Discovery] Invidious ${instance} failed for query "${query}":`, err);
             }
-        } catch (err) {
-            console.error(`[YouTube Discovery] Invidious ${instance} failed:`, err);
         }
     }
 
     // Method 2: DuckDuckGo YouTube scraping
-    try {
-        const encodedKeyword = encodeURIComponent(keyword);
-        const response = await fetch(
-            `https://html.duckduckgo.com/html/?q=${encodedKeyword}+youtube+channel`,
-            {
-                headers: { 'User-Agent': USER_AGENT },
-                signal: AbortSignal.timeout(10000),
-            }
-        );
-
-        if (response.ok) {
-            const html = await response.text();
-            const channelUrls: string[] = [];
-
-            // Extract YouTube channel URLs
-            const urlPatterns = [
-                /youtube\.com\/@([a-zA-Z0-9_-]+)/g,
-                /youtube\.com\/channel\/([a-zA-Z0-9_-]+)/g,
-                /youtu\.be\/@([a-zA-Z0-9_-]+)/g,
-            ];
-
-            for (const pattern of urlPatterns) {
-                let match;
-                while ((match = pattern.exec(html)) !== null) {
-                    const channelId = match[1];
-                    if (!channelUrls.some(u => u.includes(channelId))) {
-                        channelUrls.push(`https://www.youtube.com/channel/${channelId}`);
-                    }
-                }
-            }
-
-            // Deduplicate and limit
-            const uniqueUrls = [...new Set(channelUrls)].slice(0, 10);
-
-            for (const channelUrl of uniqueUrls) {
+    if (!foundInvidiousMatch) {
+        try {
+            for (const query of searchQueries) {
                 if (discoveries.length >= limit) break;
 
-                try {
-                    const channelIdMatch = channelUrl.match(/channel\/([a-zA-Z0-9_-]+)/);
-                    const channelId = channelIdMatch ? channelIdMatch[1] : null;
+                const encodedKeyword = encodeURIComponent(`${query} youtube channel`);
+                const response = await fetch(
+                    `https://html.duckduckgo.com/html/?q=${encodedKeyword}`,
+                    {
+                        headers: { 'User-Agent': USER_AGENT },
+                        signal: AbortSignal.timeout(10000),
+                    }
+                );
 
+                if (!response.ok) continue;
+
+                const html = await response.text();
+                const channelUrls: string[] = [];
+
+                // Extract YouTube channel URLs, including handle-based URLs
+                const urlPatterns = [
+                    /youtube\.com\/@([a-zA-Z0-9_-]+)/g,
+                    /youtube\.com\/channel\/([a-zA-Z0-9_-]+)/g,
+                    /youtu\.be\/@([a-zA-Z0-9_-]+)/g,
+                ];
+
+                for (const pattern of urlPatterns) {
+                    let match;
+                    while ((match = pattern.exec(html)) !== null) {
+                        const channelId = match[1];
+                        const channelUrl = pattern.source.includes('@')
+                            ? `https://www.youtube.com/@${channelId}`
+                            : `https://www.youtube.com/channel/${channelId}`;
+                        if (!channelUrls.includes(channelUrl)) {
+                            channelUrls.push(channelUrl);
+                        }
+                    }
+                }
+
+                for (const channelUrl of [...new Set(channelUrls)].slice(0, 10)) {
+                    if (discoveries.length >= limit) break;
+
+                    const channelId = extractYouTubeChannelId(channelUrl);
                     if (channelId) {
                         const activity = await checkYouTubeChannelActivity(channelId);
                         const icon = await iconService.getYouTubeIcon(channelId);
 
-                        discoveries.push({
+                        pushDiscovery({
                             type: 'youtube',
-                            title: `YouTube Channel`, // Would need to fetch to get actual name
+                            title: `YouTube Channel`,
                             feed_url: `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`,
                             site_url: channelUrl,
                             icon_url: icon || `https://www.google.com/s2/favicons?domain=youtube.com&sz=64`,
@@ -186,19 +290,26 @@ async function discoverYouTubeByKeyword(keyword: string, limit: number): Promise
                             isActive: activity.isActive,
                             lastPostDate: activity.lastPostDate?.toISOString()
                         });
+                        continue;
                     }
-                } catch {
-                    // Continue on error
+
+                    if (extractYouTubeHandle(channelUrl)) {
+                        await addResolvedHandleDiscovery(channelUrl);
+                    }
                 }
             }
-
-            console.log(`[YouTube Discovery] DuckDuckGo found ${discoveries.length} channels`);
+        } catch (err) {
+            console.error('[YouTube Discovery] DuckDuckGo fallback failed:', err);
         }
-    } catch (err) {
-        console.error('[YouTube Discovery] DuckDuckGo fallback failed:', err);
     }
 
-    return discoveries.slice(0, limit);
+    const ranked = discoveries
+        .sort((a, b) => b.searchScore - a.searchScore || b.confidence - a.confidence)
+        .slice(0, limit)
+        .map(({ searchScore, ...feed }) => feed);
+
+    console.log(`[YouTube Discovery] Returning ${ranked.length} discoveries`);
+    return ranked;
 }
 
 export async function discoverByKeyword(keyword: string, limit: number = 10, type?: string): Promise<DiscoveredFeed[]> {
@@ -284,10 +395,23 @@ export async function discoverByKeyword(keyword: string, limit: number = 10, typ
     }
 
     const merged = mergeDiscoveryResults(results, limit, type);
+    const typeOrder: DiscoveredFeed['type'][] = ['rss', 'youtube', 'reddit', 'podcast'];
+    const ranked = merged
+        .slice()
+        .sort((a, b) => {
+            const scoreDiff = scoreDiscoveryRelevance(b, keyword) - scoreDiscoveryRelevance(a, keyword);
+            if (scoreDiff !== 0) return scoreDiff;
 
-    console.log(`[Discovery] Total unique results: ${merged.length}`);
+            const confidenceDiff = b.confidence - a.confidence;
+            if (confidenceDiff !== 0) return confidenceDiff;
 
-    return merged;
+            return typeOrder.indexOf(a.type) - typeOrder.indexOf(b.type);
+        })
+        .slice(0, limit);
+
+    console.log(`[Discovery] Total unique results: ${ranked.length}`);
+
+    return ranked;
 }
 
 /**
@@ -296,26 +420,30 @@ export async function discoverByKeyword(keyword: string, limit: number = 10, typ
 async function searchPodcasts(keyword: string, limit: number): Promise<DiscoveredFeed[]> {
     console.log(`[Podcast Discovery] Searching for: "${keyword}"`);
     const discoveries: DiscoveredFeed[] = [];
+    const queries = buildDiscoverySearchQueries(keyword, 5);
 
     try {
-        const encodedKeyword = encodeURIComponent(keyword);
-        const response = await fetch(
-            `https://itunes.apple.com/search?term=${encodedKeyword}&media=podcast&entity=podcast&limit=${limit * 2}`,
-            {
-                headers: { 'User-Agent': USER_AGENT },
-                signal: AbortSignal.timeout(10000),
-            }
-        );
+        for (const query of queries) {
+            if (discoveries.length >= limit) break;
 
-        console.log(`[Podcast Discovery] Response status: ${response.status}`);
+            const response = await fetch(
+                `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&media=podcast&entity=podcast&limit=${limit * 2}`,
+                {
+                    headers: { 'User-Agent': USER_AGENT },
+                    signal: AbortSignal.timeout(10000),
+                }
+            );
 
-        if (response.ok) {
+            console.log(`[Podcast Discovery] Response status: ${response.status}`);
+
+            if (!response.ok) continue;
+
             const data = await response.json();
             const podcasts = data.results || [];
 
             for (const podcast of podcasts) {
                 // iTunes provides RSS feed URL in feedUrl field
-                if (podcast.feedUrl) {
+                if (podcast.feedUrl && !discoveries.some(feed => feed.feed_url === podcast.feedUrl)) {
                     const activity = await checkFeedActivity(podcast.feedUrl, 'podcast');
 
                     discoveries.push({
@@ -345,17 +473,21 @@ async function searchPodcasts(keyword: string, limit: number): Promise<Discovere
 async function discoverRedditByKeyword(keyword: string, limit: number): Promise<DiscoveredFeed[]> {
     console.log(`[Reddit Discovery] Searching for: "${keyword}"`);
     const discoveries: DiscoveredFeed[] = [];
-    const encodedKeyword = encodeURIComponent(keyword);
+    const queries = buildDiscoverySearchQueries(keyword, 5);
 
     try {
-        const response = await fetch(`https://www.reddit.com/subreddits/search.json?q=${encodedKeyword}&limit=${limit * 2}`, {
-            headers: { 'User-Agent': USER_AGENT },
-            signal: AbortSignal.timeout(10000),
-        });
+        for (const query of queries) {
+            if (discoveries.length >= limit) break;
 
-        console.log(`[Reddit Discovery] Response status: ${response.status}`);
+            const response = await fetch(`https://www.reddit.com/subreddits/search.json?q=${encodeURIComponent(query)}&limit=${limit * 2}`, {
+                headers: { 'User-Agent': USER_AGENT },
+                signal: AbortSignal.timeout(10000),
+            });
 
-        if (response.ok) {
+            console.log(`[Reddit Discovery] Response status: ${response.status}`);
+
+            if (!response.ok) continue;
+
             const data = await response.json();
             const subreddits = data.data?.children || [];
             console.log(`[Reddit Discovery] Found ${subreddits.length} subreddits`);
@@ -364,17 +496,21 @@ async function discoverRedditByKeyword(keyword: string, limit: number): Promise<
             for (const sub of subreddits) {
                 const info = sub.data;
                 const subredditName = info.display_name;
-                
+
+                if (discoveries.some(feed => feed.feed_url === `https://www.reddit.com${info.url}.rss`)) {
+                    continue;
+                }
+
                 // Check if subreddit has recent activity
                 console.log(`[Reddit Discovery] Checking activity for r/${subredditName}`);
                 const activity = await checkRedditActivity(subredditName);
-                
+
                 if (!activity.isActive) {
                     console.log(`[Reddit Discovery] Skipping inactive subreddit: r/${subredditName} (last post: ${activity.lastPostDate})`);
                     continue;
                 }
                 console.log(`[Reddit Discovery] r/${subredditName} is active`);
-                
+
                 const icon = await iconService.getRedditIcon(subredditName);
 
                 discoveries.push({

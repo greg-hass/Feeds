@@ -27,6 +27,14 @@ const searchSchema = z.object({
     folder_id: z.coerce.number().optional(),
     limit: z.coerce.number().min(1).max(100).default(50),
     cursor: z.string().optional(),
+    include_total: z.preprocess(
+        (value) => {
+            if (value === 'false') return false;
+            if (value === 'true') return true;
+            return value;
+        },
+        z.boolean().default(true)
+    ),
 });
 
 const advancedSearchSchema = z.object({
@@ -44,6 +52,7 @@ const advancedSearchSchema = z.object({
     type: z.string().optional(),
     limit: z.number().int().min(1).max(100).default(50),
     offset: z.number().int().min(0).default(0),
+    include_total: z.boolean().optional().default(true),
 });
 
 const savedSearchSchema = z.object({
@@ -63,6 +72,7 @@ const savedSearchSchema = z.object({
         date_to: z.string().optional(),
         type: z.string().optional(),
     }),
+    include_total: z.boolean().optional().default(true),
 });
 
 export async function searchRoutes(app: FastifyInstance) {
@@ -180,20 +190,21 @@ export async function searchRoutes(app: FastifyInstance) {
             score: Math.abs(r.rank),
         }));
 
-        // Get total count
-        const countResult = queryAll<{ count: number }>(
-            `SELECT COUNT(*) as count
-       FROM articles_fts fts
-       JOIN articles a ON a.id = fts.rowid
-       JOIN feeds f ON f.id = a.feed_id
-       LEFT JOIN read_state rs ON rs.article_id = a.id AND rs.user_id = ?
-       WHERE articles_fts MATCH ? AND ${conditions.join(' AND ')}`,
-            [userId, ftsQuery, ...params]
-        );
+        const total = query.include_total
+            ? queryAll<{ count: number }>(
+                `SELECT COUNT(*) as count
+           FROM articles_fts fts
+           JOIN articles a ON a.id = fts.rowid
+           JOIN feeds f ON f.id = a.feed_id
+           LEFT JOIN read_state rs ON rs.article_id = a.id AND rs.user_id = ?
+           WHERE articles_fts MATCH ? AND ${conditions.join(' AND ')}`,
+                [userId, ftsQuery, ...params]
+            )[0]?.count || 0
+            : undefined;
 
         return {
             results: formattedResults,
-            total: countResult[0]?.count || 0,
+            ...(query.include_total ? { total } : {}),
             next_cursor: nextCursor,
         };
     });
@@ -209,9 +220,9 @@ export async function searchRoutes(app: FastifyInstance) {
     app.post('/advanced', async (request: FastifyRequest) => {
         const body = advancedSearchSchema.parse(request.body);
 
-        const { limit, offset, ...filters } = body;
+        const { limit, offset, include_total, ...filters } = body;
         const results = searchArticles(userId, filters as SearchFilters, limit, offset);
-        const total = countSearchResults(userId, filters as SearchFilters);
+        const total = include_total ? countSearchResults(userId, filters as SearchFilters) : undefined;
 
         // Add to search history
         if (filters.query || Object.keys(filters).length > 0) {
@@ -221,10 +232,10 @@ export async function searchRoutes(app: FastifyInstance) {
         return {
             results,
             pagination: {
-                total,
+                ...(include_total ? { total } : {}),
                 limit,
                 offset,
-                has_more: offset + results.length < total,
+                has_more: include_total ? offset + results.length < (total || 0) : results.length === limit,
             },
         };
     });
@@ -298,7 +309,7 @@ export async function searchRoutes(app: FastifyInstance) {
      */
     app.get('/saved/:id/execute', async (request: FastifyRequest<{
         Params: { id: string };
-        Querystring: { limit?: string; offset?: string };
+        Querystring: { limit?: string; offset?: string; include_total?: string };
     }>) => {
         const searchId = parseInt(request.params.id);
         const limit = parseInt(request.query.limit || '50');
@@ -318,17 +329,18 @@ export async function searchRoutes(app: FastifyInstance) {
         // Increment use count
         incrementSavedSearchUseCount(searchId, userId);
 
+        const includeTotal = request.query.include_total !== 'false';
         const results = searchArticles(userId, savedSearch.filters, limit, offset);
-        const total = countSearchResults(userId, savedSearch.filters);
+        const total = includeTotal ? countSearchResults(userId, savedSearch.filters) : undefined;
 
         return {
             search: savedSearch,
             results,
             pagination: {
-                total,
+                ...(includeTotal ? { total } : {}),
                 limit,
                 offset,
-                has_more: offset + results.length < total,
+                has_more: includeTotal ? offset + results.length < (total || 0) : results.length === limit,
             },
         };
     });

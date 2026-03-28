@@ -50,10 +50,12 @@ export const useDigestStore = create<DigestStore>()(
             },
 
             dismissDigest: async (id: number) => {
+                const previousPending = get().pendingDigest;
+                set({ pendingDigest: null });
                 try {
                     await api.dismissDigest(id);
-                    set({ pendingDigest: null });
                 } catch (error) {
+                    set({ pendingDigest: previousPending });
                     handleError(error, { context: 'dismissDigest' });
                 }
             },

@@ -1,11 +1,11 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, FlatList, StyleSheet } from 'react-native';
-import { useColors, spacing, borderRadius, shadows } from '@/theme';
+import { useColors, spacing, borderRadius } from '@/theme';
 
 interface FilterItem {
     id: string;
     label?: string;
-    type: 'toggle' | 'separator' | 'filter';
+    type: 'toggle' | 'filter';
     active: boolean;
 }
 
@@ -25,7 +25,6 @@ const FilterPills = React.memo<FilterPillsProps>(({ unreadOnly, activeType, onFi
 
     const filterData: FilterItem[] = [
         { id: 'unread', label: 'Unread', type: 'toggle', active: unreadOnly },
-        { id: 'sep', type: 'separator', active: false },
         { id: 'all', label: 'All', type: 'filter', active: !activeType },
         { id: 'rss', label: 'RSS', type: 'filter', active: activeType === 'rss' },
         { id: 'youtube', label: 'Videos', type: 'filter', active: activeType === 'youtube' },
@@ -34,16 +33,11 @@ const FilterPills = React.memo<FilterPillsProps>(({ unreadOnly, activeType, onFi
     ];
 
     const renderFilterItem = ({ item }: { item: FilterItem }) => {
-        if (item.type === 'separator') {
-            return <View style={s.filterDivider} />;
-        }
-
         return (
             <TouchableOpacity
                 style={[
                     s.filterPill,
                     item.active ? s.filterPillActive : null,
-                    item.id === 'unread' && item.active ? s.unreadPillActive : null
                 ]}
                 onPress={() => onFilterChange(item.id)}
                 accessibilityRole="button"
@@ -91,57 +85,46 @@ const styles = (colors: any) => StyleSheet.create({
     filterWrapper: {
         borderBottomWidth: 1,
         borderBottomColor: colors.border.DEFAULT,
-        paddingTop: spacing.md,
-        paddingBottom: spacing.md,
+        paddingTop: spacing.xs,
+        paddingBottom: spacing.sm,
     },
     filterScroll: {
         paddingHorizontal: spacing.lg,
-        gap: 8,
+        gap: 4,
         alignItems: 'center' as const,
     },
     filterPill: {
         flexDirection: 'row' as const,
         alignItems: 'center' as const,
         justifyContent: 'center' as const,
-        gap: 6,
-        paddingHorizontal: spacing.md,
-        paddingVertical: 6,
+        gap: 4,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
         borderRadius: borderRadius.full,
         backgroundColor: colors.background.secondary,
         borderWidth: 1,
         borderColor: colors.border.DEFAULT,
-        minWidth: 70,
+        minWidth: 0,
     },
     filterPillActive: {
-        backgroundColor: colors.primary?.DEFAULT ?? colors.primary,
-        borderColor: colors.primary?.DEFAULT ?? colors.primary,
-        ...shadows.colored(colors.primary?.DEFAULT ?? colors.primary),
-    },
-    unreadPillActive: {
-        backgroundColor: colors.primary?.DEFAULT ?? colors.primary,
+        backgroundColor: colors.primary?.soft ?? `${colors.primary?.DEFAULT ?? colors.primary}22`,
         borderColor: colors.primary?.DEFAULT ?? colors.primary,
     },
     filterText: {
-        fontSize: 12,
+        fontSize: 10,
         fontWeight: '700' as const,
         color: colors.text.secondary,
     },
     filterTextActive: {
-        color: colors.background.primary,
-    },
-    filterDivider: {
-        width: 1,
-        height: 16,
-        backgroundColor: colors.border.DEFAULT,
-        marginHorizontal: 4,
+        color: colors.primary?.DEFAULT ?? colors.primary,
     },
     unreadDot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
+        width: 5,
+        height: 5,
+        borderRadius: 2.5,
         backgroundColor: colors.text.tertiary,
     },
     unreadDotActive: {
-        backgroundColor: '#fff',
+        backgroundColor: colors.primary?.DEFAULT ?? colors.primary,
     },
 });

@@ -35,7 +35,7 @@ export async function foldersRoutes(app: FastifyInstance) {
              FROM articles a
              JOIN feeds fe ON fe.id = a.feed_id
              LEFT JOIN read_state rs ON rs.article_id = a.id AND rs.user_id = ?
-             WHERE fe.user_id = ? AND fe.deleted_at IS NULL AND fe.folder_id IS NOT NULL
+             WHERE fe.user_id = ? AND fe.deleted_at IS NULL AND fe.paused_at IS NULL AND fe.folder_id IS NOT NULL
              AND (rs.is_read IS NULL OR rs.is_read = 0)
              GROUP BY fe.folder_id`,
             [userId, userId]
@@ -74,7 +74,7 @@ export async function foldersRoutes(app: FastifyInstance) {
              FROM articles a
              JOIN feeds f ON f.id = a.feed_id
              LEFT JOIN read_state rs ON rs.article_id = a.id AND rs.user_id = ?
-             WHERE f.user_id = ? AND f.deleted_at IS NULL
+             WHERE f.user_id = ? AND f.deleted_at IS NULL AND f.paused_at IS NULL
              AND (rs.is_read IS NULL OR rs.is_read = 0)
              GROUP BY f.type`,
             [userId, userId]

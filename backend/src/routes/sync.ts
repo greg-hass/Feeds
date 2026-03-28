@@ -176,6 +176,7 @@ export async function syncRoutes(app: FastifyInstance): Promise<void> {
                    AND a.fetched_at > ?
                    AND a.fetched_at <= ?
                    AND f.deleted_at IS NULL
+                   AND (f.paused_at IS NULL OR a.fetched_at <= f.paused_at)
                    ${articleCursorCondition}
                  ORDER BY a.fetched_at DESC, a.id DESC
                  LIMIT ?`,

@@ -109,6 +109,7 @@ export function resolveImageMime(fileName: string, override?: string | null) {
 
 export interface CacheRemoteImageOptions {
     headers?: Record<string, string>;
+    signal?: AbortSignal;
 }
 
 export async function cacheRemoteImage(
@@ -128,7 +129,7 @@ export async function cacheRemoteImage(
             url,
             () => ({
                 headers: options.headers,
-                signal: AbortSignal.timeout(HTTP.REQUEST_TIMEOUT),
+                signal: options.signal ?? AbortSignal.timeout(HTTP.REQUEST_TIMEOUT),
             }),
             { retries: 2, baseDelayMs: 400, maxDelayMs: 2000 }
         );

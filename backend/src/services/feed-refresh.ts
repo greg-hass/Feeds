@@ -1,7 +1,6 @@
 import { Database } from 'better-sqlite3';
 import { run, queryOne, db } from '../db/index.js';
 import { parseFeed, normalizeArticle, FeedType } from './feed-parser.js';
-import { fetchYouTubeIcon } from './youtube-parser.js';
 import { cacheFeedIcon } from './icon-cache.js';
 import { cacheArticleThumbnail } from './thumbnail-cache.js';
 import { getUserSettings, Settings } from './settings.js';
@@ -498,10 +497,9 @@ export async function refreshFeed(feed: FeedToRefreshWithCache): Promise<Refresh
 
         // For YouTube feeds, try to fetch the actual channel avatar instead of generic favicon
         if (currentType === 'youtube' && feedData.youtubeChannelId) {
-            const { fetchYouTubeIcon } = await import('./youtube-parser.js');
             const channelId = feedData.youtubeChannelId;
             try {
-                const avatarUrl = await fetchYouTubeIcon(channelId);
+                const avatarUrl = await fetchYouTubeIcon(channelId, feed.signal);
                 if (avatarUrl && !isGenericIconUrl(avatarUrl)) {
                     finalFavicon = avatarUrl;
                 }
@@ -512,7 +510,7 @@ export async function refreshFeed(feed: FeedToRefreshWithCache): Promise<Refresh
 
         if (!iconStatus.iconCachedPath && finalFavicon && !isGenericIconUrl(finalFavicon)) {
              try {
-                 cachedIcon = await cacheFeedIcon(feed.id, finalFavicon);
+                 cachedIcon = await cacheFeedIcon(feed.id, finalFavicon, feed.signal);
              } catch (e) {
                  console.warn(`[Refresh] Failed to cache icon for ${feed.id}:`, e);
              }

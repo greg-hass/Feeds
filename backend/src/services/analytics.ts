@@ -228,7 +228,7 @@ export function getTopEngagingFeeds(userId: number, limit: number = 10): Array<F
             f.type
          FROM feed_stats s
          JOIN feeds f ON s.feed_id = f.id
-         WHERE f.user_id = ? AND f.deleted_at IS NULL
+         WHERE f.user_id = ? AND f.deleted_at IS NULL AND f.paused_at IS NULL
          ORDER BY s.engagement_score DESC, s.total_articles_read DESC
          LIMIT ?`,
         [userId, limit]
@@ -349,7 +349,7 @@ export function getAnalyticsOverview(userId: number): AnalyticsOverview {
             fs.total_articles_read as articles_read
          FROM feed_stats fs
          JOIN feeds f ON fs.feed_id = f.id
-         WHERE f.user_id = ? AND f.deleted_at IS NULL
+         WHERE f.user_id = ? AND f.deleted_at IS NULL AND f.paused_at IS NULL
          ORDER BY fs.total_articles_read DESC
          LIMIT 5`,
         [userId]

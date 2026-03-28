@@ -459,6 +459,10 @@ export class FeedsService {
             throw new NotFoundError('Feed');
         }
 
+        if (feed.paused_at) {
+            throw new BusinessLogicError('Feed is paused');
+        }
+
         const result = await refreshFeed({ id: feed.id, url: feed.url, type: feed.type, refresh_interval_minutes: feed.refresh_interval_minutes });
         if (!result.success) {
             throw new BusinessLogicError(`Failed to refresh feed: ${result.error}`);

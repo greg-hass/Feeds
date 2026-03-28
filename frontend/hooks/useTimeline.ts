@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Animated, Alert, Platform } from 'react-native';
+import { useEffect, useCallback, useMemo, useState } from 'react';
+import { Alert, Platform, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useArticleStore, useFeedStore, useAudioStore, useVideoStore, useDigestStore } from '@/stores';
 import { extractVideoId } from '@/utils/youtube';
@@ -29,21 +29,8 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
         refreshText: refreshPresentation.shortLabel,
     }), [refreshPresentation]);
 
-    const [hotPulseAnim] = useState(() => new Animated.Value(1));
     const [bookmarkScales] = useState(() => new Map<number, Animated.Value>());
     const [bookmarkRotations] = useState(() => new Map<number, Animated.Value>());
-
-    // HOT badge pulse animation
-    useEffect(() => {
-        const pulse = Animated.loop(
-            Animated.sequence([
-                Animated.timing(hotPulseAnim, { toValue: 1.05, duration: 1000, useNativeDriver }),
-                Animated.timing(hotPulseAnim, { toValue: 1, duration: 1000, useNativeDriver }),
-            ])
-        );
-        pulse.start();
-        return () => pulse.stop();
-    }, [hotPulseAnim, useNativeDriver]);
 
     const getBookmarkScale = (id: number) => {
         if (!bookmarkScales.has(id)) bookmarkScales.set(id, new Animated.Value(1));
@@ -107,7 +94,7 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
 
     return {
         articles, isLoading, hasMore, filter, feeds, isFeedLoading, headerTitle, lastRefreshed, isRefreshing, refreshStatus, refreshState,
-        playingArticleId, isPlaying, activeVideoId, hotPulseAnim,
+        playingArticleId, isPlaying, activeVideoId,
         fetchArticles, setFilter, refreshAllFeeds, handleMarkAllRead, handleArticlePress,
         handlePlayPress, handleVideoPress, getBookmarkScale, getBookmarkRotation, prefetchArticle,
     };

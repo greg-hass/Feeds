@@ -12,9 +12,14 @@ const ICON_HEADERS = {
 };
 const ICON_SUBDIR = 'icons';
 
-export async function cacheFeedIcon(feedId: number, iconUrl: string): Promise<{ fileName: string; mime: string } | null> {
+export async function cacheFeedIcon(
+    feedId: number,
+    iconUrl: string,
+    signal?: AbortSignal
+): Promise<{ fileName: string; mime: string } | null> {
     return cacheRemoteImage(ICON_SUBDIR, `feed-${feedId}`, iconUrl, {
         headers: ICON_HEADERS,
+        signal,
     });
 }
 

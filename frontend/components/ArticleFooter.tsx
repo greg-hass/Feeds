@@ -1,16 +1,12 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Animated, Platform } from 'react-native';
-import { Bookmark, Clock, Flame, Share2 } from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Bookmark, Clock } from 'lucide-react-native';
 import { formatDistanceToNow } from 'date-fns';
 import { Article } from '@/services/api';
 import { useColors } from '@/theme';
-import { shareContent } from '@/utils/share';
 
 interface ArticleFooterProps {
     item: Article;
-    isHot: boolean;
-    hotPulseAnim: Animated.Value;
     onBookmarkToggle: (id: number) => void;
     getBookmarkScale: (id: number) => Animated.Value;
     getBookmarkRotation: (id: number) => Animated.Value;
@@ -18,12 +14,10 @@ interface ArticleFooterProps {
 
 /**
  * ArticleFooter - Memoized component for article metadata and actions
- * Displays HOT badge, publication time, and bookmark button
+ * Displays publication time and bookmark button
  */
 const ArticleFooter = React.memo<ArticleFooterProps>(({
     item,
-    isHot,
-    hotPulseAnim,
     onBookmarkToggle,
     getBookmarkScale,
     getBookmarkRotation,
@@ -60,59 +54,17 @@ const ArticleFooter = React.memo<ArticleFooterProps>(({
         onBookmarkToggle(item.id);
     };
 
-    const handleShare = async (event: any) => {
-        event.stopPropagation();
-        try {
-            await shareContent({
-                title: item.title,
-                message: item.title,
-                url: item.url || undefined,
-            });
-        } catch (error) {
-            console.error('Share error:', error);
-        }
-    };
-
     return (
         <View style={styles.articleFooter}>
             <View style={styles.metaRow}>
-                {/* HOT Badge */}
-                {isHot && (
-                    <Animated.View style={{ transform: [{ scale: hotPulseAnim }] }}>
-                        <LinearGradient
-                            colors={['#f97316', '#ef4444']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={styles.hotBadge}
-                        >
-                            <Flame size={10} color={colors.text.inverse} fill="#fff" />
-                            <Text style={styles.hotText}>HOT</Text>
-                        </LinearGradient>
-                    </Animated.View>
-                )}
-                
                 {/* Time */}
-                <Clock size={12} color={colors.primary.DEFAULT} />
+                <Clock size={11} color={colors.primary.DEFAULT} />
                 <Text style={[styles.articleMeta, { color: colors.primary.DEFAULT }]}>
                     {item.published_at ? formatDistanceToNow(new Date(item.published_at), { addSuffix: true }) : ''}
                 </Text>
             </View>
 
             <View style={styles.actionsRow}>
-                {/* Share Button */}
-                <TouchableOpacity
-                    onPress={handleShare}
-                    style={styles.cardAction}
-                    accessibilityRole="button"
-                    accessibilityLabel="Share article"
-                    accessibilityHint="Double tap to share"
-                >
-                    <Share2
-                        size={20}
-                        color={colors.text.tertiary}
-                    />
-                </TouchableOpacity>
-
                 {/* Bookmark Button */}
                 <TouchableOpacity
                     onPress={handleBookmarkPress}
@@ -132,7 +84,7 @@ const ArticleFooter = React.memo<ArticleFooterProps>(({
                         ]
                     }}>
                         <Bookmark
-                            size={20}
+                            size={18}
                             color={item.is_bookmarked ? colors.primary.DEFAULT : colors.text.tertiary}
                             fill={item.is_bookmarked ? colors.primary.DEFAULT : 'transparent'}
                         />
@@ -141,12 +93,11 @@ const ArticleFooter = React.memo<ArticleFooterProps>(({
             </View>
         </View>
     );
-}, (prevProps, nextProps) => {
+    }, (prevProps, nextProps) => {
     return (
         prevProps.item.id === nextProps.item.id &&
         prevProps.item.is_bookmarked === nextProps.item.is_bookmarked &&
-        prevProps.item.published_at === nextProps.item.published_at &&
-        prevProps.isHot === nextProps.isHot
+        prevProps.item.published_at === nextProps.item.published_at
     );
 });
 
@@ -159,30 +110,16 @@ const styles = {
         flexDirection: 'row' as const,
         alignItems: 'center' as const,
         justifyContent: 'space-between' as const,
-        paddingTop: 8,
+        paddingTop: 5,
     },
     metaRow: {
         flexDirection: 'row' as const,
         alignItems: 'center' as const,
-        gap: 6,
+        gap: 5,
     },
     articleMeta: {
-        fontSize: 11,
-        color: '#6b7280',
-    },
-    hotBadge: {
-        flexDirection: 'row' as const,
-        alignItems: 'center' as const,
-        gap: 4,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 12,
-    },
-    hotText: {
         fontSize: 10,
-        fontWeight: '700' as const,
-        color: '#fff',
-        letterSpacing: 0.5,
+        color: '#6b7280',
     },
     actionsRow: {
         flexDirection: 'row' as const,
@@ -190,7 +127,7 @@ const styles = {
         gap: 0,
     },
     cardAction: {
-        paddingHorizontal: 6,
-        paddingVertical: 4,
+        paddingHorizontal: 5,
+        paddingVertical: 3,
     },
 };

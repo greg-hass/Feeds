@@ -1,5 +1,6 @@
 import { queryAll, queryOne, run } from '../db/index.js';
 import { refreshFeed, FeedToRefresh } from './feed-refresh.js';
+import type { RefreshResult } from './feed-refresh.js';
 import { FeedType } from './feed-parser.js';
 import { getUserSettings, getUserSettingsRaw, updateUserSettingsRaw } from './settings.js';
 import { generateDailyDigest, canGenerateDailyDigest, DigestEdition } from './digest.js';
@@ -280,17 +281,29 @@ async function checkFeeds() {
                     try {
                         // Add individual timeout for feed refresh with proper cleanup
                         const timeoutMs = 30000;
-                        let timeoutId: NodeJS.Timeout;
-                        
-                        const timeoutPromise = new Promise<never>((_, reject) => {
-                            timeoutId = setTimeout(() => reject(new Error('Feed refresh timeout')), timeoutMs);
+                        const controller = new AbortController();
+                        const refreshPromise = refreshFeed({
+                            ...feed,
+                            signal: controller.signal,
                         });
-                        
-                        const refreshPromise = refreshFeed(feed);
-                        
-                        const result = await Promise.race([refreshPromise, timeoutPromise]);
-                        clearTimeout(timeoutId!); // Clean up timer to prevent memory leak
-                        
+
+                        let timeoutId: NodeJS.Timeout | null = null;
+                        const timeoutPromise = new Promise<never>((_, reject) => {
+                            timeoutId = setTimeout(() => {
+                                controller.abort();
+                                reject(new Error('Feed refresh timeout'));
+                            }, timeoutMs);
+                        });
+
+                        let result: RefreshResult;
+                        try {
+                            result = await Promise.race([refreshPromise, timeoutPromise]);
+                        } finally {
+                            if (timeoutId) {
+                                clearTimeout(timeoutId);
+                            }
+                        }
+
                         const feedTime = Date.now() - feedStart;
                         
                         if (result.success) {
@@ -563,12 +576,11 @@ async function cleanupThumbnailCache(retentionDays: number) {
     let skippedActive = 0;
 
     try {
-        // Get list of active thumbnail filenames from database
+        // Track every currently referenced thumbnail so we never delete assets still in use.
         const activeThumbnails = new Set(
             queryAll<{ thumbnail_cached_path: string }>(
-                `SELECT thumbnail_cached_path FROM articles 
-                 WHERE thumbnail_cached_path IS NOT NULL 
-                 AND published_at > datetime('now', '-30 days')`
+                `SELECT DISTINCT thumbnail_cached_path FROM articles
+                 WHERE thumbnail_cached_path IS NOT NULL`
             ).map(a => a.thumbnail_cached_path.split('/').pop())
         );
 

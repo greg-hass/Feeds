@@ -66,6 +66,7 @@ describe('Articles API Routes', () => {
                 url TEXT UNIQUE NOT NULL,
                 title TEXT,
                 type TEXT DEFAULT 'rss',
+                paused_at DATETIME,
                 deleted_at DATETIME
             );
         `);

@@ -59,7 +59,7 @@ export default function MobileNav() {
                 return (
                     <TouchableOpacity
                         key={item.path}
-                        style={s.navItem}
+                        style={[s.navItem, active && s.navItemActive]}
                         onPress={() => router.push(item.path as any)}
                         accessibilityRole="button"
                         accessibilityLabel={item.label}
@@ -67,7 +67,7 @@ export default function MobileNav() {
                         activeOpacity={0.7}
                     >
                         <IconComponent
-                            size={24}
+                            size={22}
                             color={active ? colors.primary.DEFAULT : colors.text.tertiary}
                             strokeWidth={active ? 2.5 : 1.5}
                         />
@@ -97,16 +97,16 @@ const styles = (colors: any) => {
     return StyleSheet.create({
     container: {
         flexDirection: 'row',
-        backgroundColor: colors.background.elevated,
+        backgroundColor: colors.background.primary,
         borderTopWidth: 1,
         borderTopColor: colors.border.DEFAULT,
         paddingBottom: bottomPadding,
-        paddingTop: spacing.sm,
+        paddingTop: 6,
         position: 'relative',
     },
     refreshDot: {
         position: 'absolute',
-        top: 8,
+        top: 6,
         right: spacing.lg,
         width: 8,
         height: 8,
@@ -126,18 +126,25 @@ const styles = (colors: any) => {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 12,
-        gap: 4,
-        minHeight: 56,
+        paddingVertical: 10,
+        gap: 3,
+        minHeight: 52,
+        marginHorizontal: 4,
+        borderRadius: borderRadius.lg,
+    },
+    navItemActive: {
+        backgroundColor: colors.primary.soft ?? `${colors.primary.DEFAULT}18`,
+        borderWidth: 1,
+        borderColor: colors.primary.DEFAULT,
     },
     label: {
-        fontSize: 10,
+        fontSize: 9,
         color: colors.text.tertiary,
         fontWeight: '500',
     },
     labelActive: {
         color: colors.primary.DEFAULT,
-        fontWeight: '700', // Bolder font
+        fontWeight: '700',
     },
 });
 };

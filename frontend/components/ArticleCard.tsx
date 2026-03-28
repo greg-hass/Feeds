@@ -23,7 +23,6 @@ interface ArticleCardProps {
     onLongPress?: () => void;
     getBookmarkScale: (id: number) => Animated.Value;
     getBookmarkRotation: (id: number) => Animated.Value;
-    hotPulseAnim: Animated.Value;
 }
 
 /**
@@ -45,7 +44,6 @@ const ArticleCard = React.memo<ArticleCardProps>(({
     onLongPress,
     getBookmarkScale,
     getBookmarkRotation,
-    hotPulseAnim,
 }) => {
     const colors = useColors();
     const [iconFailed, setIconFailed] = useState(false);
@@ -58,12 +56,6 @@ const ArticleCard = React.memo<ArticleCardProps>(({
     const isShort = !!(isYouTube && item.url?.includes('/shorts/'));
     const isVideoPlaying = !!(isYouTube && videoId && activeVideoId === videoId);
     const isFeatured = !!(isYouTube && thumbnail);
-    // Calculate isHot using useMemo to avoid recalculation on every render
-    // This is impure due to Date.now() but memoized to prevent unnecessary recalculations
-    // eslint-disable-next-line react-hooks/purity -- Date.now() is stable enough for this display-only check
-    const isHot = React.useMemo(() => {
-        return !!(item.published_at && (new Date(item.published_at).getTime() > Date.now() - 4 * 60 * 60 * 1000));
-    }, [item.published_at]);
 
     const cardHeader = (
         <View style={s.cardBody}>
@@ -120,8 +112,6 @@ const ArticleCard = React.memo<ArticleCardProps>(({
     const footer = (
         <ArticleFooter
             item={item}
-            isHot={isHot}
-            hotPulseAnim={hotPulseAnim}
             onBookmarkToggle={onBookmarkToggle}
             getBookmarkScale={getBookmarkScale}
             getBookmarkRotation={getBookmarkRotation}
@@ -252,17 +242,17 @@ const styles = (
         alignItems: 'center' as const,
         paddingVertical: 2,
         alignSelf: 'flex-start' as const,
-        marginBottom: 6,
-        gap: 6,
+        marginBottom: 5,
+        gap: 5,
     },
     feedIcon: {
-        width: 16,
-        height: 16,
+        width: 15,
+        height: 15,
         borderRadius: 3,
     },
     feedInitial: {
-        width: 16,
-        height: 16,
+        width: 15,
+        height: 15,
         borderRadius: 3,
         backgroundColor: colors.primary.DEFAULT,
         justifyContent: 'center' as const,
@@ -270,21 +260,21 @@ const styles = (
     },
     initialText: {
         color: colors.text.inverse,
-        fontSize: 9,
+        fontSize: 8,
         fontWeight: '900' as const,
     },
     feedName: {
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: '600' as const,
         color: colors.text.tertiary,
-        maxWidth: 220,
+        maxWidth: 210,
     },
     articleTitle: {
         fontSize: fontSizes.title - 1,
         fontWeight: '700' as const,
         color: colors.text.primary,
-        lineHeight: 21,
-        marginBottom: 6,
+        lineHeight: 20,
+        marginBottom: 5,
     },
     articleTitleRead: {
         color: colors.text.secondary,
@@ -292,8 +282,8 @@ const styles = (
     featuredSummary: {
         fontSize: fontSizes.summary - 1,
         color: colors.text.secondary,
-        lineHeight: 18,
-        marginBottom: 4,
+        lineHeight: 17,
+        marginBottom: 3,
     },
     thumbnailWrapper: {
         width: isMobile ? 72 : 84,
@@ -318,9 +308,9 @@ const styles = (
         bottom: 6,
         right: 6,
         backgroundColor: colors.primary.DEFAULT,
-        width: 24,
-        height: 24,
-        borderRadius: 12,
+        width: 22,
+        height: 22,
+        borderRadius: 11,
         justifyContent: 'center' as const,
         alignItems: 'center' as const,
         shadowColor: '#000',
@@ -335,7 +325,7 @@ const styles = (
         top: densitySpacing.md,
         left: 0,
         width: 3,
-        height: 20,
+        height: 18,
         borderRadius: borderRadius.full,
         backgroundColor: colors.primary.DEFAULT,
     },

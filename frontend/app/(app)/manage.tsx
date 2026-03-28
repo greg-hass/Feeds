@@ -791,7 +791,7 @@ export default function ManageScreen() {
     <View style={s.container}>
       {/* Header */}
       <ScreenHeader
-        title="Feed Manager"
+        title="Feeds"
         showBackButton={false}
         showMenuButton={!isDesktop}
         onMenuPress={() => {

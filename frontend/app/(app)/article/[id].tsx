@@ -312,7 +312,7 @@ export default function ArticleScreen() {
                     <View style={s.headerLeft}>
                         {isMobile && (
                             <TouchableOpacity onPress={() => router.back()} style={s.backButton} accessibilityLabel="Go back">
-                                <ArrowLeft size={24} color={colors.text.primary} />
+                                <ArrowLeft size={22} color={colors.text.primary} />
                             </TouchableOpacity>
                         )}
                         <View style={s.navigation}>
@@ -322,7 +322,7 @@ export default function ArticleScreen() {
                                 disabled={!adjacentArticles.prev}
                                 accessibilityLabel="Previous article"
                             >
-                                <ChevronLeft size={20} color={adjacentArticles.prev ? colors.primary.DEFAULT : colors.text.tertiary} />
+                                <ChevronLeft size={18} color={adjacentArticles.prev ? colors.primary.DEFAULT : colors.text.tertiary} />
                             </TouchableOpacity>
                             <TouchableOpacity
                                 onPress={() => navigateToArticle(adjacentArticles.next)}
@@ -330,7 +330,7 @@ export default function ArticleScreen() {
                                 disabled={!adjacentArticles.next}
                                 accessibilityLabel="Next article"
                             >
-                                <ChevronRight size={20} color={adjacentArticles.next ? colors.primary.DEFAULT : colors.text.tertiary} />
+                                <ChevronRight size={18} color={adjacentArticles.next ? colors.primary.DEFAULT : colors.text.tertiary} />
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -338,23 +338,23 @@ export default function ArticleScreen() {
                     <View style={s.headerActions}>
                         <TouchableOpacity onPress={handleToggleRead} style={s.actionButton} accessibilityLabel={currentArticle.is_read ? 'Mark as unread' : 'Mark as read'}>
                             {currentArticle.is_read ? (
-                                <CircleCheck size={22} color={colors.primary.DEFAULT} />
+                                <CircleCheck size={20} color={colors.primary.DEFAULT} />
                             ) : (
-                                <Circle size={22} color={colors.text.secondary} />
+                                <Circle size={20} color={colors.text.secondary} />
                             )}
                         </TouchableOpacity>
                         <TouchableOpacity onPress={handleToggleBookmark} style={s.actionButton} accessibilityLabel={currentArticle.is_bookmarked ? 'Remove bookmark' : 'Bookmark article'}>
-                            <Bookmark size={22} color={currentArticle.is_bookmarked ? colors.primary.DEFAULT : colors.text.secondary} fill={currentArticle.is_bookmarked ? colors.primary.DEFAULT : 'transparent'} />
+                            <Bookmark size={20} color={currentArticle.is_bookmarked ? colors.primary.DEFAULT : colors.text.secondary} fill={currentArticle.is_bookmarked ? colors.primary.DEFAULT : 'transparent'} />
                         </TouchableOpacity>
                         <TouchableOpacity onPress={handleShare} style={s.actionButton} accessibilityLabel="Share article">
-                            <Share2 size={22} color={colors.text.secondary} />
+                            <Share2 size={20} color={colors.text.secondary} />
                         </TouchableOpacity>
                         <TouchableOpacity onPress={handleOpenExternal} style={s.actionButton} accessibilityLabel="Open original article">
-                            <ExternalLink size={22} color={colors.text.secondary} />
+                            <ExternalLink size={20} color={colors.text.secondary} />
                         </TouchableOpacity>
                         <View style={{ position: 'relative' as const }}>
                             <TouchableOpacity onPress={() => setShowTextSizeMenu(!showTextSizeMenu)} style={s.actionButton} accessibilityLabel="Adjust text size">
-                                <Type size={22} color={showTextSizeMenu ? colors.primary.DEFAULT : colors.text.secondary} />
+                                <Type size={20} color={showTextSizeMenu ? colors.primary.DEFAULT : colors.text.secondary} />
                             </TouchableOpacity>
                             {showTextSizeMenu && (
                                 <View style={s.textSizeMenu}>
@@ -507,48 +507,59 @@ const styles = (colors: any, isMobile: boolean, readerTheme?: string) => {
             flexDirection: 'row',
             justifyContent: 'space-between',
             alignItems: 'center',
-            padding: spacing.lg,
+            paddingHorizontal: spacing.lg,
+            paddingTop: spacing.sm,
+            paddingBottom: spacing.sm,
             borderBottomWidth: 1,
             borderBottomColor: colors.border.DEFAULT,
-            backgroundColor: colors.background.elevated,
+            backgroundColor: colors.background.primary,
             zIndex: 10,
             position: 'absolute',
             top: 0,
             left: 0,
             right: 0,
             shadowColor: "#000",
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.05,
-            shadowRadius: 4,
-            elevation: 4,
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.03,
+            shadowRadius: 2,
+            elevation: 2,
         },
         headerLeft: {
             flexDirection: 'row',
             alignItems: 'center',
-            gap: spacing.md,
+            gap: spacing.sm,
         },
         backButton: {
-            padding: spacing.sm,
-            marginLeft: -spacing.sm,
+            padding: spacing.xs,
+            marginLeft: -spacing.xs,
         },
         navigation: {
             flexDirection: 'row',
             gap: spacing.xs,
         },
         navButton: {
-            padding: spacing.sm,
+            padding: 5,
             borderRadius: borderRadius.md,
             backgroundColor: colors.background.secondary,
+            borderWidth: 1,
+            borderColor: colors.border.DEFAULT,
         },
         navButtonDisabled: {
             opacity: 0.4,
         },
         headerActions: {
             flexDirection: 'row',
-            gap: spacing.md,
+            gap: spacing.xs,
         },
         actionButton: {
-            padding: spacing.sm,
+            width: 34,
+            height: 34,
+            borderRadius: borderRadius.md,
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: colors.background.secondary,
+            borderWidth: 1,
+            borderColor: colors.border.DEFAULT,
         },
         loadingContainer: {
             flex: 1,
@@ -571,29 +582,29 @@ const styles = (colors: any, isMobile: boolean, readerTheme?: string) => {
         },
         scrollContent: {
             alignItems: 'center',
-            paddingTop: 100, // Header spacing
-            paddingBottom: 140, // Controls spacing
+            paddingTop: 92, // Header spacing
+            paddingBottom: 128, // Controls spacing
         },
         contentContainer: {
             width: '100%',
             maxWidth: 720,
-            paddingHorizontal: spacing.xl,
+            paddingHorizontal: spacing.lg,
             borderRadius: isMobile ? 0 : borderRadius.lg,
         },
         feedHeader: {
             flexDirection: 'row',
             alignItems: 'center',
-            gap: 8,
-            marginBottom: spacing.sm,
+            gap: spacing.xs,
+            marginBottom: spacing.xs,
         },
         feedIcon: {
-            width: 20,
-            height: 20,
+            width: 16,
+            height: 16,
             borderRadius: 4,
         },
         feedInitial: {
-            width: 20,
-            height: 20,
+            width: 16,
+            height: 16,
             borderRadius: 4,
             backgroundColor: colors.primary.DEFAULT,
             justifyContent: 'center',
@@ -601,7 +612,7 @@ const styles = (colors: any, isMobile: boolean, readerTheme?: string) => {
         },
         initialText: {
             color: '#fff',
-            fontSize: 10,
+            fontSize: 9,
             fontWeight: '900',
         },
         feedName: {
@@ -611,18 +622,19 @@ const styles = (colors: any, isMobile: boolean, readerTheme?: string) => {
         },
         title: {
             fontFamily: typography.sans.family,
-            fontSize: isMobile ? 28 : 32,
+            fontSize: isMobile ? 25 : 29,
             fontWeight: '800',
             color: colors.text.primary,
-            lineHeight: isMobile ? 34 : 38,
-            marginBottom: spacing.md,
+            lineHeight: isMobile ? 31 : 35,
+            marginBottom: spacing.sm,
             letterSpacing: isMobile ? -0.8 : -1,
         },
         meta: {
             flexDirection: 'row',
-            gap: spacing.sm,
-            marginBottom: spacing.xl,
+            gap: spacing.xs,
+            marginBottom: spacing.lg,
             opacity: 0.7,
+            flexWrap: 'wrap',
         },
         author: {
             ...typography.body,
@@ -690,51 +702,48 @@ const styles = (colors: any, isMobile: boolean, readerTheme?: string) => {
         listenButton: {
             flexDirection: 'row',
             alignItems: 'center',
-            backgroundColor: colors.primary.DEFAULT,
-            paddingHorizontal: spacing.xl,
-            paddingVertical: spacing.lg,
+            backgroundColor: colors.background.secondary,
+            paddingHorizontal: 16,
+            paddingVertical: 7,
             borderRadius: borderRadius.full,
             alignSelf: 'flex-start',
-            marginBottom: spacing.xl,
-            gap: spacing.sm,
-            shadowColor: colors.primary.DEFAULT,
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.3,
-            shadowRadius: 8,
-            elevation: 4,
+            marginBottom: spacing.lg,
+            gap: 6,
+            borderWidth: 1,
+            borderColor: colors.primary.DEFAULT,
         },
         listenButtonText: {
-            color: '#fff',
-            fontSize: 16,
+            color: colors.primary.DEFAULT,
+            fontSize: 13,
             fontWeight: '800',
         },
         textSizeMenu: {
             position: 'absolute',
-            top: 44,
+            top: 42,
             right: 0,
-            backgroundColor: colors.background.elevated,
+            backgroundColor: colors.background.secondary,
             borderRadius: borderRadius.md,
             borderWidth: 1,
             borderColor: colors.border.DEFAULT,
             flexDirection: 'row',
-            padding: spacing.xs,
-            gap: spacing.xs,
+            padding: 3,
+            gap: 3,
             shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.15,
-            shadowRadius: 8,
-            elevation: 5,
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.08,
+            shadowRadius: 4,
+            elevation: 3,
             zIndex: 100,
         },
         textSizeOption: {
-            width: 40,
-            height: 40,
+            width: 34,
+            height: 34,
             justifyContent: 'center',
             alignItems: 'center',
             borderRadius: borderRadius.sm,
         },
         textSizeOptionActive: {
-            backgroundColor: colors.primary.DEFAULT + '22',
+            backgroundColor: colors.primary.soft ?? `${colors.primary.DEFAULT}22`,
         },
         textSizeLabel: {
             fontWeight: '700',

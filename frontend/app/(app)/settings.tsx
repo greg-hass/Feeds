@@ -5,7 +5,7 @@ import Constants from 'expo-constants';
 import { useSettingsStore, useToastStore, useFeedStore, useArticleStore, useDigestStore } from '@/stores';
 import { Settings, FeedFetchLimits, api } from '@/services/api';
 import { Sun, Moon, Monitor, Check, Trash2, Type, HardDrive } from 'lucide-react-native';
-import { useColors, spacing, borderRadius, shadows, ACCENT_COLORS, AccentColor } from '@/theme';
+import { useColors, spacing, borderRadius, ACCENT_COLORS, AccentColor } from '@/theme';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { LoadingState } from '@/components/ui/LoadingState';
@@ -160,6 +160,33 @@ export default function SettingsScreen() {
                                     { 
                                         backgroundColor: colors.background.primary,
                                         transform: [{ translateX: settings.show_images ? 20 : 0 }]
+                                    }
+                                ]} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={s.divider} />
+
+                        <View style={s.row}>
+                            <View>
+                                <Text style={s.label}>Keep Screen Awake</Text>
+                                <Text style={s.hint}>Prevents auto-lock while the app is open</Text>
+                            </View>
+                            <TouchableOpacity
+                                style={[
+                                    s.customSwitch,
+                                    { backgroundColor: (settings.keep_screen_awake ?? true) ? colors.primary.DEFAULT : colors.border.DEFAULT }
+                                ]}
+                                onPress={() => handleToggle('keep_screen_awake', !(settings.keep_screen_awake ?? true))}
+                                accessibilityLabel="Keep screen awake"
+                                accessibilityRole="switch"
+                                accessibilityState={{ checked: settings.keep_screen_awake ?? true }}
+                            >
+                                <View style={[
+                                    s.customSwitchThumb,
+                                    {
+                                        backgroundColor: colors.background.primary,
+                                        transform: [{ translateX: (settings.keep_screen_awake ?? true) ? 20 : 0 }]
                                     }
                                 ]} />
                             </TouchableOpacity>
@@ -519,62 +546,66 @@ const styles = (colors: any) => StyleSheet.create({
         flex: 1,
     },
     content: {
-        padding: spacing.lg,
-        paddingBottom: 48,
+        paddingHorizontal: spacing.lg,
+        paddingTop: spacing.md,
+        paddingBottom: 40,
     },
     section: {
-        marginBottom: spacing.xl,
+        marginBottom: spacing.lg,
     },
     card: {
         backgroundColor: colors.background.secondary,
         borderRadius: borderRadius.lg,
-        padding: spacing.lg,
+        padding: spacing.md,
     },
     row: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
+        alignItems: 'flex-start',
+        gap: spacing.md,
     },
     label: {
-        fontSize: 16,
+        fontSize: 15,
+        fontWeight: '600',
         color: colors.text.primary,
     },
     hint: {
-        fontSize: 13,
+        fontSize: 12,
         color: colors.text.tertiary,
         marginTop: 2,
+        lineHeight: 16,
     },
     value: {
-        fontSize: 16,
+        fontSize: 15,
         color: colors.text.secondary,
     },
     divider: {
         height: 1,
         backgroundColor: colors.border.DEFAULT,
-        marginVertical: spacing.md,
+        marginVertical: spacing.sm,
     },
     themeRow: {
         flexDirection: 'row',
-        gap: spacing.sm,
-        marginTop: spacing.md,
+        gap: spacing.xs,
+        marginTop: spacing.sm,
     },
     themeOption: {
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 6,
-        padding: spacing.md,
+        gap: 5,
+        paddingVertical: spacing.sm,
+        paddingHorizontal: spacing.sm,
         borderRadius: borderRadius.md,
         backgroundColor: colors.background.tertiary,
     },
     themeOptionActive: {
         backgroundColor: colors.primary.dark,
         borderColor: colors.primary.dark,
-        ...shadows.colored(colors.primary.dark),
     },
     themeText: {
-        fontSize: 14,
+        fontSize: 13,
         color: colors.text.secondary,
     },
     themeTextActive: {
@@ -594,38 +625,39 @@ const styles = (colors: any) => StyleSheet.create({
         backgroundColor: colors.background.tertiary,
     },
     pickerText: {
-        fontSize: 12,
+        fontSize: 11,
         color: colors.text.secondary,
     },
     sectionHint: {
-        fontSize: 13,
+        fontSize: 12,
         color: colors.text.tertiary,
-        marginBottom: spacing.md,
+        marginBottom: spacing.sm,
         marginTop: spacing.xs,
     },
     sublabel: {
-        fontSize: 14,
+        fontSize: 13,
         color: colors.text.secondary,
         minWidth: 50,
     },
     version: {
         textAlign: 'center',
         color: colors.text.tertiary,
-        marginTop: spacing.xl,
+        marginTop: spacing.lg,
+        fontSize: 11,
     },
     accentSection: {
         flexDirection: 'column',
-        gap: spacing.md,
+        gap: spacing.sm,
     },
     accentRow: {
         flexDirection: 'row',
-        gap: spacing.sm,
+        gap: spacing.xs,
         flexWrap: 'wrap',
     },
     accentOption: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
+        width: 28,
+        height: 28,
+        borderRadius: 14,
         borderWidth: 2,
         borderColor: 'transparent',
         alignItems: 'center',
@@ -633,30 +665,29 @@ const styles = (colors: any) => StyleSheet.create({
     },
     accentOptionActive: {
         borderColor: colors.text.primary,
-        transform: [{ scale: 1.1 }],
     },
     dangerRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: spacing.sm,
+        paddingVertical: spacing.xs,
     },
     dangerLabel: {
-        fontSize: 16,
+        fontSize: 15,
         color: colors.error,
-        fontWeight: '500',
+        fontWeight: '600',
     },
     customSwitch: {
-        width: 48,
-        height: 28,
-        borderRadius: 14,
+        width: 46,
+        height: 26,
+        borderRadius: 13,
         padding: 2,
         justifyContent: 'center',
     },
     customSwitchThumb: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
+        width: 22,
+        height: 22,
+        borderRadius: 11,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.2,
@@ -672,7 +703,7 @@ const styles = (colors: any) => StyleSheet.create({
         alignItems: 'flex-end',
     },
     dropdownValue: {
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: '600',
         color: colors.text.primary,
         marginBottom: spacing.xs,
@@ -686,14 +717,14 @@ const styles = (colors: any) => StyleSheet.create({
     },
     dropdownOption: {
         paddingHorizontal: spacing.sm,
-        paddingVertical: spacing.xs,
-        borderRadius: borderRadius.md,
+        paddingVertical: 4,
+        borderRadius: borderRadius.sm,
         backgroundColor: colors.background.tertiary,
         minWidth: 50,
         alignItems: 'center',
     },
     dropdownOptionText: {
-        fontSize: 12,
+        fontSize: 11,
         color: colors.text.secondary,
         fontWeight: '500',
     },

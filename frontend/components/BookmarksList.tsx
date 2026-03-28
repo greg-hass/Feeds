@@ -117,11 +117,6 @@ export default function BookmarksList({
               {item.has_audio && (
                 <Headphones size={14} color={colors.secondary.DEFAULT} />
               )}
-              <Bookmark
-                size={14}
-                color={colors.primary.DEFAULT}
-                fill={colors.primary.DEFAULT}
-              />
             </View>
             <Text
               style={[s.articleTitle, item.is_read && s.articleTitleRead]}
@@ -189,7 +184,7 @@ export default function BookmarksList({
   if (isLoading && bookmarkedArticles.length === 0) {
     return (
       <View style={s.container}>
-        <ScreenHeader title="Bookmarks" showBackButton={false} />
+        <ScreenHeader title="Saved" showBackButton={false} />
         <LoadingState variant="page" message="Loading bookmarks…" />
       </View>
     );
@@ -198,7 +193,7 @@ export default function BookmarksList({
   if (error) {
     return (
       <View style={s.container}>
-        <ScreenHeader title="Bookmarks" showBackButton={false} />
+        <ScreenHeader title="Saved" showBackButton={false} />
         <View style={s.errorContainer}>
           <AlertCircle size={48} color={colors.status.error} />
           <Text style={s.errorTitle}>Failed to load bookmarks</Text>
@@ -215,7 +210,7 @@ export default function BookmarksList({
   return (
     <View style={s.container}>
       <ScreenHeader
-        title="Bookmarks"
+        title="Saved"
         showBackButton={false}
         isRefreshing={isRefreshing}
         showMenuButton={isMobile}
@@ -300,7 +295,7 @@ const styles = (colors: any, isMobile: boolean = false) =>
     articleCard: {
       backgroundColor: colors.background.secondary,
       borderRadius: borderRadius.lg,
-      padding: spacing.lg,
+      padding: spacing.md,
     },
     articleRead: {
       opacity: 0.6,
@@ -312,7 +307,7 @@ const styles = (colors: any, isMobile: boolean = false) =>
     },
     articleRowLayout: {
       flexDirection: "row",
-      gap: spacing.lg,
+      gap: spacing.md,
     },
     articleColumnLayout: {
       flexDirection: "column",
@@ -323,33 +318,33 @@ const styles = (colors: any, isMobile: boolean = false) =>
     articleHeader: {
       flexDirection: "row",
       alignItems: "center",
-      gap: spacing.sm,
-      marginBottom: spacing.sm,
+      gap: spacing.xs,
+      marginBottom: spacing.xs,
     },
     feedName: {
-      fontSize: 12,
+      fontSize: 11,
       color: colors.secondary.DEFAULT,
-      fontWeight: "500",
+      fontWeight: "600",
       flex: 1,
     },
     articleTitle: {
-      fontSize: 17,
+      fontSize: 16,
       fontWeight: "600",
       color: colors.text.primary,
-      lineHeight: 24,
-      marginBottom: spacing.sm,
+      lineHeight: 22,
+      marginBottom: spacing.xs,
     },
     articleTitleRead: {
       color: colors.text.secondary,
     },
     articleSummary: {
-      fontSize: 14,
+      fontSize: 13,
       color: colors.text.secondary,
-      lineHeight: 20,
-      marginBottom: spacing.sm,
+      lineHeight: 18,
+      marginBottom: spacing.xs,
     },
     articleMeta: {
-      fontSize: 12,
+      fontSize: 11,
       color: colors.text.tertiary,
     },
     thumbnailContainerDesktop: {

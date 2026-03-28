@@ -93,7 +93,7 @@ export const ScreenHeader = ({
                         accessibilityLabel="Open menu"
                         accessibilityRole="button"
                     >
-                        <Menu size={24} color={colors.text.primary} />
+                        <Menu size={22} color={colors.text.primary} />
                     </TouchableOpacity>
                 )}
                 {showBackButton && (
@@ -103,7 +103,7 @@ export const ScreenHeader = ({
                         accessibilityLabel={backButtonVariant === 'close' ? 'Close' : 'Go back'}
                         accessibilityRole="button"
                     >
-                        <BackIcon size={24} color={colors.text.primary} />
+                        <BackIcon size={22} color={colors.text.primary} />
                     </TouchableOpacity>
                 )}
                 <View style={[s.titleContainer, showMenuButton && s.titleContainerWithMenu]}>
@@ -150,13 +150,13 @@ const styles = (colors: any) => StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: spacing.lg,
-        paddingTop: spacing.lg,
-        paddingBottom: spacing.md,
+        paddingHorizontal: spacing.lg,
+        paddingTop: spacing.md,
+        paddingBottom: spacing.sm,
         borderBottomWidth: 1,
         borderBottomColor: colors.border.DEFAULT,
         backgroundColor: colors.background.primary,
-        minHeight: 60,
+        minHeight: 56,
     },
     noBorder: {
         borderBottomWidth: 0,
@@ -200,7 +200,7 @@ const styles = (colors: any) => StyleSheet.create({
         borderRadius: borderRadius.full,
     },
     headerTitle: {
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: '700',
         color: colors.text.primary,
         flex: 1,
@@ -216,26 +216,31 @@ const styles = (colors: any) => StyleSheet.create({
         flexShrink: 1,
     },
     actionButton: {
-        padding: spacing.sm,
+        padding: 4,
         borderRadius: borderRadius.md,
-        minWidth: 40,
-        minHeight: 40,
+        minWidth: 34,
+        minHeight: 34,
         alignItems: 'center',
         justifyContent: 'center',
+        backgroundColor: colors.background.secondary,
+        borderWidth: 1,
+        borderColor: colors.border.DEFAULT,
     },
     actionButtonPrimary: {
-        backgroundColor: colors.primary?.DEFAULT ?? colors.primary,
+        backgroundColor: colors.primary?.soft ?? `${colors.primary?.DEFAULT ?? colors.primary}22`,
+        borderColor: colors.primary?.DEFAULT ?? colors.primary,
     },
     actionButtonDanger: {
         backgroundColor: colors.status.error + '22',
+        borderColor: colors.status.error + '55',
     },
     timerText: {
-        fontSize: 11,
+        fontSize: 10,
         fontWeight: '700',
         color: colors.primary?.DEFAULT ?? colors.primary,
         fontFamily: Platform.OS === 'web' ? 'monospace' : undefined,
         marginRight: spacing.xs,
         flexShrink: 1,
-        maxWidth: Platform.OS === 'web' ? 220 : 110,
+        maxWidth: Platform.OS === 'web' ? 200 : 100,
     },
 });

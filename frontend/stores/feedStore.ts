@@ -262,6 +262,7 @@ export const useFeedStore = create<FeedState>()(
                 const controller = new AbortController();
                 refreshAbortController = controller;
                 const articleStore = useArticleStore.getState();
+                const needsFullArticleRefresh = Boolean(articleStore.filter.folder_id);
                 const estimatedTotal = ids?.length ?? get().feeds.length;
                 const refreshController = createRefreshEventController({
                     scope: 'manual',
@@ -311,7 +312,7 @@ export const useFeedStore = create<FeedState>()(
                     await Promise.all([
                         get().fetchFeeds(),
                         get().fetchFolders(),
-                        articleStore.fetchArticles(true)
+                        needsFullArticleRefresh ? articleStore.fetchArticles(true) : Promise.resolve(),
                     ]);
                 } catch (error) {
                     if (!isAbortError(error)) {

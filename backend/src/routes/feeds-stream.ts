@@ -102,10 +102,10 @@ export async function feedsStreamRoutes(app: FastifyInstance) {
         if (feedIds.length > 0) {
             // Refresh specific feeds
             const placeholders = feedIds.map(() => '?').join(',');
-            feeds = queryAll<FeedWithCache>(
-                `SELECT id, title, url, type, refresh_interval_minutes, user_id, icon_url, icon_cached_path
+                feeds = queryAll<FeedWithCache>(
+                    `SELECT id, title, url, type, refresh_interval_minutes, user_id, icon_url, icon_cached_path
                  FROM feeds
-                 WHERE id IN (${placeholders}) AND user_id = ? AND deleted_at IS NULL`,
+                 WHERE id IN (${placeholders}) AND user_id = ? AND deleted_at IS NULL AND paused_at IS NULL`,
                 [...feedIds, userId]
             );
         } else {
@@ -113,7 +113,7 @@ export async function feedsStreamRoutes(app: FastifyInstance) {
             feeds = queryAll<FeedWithCache>(
                 `SELECT id, title, url, type, refresh_interval_minutes, user_id, icon_url, icon_cached_path
                  FROM feeds
-                 WHERE user_id = ? AND deleted_at IS NULL
+                 WHERE user_id = ? AND deleted_at IS NULL AND paused_at IS NULL
                  ORDER BY title`,
                 [userId]
             );

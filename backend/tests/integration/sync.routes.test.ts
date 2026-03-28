@@ -51,12 +51,15 @@ describe('Sync API Routes', () => {
                 type TEXT DEFAULT 'rss',
                 icon_url TEXT,
                 icon_cached_path TEXT,
+                paused_at TEXT,
                 deleted_at TEXT,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT DEFAULT CURRENT_TIMESTAMP
             );
             INSERT INTO feeds (id, user_id, folder_id, url, title, type, icon_url, created_at, updated_at)
             VALUES (1, 1, 1, 'https://example.com/feed.xml', 'Feed 1', 'rss', 'https://example.com/icon.png', '2026-03-04 10:00:00.000', '2026-03-04 10:00:00.000');
+            INSERT INTO feeds (id, user_id, folder_id, url, title, type, icon_url, paused_at, created_at, updated_at)
+            VALUES (2, 1, 1, 'https://example.com/paused-feed.xml', 'Paused Feed', 'rss', 'https://example.com/paused-icon.png', '2026-03-04 12:10:00.000', '2026-03-04 10:00:00.000', '2026-03-04 12:10:00.000');
         `);
 
         db.exec(`
@@ -126,6 +129,22 @@ describe('Sync API Routes', () => {
             }
         }
 
+        insertArticle.run(
+            506,
+            2,
+            'paused-guid-506',
+            'Paused Feed Article',
+            'https://example.com/paused/articles/506',
+            'Paused Author',
+            'Paused Summary',
+            null,
+            'https://example.com/thumb/506.jpg',
+            '2026-03-04 12:11:00.000',
+            '2026-03-04 12:11:00.000',
+            '2026-03-04 12:11:00.000',
+            '2026-03-04 12:11:00.000',
+        );
+
         process.env.DATABASE_PATH = testDbPath;
 
         app = Fastify();
@@ -186,5 +205,17 @@ describe('Sync API Routes', () => {
         const secondCursor = JSON.parse(Buffer.from(secondBody.next_cursor, 'base64').toString());
         expect(secondCursor.partial_articles).not.toBe(true);
         expect(secondCursor.last_sync_at).toBe(firstCursor.window_end);
+    });
+
+    it('does not surface newly fetched articles from paused feeds', async () => {
+        const response = await app.inject({
+            method: 'GET',
+            url: '/api/v1/sync?include=articles',
+        });
+
+        expect(response.statusCode).toBe(200);
+        const body = JSON.parse(response.payload);
+        const pausedArticles = body.changes.articles.created.filter((article: { feed_id: number }) => article.feed_id === 2);
+        expect(pausedArticles).toHaveLength(0);
     });
 });

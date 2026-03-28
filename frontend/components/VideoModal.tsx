@@ -56,11 +56,11 @@ export function VideoModal({ videoId, visible, onClose, onMinimize, title }: Vid
                         <View style={s.headerActions}>
                             {onMinimize && (
                                 <TouchableOpacity onPress={onMinimize} style={s.headerButton} accessibilityLabel="Minimize video">
-                                    <Minimize2 size={22} color={colors.text.inverse} />
+                                    <Minimize2 size={20} color={colors.text.inverse} />
                                 </TouchableOpacity>
                             )}
                             <TouchableOpacity onPress={onClose} style={s.headerButton} accessibilityLabel="Close video">
-                                <X size={22} color={colors.text.inverse} />
+                                <X size={20} color={colors.text.inverse} />
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -99,7 +99,7 @@ export function VideoModal({ videoId, visible, onClose, onMinimize, title }: Vid
 const styles = (colors: any) => StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.85)',
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -107,17 +107,19 @@ const styles = (colors: any) => StyleSheet.create({
         ...StyleSheet.absoluteFillObject,
     },
     content: {
-        backgroundColor: '#000',
+        backgroundColor: colors.background.secondary,
         borderRadius: borderRadius.lg,
+        borderWidth: 1,
+        borderColor: colors.border.DEFAULT,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.5,
-        shadowRadius: 20,
-        elevation: 10,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.28,
+        shadowRadius: 16,
+        elevation: 8,
     },
     header: {
         position: 'absolute',
-        top: -44,
+        top: -38,
         left: 0,
         right: 0,
         flexDirection: 'row',
@@ -130,15 +132,19 @@ const styles = (colors: any) => StyleSheet.create({
         paddingLeft: spacing.sm,
     },
     headerTitle: {
-        color: '#fff',
-        fontSize: 14,
-        fontWeight: '600',
+        color: colors.text.primary,
+        fontSize: 13,
+        fontWeight: '700',
     },
     headerActions: {
         flexDirection: 'row',
-        gap: spacing.sm,
+        gap: spacing.xs,
     },
     headerButton: {
-        padding: spacing.sm,
+        padding: 5,
+        borderRadius: borderRadius.md,
+        backgroundColor: colors.background.secondary,
+        borderWidth: 1,
+        borderColor: colors.border.DEFAULT,
     },
 });

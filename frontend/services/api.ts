@@ -474,8 +474,9 @@ class ApiClient {
         if (params.unread_only) searchParams.set('unread_only', 'true');
         if (params.type) searchParams.set('type', params.type);
         if (params.limit) searchParams.set('limit', String(params.limit));
+        if (params.includeTotal === false) searchParams.set('include_total', 'false');
 
-        return this.request<{ results: SearchResult[]; total: number; next_cursor: string | null }>(
+        return this.request<{ results: SearchResult[]; total?: number; next_cursor: string | null }>(
             `/search?${searchParams.toString()}`
         );
     }

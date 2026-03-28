@@ -14,6 +14,7 @@ const defaultSettings = {
   theme: "auto" as const,
   font_size: "medium" as const,
   show_images: true,
+  keep_screen_awake: true,
   accent_color: "emerald",
   feed_fetch_limits: {
     rss_days: 14,

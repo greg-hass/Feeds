@@ -120,6 +120,7 @@ export interface Settings {
     theme: 'light' | 'dark' | 'auto';
     font_size: 'small' | 'medium' | 'large';
     show_images: boolean;
+    keep_screen_awake?: boolean;
     font_family?: 'sans' | 'serif';
     reader_theme?: 'default' | 'sepia' | 'paper' | 'dark';
     reader_line_height?: number;
@@ -161,6 +162,7 @@ export interface SearchParams {
     unread_only?: boolean;
     type?: string;
     limit?: number;
+    includeTotal?: boolean;
 }
 
 // ============================================================================

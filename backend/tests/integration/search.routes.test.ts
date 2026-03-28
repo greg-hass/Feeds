@@ -260,6 +260,18 @@ describe('Search API Routes', () => {
             expect(typeof body.total).toBe('number');
         });
 
+        it('should allow skipping total count', async () => {
+            const response = await app.inject({
+                method: 'GET',
+                url: '/api/v1/search?q=Tutorial&include_total=false',
+            });
+
+            expect(response.statusCode).toBe(200);
+            const body = JSON.parse(response.payload);
+            expect(body.results).toBeDefined();
+            expect(body.total).toBeUndefined();
+        });
+
         it('should return empty results for no matches', async () => {
             const response = await app.inject({
                 method: 'GET',

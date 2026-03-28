@@ -4,7 +4,10 @@ import { fetchWithRetry } from './http.js';
 const YOUTUBE_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 
-export async function fetchYouTubeIcon(channelId: string | null | undefined): Promise<string | null> {
+export async function fetchYouTubeIcon(
+    channelId: string | null | undefined,
+    signal?: AbortSignal
+): Promise<string | null> {
     if (!channelId || typeof channelId !== 'string') {
         console.log(`[YouTube Icon] Invalid channel ID: "${channelId}"`);
         return null;
@@ -40,7 +43,7 @@ export async function fetchYouTubeIcon(channelId: string | null | undefined): Pr
                 'User-Agent': YOUTUBE_USER_AGENT,
                 'Accept-Language': 'en-US,en;q=0.9',
             },
-            signal: AbortSignal.timeout(HTTP.REQUEST_TIMEOUT),
+            signal: signal ?? AbortSignal.timeout(HTTP.REQUEST_TIMEOUT),
         }), {
             retries: 2,
         });

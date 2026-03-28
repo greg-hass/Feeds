@@ -22,7 +22,7 @@ export default function BookmarksScreen() {
             <View style={s.emptyState}>
                 <FileText size={48} color={colors.text.tertiary} strokeWidth={1.5} />
                 <Text style={s.emptyTitle}>No article selected</Text>
-                <Text style={s.emptyText}>Select a bookmark to read</Text>
+                <Text style={s.emptyText}>Select a saved article to read</Text>
             </View>
         </View>
     );

@@ -17,7 +17,6 @@ interface TimelineArticleProps {
     playingArticleId: number | null;
     isPlaying: boolean;
     colors: any;
-    hotPulseAnim: Animated.Value;
     onArticlePress: (item: Article) => void;
     onVideoPress: (item: Article) => void;
     onPlayPress: (item: Article) => void;
@@ -28,7 +27,7 @@ interface TimelineArticleProps {
 
 const TimelineArticle: React.FC<TimelineArticleProps> = ({
     item, isActive, isMobile, activeVideoId, playingArticleId, isPlaying,
-    colors, hotPulseAnim, onArticlePress, onVideoPress, onPlayPress,
+    colors, onArticlePress, onVideoPress, onPlayPress,
     getBookmarkScale, getBookmarkRotation, onFeedInfoPress
 }) => {
     const s = timelineStyles(colors, isMobile);
@@ -51,7 +50,7 @@ const TimelineArticle: React.FC<TimelineArticleProps> = ({
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     useArticleStore.getState().markRead(item.id);
                 }} style={s.swipeActionButton}>
-                    <Check size={24} color={colors.text.inverse} />
+                    <Check size={22} color={colors.text.inverse} />
                     <Text style={s.swipeActionText}>Read</Text>
                 </TouchableOpacity>
             </Animated.View>
@@ -70,7 +69,7 @@ const TimelineArticle: React.FC<TimelineArticleProps> = ({
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                     useArticleStore.getState().toggleBookmark(item.id);
                 }} style={s.swipeActionButton}>
-                    <Bookmark size={24} color={colors.text.inverse} fill={colors.text.inverse} />
+                    <Bookmark size={22} color={colors.text.inverse} fill={colors.text.inverse} />
                     <Text style={s.swipeActionText}>Save</Text>
                 </TouchableOpacity>
             </Animated.View>
@@ -94,7 +93,6 @@ const TimelineArticle: React.FC<TimelineArticleProps> = ({
                 onLongPress={handleLongPress}
                 getBookmarkScale={getBookmarkScale}
                 getBookmarkRotation={getBookmarkRotation}
-                hotPulseAnim={hotPulseAnim}
             />
             <ArticleContextMenu
                 visible={contextMenuVisible}

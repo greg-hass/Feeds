@@ -72,7 +72,7 @@ export default function AppLayout() {
         dismissUpdate,
     } = usePwaUpdate(mounted && !!isAuthenticated);
 
-    useWakeLock(mounted && !isDesktop && !!isAuthenticated);
+    useWakeLock(mounted && !isDesktop && !!isAuthenticated && (settings?.keep_screen_awake ?? true));
 
     // Show loading state while checking auth
     if (!mounted || isAuthenticated === null) {

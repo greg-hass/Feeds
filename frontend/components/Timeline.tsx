@@ -47,8 +47,8 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     const [refreshSpin] = useState(new Animated.Value(0));
 
     const {
-        articles, isLoading, hasMore, filter, isFeedLoading, headerTitle, lastRefreshed, isRefreshing, refreshState,
-        playingArticleId, isPlaying, activeVideoId, hotPulseAnim, feeds,
+        articles, isLoading, hasMore, filter, headerTitle, lastRefreshed, isRefreshing, refreshState,
+        playingArticleId, isPlaying, activeVideoId, feeds,
         fetchArticles, setFilter, refreshAllFeeds, handleMarkAllRead, prefetchArticle,
         handleArticlePress, handlePlayPress, handleVideoPress,
         getBookmarkScale, getBookmarkRotation,
@@ -172,7 +172,6 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
             playingArticleId={playingArticleId}
             isPlaying={isPlaying}
             colors={colors}
-            hotPulseAnim={hotPulseAnim}
             onArticlePress={handleArticlePressWithSave}
             onVideoPress={handleVideoPress}
             onPlayPress={handlePlayPress}

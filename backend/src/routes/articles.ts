@@ -130,6 +130,8 @@ export async function articlesRoutes(app: FastifyInstance) {
         if (query.feed_id) {
             conditions.push('a.feed_id = ?');
             params.push(query.feed_id);
+        } else {
+            conditions.push('f.paused_at IS NULL');
         }
 
         if (query.folder_id) {
@@ -392,7 +394,7 @@ export async function articlesRoutes(app: FastifyInstance) {
            SELECT ?, a.id, 1, datetime('now'), datetime('now')
            FROM articles a
            JOIN feeds f ON f.id = a.feed_id
-           WHERE f.folder_id = ? AND f.user_id = ? AND f.deleted_at IS NULL ${beforeCondition}`,
+           WHERE f.folder_id = ? AND f.user_id = ? AND f.deleted_at IS NULL AND f.paused_at IS NULL ${beforeCondition}`,
                     [userId, body.scope_id, userId, ...beforeParam]
                 );
                 marked = folderResult.changes;
@@ -404,7 +406,7 @@ export async function articlesRoutes(app: FastifyInstance) {
            SELECT ?, a.id, 1, datetime('now'), datetime('now')
            FROM articles a
            JOIN feeds f ON f.id = a.feed_id
-           WHERE f.type = ? AND f.user_id = ? AND f.deleted_at IS NULL ${beforeCondition}`,
+           WHERE f.type = ? AND f.user_id = ? AND f.deleted_at IS NULL AND f.paused_at IS NULL ${beforeCondition}`,
                     [userId, body.type, userId, ...beforeParam]
                 );
                 marked = typeResult.changes;
@@ -416,7 +418,7 @@ export async function articlesRoutes(app: FastifyInstance) {
            SELECT ?, a.id, 1, datetime('now'), datetime('now')
            FROM articles a
            JOIN feeds f ON f.id = a.feed_id
-           WHERE f.user_id = ? AND f.deleted_at IS NULL ${beforeCondition}`,
+           WHERE f.user_id = ? AND f.deleted_at IS NULL AND f.paused_at IS NULL ${beforeCondition}`,
                     [userId, userId, ...beforeParam]
                 );
                 marked = allResult.changes;
@@ -485,7 +487,7 @@ export async function articlesRoutes(app: FastifyInstance) {
              FROM articles a
              JOIN feeds f ON f.id = a.feed_id
              LEFT JOIN read_state rs ON rs.article_id = a.id AND rs.user_id = ?
-             WHERE f.user_id = ? AND f.deleted_at IS NULL AND a.is_bookmarked = 1
+             WHERE f.user_id = ? AND f.deleted_at IS NULL AND f.paused_at IS NULL AND a.is_bookmarked = 1
              ORDER BY a.published_at DESC
              LIMIT 200`,
             [userId, userId]

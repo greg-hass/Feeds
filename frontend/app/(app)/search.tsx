@@ -96,7 +96,8 @@ export default function SearchScreen() {
         try {
             const response = await api.search(t, {
                 type: type || undefined,
-                unread_only: unread
+                unread_only: unread,
+                includeTotal: false,
             });
             setResults(response.results);
             fadeAnim.setValue(0);

@@ -1,4 +1,5 @@
 import { discoverFeedsFromUrl } from './url-discovery.js';
+import { buildDiscoverySearchQueries } from './query-utils.js';
 import { DiscoveredFeed as DiscoveredFeedType } from '../../types/discovery.js';
 
 const GOOGLE_SEARCH_API_KEY = process.env.GOOGLE_SEARCH_API_KEY;
@@ -13,16 +14,17 @@ const USER_AGENT = 'Feeds/1.0 (Feed Reader; +https://github.com/greg-hass/Feeds)
 export async function searchRssFeeds(topic: string, maxResults: number = 5): Promise<DiscoveredFeedType[]> {
     console.log(`[RSS Discovery] Searching for: "${topic}"`);
     const allDiscoveries: DiscoveredFeedType[] = [];
+    const queries = buildDiscoverySearchQueries(topic, 5);
 
     // Method 1: DuckDuckGo with multiple query variations
-    const duckduckgoResults = await searchDuckDuckGo(topic, maxResults);
+    const duckduckgoResults = await searchDuckDuckGo(queries, maxResults);
     if (duckduckgoResults.length > 0) {
         console.log(`[RSS Discovery] DuckDuckGo found ${duckduckgoResults.length} feeds`);
         allDiscoveries.push(...duckduckgoResults);
     }
 
     // Method 2: Feed directory/aggregator APIs (using known working services)
-    const directoryResults = await searchFeedDirectories(topic, maxResults - allDiscoveries.length);
+    const directoryResults = await searchFeedDirectories(queries, maxResults - allDiscoveries.length);
     if (directoryResults.length > 0) {
         console.log(`[RSS Discovery] Directories found ${directoryResults.length} feeds`);
         for (const feed of directoryResults) {
@@ -34,7 +36,7 @@ export async function searchRssFeeds(topic: string, maxResults: number = 5): Pro
 
     // Method 3: Try Bing as fallback
     if (allDiscoveries.length < maxResults) {
-        const bingResults = await searchBing(topic, maxResults - allDiscoveries.length);
+        const bingResults = await searchBing(queries, maxResults - allDiscoveries.length);
         if (bingResults.length > 0) {
             console.log(`[RSS Discovery] Bing found ${bingResults.length} feeds`);
             for (const feed of bingResults) {
@@ -55,23 +57,32 @@ export async function searchRssFeeds(topic: string, maxResults: number = 5): Pro
 /**
  * Search using DuckDuckGo HTML (free, no API key)
  */
-async function searchDuckDuckGo(topic: string, limit: number): Promise<DiscoveredFeedType[]> {
+async function searchDuckDuckGo(queries: string[], limit: number): Promise<DiscoveredFeedType[]> {
     try {
-        // Try multiple search query variations
-        const queryVariations = [
-            `${topic} RSS feed`,
-            `${topic} news feed`,
-            `${topic} blog RSS`,
-        ];
+        const discoveries: DiscoveredFeedType[] = [];
 
-        for (const query of queryVariations) {
-            const results = await searchDuckDuckGoQuery(query, limit);
-            if (results.length > 0) {
-                return results;
+        for (const query of queries) {
+            if (discoveries.length >= limit) break;
+
+            const queryVariations = [
+                `${query} RSS feed`,
+                `${query} news feed`,
+                `${query} blog RSS`,
+            ];
+
+            for (const searchQuery of queryVariations) {
+                if (discoveries.length >= limit) break;
+
+                const results = await searchDuckDuckGoQuery(searchQuery, limit - discoveries.length);
+                for (const result of results) {
+                    if (!discoveries.some(feed => feed.feed_url === result.feed_url)) {
+                        discoveries.push(result);
+                    }
+                }
             }
         }
 
-        return [];
+        return discoveries.slice(0, limit);
     } catch (err) {
         console.error('[RSS Discovery] DuckDuckGo search failed:', err);
         return [];
@@ -155,56 +166,58 @@ async function searchDuckDuckGoQuery(query: string, limit: number): Promise<Disc
 /**
  * Search using Bing Web Search API (requires API key)
  */
-async function searchBing(topic: string, limit: number): Promise<DiscoveredFeedType[]> {
+async function searchBing(queries: string[], limit: number): Promise<DiscoveredFeedType[]> {
     try {
-        const query = encodeURIComponent(`${topic} RSS`);
-        const response = await fetch(
-            `https://www.bing.com/search?q=${query}`,
-            {
-                headers: { 'User-Agent': USER_AGENT },
-                signal: AbortSignal.timeout(15000),
-            }
-        );
-
-        if (!response.ok) return [];
-
-        const html = await response.text();
-        const siteUrls: string[] = [];
-
-        // Extract search result URLs
-        const linkRegex = /href="([^"]* bing\.com\/ck\/a|https?:\/\/[^"|]*[^0-9])/g;
-        const urls = new Set<string>();
-        let match;
-
-        while ((match = linkRegex.exec(html)) !== null) {
-            try {
-                const url = match[1];
-                const urlObj = new URL(url);
-                if (urlObj.hostname !== 'bing.com' && url.startsWith('http')) {
-                    urls.add(urlObj.origin + urlObj.pathname);
-                }
-            } catch {
-                // Continue
-            }
-        }
-
-        // Discover feeds from URLs
         const discoveries: DiscoveredFeedType[] = [];
-        const siteList = Array.from(urls).slice(0, 10);
 
-        for (const siteUrl of siteList) {
-            try {
-                const feeds = await discoverFeedsFromUrl(siteUrl);
-                for (const feed of feeds) {
-                    if (feed.type === 'rss') {
-                        discoveries.push(feed);
-                    }
+        for (const query of queries) {
+            if (discoveries.length >= limit) break;
+
+            const response = await fetch(
+                `https://www.bing.com/search?q=${encodeURIComponent(`${query} RSS`)}`,
+                {
+                    headers: { 'User-Agent': USER_AGENT },
+                    signal: AbortSignal.timeout(15000),
                 }
-            } catch {
-                // Continue
+            );
+
+            if (!response.ok) continue;
+
+            const html = await response.text();
+            const urls = new Set<string>();
+
+            // Extract search result URLs
+            const linkRegex = /href="([^"]* bing\.com\/ck\/a|https?:\/\/[^"|]*[^0-9])/g;
+            let match;
+
+            while ((match = linkRegex.exec(html)) !== null) {
+                try {
+                    const url = match[1];
+                    const urlObj = new URL(url);
+                    if (urlObj.hostname !== 'bing.com' && url.startsWith('http')) {
+                        urls.add(urlObj.origin + urlObj.pathname);
+                    }
+                } catch {
+                    // Continue
+                }
             }
 
-            if (discoveries.length >= limit) break;
+            const siteList = Array.from(urls).slice(0, 10);
+
+            for (const siteUrl of siteList) {
+                try {
+                    const feeds = await discoverFeedsFromUrl(siteUrl);
+                    for (const feed of feeds) {
+                        if (feed.type === 'rss' && !discoveries.some(existing => existing.feed_url === feed.feed_url)) {
+                            discoveries.push(feed);
+                        }
+                    }
+                } catch {
+                    // Continue
+                }
+
+                if (discoveries.length >= limit) break;
+            }
         }
 
         return discoveries.slice(0, limit);
@@ -217,45 +230,49 @@ async function searchBing(topic: string, limit: number): Promise<DiscoveredFeedT
 /**
  * Search using feed directories and aggregators (free)
  */
-async function searchFeedDirectories(topic: string, limit: number): Promise<DiscoveredFeedType[]> {
+async function searchFeedDirectories(queries: string[], limit: number): Promise<DiscoveredFeedType[]> {
     const discoveries: DiscoveredFeedType[] = [];
 
     try {
-        // Search using public feed APIs
-        const searchUrls = [
-            `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://feedly.com/i/discover/search/feeds?query=${encodeURIComponent(topic)}`)}`,
-        ];
+        for (const query of queries) {
+            if (discoveries.length >= limit) break;
 
-        for (const searchUrl of searchUrls) {
-            try {
-                const response = await fetch(searchUrl, {
-                    headers: { 'User-Agent': USER_AGENT },
-                    signal: AbortSignal.timeout(10000),
-                });
+            // Search using public feed APIs
+            const searchUrls = [
+                `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://feedly.com/i/discover/search/feeds?query=${encodeURIComponent(query)}`)}`,
+            ];
 
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.results && Array.isArray(data.results)) {
-                        for (const item of data.results) {
-                            if (item.feedId) {
-                                discoveries.push({
-                                    type: 'rss',
-                                    title: item.title || topic,
-                                    feed_url: item.feedId,
-                                    site_url: item.website || item.feedId,
-                                    icon_url: item.visual?.url || null,
-                                    confidence: 0.85,
-                                    method: 'directory',
-                                });
+            for (const searchUrl of searchUrls) {
+                try {
+                    const response = await fetch(searchUrl, {
+                        headers: { 'User-Agent': USER_AGENT },
+                        signal: AbortSignal.timeout(10000),
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.results && Array.isArray(data.results)) {
+                            for (const item of data.results) {
+                                if (item.feedId && !discoveries.some(feed => feed.feed_url === item.feedId)) {
+                                    discoveries.push({
+                                        type: 'rss',
+                                        title: item.title || query,
+                                        feed_url: item.feedId,
+                                        site_url: item.website || item.feedId,
+                                        icon_url: item.visual?.url || null,
+                                        confidence: 0.85,
+                                        method: 'directory',
+                                    });
+                                }
                             }
                         }
                     }
+                } catch {
+                    // Continue to next directory
                 }
-            } catch {
-                // Continue to next directory
-            }
 
-            if (discoveries.length >= limit) break;
+                if (discoveries.length >= limit) break;
+            }
         }
 
         return discoveries.slice(0, limit);

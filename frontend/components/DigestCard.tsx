@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Sparkles, X } from 'lucide-react-native';
+import { Sparkles, ChevronRight } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useDigestStore } from '@/stores';
 import { useColors, borderRadius, spacing } from '@/theme';
@@ -14,50 +14,45 @@ export const DigestCard = () => {
 
     if (!pendingDigest) return null;
 
-    const topics = pendingDigest.topics || [];
+    const topics = (pendingDigest.topics || []).slice(0, 3);
+    const topicSummary = topics.length > 0
+        ? topics.join(' · ')
+        : 'A new digest is ready';
+
+    const handleOpen = async () => {
+        await dismissDigest(pendingDigest.id);
+        router.push('/digest');
+    };
 
     return (
         <TouchableOpacity
             activeOpacity={0.9}
             style={s.container}
-            onPress={() => router.push('/digest')}
+            onPress={handleOpen}
         >
             <LinearGradient
-                colors={[colors.primary?.DEFAULT ?? colors.primary, colors.primary?.light ?? colors.primary]}
+                colors={[colors.background.secondary, colors.background.tertiary]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={s.gradient}
             >
                 <View style={s.header}>
                     <View style={s.titleRow}>
-                        <Sparkles size={18} color={colors.text.inverse} style={s.icon} />
-                        <Text style={s.title}>{pendingDigest.title || 'Your Daily Digest'}</Text>
+                        <Sparkles size={16} color={colors.primary.DEFAULT} style={s.icon} />
+                        <View style={s.textBlock}>
+                            <Text style={s.title} numberOfLines={1}>
+                                {pendingDigest.title || 'Your Daily Digest'}
+                            </Text>
+                            <Text style={s.subtitle} numberOfLines={1}>
+                                {topicSummary}
+                            </Text>
+                        </View>
                     </View>
-                    <TouchableOpacity
-                        style={s.closeButton}
-                        onPress={(e) => {
-                            e.stopPropagation();
-                            dismissDigest(pendingDigest.id);
-                        }}
-                    >
-                        <X size={18} color="rgba(255, 255, 255, 0.7)" />
-                    </TouchableOpacity>
+                    <ChevronRight size={18} color={colors.text.tertiary} />
                 </View>
 
-                {topics.length > 0 && (
-                    <View style={s.topicsContainer}>
-                        {topics.slice(0, 3).map((topic: string, i: number) => (
-                            <View key={i} style={s.topicBadge}>
-                                <Text style={s.topicText} numberOfLines={1}>
-                                    {topic}
-                                </Text>
-                            </View>
-                        ))}
-                    </View>
-                )}
-
-                <Text style={s.footerText}>
-                    Tap to read the full intelligence briefing
+                <Text style={s.footerText} numberOfLines={1}>
+                    Tap once to open and clear it from Home
                 </Text>
             </LinearGradient>
         </TouchableOpacity>
@@ -69,23 +64,20 @@ const styles = (colors: any) => StyleSheet.create({
         marginHorizontal: spacing.lg,
         marginTop: spacing.md,
         marginBottom: spacing.sm,
-        borderRadius: borderRadius.xl,
+        borderRadius: borderRadius.lg,
         overflow: 'hidden',
-        // Accent glow shadow
-        shadowColor: colors.primary?.DEFAULT ?? colors.primary,
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
-        shadowRadius: 12,
-        elevation: 10,
+        borderWidth: 1,
+        borderColor: colors.border.DEFAULT,
     },
     gradient: {
-        padding: spacing.lg,
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.sm,
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: spacing.md,
+        gap: spacing.sm,
     },
     titleRow: {
         flexDirection: 'row',
@@ -95,36 +87,25 @@ const styles = (colors: any) => StyleSheet.create({
     icon: {
         marginRight: spacing.sm,
     },
+    textBlock: {
+        flex: 1,
+    },
     title: {
-        color: '#fff',
-        fontSize: 18,
-        fontWeight: '900',
-        letterSpacing: -0.5,
+        color: colors.text.primary,
+        fontSize: 15,
+        fontWeight: '800',
+        letterSpacing: -0.2,
     },
-    closeButton: {
-        padding: 4,
-    },
-    topicsContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 6,
-        marginBottom: spacing.md,
-    },
-    topicBadge: {
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: borderRadius.full,
-        maxWidth: '100%',
-    },
-    topicText: {
-        color: '#fff',
+    subtitle: {
+        color: colors.text.secondary,
         fontSize: 12,
-        fontWeight: '700',
+        fontWeight: '500',
+        marginTop: 2,
     },
     footerText: {
-        color: 'rgba(255, 255, 255, 0.8)',
-        fontSize: 13,
+        color: colors.text.tertiary,
+        fontSize: 12,
         fontWeight: '600',
+        marginTop: spacing.xs,
     },
 });

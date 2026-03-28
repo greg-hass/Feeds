@@ -1,65 +1,43 @@
 import { useEffect, useRef } from 'react';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 
-type WakeLockSentinelLike = {
-    release: () => Promise<void>;
-    released?: boolean;
-};
-
-type NavigatorWithWakeLock = Navigator & {
-    wakeLock?: {
-        request: (type: 'screen') => Promise<WakeLockSentinelLike>;
-    };
-};
+const KEEP_AWAKE_TAG = 'FeedsAppWakeLock';
 
 export function useWakeLock(enabled: boolean) {
-    const wakeLockRef = useRef<WakeLockSentinelLike | null>(null);
+    const isHeldRef = useRef(false);
 
     useEffect(() => {
-        if (Platform.OS !== 'web' || typeof document === 'undefined' || typeof navigator === 'undefined') {
-            return;
-        }
-
-        const navigatorWithWakeLock = navigator as NavigatorWithWakeLock;
-        if (!navigatorWithWakeLock.wakeLock?.request) {
-            return;
-        }
-
         let cancelled = false;
 
         const releaseWakeLock = async () => {
-            const sentinel = wakeLockRef.current;
-            wakeLockRef.current = null;
-
-            if (!sentinel || sentinel.released) {
+            if (!isHeldRef.current) {
                 return;
             }
 
             try {
-                await sentinel.release();
+                isHeldRef.current = false;
+                await deactivateKeepAwake(KEEP_AWAKE_TAG);
             } catch {
-                // Ignore release failures from browsers that auto-release on visibility changes.
+                // Ignore release failures when the platform has already released the lock.
             }
         };
 
         const requestWakeLock = async () => {
-            if (!enabled || document.visibilityState !== 'visible' || cancelled) {
-                return;
-            }
-
-            if (wakeLockRef.current && !wakeLockRef.current.released) {
+            if (!enabled || cancelled || isHeldRef.current) {
                 return;
             }
 
             try {
-                wakeLockRef.current = await navigatorWithWakeLock.wakeLock.request('screen');
+                await activateKeepAwakeAsync(KEEP_AWAKE_TAG);
+                isHeldRef.current = true;
             } catch {
-                wakeLockRef.current = null;
+                isHeldRef.current = false;
             }
         };
 
-        const handleVisibilityChange = () => {
-            if (document.visibilityState === 'visible') {
+        const handleAppStateChange = (nextAppState: string) => {
+            if (nextAppState === 'active') {
                 void requestWakeLock();
             } else {
                 void releaseWakeLock();
@@ -72,11 +50,29 @@ export function useWakeLock(enabled: boolean) {
             void releaseWakeLock();
         }
 
-        document.addEventListener('visibilitychange', handleVisibilityChange);
+        const appStateSubscription = Platform.OS === 'web'
+            ? null
+            : AppState.addEventListener('change', handleAppStateChange);
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                void requestWakeLock();
+            } else {
+                void releaseWakeLock();
+            }
+        };
+
+        if (Platform.OS === 'web' && typeof document !== 'undefined') {
+            document.addEventListener('visibilitychange', handleVisibilityChange);
+        }
 
         return () => {
             cancelled = true;
-            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            if (Platform.OS === 'web' && typeof document !== 'undefined') {
+                document.removeEventListener('visibilitychange', handleVisibilityChange);
+            } else {
+                appStateSubscription?.remove();
+            }
             void releaseWakeLock();
         };
     }, [enabled]);
