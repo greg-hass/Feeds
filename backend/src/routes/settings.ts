@@ -1,7 +1,8 @@
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { run, db } from '../db/index.js';
-import { getUserSettings, updateUserSettingsRaw, getUserSettingsRaw, FIXED_REFRESH_INTERVAL_MINUTES } from '../services/settings.js';
+import { getUserSettings } from '../services/settings.js';
+import { getGlobalRefreshSchedule, scheduleNextGlobalRefresh } from '../services/refresh-schedule.js';
 import { cleanupOldArticles } from '../services/feed-cleanup.js';
 
 const feedFetchLimitsSchema = z.object({
@@ -21,7 +22,7 @@ const updateSettingsSchema = z.object({
     font_size: z.enum(['small', 'medium', 'large']).optional(),
     show_images: z.boolean().optional(),
     keep_screen_awake: z.boolean().optional(),
-    accent_color: z.enum(['emerald', 'sky', 'indigo', 'purple', 'rose', 'orange', 'teal', 'slate']).optional(),
+    accent_color: z.enum(['emerald', 'sky', 'indigo', 'purple', 'rose', 'orange', 'amber', 'lime', 'cyan', 'teal', 'slate']).optional(),
     font_family: z.enum(['sans', 'serif']).optional(),
     reader_theme: z.enum(['default', 'sepia', 'paper', 'dark']).optional(),
     reader_line_height: z.number().optional(),
@@ -50,28 +51,11 @@ export async function settingsRoutes(app: FastifyInstance): Promise<void> {
 
     app.get('/', async () => {
         ensureSettingsColumn();
-        const rawSettings = getUserSettingsRaw(userId);
-
-        if (rawSettings.refresh_interval_minutes !== FIXED_REFRESH_INTERVAL_MINUTES) {
-            updateUserSettingsRaw(userId, {
-                global_next_refresh_at: new Date(Date.now() + FIXED_REFRESH_INTERVAL_MINUTES * 60 * 1000).toISOString(),
-            });
-
-            run(
-                `UPDATE feeds SET
-                    refresh_interval_minutes = ?,
-                    next_fetch_at = datetime('now', '+' || ? || ' minutes'),
-                    updated_at = datetime('now')
-                 WHERE user_id = ? AND deleted_at IS NULL`,
-                [FIXED_REFRESH_INTERVAL_MINUTES, FIXED_REFRESH_INTERVAL_MINUTES, userId]
-            );
-        }
-
         const settings = getUserSettings(userId);
-        const refreshedRawSettings = getUserSettingsRaw(userId);
+        const refreshedRawSettings = getGlobalRefreshSchedule(userId);
         return {
             settings,
-            global_next_refresh_at: refreshedRawSettings.global_next_refresh_at || null
+            global_next_refresh_at: refreshedRawSettings.nextRefreshAt
         };
     });
 
@@ -80,10 +64,10 @@ export async function settingsRoutes(app: FastifyInstance): Promise<void> {
         ensureSettingsColumn();
 
         const currentSettings = getUserSettings(userId);
+        const currentSchedule = getGlobalRefreshSchedule(userId);
         const newSettings = {
             ...currentSettings,
             ...body,
-            refresh_interval_minutes: FIXED_REFRESH_INTERVAL_MINUTES,
         };
 
         run(
@@ -91,20 +75,9 @@ export async function settingsRoutes(app: FastifyInstance): Promise<void> {
             [JSON.stringify(newSettings), userId]
         );
 
-        if (body.refresh_interval_minutes !== undefined || currentSettings.refresh_interval_minutes !== FIXED_REFRESH_INTERVAL_MINUTES) {
-            const interval = FIXED_REFRESH_INTERVAL_MINUTES;
-            run(
-                `UPDATE feeds SET
-                    refresh_interval_minutes = ?,
-                    next_fetch_at = datetime('now', '+' || ? || ' minutes'),
-                    updated_at = datetime('now')
-                 WHERE user_id = ? AND deleted_at IS NULL`,
-                [interval, interval, userId]
-            );
-
-            updateUserSettingsRaw(userId, {
-                global_next_refresh_at: new Date(Date.now() + interval * 60 * 1000).toISOString(),
-            });
+        let globalNextRefreshAt = currentSchedule.nextRefreshAt;
+        if (body.refresh_interval_minutes !== undefined) {
+            globalNextRefreshAt = scheduleNextGlobalRefresh(userId, body.refresh_interval_minutes).nextRefreshAt;
         }
 
         // If feed fetch limits changed, clean up old articles retroactively
@@ -115,6 +88,9 @@ export async function settingsRoutes(app: FastifyInstance): Promise<void> {
             });
         }
 
-        return { settings: newSettings };
+        return {
+            settings: newSettings,
+            global_next_refresh_at: globalNextRefreshAt,
+        };
     });
 }

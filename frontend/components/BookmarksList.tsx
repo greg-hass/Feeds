@@ -51,6 +51,19 @@ export default function BookmarksList({
   const [sidebarAnim] = useState(new Animated.Value(-300));
 
   const s = styles(colors, isMobile);
+  const headerActions = [
+    {
+      icon: <RefreshCw size={20} color={colors.text.secondary} />,
+      onPress: handleRefresh,
+      loading: isRefreshing,
+      accessibilityLabel: "Refresh bookmarks",
+    },
+    {
+      icon: <CircleCheck size={20} color={colors.text.secondary} />,
+      onPress: handleMarkAllRead,
+      accessibilityLabel: "Mark all as read",
+    },
+  ];
 
   useEffect(() => {
     fetchBookmarks();
@@ -184,8 +197,17 @@ export default function BookmarksList({
   if (isLoading && bookmarkedArticles.length === 0) {
     return (
       <View style={s.container}>
-        <ScreenHeader title="Saved" showBackButton={false} />
-        <LoadingState variant="page" message="Loading bookmarks…" />
+        <ScreenHeader
+          title="Saved"
+          showBackButton={false}
+          showMenuButton={isMobile}
+          onMenuPress={toggleMenu}
+          isRefreshing={isRefreshing}
+          rightActions={headerActions}
+        />
+        <View style={s.loadingContainer}>
+          <LoadingState variant="skeleton" count={3} />
+        </View>
       </View>
     );
   }
@@ -193,7 +215,14 @@ export default function BookmarksList({
   if (error) {
     return (
       <View style={s.container}>
-        <ScreenHeader title="Saved" showBackButton={false} />
+        <ScreenHeader
+          title="Saved"
+          showBackButton={false}
+          showMenuButton={isMobile}
+          onMenuPress={toggleMenu}
+          isRefreshing={isRefreshing}
+          rightActions={headerActions}
+        />
         <View style={s.errorContainer}>
           <AlertCircle size={48} color={colors.status.error} />
           <Text style={s.errorTitle}>Failed to load bookmarks</Text>
@@ -212,22 +241,10 @@ export default function BookmarksList({
       <ScreenHeader
         title="Saved"
         showBackButton={false}
-        isRefreshing={isRefreshing}
         showMenuButton={isMobile}
         onMenuPress={toggleMenu}
-        rightActions={[
-          {
-            icon: <RefreshCw size={20} color={colors.text.secondary} />,
-            onPress: handleRefresh,
-            loading: isRefreshing,
-            accessibilityLabel: "Refresh bookmarks",
-          },
-          {
-            icon: <CircleCheck size={20} color={colors.text.secondary} />,
-            onPress: handleMarkAllRead,
-            accessibilityLabel: "Mark all as read",
-          },
-        ]}
+        isRefreshing={isRefreshing}
+        rightActions={headerActions}
       />
 
       <FlatList
@@ -291,6 +308,10 @@ const styles = (colors: any, isMobile: boolean = false) =>
     },
     list: {
       padding: spacing.lg,
+    },
+    loadingContainer: {
+      flex: 1,
+      paddingTop: spacing.sm,
     },
     articleCard: {
       backgroundColor: colors.background.secondary,

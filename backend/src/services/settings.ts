@@ -5,6 +5,7 @@ interface UserSettings {
 }
 
 export const FIXED_REFRESH_INTERVAL_MINUTES = 15;
+export const DEFAULT_REFRESH_INTERVAL_MINUTES = FIXED_REFRESH_INTERVAL_MINUTES;
 
 const defaultSettings = {
   refresh_interval_minutes: FIXED_REFRESH_INTERVAL_MINUTES,
@@ -56,7 +57,6 @@ export function getUserSettings(userId: number): Settings {
     return {
       ...defaultSettings,
       ...JSON.parse(user.settings_json),
-      refresh_interval_minutes: FIXED_REFRESH_INTERVAL_MINUTES,
     };
   } catch {
     return { ...defaultSettings };
@@ -71,7 +71,6 @@ export function updateUserSettingsRaw(
   const next = {
     ...current,
     ...updates,
-    refresh_interval_minutes: FIXED_REFRESH_INTERVAL_MINUTES,
   };
   run("UPDATE users SET settings_json = ? WHERE id = ?", [
     JSON.stringify(next),

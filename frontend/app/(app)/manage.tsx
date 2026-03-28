@@ -66,9 +66,11 @@ import { Input } from "@/components/ui/Input";
 import { DiscoveryCard } from "@/components/DiscoveryCard";
 import Sidebar from "@/components/Sidebar";
 import { QuickAddGrid } from "@/components/QuickAddGrid";
+import { EqualWidthPills } from "@/components/ui/EqualWidthPills";
 import { useDebouncedDiscovery } from "@/hooks/useDebouncedDiscovery";
 import { isDuplicateFeed, suggestFolderName } from "@/utils/feedUtils";
 import { openExternalLink } from "@/utils/externalLink";
+import { getRefreshIndicatorState } from "@/utils/refreshStatus";
 
 type ModalType =
   | "edit_feed"
@@ -96,6 +98,7 @@ export default function ManageScreen() {
   const {
     feeds,
     folders,
+    refreshState,
     addFeed,
     deleteFeed,
     deleteFolder,
@@ -222,6 +225,7 @@ export default function ManageScreen() {
     () => <Search size={20} color={colors.text.inverse} />,
     [colors.text.inverse],
   );
+  const discoveryPillTextSize = width < 390 ? 10 : 11;
 
   // Memoized header actions to prevent re-renders
   const headerRightActions = useMemo(
@@ -244,6 +248,19 @@ export default function ManageScreen() {
     ],
     [isBulkMode, colors.primary, colors.text.secondary, toggleBulkMode],
   );
+
+  const refreshIndicatorState = getRefreshIndicatorState(refreshState);
+  const refreshIndicator = refreshIndicatorState
+    ? {
+        color:
+          refreshIndicatorState.variant === "error"
+            ? colors.error
+            : refreshIndicatorState.variant === "stale"
+              ? colors.warning
+              : colors.primary.DEFAULT,
+        accessibilityLabel: refreshIndicatorState.accessibilityLabel,
+      }
+    : null;
 
   const folderNameById = useMemo(() => {
     const entries = folders.map((folder) => [folder.id, folder.name] as const);
@@ -802,6 +819,7 @@ export default function ManageScreen() {
             useNativeDriver: Platform.OS !== "web",
           }).start();
         }}
+        refreshIndicator={refreshIndicator}
         rightActions={headerRightActions}
       />
 
@@ -811,32 +829,26 @@ export default function ManageScreen() {
           <SectionHeader title="Add Feed" />
 
           {/* Type Filter Pills */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={s.filterPillsContainer}
-            style={s.filterPillsScroll}
-          >
-            {discoveryTypes.map((type) => (
-              <TouchableOpacity
-                key={type}
-                style={[
-                  s.filterPill,
-                  discoveryType === type && s.filterPillActive,
-                ]}
-                onPress={() => setDiscoveryType(type)}
-              >
-                <Text
-                  style={[
-                    s.filterPillText,
-                    discoveryType === type && s.filterPillTextActive,
-                  ]}
-                >
-                  {type.charAt(0).toUpperCase() + type.slice(1)}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          <EqualWidthPills
+            items={discoveryTypes.map((type) => ({
+              id: type,
+              label: type.charAt(0).toUpperCase() + type.slice(1),
+              active: discoveryType === type,
+              onPress: () => setDiscoveryType(type),
+            }))}
+            rowStyle={s.filterPillsScroll}
+            pillStyle={s.filterPill}
+            activePillStyle={s.filterPillActive}
+            textStyle={s.filterPillText}
+            activeTextStyle={s.filterPillTextActive}
+            inactiveBackgroundColor={colors.background.tertiary}
+            activeBackgroundColor={colors.primary.DEFAULT}
+            inactiveBorderColor={colors.border.DEFAULT}
+            activeBorderColor={colors.primary.DEFAULT}
+            inactiveTextColor={colors.text.secondary}
+            activeTextColor={colors.text.inverse}
+            textSize={discoveryPillTextSize}
+          />
 
           {/* Search Input with Clear Button */}
           <View style={s.inputRow}>
@@ -2806,15 +2818,22 @@ const styles = (colors: any) =>
     // Missing Filter Styles
     filterPillsContainer: {
       flexDirection: "row",
-      gap: spacing.sm,
+      gap: 4,
       paddingBottom: spacing.sm,
+      width: '100%',
     },
     filterPillsScroll: {
-      flexGrow: 0,
+      flexDirection: 'row',
+      gap: 4,
+      marginTop: spacing.sm,
       marginBottom: spacing.sm,
+      paddingHorizontal: spacing.lg,
+      width: '100%',
     },
     filterPill: {
-      paddingHorizontal: spacing.md,
+      flex: 1,
+      minWidth: 0,
+      paddingHorizontal: 6,
       paddingVertical: 6,
       borderRadius: borderRadius.full,
       backgroundColor: colors.background.tertiary,
@@ -2826,9 +2845,10 @@ const styles = (colors: any) =>
       borderColor: colors.primary.DEFAULT,
     },
     filterPillText: {
-      fontSize: 13,
+      fontSize: 11,
       color: colors.text.secondary,
       fontWeight: "500",
+      textAlign: 'center',
     },
     filterPillTextActive: {
       color: colors.text.inverse,

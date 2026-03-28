@@ -210,6 +210,24 @@ export const ACCENT_COLORS = {
         dark: '#ea580c',
         soft: '#f9731625',
     },
+    amber: {
+        DEFAULT: '#fbbf24',
+        light: '#fcd34d',
+        dark: '#d97706',
+        soft: '#fbbf2425',
+    },
+    lime: {
+        DEFAULT: '#84cc16',
+        light: '#a3e635',
+        dark: '#65a30d',
+        soft: '#84cc1625',
+    },
+    cyan: {
+        DEFAULT: '#06b6d4',
+        light: '#22d3ee',
+        dark: '#0891b2',
+        soft: '#06b6d425',
+    },
     teal: {
         DEFAULT: '#14b8a6', // Teal 500
         light: '#2dd4bf',

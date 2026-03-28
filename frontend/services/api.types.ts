@@ -124,7 +124,7 @@ export interface Settings {
     font_family?: 'sans' | 'serif';
     reader_theme?: 'default' | 'sepia' | 'paper' | 'dark';
     reader_line_height?: number;
-    accent_color?: 'emerald' | 'sky' | 'indigo' | 'purple' | 'rose' | 'orange' | 'teal' | 'slate';
+    accent_color?: 'emerald' | 'sky' | 'indigo' | 'purple' | 'rose' | 'orange' | 'amber' | 'lime' | 'cyan' | 'teal' | 'slate';
     feed_fetch_limits?: FeedFetchLimits;
 }
 

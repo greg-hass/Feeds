@@ -91,3 +91,30 @@ export function getRefreshPresentation(refreshState: RefreshState) {
         lastRefreshedAt: lastSuccessfulRefreshAt,
     };
 }
+
+export function getRefreshIndicatorState(refreshState: RefreshState) {
+    const presentation = getRefreshPresentation(refreshState);
+
+    if (presentation.isError) {
+        return {
+            variant: 'error' as const,
+            accessibilityLabel: presentation.sidebarLabel,
+        };
+    }
+
+    if (presentation.isRefreshing) {
+        return {
+            variant: 'active' as const,
+            accessibilityLabel: presentation.sidebarLabel,
+        };
+    }
+
+    if (presentation.isStale) {
+        return {
+            variant: 'stale' as const,
+            accessibilityLabel: presentation.sidebarLabel,
+        };
+    }
+
+    return null;
+}

@@ -207,7 +207,7 @@ const styles = (
 ) => ({
     articleCard: {
         backgroundColor: 'transparent',
-        paddingHorizontal: densitySpacing.lg,
+        paddingHorizontal: densitySpacing.md,
         paddingVertical: densitySpacing.md,
         marginBottom: 0,
         position: 'relative' as const,
@@ -223,7 +223,7 @@ const styles = (
         backgroundColor: colors.primary.soft,
     },
     articleFeatured: {
-        paddingHorizontal: densitySpacing.lg,
+        paddingHorizontal: densitySpacing.md,
         paddingVertical: densitySpacing.md,
     },
     articleRead: {

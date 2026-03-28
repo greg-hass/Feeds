@@ -1,13 +1,7 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, FlatList, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { useColors, spacing, borderRadius } from '@/theme';
-
-interface FilterItem {
-    id: string;
-    label?: string;
-    type: 'toggle' | 'filter';
-    active: boolean;
-}
+import { EqualWidthPills, EqualWidthPillItem } from '@/components/ui/EqualWidthPills';
 
 interface FilterPillsProps {
     unreadOnly: boolean;
@@ -23,49 +17,39 @@ const FilterPills = React.memo<FilterPillsProps>(({ unreadOnly, activeType, onFi
     const colors = useColors();
     const s = styles(colors);
 
-    const filterData: FilterItem[] = [
-        { id: 'unread', label: 'Unread', type: 'toggle', active: unreadOnly },
-        { id: 'all', label: 'All', type: 'filter', active: !activeType },
-        { id: 'rss', label: 'RSS', type: 'filter', active: activeType === 'rss' },
-        { id: 'youtube', label: 'Videos', type: 'filter', active: activeType === 'youtube' },
-        { id: 'reddit', label: 'Reddit', type: 'filter', active: activeType === 'reddit' },
-        { id: 'podcast', label: 'Podcasts', type: 'filter', active: activeType === 'podcast' },
-    ];
-
-    const renderFilterItem = ({ item }: { item: FilterItem }) => {
-        return (
-            <TouchableOpacity
-                style={[
-                    s.filterPill,
-                    item.active ? s.filterPillActive : null,
-                ]}
-                onPress={() => onFilterChange(item.id)}
-                accessibilityRole="button"
-                accessibilityLabel={item.label}
-                accessibilityState={{ selected: item.active }}
-            >
-                {item.id === 'unread' && (
-                    <View style={[s.unreadDot, item.active ? s.unreadDotActive : null]} />
-                )}
-                <Text style={[
-                    s.filterText,
-                    item.active ? s.filterTextActive : null
-                ]}>
-                    {item.label}
-                </Text>
-            </TouchableOpacity>
-        );
-    };
+    const filterData: EqualWidthPillItem[] = [
+        { id: 'unread', label: 'Unread', active: unreadOnly, onPress: () => onFilterChange('unread') },
+        { id: 'all', label: 'All', active: !activeType, onPress: () => onFilterChange('all') },
+        { id: 'rss', label: 'RSS', active: activeType === 'rss', onPress: () => onFilterChange('rss') },
+        { id: 'youtube', label: 'Videos', active: activeType === 'youtube', onPress: () => onFilterChange('youtube') },
+        { id: 'reddit', label: 'Reddit', active: activeType === 'reddit', onPress: () => onFilterChange('reddit') },
+        { id: 'podcast', label: 'Podcasts', active: activeType === 'podcast', onPress: () => onFilterChange('podcast') },
+    ].map((item) => ({
+        id: item.id,
+        label: item.label ?? item.id,
+        active: item.active,
+        onPress: item.onPress,
+        accessibilityLabel: item.label,
+        leading: item.id === 'unread' ? (
+            <View style={[s.unreadDot, item.active ? s.unreadDotActive : null]} />
+        ) : undefined,
+    }));
 
     return (
         <View style={s.filterWrapper}>
-            <FlatList
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={s.filterScroll}
-                data={filterData}
-                keyExtractor={item => item.id}
-                renderItem={renderFilterItem}
+            <EqualWidthPills
+                items={filterData}
+                rowStyle={s.filterRow}
+                pillStyle={s.filterPill}
+                activePillStyle={s.filterPillActive}
+                textStyle={s.filterText}
+                activeTextStyle={s.filterTextActive}
+                inactiveBackgroundColor={colors.background.secondary}
+                activeBackgroundColor={colors.primary.DEFAULT}
+                inactiveBorderColor={colors.border.DEFAULT}
+                activeBorderColor={colors.primary.DEFAULT}
+                inactiveTextColor={colors.text.secondary}
+                activeTextColor={colors.text.inverse}
             />
         </View>
     );
@@ -85,38 +69,29 @@ const styles = (colors: any) => StyleSheet.create({
     filterWrapper: {
         borderBottomWidth: 1,
         borderBottomColor: colors.border.DEFAULT,
-        paddingTop: spacing.xs,
-        paddingBottom: spacing.sm,
+        paddingVertical: spacing.sm,
+        width: '100%',
     },
-    filterScroll: {
+    filterRow: {
         paddingHorizontal: spacing.lg,
-        gap: 4,
-        alignItems: 'center' as const,
     },
     filterPill: {
-        flexDirection: 'row' as const,
-        alignItems: 'center' as const,
-        justifyContent: 'center' as const,
-        gap: 4,
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: borderRadius.full,
-        backgroundColor: colors.background.secondary,
-        borderWidth: 1,
-        borderColor: colors.border.DEFAULT,
-        minWidth: 0,
+        paddingVertical: 5,
     },
     filterPillActive: {
-        backgroundColor: colors.primary?.soft ?? `${colors.primary?.DEFAULT ?? colors.primary}22`,
+        backgroundColor: colors.primary?.DEFAULT ?? colors.primary,
         borderColor: colors.primary?.DEFAULT ?? colors.primary,
     },
     filterText: {
-        fontSize: 10,
+        fontSize: 9,
         fontWeight: '700' as const,
         color: colors.text.secondary,
+        textAlign: 'center' as const,
+        minWidth: 0,
+        flexShrink: 1,
     },
     filterTextActive: {
-        color: colors.primary?.DEFAULT ?? colors.primary,
+        color: colors.text.inverse,
     },
     unreadDot: {
         width: 5,

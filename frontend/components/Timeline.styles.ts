@@ -17,11 +17,11 @@ export const timelineStyles = (colors: any, isMobile: boolean) => StyleSheet.cre
     filterWrapper: {
         borderBottomWidth: 1,
         borderBottomColor: colors.border.DEFAULT,
-        paddingBottom: spacing.md,
+        paddingVertical: spacing.sm,
     },
     filterScroll: {
         paddingHorizontal: spacing.lg,
-        gap: 8,
+        gap: 4,
         alignItems: 'center',
     },
     headerLeft: {
@@ -69,7 +69,7 @@ export const timelineStyles = (colors: any, isMobile: boolean) => StyleSheet.cre
         padding: spacing.sm,
     },
     list: {
-        paddingHorizontal: spacing.lg,
+        paddingHorizontal: spacing.sm,
         paddingTop: spacing.sm,
         paddingBottom: spacing.lg,
     },
@@ -97,7 +97,7 @@ export const timelineStyles = (colors: any, isMobile: boolean) => StyleSheet.cre
         borderRadius: borderRadius.xl,
     },
     swipeActionButton: {
-        width: 80,
+        width: 76,
         height: '100%',
         justifyContent: 'center',
         alignItems: 'center',

@@ -26,6 +26,10 @@ interface ScreenHeaderProps {
     showMenuButton?: boolean;
     onMenuPress?: () => void;
     lastRefreshed?: Date | null;
+    refreshIndicator?: {
+        color: string;
+        accessibilityLabel?: string;
+    } | null;
 }
 
 export const ScreenHeader = ({
@@ -41,6 +45,7 @@ export const ScreenHeader = ({
     showMenuButton = false,
     onMenuPress,
     lastRefreshed,
+    refreshIndicator,
 }: ScreenHeaderProps) => {
     const router = useRouter();
     const colors = useColors();
@@ -120,9 +125,16 @@ export const ScreenHeader = ({
             </View>
 
             {/* Right section */}
-            {(actions.length > 0 || lastRefreshedLabel) && (
+            {(actions.length > 0 || lastRefreshedLabel || refreshIndicator) && (
                 <View style={s.rightContainer}>
                     {lastRefreshedLabel ? <Text style={s.timerText}>{lastRefreshedLabel}</Text> : null}
+                    {refreshIndicator ? (
+                        <View
+                            style={[s.statusDot, { backgroundColor: refreshIndicator.color }]}
+                            accessibilityRole="text"
+                            accessibilityLabel={refreshIndicator.accessibilityLabel || 'Feed refresh status'}
+                        />
+                    ) : null}
                     {actions.map((action, index) => (
                         <TouchableOpacity
                             key={index}
@@ -242,5 +254,12 @@ const styles = (colors: any) => StyleSheet.create({
         marginRight: spacing.xs,
         flexShrink: 1,
         maxWidth: Platform.OS === 'web' ? 200 : 100,
+    },
+    statusDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        marginRight: spacing.xs,
+        flexShrink: 0,
     },
 });

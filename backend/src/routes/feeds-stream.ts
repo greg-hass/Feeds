@@ -2,7 +2,8 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { queryAll, queryOne, run } from '../db/index.js';
 import { refreshFeed, FeedToRefreshWithCache } from '../services/feed-refresh.js';
 import { FeedType } from '../services/feed-parser.js';
-import { getUserSettings, updateUserSettingsRaw } from '../services/settings.js';
+import { getUserSettings } from '../services/settings.js';
+import { scheduleNextGlobalRefresh } from '../services/refresh-schedule.js';
 import { onRefreshEvent, RefreshEvent } from '../services/refresh-events.js';
 import { Feed, RefreshFeedUpdate, RefreshStats, RefreshProgressEvent } from '../types/index.js';
 
@@ -256,12 +257,7 @@ export async function feedsStreamRoutes(app: FastifyInstance) {
 
             if (!isCancelled && refreshAll) {
                 const settings = getUserSettings(userId);
-                const intervalMinutes = settings.refresh_interval_minutes;
-                const now = new Date();
-                updateUserSettingsRaw(userId, {
-                    global_last_refresh_at: now.toISOString(),
-                    global_next_refresh_at: new Date(now.getTime() + intervalMinutes * 60 * 1000).toISOString(),
-                });
+                scheduleNextGlobalRefresh(userId, settings.refresh_interval_minutes);
 
                 run(
                     `UPDATE feeds SET

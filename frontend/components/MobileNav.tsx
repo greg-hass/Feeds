@@ -3,7 +3,6 @@ import { View, TouchableOpacity, Text, StyleSheet, Platform } from 'react-native
 import { useRouter, usePathname } from 'expo-router';
 import { Home, Bookmark, Rss, Settings } from 'lucide-react-native';
 import { useColors, spacing, borderRadius } from '@/theme';
-import { useFeedStore } from '@/stores';
 
 interface NavItem {
     icon: typeof Home;
@@ -22,16 +21,8 @@ export default function MobileNav() {
     const router = useRouter();
     const pathname = usePathname();
     const colors = useColors();
-    const { refreshState } = useFeedStore();
 
     const s = styles(colors);
-    const refreshDotStyle = refreshState.phase === 'error'
-        ? s.refreshDotError
-        : refreshState.freshness.status === 'stale'
-            ? s.refreshDotStale
-            : refreshState.activity.isRefreshing || refreshState.activity.isSyncing
-                ? s.refreshDotActive
-                : null;
 
     const isActive = (path: string) => {
         // Normalize the path by removing the (app) group prefix
@@ -51,7 +42,6 @@ export default function MobileNav() {
 
     return (
         <View style={s.container}>
-            {refreshDotStyle && <View style={[s.refreshDot, refreshDotStyle]} />}
             {navItems.map((item) => {
                 const active = isActive(item.path);
                 const IconComponent = item.icon;
@@ -104,24 +94,6 @@ const styles = (colors: any) => {
         paddingTop: 6,
         position: 'relative',
     },
-    refreshDot: {
-        position: 'absolute',
-        top: 6,
-        right: spacing.lg,
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        zIndex: 2,
-    },
-    refreshDotActive: {
-        backgroundColor: colors.primary.DEFAULT,
-    },
-    refreshDotStale: {
-        backgroundColor: colors.warning,
-    },
-    refreshDotError: {
-        backgroundColor: colors.error,
-    },
     navItem: {
         flex: 1,
         alignItems: 'center',
@@ -133,9 +105,6 @@ const styles = (colors: any) => {
         borderRadius: borderRadius.lg,
     },
     navItemActive: {
-        backgroundColor: colors.primary.soft ?? `${colors.primary.DEFAULT}18`,
-        borderWidth: 1,
-        borderColor: colors.primary.DEFAULT,
     },
     label: {
         fontSize: 9,
@@ -143,8 +112,8 @@ const styles = (colors: any) => {
         fontWeight: '500',
     },
     labelActive: {
-        color: colors.primary.DEFAULT,
-        fontWeight: '700',
+        color: colors.text.primary,
+        fontWeight: '600',
     },
 });
 };

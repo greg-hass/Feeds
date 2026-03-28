@@ -57,8 +57,11 @@ export const useSettingsStore = create<SettingsState>()(
             },
 
             updateSettings: async (updates: Partial<Settings>) => {
-                const { settings } = await api.updateSettings(updates);
-                set({ settings });
+                const { settings, global_next_refresh_at } = await api.updateSettings(updates);
+                set({
+                    settings,
+                    globalNextRefreshAt: global_next_refresh_at || null,
+                });
             },
         }),
         {
@@ -66,6 +69,7 @@ export const useSettingsStore = create<SettingsState>()(
             storage: createJSONStorage(() => AsyncStorage),
             partialize: (state: SettingsState) => ({
                 settings: state.settings,
+                globalNextRefreshAt: state.globalNextRefreshAt,
             }),
         }
     )

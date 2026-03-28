@@ -98,4 +98,27 @@ describe('Settings API Routes', () => {
         expect(refreshed.statusCode).toBe(200);
         expect(JSON.parse(refreshed.payload).settings.keep_screen_awake).toBe(false);
     });
+
+    it('persists refresh_interval_minutes when updating settings', async () => {
+        const response = await app.inject({
+            method: 'PATCH',
+            url: '/api/v1/settings',
+            payload: {
+                refresh_interval_minutes: 30,
+            },
+        });
+
+        expect(response.statusCode).toBe(200);
+        const body = JSON.parse(response.payload);
+        expect(body.settings.refresh_interval_minutes).toBe(30);
+        expect(body.global_next_refresh_at).toBeTruthy();
+
+        const refreshed = await app.inject({
+            method: 'GET',
+            url: '/api/v1/settings',
+        });
+
+        expect(refreshed.statusCode).toBe(200);
+        expect(JSON.parse(refreshed.payload).settings.refresh_interval_minutes).toBe(30);
+    });
 });

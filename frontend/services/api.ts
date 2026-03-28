@@ -540,7 +540,7 @@ class ApiClient {
     }
 
     async updateSettings(settings: Partial<Settings>) {
-        return this.request<{ settings: Settings }>('/settings', {
+        return this.request<{ settings: Settings; global_next_refresh_at: string | null }>('/settings', {
             method: 'PATCH',
             body: settings,
         });

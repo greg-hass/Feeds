@@ -19,6 +19,7 @@ import { ScrollView } from 'react-native';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import Sidebar from './Sidebar';
 import { RefreshCw, CircleCheck, X } from 'lucide-react-native';
+import { getRefreshIndicatorState } from '@/utils/refreshStatus';
 
 interface TimelineProps {
     onArticlePress?: (article: Article) => void;
@@ -186,6 +187,19 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
         outputRange: ['0deg', '360deg'],
     });
 
+    const refreshIndicatorState = getRefreshIndicatorState(refreshState);
+    const refreshIndicator = refreshIndicatorState
+        ? {
+            color:
+                refreshIndicatorState.variant === 'error'
+                    ? colors.error
+                    : refreshIndicatorState.variant === 'stale'
+                        ? colors.warning
+                        : colors.primary.DEFAULT,
+            accessibilityLabel: refreshIndicatorState.accessibilityLabel,
+        }
+        : null;
+
     return (
         <View testID="timeline-screen" style={styles.container}>
             <ScreenHeader
@@ -194,6 +208,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                 showMenuButton={isMobile}
                 onMenuPress={toggleMenu}
                 lastRefreshed={lastRefreshed}
+                refreshIndicator={refreshIndicator}
                 rightActions={[
                     {
                         icon: (

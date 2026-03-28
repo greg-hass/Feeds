@@ -13,8 +13,12 @@ vi.mock('../../src/db/index.js', () => ({
 // Mock settings
 vi.mock('../../src/services/settings.js', () => ({
     getUserSettings: vi.fn(),
-    getUserSettingsRaw: vi.fn(),
-    updateUserSettingsRaw: vi.fn(),
+}));
+
+// Mock refresh schedule
+vi.mock('../../src/services/refresh-schedule.js', () => ({
+    getGlobalRefreshSchedule: vi.fn(),
+    scheduleNextGlobalRefresh: vi.fn(),
 }));
 
 // Mock feed-refresh
@@ -39,7 +43,8 @@ vi.mock('../../src/services/image-cache.js', () => ({
 }));
 
 import { queryAll } from '../../src/db/index.js';
-import { getUserSettings, getUserSettingsRaw, updateUserSettingsRaw } from '../../src/services/settings.js';
+import { getUserSettings } from '../../src/services/settings.js';
+import { getGlobalRefreshSchedule } from '../../src/services/refresh-schedule.js';
 import { refreshFeed } from '../../src/services/feed-refresh.js';
 
 describe('Scheduler', () => {
@@ -60,7 +65,7 @@ describe('Scheduler', () => {
             
             // Mock settings to allow refresh
             (getUserSettings as any).mockReturnValue({ refresh_interval_minutes: 60 });
-            (getUserSettingsRaw as any).mockReturnValue({});
+            (getGlobalRefreshSchedule as any).mockReturnValue({ lastRefreshAt: null, nextRefreshAt: null });
             
             // Mock feeds query to throw error
             (queryAll as any).mockImplementation(() => {
@@ -85,7 +90,7 @@ describe('Scheduler', () => {
             const { startScheduler, stopScheduler } = await import('../../src/services/scheduler.js');
             
             (getUserSettings as any).mockReturnValue({ refresh_interval_minutes: 60 });
-            (getUserSettingsRaw as any).mockReturnValue({});
+            (getGlobalRefreshSchedule as any).mockReturnValue({ lastRefreshAt: null, nextRefreshAt: null });
             (queryAll as any).mockReturnValue([]);
             
             startScheduler();
@@ -103,7 +108,7 @@ describe('Scheduler', () => {
             const { startScheduler, stopScheduler } = await import('../../src/services/scheduler.js');
             
             (getUserSettings as any).mockReturnValue({ refresh_interval_minutes: 60 });
-            (getUserSettingsRaw as any).mockReturnValue({});
+            (getGlobalRefreshSchedule as any).mockReturnValue({ lastRefreshAt: null, nextRefreshAt: null });
             (queryAll as any).mockImplementation(() => {
                 throw new Error('Database error');
             });
@@ -173,7 +178,7 @@ describe('Scheduler', () => {
             })) as any;
 
             (getUserSettings as any).mockReturnValue({ refresh_interval_minutes: 60 });
-            (getUserSettingsRaw as any).mockReturnValue({});
+            (getGlobalRefreshSchedule as any).mockReturnValue({ lastRefreshAt: null, nextRefreshAt: null });
             (queryAll as any).mockReturnValue([]);
 
             const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -200,7 +205,7 @@ describe('Scheduler', () => {
             expect(isRefreshing()).toBe(false);
             
             (getUserSettings as any).mockReturnValue({ refresh_interval_minutes: 60 });
-            (getUserSettingsRaw as any).mockReturnValue({});
+            (getGlobalRefreshSchedule as any).mockReturnValue({ lastRefreshAt: null, nextRefreshAt: null });
             (queryAll as any).mockReturnValue([]);
             
             startScheduler();
@@ -216,7 +221,7 @@ describe('Scheduler', () => {
             const { startScheduler, stopScheduler } = await import('../../src/services/scheduler.js');
             
             (getUserSettings as any).mockReturnValue({ refresh_interval_minutes: 60 });
-            (getUserSettingsRaw as any).mockReturnValue({});
+            (getGlobalRefreshSchedule as any).mockReturnValue({ lastRefreshAt: null, nextRefreshAt: null });
             
             // Create a slow feed refresh that takes time
             let resolveRefresh: () => void;
@@ -294,7 +299,7 @@ describe('Scheduler', () => {
             const { startScheduler, stopScheduler } = await import('../../src/services/scheduler.js');
             
             (getUserSettings as any).mockReturnValue({ refresh_interval_minutes: 60 });
-            (getUserSettingsRaw as any).mockReturnValue({});
+            (getGlobalRefreshSchedule as any).mockReturnValue({ lastRefreshAt: null, nextRefreshAt: null });
             (queryAll as any).mockReturnValue([]);
             
             startScheduler();
@@ -320,9 +325,7 @@ describe('Scheduler', () => {
             const futureTime = new Date(Date.now() + 3600000).toISOString(); // 1 hour from now
             
             (getUserSettings as any).mockReturnValue({ refresh_interval_minutes: 60 });
-            (getUserSettingsRaw as any).mockReturnValue({
-                global_next_refresh_at: futureTime,
-            });
+            (getGlobalRefreshSchedule as any).mockReturnValue({ lastRefreshAt: null, nextRefreshAt: futureTime });
             
             startScheduler();
             await vi.advanceTimersByTimeAsync(5000);
@@ -339,9 +342,7 @@ describe('Scheduler', () => {
             const pastTime = new Date(Date.now() - 1000).toISOString(); // 1 second ago
             
             (getUserSettings as any).mockReturnValue({ refresh_interval_minutes: 60 });
-            (getUserSettingsRaw as any).mockReturnValue({
-                global_next_refresh_at: pastTime,
-            });
+            (getGlobalRefreshSchedule as any).mockReturnValue({ lastRefreshAt: null, nextRefreshAt: pastTime });
             (queryAll as any).mockReturnValue([]);
             
             startScheduler();

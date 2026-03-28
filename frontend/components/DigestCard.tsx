@@ -14,11 +14,6 @@ export const DigestCard = () => {
 
     if (!pendingDigest) return null;
 
-    const topics = (pendingDigest.topics || []).slice(0, 3);
-    const topicSummary = topics.length > 0
-        ? topics.join(' · ')
-        : 'A new digest is ready';
-
     const handleOpen = async () => {
         await dismissDigest(pendingDigest.id);
         router.push('/digest');
@@ -31,24 +26,24 @@ export const DigestCard = () => {
             onPress={handleOpen}
         >
             <LinearGradient
-                colors={[colors.background.secondary, colors.background.tertiary]}
+                colors={[
+                    colors.primary.dark ?? colors.primary.DEFAULT,
+                    colors.primary.DEFAULT,
+                ]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={s.gradient}
             >
                 <View style={s.header}>
                     <View style={s.titleRow}>
-                        <Sparkles size={16} color={colors.primary.DEFAULT} style={s.icon} />
+                        <Sparkles size={16} color={colors.text.inverse} style={s.icon} />
                         <View style={s.textBlock}>
                             <Text style={s.title} numberOfLines={1}>
                                 {pendingDigest.title || 'Your Daily Digest'}
                             </Text>
-                            <Text style={s.subtitle} numberOfLines={1}>
-                                {topicSummary}
-                            </Text>
                         </View>
                     </View>
-                    <ChevronRight size={18} color={colors.text.tertiary} />
+                    <ChevronRight size={18} color={colors.text.inverse} />
                 </View>
 
                 <Text style={s.footerText} numberOfLines={1}>
@@ -62,12 +57,10 @@ export const DigestCard = () => {
 const styles = (colors: any) => StyleSheet.create({
     container: {
         marginHorizontal: spacing.lg,
-        marginTop: spacing.md,
+        marginTop: spacing.sm,
         marginBottom: spacing.sm,
         borderRadius: borderRadius.lg,
         overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: colors.border.DEFAULT,
     },
     gradient: {
         paddingHorizontal: spacing.md,
@@ -91,21 +84,15 @@ const styles = (colors: any) => StyleSheet.create({
         flex: 1,
     },
     title: {
-        color: colors.text.primary,
+        color: colors.text.inverse,
         fontSize: 15,
         fontWeight: '800',
         letterSpacing: -0.2,
     },
-    subtitle: {
-        color: colors.text.secondary,
-        fontSize: 12,
-        fontWeight: '500',
-        marginTop: 2,
-    },
     footerText: {
-        color: colors.text.tertiary,
-        fontSize: 12,
+        color: `${colors.text.inverse}cc`,
+        fontSize: 11,
         fontWeight: '600',
-        marginTop: spacing.xs,
+        marginTop: 2,
     },
 });

@@ -14,7 +14,7 @@ import { Dropdown } from '@/components/Dropdown';
 export default function SettingsScreen() {
     const router = useRouter();
     const colors = useColors();
-    const { settings, fetchSettings, updateSettings } = useSettingsStore();
+    const { settings, globalNextRefreshAt, fetchSettings, updateSettings } = useSettingsStore();
     const { settings: digestSettings, fetchSettings: fetchDigestSettings, updateSettings: updateDigestSettings } = useDigestStore();
     const { fetchFeeds, refreshAllFeeds } = useFeedStore();
     const { show } = useToastStore();
@@ -47,6 +47,53 @@ export default function SettingsScreen() {
         const time = `${hour.toString().padStart(2, '0')}:${minute}`;
         return { label: time, value: time };
     });
+
+    const refreshIntervalOptions = [
+        { label: 'Every 5 minutes', value: 5 },
+        { label: 'Every 10 minutes', value: 10 },
+        { label: 'Every 15 minutes', value: 15 },
+        { label: 'Every 30 minutes', value: 30 },
+        { label: 'Every hour', value: 60 },
+        { label: 'Every 2 hours', value: 120 },
+        { label: 'Every 4 hours', value: 240 },
+        { label: 'Every 12 hours', value: 720 },
+        { label: 'Every 24 hours', value: 1440 },
+    ];
+
+    const formatNextRefresh = (iso: string | null): string => {
+        if (!iso) return 'Not scheduled';
+
+        const date = new Date(iso);
+        if (Number.isNaN(date.getTime())) return 'Not scheduled';
+
+        const localTime = date.toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+        const diffMs = date.getTime() - Date.now();
+        if (diffMs <= 0) return 'Due now';
+
+        const diffMinutes = Math.ceil(diffMs / 60000);
+        if (diffMinutes < 60) {
+            return `In ${diffMinutes}m · ${localTime}`;
+        }
+
+        const hours = Math.floor(diffMinutes / 60);
+        const minutes = diffMinutes % 60;
+        if (hours < 24) {
+            return minutes > 0
+                ? `In ${hours}h ${minutes}m · ${localTime}`
+                : `In ${hours}h · ${localTime}`;
+        }
+
+        return `${date.toLocaleString([], {
+            weekday: 'short',
+            hour: '2-digit',
+            minute: '2-digit',
+        })} · ${localTime}`;
+    };
+
+    const nextRefreshLabel = formatNextRefresh(globalNextRefreshAt);
 
     const handleDigestToggle = async (key: string, value: any) => {
         await updateDigestSettings({ [key]: value });
@@ -483,9 +530,18 @@ export default function SettingsScreen() {
                         <View style={s.row}>
                             <View style={{ flex: 1 }}>
                                 <Text style={s.label}>Refresh Interval</Text>
-                                <Text style={s.hint}>Backend schedule, fixed for stability</Text>
+                                <Text style={s.hint}>Backend refresh schedule</Text>
                             </View>
-                            <Text style={s.value}>Every 15 minutes</Text>
+                            <Dropdown
+                                value={String(settings.refresh_interval_minutes || 15)}
+                                options={refreshIntervalOptions}
+                                onSelect={(value) => handleToggle('refresh_interval_minutes', Number(value) as Settings['refresh_interval_minutes'])}
+                            />
+                        </View>
+
+                        <View style={s.nextRefreshRow}>
+                            <Text style={s.nextRefreshLabel}>Next Refresh</Text>
+                            <Text style={s.nextRefreshValue}>{nextRefreshLabel}</Text>
                         </View>
 
                         <View style={s.divider} />
@@ -578,6 +634,23 @@ const styles = (colors: any) => StyleSheet.create({
     value: {
         fontSize: 15,
         color: colors.text.secondary,
+    },
+    nextRefreshRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: spacing.sm,
+        marginBottom: spacing.xs,
+    },
+    nextRefreshLabel: {
+        fontSize: 13,
+        color: colors.text.tertiary,
+        fontWeight: '500',
+    },
+    nextRefreshValue: {
+        fontSize: 13,
+        color: colors.primary.DEFAULT,
+        fontWeight: '600',
     },
     divider: {
         height: 1,
