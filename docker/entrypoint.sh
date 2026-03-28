@@ -1,8 +1,10 @@
 #!/bin/sh
 set -e
 
-# Fix permissions for non-root user
-chown -R feeds:feeds /app /data
+# Fix permissions for the writable data volume only.
+# /app is already owned correctly at build time, and chowning it on every boot
+# adds a lot of unnecessary startup time.
+chown -R feeds:feeds /data
 
 # Start nginx as root so it can bind to port 80, then daemonize.
 nginx

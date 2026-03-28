@@ -33,13 +33,18 @@ cleanup() {
 }
 
 wait_for_status() {
-    scenario_port="$1"
-    attempts=45
+    scenario_project="$1"
+    scenario_port="$2"
+    attempts=60
     status_json=''
     until status_json="$(curl -fsS "http://127.0.0.1:${scenario_port}/api/v1/auth/status" 2>/dev/null)"; do
         attempts=$((attempts - 1))
         if [ "$attempts" -le 0 ]; then
             echo "Smoke test failed: auth status endpoint did not become ready on port ${scenario_port}" >&2
+            echo "---- docker compose ps (${scenario_project}) ----" >&2
+            compose_with_env "$scenario_project" "$scenario_port" "" ps >&2 || true
+            echo "---- docker compose logs (${scenario_project}) ----" >&2
+            compose_with_env "$scenario_project" "$scenario_port" "" logs --no-color --tail=200 >&2 || true
             exit 1
         fi
         sleep 2
@@ -77,7 +82,7 @@ bootstrap_port="$((PORT + 1))"
 
 compose_with_env "$setup_project" "$PORT" "" up -d --build
 
-status_json="$(wait_for_status "$PORT")"
+status_json="$(wait_for_status "$setup_project" "$PORT")"
 printf '%s' "$status_json" | grep -q '"authEnabled":true'
 printf '%s' "$status_json" | grep -q '"needsSetup":true'
 printf '%s' "$status_json" | grep -q '"hasEnvPassword":false'
@@ -114,7 +119,7 @@ assert_protected_endpoint "$PORT" "$login_token"
 
 compose_with_env "$bootstrap_project" "$bootstrap_port" "$BOOTSTRAP_PASSWORD" up -d --build
 
-bootstrap_status="$(wait_for_status "$bootstrap_port")"
+bootstrap_status="$(wait_for_status "$bootstrap_project" "$bootstrap_port")"
 printf '%s' "$bootstrap_status" | grep -q '"authEnabled":true'
 printf '%s' "$bootstrap_status" | grep -q '"needsSetup":true'
 printf '%s' "$bootstrap_status" | grep -q '"hasEnvPassword":true'
