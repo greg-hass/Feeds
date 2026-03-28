@@ -42,7 +42,7 @@ export const EqualWidthPills = React.memo(({
     activeBorderColor,
     inactiveTextColor,
     activeTextColor,
-    textSize = 11,
+    textSize = 12,
 }: EqualWidthPillsProps) => {
     const colors = useColors();
     const s = styles(colors);
@@ -125,10 +125,9 @@ const styles = (colors: any) => StyleSheet.create({
         borderWidth: 1,
     },
     text: {
-        fontWeight: '700',
+        fontWeight: '600',
         textAlign: 'center',
         minWidth: 0,
         flexShrink: 1,
     },
 });
-

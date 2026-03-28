@@ -225,7 +225,7 @@ export default function ManageScreen() {
     () => <Search size={20} color={colors.text.inverse} />,
     [colors.text.inverse],
   );
-  const discoveryPillTextSize = width < 390 ? 10 : 11;
+  const discoveryPillTextSize = width < 390 ? 11 : 12;
 
   // Memoized header actions to prevent re-renders
   const headerRightActions = useMemo(

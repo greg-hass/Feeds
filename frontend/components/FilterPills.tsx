@@ -94,12 +94,12 @@ const styles = (colors: any) => StyleSheet.create({
         color: colors.text.inverse,
     },
     unreadDot: {
-        width: 5,
-        height: 5,
-        borderRadius: 2.5,
+        width: 6,
+        height: 6,
+        borderRadius: 3,
         backgroundColor: colors.text.tertiary,
     },
     unreadDotActive: {
-        backgroundColor: colors.primary?.DEFAULT ?? colors.primary,
+        backgroundColor: colors.background.primary,
     },
 });

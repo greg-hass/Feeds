@@ -51,19 +51,6 @@ export default function BookmarksList({
   const [sidebarAnim] = useState(new Animated.Value(-300));
 
   const s = styles(colors, isMobile);
-  const headerActions = [
-    {
-      icon: <RefreshCw size={20} color={colors.text.secondary} />,
-      onPress: handleRefresh,
-      loading: isRefreshing,
-      accessibilityLabel: "Refresh bookmarks",
-    },
-    {
-      icon: <CircleCheck size={20} color={colors.text.secondary} />,
-      onPress: handleMarkAllRead,
-      accessibilityLabel: "Mark all as read",
-    },
-  ];
 
   useEffect(() => {
     fetchBookmarks();
@@ -100,6 +87,20 @@ export default function BookmarksList({
       router.push(`/(app)/article/${article.id}`);
     }
   };
+
+  const headerActions = [
+    {
+      icon: <RefreshCw size={20} color={colors.text.secondary} />,
+      onPress: handleRefresh,
+      loading: isRefreshing,
+      accessibilityLabel: "Refresh bookmarks",
+    },
+    {
+      icon: <CircleCheck size={20} color={colors.text.secondary} />,
+      onPress: handleMarkAllRead,
+      accessibilityLabel: "Mark all as read",
+    },
+  ];
 
   const getArticleThumbnail = (item: Article): string | null => {
     if (item.feed_type === "youtube") {
