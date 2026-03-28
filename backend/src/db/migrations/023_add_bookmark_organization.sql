@@ -1,4 +1,4 @@
--- Migration 022: Bookmark organization
+-- Migration 023: Bookmark organization
 -- Adds bookmark folders and archive metadata while preserving the existing
 -- article-level is_bookmarked flag for compatibility.
 
