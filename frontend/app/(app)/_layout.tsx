@@ -128,6 +128,7 @@ export default function AppLayout() {
                     total={refreshState.progress?.total || 0}
                     completed={refreshState.progress?.completed || 0}
                     currentTitle={refreshState.progress?.currentTitle || ''}
+                    statusMessage={refreshState.message}
                     onCancel={cancelRefresh}
                 />
                 <PwaUpdateBanner

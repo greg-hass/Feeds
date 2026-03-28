@@ -151,8 +151,12 @@ export function useRefreshLifecycle({
             },
         });
 
-        const syncNow = async (skipCursorUpdate: boolean, isRefreshing = true) => {
-            const syncResult = await fetchChanges('feeds,folders,articles,read_state', { skipCursorUpdate });
+        const syncNow = async (
+            include: string,
+            skipCursorUpdate: boolean,
+            isRefreshing = true
+        ) => {
+            const syncResult = await fetchChanges(include, { skipCursorUpdate });
             if (syncResult) {
                 useFeedStore.getState().applySyncChanges(syncResult.changes, isRefreshing);
                 useArticleStore.getState().applySyncChanges(syncResult.changes);
@@ -162,7 +166,7 @@ export function useRefreshLifecycle({
         const debouncedSync = () => {
             if (refreshTimeout) clearTimeout(refreshTimeout);
             refreshTimeout = setTimeout(() => {
-                void syncNow(true);
+                void syncNow('feeds,folders,read_state', true);
             }, 300);
         };
 
@@ -172,7 +176,7 @@ export function useRefreshLifecycle({
                 refreshTimeout = null;
             }
 
-            await syncNow(false, false);
+            await syncNow('feeds,folders,articles,read_state', false, false);
             if (requiresFullArticleRefresh()) {
                 await fetchArticles(true);
             }
@@ -234,7 +238,7 @@ export function useRefreshLifecycle({
                 }
 
                 beginRefreshCycle('foreground', 'syncing');
-                const syncResult = await fetchChanges();
+                const syncResult = await fetchChanges('feeds,folders,read_state');
                 if (syncResult) {
                     useFeedStore.getState().applySyncChanges(syncResult.changes);
                     useArticleStore.getState().applySyncChanges(syncResult.changes);

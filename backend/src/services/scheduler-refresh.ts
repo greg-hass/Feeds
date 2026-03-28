@@ -5,15 +5,11 @@ import { FeedType } from './feed-parser.js';
 import { getUserSettings } from './settings.js';
 import { emitRefreshEvent, RefreshFeedUpdate, RefreshStats } from './refresh-events.js';
 import { getGlobalRefreshSchedule, scheduleNextGlobalRefresh } from './refresh-schedule.js';
+import { getRefreshBatchSize } from './refresh-batch.js';
 
 interface Feed extends FeedToRefresh {
     title: string;
 }
-
-const FEED_DELAY = 100;
-const BATCH_SIZE = 5;
-
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export async function runFeedRefreshCycle(userId: number): Promise<void> {
     let feedsChecked = 0;
@@ -56,6 +52,7 @@ export async function runFeedRefreshCycle(userId: number): Promise<void> {
 
     console.log(`[Scheduler] Processing ${feeds.length} feeds on global refresh`);
     emitRefreshEvent({ type: 'start', total_feeds: feeds.length });
+    const batchSize = getRefreshBatchSize(feeds.length);
 
     const toRefreshFeedUpdate = (feed: {
         id: number;
@@ -78,13 +75,13 @@ export async function runFeedRefreshCycle(userId: number): Promise<void> {
         };
     };
 
-    for (let i = 0; i < feeds.length; i += BATCH_SIZE) {
+    for (let i = 0; i < feeds.length; i += batchSize) {
         if (Date.now() - cycleStartTime > cycleTimeoutMs) {
             console.error(`[Scheduler] Refresh cycle exceeded ${cycleTimeoutMs / 60000} minute limit, aborting`);
             break;
         }
 
-        const batch = feeds.slice(i, i + BATCH_SIZE);
+        const batch = feeds.slice(i, i + batchSize);
         const batchResults = await Promise.allSettled(
             batch.map(async (feed) => {
                 const feedStart = Date.now();
@@ -187,12 +184,9 @@ export async function runFeedRefreshCycle(userId: number): Promise<void> {
 
         const batchFailures = batchResults.filter(result => result.status === 'rejected').length;
         if (batchFailures > 0) {
-            console.warn(`[Scheduler] Batch ${Math.floor(i / BATCH_SIZE) + 1}: ${batchFailures}/${batch.length} feeds failed`);
+            console.warn(`[Scheduler] Batch ${Math.floor(i / batchSize) + 1}: ${batchFailures}/${batch.length} feeds failed`);
         }
 
-        if (i + BATCH_SIZE < feeds.length) {
-            await sleep(FEED_DELAY);
-        }
     }
 
     console.log(`[Scheduler] Batch complete: ${feedsRefreshed}/${feedsChecked} refreshed, ${totalNewArticles} new articles, ${feedsFailed} failed`);

@@ -9,16 +9,19 @@ interface RefreshProgressDialogProps {
     total: number;
     completed: number;
     currentTitle: string;
+    statusMessage?: string;
     onCancel?: () => void;
 }
 
-export function RefreshProgressDialog({ visible, total, completed, currentTitle, onCancel }: RefreshProgressDialogProps) {
+export function RefreshProgressDialog({ visible, total, completed, currentTitle, statusMessage, onCancel }: RefreshProgressDialogProps) {
     const colors = useColors();
     const insets = useSafeAreaInsets();
     const { width } = useWindowDimensions();
     const isDesktop = width >= 1024;
     const isMobileWeb = Platform.OS === 'web' && width < 768;
     const useNativeDriver = Platform.OS !== 'web';
+    const isCompletePhase = total > 0 && completed >= total;
+    const isCompact = visible && isCompletePhase;
 
     // Animation
     const [fadeAnim] = React.useState(() => new Animated.Value(0));
@@ -67,7 +70,7 @@ export function RefreshProgressDialog({ visible, total, completed, currentTitle,
                 })
             ]).start();
         }
-    }, [visible, fadeAnim, slideAnim, spinAnim, useNativeDriver]);
+    }, [visible, isCompletePhase, fadeAnim, slideAnim, spinAnim, useNativeDriver]);
 
     const spin = spinAnim.interpolate({
         inputRange: [0, 1],
@@ -82,6 +85,7 @@ export function RefreshProgressDialog({ visible, total, completed, currentTitle,
         <Animated.View
             style={[
                 s.floatingContainer,
+                isCompact && s.floatingContainerCompact,
                 {
                     opacity: fadeAnim,
                     transform: [{ translateY: slideAnim }]
@@ -91,40 +95,57 @@ export function RefreshProgressDialog({ visible, total, completed, currentTitle,
             {/* Top Accent Bar */}
             <View style={s.accentBar} />
             
-            <View style={s.content}>
+            <View style={[s.content, isCompact && s.contentCompact]}>
                 <View style={s.header}>
-                    <View style={s.titleRow}>
-                        <Animated.View style={{ transform: [{ rotate: spin }] }}>
-                            <RefreshCw size={14} color={colors.primary.DEFAULT} />
-                        </Animated.View>
-                        <Text style={s.title}>Refreshing Feeds…</Text>
+                    <View style={s.headerLeft}>
+                        <View style={s.titleRow}>
+                            <Animated.View style={{ transform: [{ rotate: spin }] }}>
+                                <RefreshCw size={14} color={colors.primary.DEFAULT} />
+                            </Animated.View>
+                            <Text style={s.title}>
+                                {isCompact ? 'Finalizing…' : 'Refreshing Feeds…'}
+                            </Text>
+                        </View>
+                        <Text style={[s.statusMessage, { color: colors.text.secondary }]}>
+                            {isCompact
+                                ? 'Wrapping up and applying the last updates'
+                                : (statusMessage || 'Processing feeds in parallel')}
+                        </Text>
                     </View>
-                    <View style={s.headerRight}>
-                        <Text style={s.countText}>{completed} / {total}</Text>
-                        {onCancel ? (
-                            <TouchableOpacity
-                                onPress={onCancel}
-                                style={s.cancelButton}
-                                accessibilityLabel="Cancel refresh"
-                                accessibilityRole="button"
-                            >
-                                <X size={12} color={colors.text.secondary} />
-                            </TouchableOpacity>
+                        <View style={s.headerRight}>
+                            <Text style={s.countText}>{completed} / {total}</Text>
+                            {onCancel ? (
+                                <TouchableOpacity
+                                    onPress={onCancel}
+                                    style={s.cancelButton}
+                                    accessibilityLabel="Cancel refresh"
+                                    accessibilityRole="button"
+                                >
+                                    <X size={12} color={colors.text.secondary} />
+                                </TouchableOpacity>
+                            ) : null}
+                        </View>
+                    </View>
+
+                {!isCompact ? (
+                    <>
+                        <View style={s.progressBarContainer}>
+                            <View style={s.progressBar}>
+                                <View style={[s.progressFill, { width: `${percentage}%` }]} />
+                            </View>
+                        </View>
+
+                        {currentTitle ? (
+                            <Text style={s.currentFeed} numberOfLines={1}>
+                                {currentTitle}
+                            </Text>
                         ) : null}
-                    </View>
-                </View>
-
-                <View style={s.progressBarContainer}>
-                    <View style={s.progressBar}>
-                        <View style={[s.progressFill, { width: `${percentage}%` }]} />
-                    </View>
-                </View>
-
-                {currentTitle ? (
-                    <Text style={s.currentFeed} numberOfLines={1}>
-                        {currentTitle}
+                    </>
+                ) : (
+                    <Text style={s.compactNote} numberOfLines={1}>
+                        {currentTitle || 'Applying final refresh updates'}
                     </Text>
-                ) : null}
+                )}
             </View>
         </Animated.View>
     );
@@ -160,6 +181,9 @@ const styles = (colors: any, isDesktop: boolean, isMobileWeb: boolean, insets: a
             }
         }),
     },
+    floatingContainerCompact: {
+        minHeight: 0,
+    },
     accentBar: {
         height: 3,
         width: '100%',
@@ -170,16 +194,24 @@ const styles = (colors: any, isDesktop: boolean, isMobileWeb: boolean, insets: a
         padding: spacing.md,
         paddingTop: spacing.sm,
     },
+    contentCompact: {
+        paddingVertical: spacing.sm,
+    },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: spacing.sm,
     },
+    headerLeft: {
+        flex: 1,
+        paddingRight: spacing.sm,
+    },
     headerRight: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
+        flexShrink: 0,
     },
     titleRow: {
         flexDirection: 'row',
@@ -191,6 +223,12 @@ const styles = (colors: any, isDesktop: boolean, isMobileWeb: boolean, insets: a
         fontWeight: '800',
         color: colors.text.primary,
         letterSpacing: -0.1,
+    },
+    statusMessage: {
+        marginTop: 4,
+        fontSize: 11,
+        fontWeight: '600',
+        opacity: 0.9,
     },
     countText: {
         fontSize: 11,
@@ -229,5 +267,11 @@ const styles = (colors: any, isDesktop: boolean, isMobileWeb: boolean, insets: a
         color: colors.text.secondary,
         fontWeight: '600',
         opacity: 0.9,
+    },
+    compactNote: {
+        fontSize: 11,
+        color: colors.text.secondary,
+        fontWeight: '600',
+        opacity: 0.85,
     },
 });

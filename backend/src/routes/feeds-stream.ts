@@ -4,6 +4,7 @@ import { refreshFeed, FeedToRefreshWithCache } from '../services/feed-refresh.js
 import { FeedType } from '../services/feed-parser.js';
 import { getUserSettings } from '../services/settings.js';
 import { scheduleNextGlobalRefresh } from '../services/refresh-schedule.js';
+import { getRefreshBatchSize } from '../services/refresh-batch.js';
 import { onRefreshEvent, RefreshEvent } from '../services/refresh-events.js';
 import { Feed, RefreshFeedUpdate, RefreshStats, RefreshProgressEvent } from '../types/index.js';
 
@@ -161,11 +162,11 @@ export async function feedsStreamRoutes(app: FastifyInstance) {
 
             // Refresh feeds in larger batches for speed (optimizations allow higher concurrency)
             // Icon lookups are pre-fetched, content is lazy-loaded, thumbnails are fire-and-forget
-            const BATCH_SIZE = 5; // Reduced for stability - prevents SQLite contention
+            const batchSize = getRefreshBatchSize(feeds.length);
 
-            for (let i = 0; i < feeds.length; i += BATCH_SIZE) {
+            for (let i = 0; i < feeds.length; i += batchSize) {
                 if (isCancelled) break;
-                const batch = feeds.slice(i, i + BATCH_SIZE);
+                const batch = feeds.slice(i, i + batchSize);
 
                 await Promise.all(batch.map(async (feed) => {
                     if (isCancelled) return;

@@ -272,18 +272,26 @@ export const useFeedStore = create<FeedState>()(
                 get().updateRefreshProgressState({ total: estimatedTotal, completed: 0, currentTitle: '' });
 
                 let refreshTimeout: ReturnType<typeof setTimeout> | null = null;
-                const syncArticleChanges = async (skipCursorUpdate: boolean) => {
-                    const syncResult = await fetchChanges('feeds,folders,articles,read_state', { skipCursorUpdate });
+                const syncChanges = async (include: string, skipCursorUpdate: boolean) => {
+                    const syncResult = await fetchChanges(include, { skipCursorUpdate });
                     if (!syncResult) return;
 
                     get().applySyncChanges(syncResult.changes);
                     articleStore.applySyncChanges(syncResult.changes);
                 };
 
+                const syncArticleChanges = async (skipCursorUpdate: boolean) => {
+                    await syncChanges('feeds,folders,articles,read_state', skipCursorUpdate);
+                };
+
+                const syncMetadataChanges = async (skipCursorUpdate: boolean) => {
+                    await syncChanges('feeds,folders,read_state', skipCursorUpdate);
+                };
+
                 const debouncedSync = () => {
                     if (refreshTimeout) clearTimeout(refreshTimeout);
                     refreshTimeout = setTimeout(() => {
-                        void syncArticleChanges(true);
+                        void syncMetadataChanges(true);
                     }, 300);
                 };
 
