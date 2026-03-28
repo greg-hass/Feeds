@@ -1,13 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-
-// Mock AsyncStorage
-vi.mock('@react-native-async-storage/async-storage', () => ({
-    default: {
-        getItem: vi.fn(),
-        setItem: vi.fn(),
-        removeItem: vi.fn(),
-    },
-}));
+import { api } from '@/services/api';
 
 // Mock API
 vi.mock('@/services/api', () => ({
@@ -37,7 +29,14 @@ vi.mock('@/lib/sync', () => ({
     fetchChanges: vi.fn().mockResolvedValue(null),
 }));
 
-import { api } from '@/services/api';
+// Mock AsyncStorage
+vi.mock('@react-native-async-storage/async-storage', () => ({
+    default: {
+        getItem: vi.fn(),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+    },
+}));
 
 describe('Feed Store', () => {
     let useFeedStore: any;

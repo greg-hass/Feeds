@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useMemo, useState } from 'react';
-import { Alert, Platform, Animated } from 'react-native';
+import { Alert, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useArticleStore } from '@/stores/articleStore';
 import { useFeedStore } from '@/stores/feedStore';
@@ -11,7 +11,6 @@ import { Article } from '@/services/api';
 import { getRefreshPresentation } from '@/utils/refreshStatus';
 
 export const useTimeline = (onArticlePress?: (article: Article) => void) => {
-    const useNativeDriver = Platform.OS !== 'web';
     const router = useRouter();
     const { articles, isLoading, hasMore, filter, fetchArticles, setFilter, markAllRead, prefetchArticle } = useArticleStore();
     const { feeds, folders, refreshAllFeeds, isLoading: isFeedLoading, refreshState } = useFeedStore();
@@ -21,7 +20,7 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
 
     useEffect(() => {
         fetchPendingDigest();
-    }, []);
+    }, [fetchPendingDigest]);
 
     const refreshPresentation = useMemo(() => getRefreshPresentation(refreshState), [refreshState]);
     const isRefreshing = refreshPresentation.isRefreshing;
@@ -69,7 +68,11 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
 
     const handlePlayPress = useCallback((item: Article) => {
         if (playingArticleId === item.id) {
-            isPlaying ? pause() : resume();
+            if (isPlaying) {
+                pause();
+            } else {
+                resume();
+            }
         } else {
             play({
                 id: item.id,

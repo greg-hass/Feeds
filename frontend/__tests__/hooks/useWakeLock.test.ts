@@ -1,27 +1,12 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { useWakeLock } from '@/hooks/useWakeLock';
 
 const mocks = vi.hoisted(() => ({
     activateKeepAwakeAsyncMock: vi.fn(),
     deactivateKeepAwakeMock: vi.fn(),
     appStateAddEventListenerMock: vi.fn(),
 }));
-
-vi.mock('expo-keep-awake', () => ({
-    activateKeepAwakeAsync: mocks.activateKeepAwakeAsyncMock,
-    deactivateKeepAwake: mocks.deactivateKeepAwakeMock,
-}));
-
-vi.mock('react-native', () => ({
-    AppState: {
-        addEventListener: mocks.appStateAddEventListenerMock,
-    },
-    Platform: {
-        OS: 'ios',
-    },
-}));
-
-import { useWakeLock } from '@/hooks/useWakeLock';
 
 describe('useWakeLock', () => {
     beforeEach(() => {

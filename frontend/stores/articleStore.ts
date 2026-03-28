@@ -8,8 +8,8 @@ import { sortArticlesByDateAndId } from "@/utils/sorting";
 import { ArticleState } from "./types";
 
 function areArticlesEqual(left: Article, right: Article): boolean {
-  const leftKeys = Object.keys(left) as Array<keyof Article>;
-  const rightKeys = Object.keys(right) as Array<keyof Article>;
+  const leftKeys = Object.keys(left) as (keyof Article)[];
+  const rightKeys = Object.keys(right) as (keyof Article)[];
 
   if (leftKeys.length !== rightKeys.length) {
     return false;

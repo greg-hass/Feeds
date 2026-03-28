@@ -1,7 +1,7 @@
 import { queryAll, queryOne, run } from '../db/index.js';
 import { refreshFeed, FeedToRefresh } from './feed-refresh.js';
 import type { RefreshResult } from './feed-refresh.js';
-import { FeedType } from './feed-parser.js';
+import type { FeedType } from './feed-parser.js';
 import { getUserSettings } from './settings.js';
 import { emitRefreshEvent, RefreshFeedUpdate, RefreshStats } from './refresh-events.js';
 import { getGlobalRefreshSchedule, scheduleNextGlobalRefresh } from './refresh-schedule.js';

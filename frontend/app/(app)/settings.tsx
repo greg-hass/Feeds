@@ -9,7 +9,7 @@ import { useFeedStore } from '@/stores/feedStore';
 import { useArticleStore } from '@/stores/articleStore';
 import { useDigestStore } from '@/stores/digestStore';
 import { Settings, FeedFetchLimits, api } from '@/services/api';
-import { Sun, Moon, Monitor, Check, Trash2, Type, HardDrive, Download, Upload } from 'lucide-react-native';
+import { Sun, Moon, Monitor, Check, Trash2, Download, Upload } from 'lucide-react-native';
 import { useColors, spacing, borderRadius, ACCENT_COLORS, AccentColor } from '@/theme';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { SectionHeader } from '@/components/ui/SectionHeader';
@@ -48,7 +48,7 @@ export default function SettingsScreen() {
         api.getAuthStatus()
             .then((status) => setBackendBuild(status.build || null))
             .catch(() => setBackendBuild(null));
-    }, []);
+    }, [fetchDigestSettings, fetchSettings]);
 
     const timeOptions = Array.from({ length: 48 }).map((_, i) => {
         const hour = Math.floor(i / 2);
@@ -113,7 +113,7 @@ export default function SettingsScreen() {
         try {
             await updateSettings({ theme });
             show(`Theme changed to ${theme}`, 'success');
-        } catch (error) {
+        } catch {
             show('Failed to update theme', 'error');
         }
     };
@@ -123,7 +123,7 @@ export default function SettingsScreen() {
             try {
                 await updateSettings({ [key]: value } as Partial<Settings>);
                 show('Setting updated', 'success');
-            } catch (error) {
+            } catch {
                 show('Failed to update setting', 'error');
             }
         }
@@ -140,7 +140,7 @@ export default function SettingsScreen() {
             await fetchArticles(true);
             
             show('Icon cache cleared and feeds refreshed', 'success');
-        } catch (error) {
+        } catch {
             show('Failed to clear icon cache', 'error');
         }
     };
@@ -189,7 +189,7 @@ export default function SettingsScreen() {
                 title: 'Feeds Full Backup',
             });
             show(saved ? 'Backup exported' : 'Export canceled', saved ? 'success' : 'info');
-        } catch (error) {
+        } catch {
             show(`Failed to export ${kind}`, 'error');
         } finally {
             setExportingBackup(null);
@@ -241,7 +241,7 @@ export default function SettingsScreen() {
                 `Backup restored: ${response.restored.settings ? 'settings' : ''}${response.restored.bookmarks ? `, ${response.restored.bookmarks} bookmarks` : ''}`,
                 'success',
             );
-        } catch (error) {
+        } catch {
             show('Failed to restore backup', 'error');
         } finally {
             setRestoringBackup(false);

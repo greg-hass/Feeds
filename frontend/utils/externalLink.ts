@@ -83,7 +83,7 @@ export async function openExternalLink(url: string): Promise<void> {
             readerMode: false,
             enableBarCollapsing: true,
         });
-    } catch (error) {
+    } catch {
         try {
             await Linking.openURL(url);
         } catch (e) {
@@ -120,5 +120,4 @@ async function tryOpenWithCustomScheme(url: string): Promise<boolean> {
 
     return false;
 }
-
 

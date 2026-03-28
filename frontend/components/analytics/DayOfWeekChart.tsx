@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useColors, spacing, typography, borderRadius } from '@/theme';
-import { useAnalyticsStore, formatReadingTime } from '@/stores/analyticsStore';
+import { useAnalyticsStore } from '@/stores/analyticsStore';
 
 /**
  * Bar chart showing reading activity by day of week

@@ -50,7 +50,8 @@ function cleanupOldActivity(): void {
 }
 
 // Run cleanup every 10 minutes (more frequent to prevent memory bloat)
-setInterval(cleanupOldActivity, 10 * 60 * 1000);
+const cleanupTimer = setInterval(cleanupOldActivity, 10 * 60 * 1000);
+cleanupTimer.unref?.();
 
 /**
  * Authentication Middleware

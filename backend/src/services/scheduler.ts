@@ -44,6 +44,12 @@ let state: SchedulerState = {
     lastDigestSkipKey: null,
 };
 
+function scheduleTimeout(handler: () => void, delay: number): NodeJS.Timeout {
+    const timeout = setTimeout(handler, delay);
+    timeout.unref?.();
+    return timeout;
+}
+
 export function isRefreshing() {
     return state.isProcessing;
 }
@@ -56,13 +62,13 @@ export function startScheduler() {
     console.log('Starting background feed scheduler...');
 
     // Schedule first run
-    state.timeoutHandle = setTimeout(runSchedulerCycle, 5000);
+    state.timeoutHandle = scheduleTimeout(runSchedulerCycle, 5000);
 
     // Schedule cleanup to run shortly after startup, then daily
-    state.cleanupTimeoutHandle = setTimeout(runCleanupCycle, 60000);
+    state.cleanupTimeoutHandle = scheduleTimeout(runCleanupCycle, 60000);
 
     // Schedule digest check to run after startup, then every 5 minutes
-    state.digestTimeoutHandle = setTimeout(runDigestCycle, 30000);
+    state.digestTimeoutHandle = scheduleTimeout(runDigestCycle, 30000);
 }
 
 export function stopScheduler() {
@@ -106,10 +112,10 @@ async function runSchedulerCycle() {
         console.error(`[Scheduler] CRITICAL: Memory usage at ${memCheck.usedMB}MB, pausing scheduler`);
         state.isPaused = true;
         // Try again in 1 minute after GC has had time to run
-        state.timeoutHandle = setTimeout(() => {
+        state.timeoutHandle = scheduleTimeout(() => {
             state.isPaused = false;
             if (state.isRunning) {
-                state.timeoutHandle = setTimeout(runSchedulerCycle, 5000);
+                state.timeoutHandle = scheduleTimeout(runSchedulerCycle, 5000);
             }
         }, 60000);
         return;
@@ -123,7 +129,7 @@ async function runSchedulerCycle() {
         console.log('[Scheduler] Previous cycle still running, skipping this cycle');
         // Reschedule for next interval
         if (state.isRunning && !state.isPaused) {
-            state.timeoutHandle = setTimeout(runSchedulerCycle, CHECK_INTERVAL);
+            state.timeoutHandle = scheduleTimeout(runSchedulerCycle, CHECK_INTERVAL);
         }
         return;
     }
@@ -155,7 +161,7 @@ async function runSchedulerCycle() {
             console.log(`[Scheduler] Circuit breaker activated. Pausing for ${Math.round(backoff / 1000)}s`);
             
             if (state.isRunning) {
-                state.timeoutHandle = setTimeout(runSchedulerCycle, backoff);
+                state.timeoutHandle = scheduleTimeout(runSchedulerCycle, backoff);
                 return;
             }
         }
@@ -163,7 +169,7 @@ async function runSchedulerCycle() {
     
     // Schedule next cycle if not paused and still running
     if (state.isRunning && !state.isPaused) {
-        state.timeoutHandle = setTimeout(runSchedulerCycle, CHECK_INTERVAL);
+        state.timeoutHandle = scheduleTimeout(runSchedulerCycle, CHECK_INTERVAL);
     }
 }
 
@@ -197,7 +203,7 @@ async function runCleanupCycle() {
 
     // Schedule next cleanup cycle
     if (state.isRunning) {
-        state.cleanupTimeoutHandle = setTimeout(runCleanupCycle, CLEANUP_INTERVAL);
+        state.cleanupTimeoutHandle = scheduleTimeout(runCleanupCycle, CLEANUP_INTERVAL);
     }
 }
 async function runDigestCycle() {
@@ -217,6 +223,6 @@ async function runDigestCycle() {
 
     // Schedule next digest check
     if (state.isRunning) {
-        state.digestTimeoutHandle = setTimeout(runDigestCycle, DIGEST_CHECK_INTERVAL);
+        state.digestTimeoutHandle = scheduleTimeout(runDigestCycle, DIGEST_CHECK_INTERVAL);
     }
 }

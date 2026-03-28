@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import { Feed, Folder } from '../types/index.js';
+import type { Feed, Folder } from '../types/index.js';
 
 export type FeedChangeType = 'feed_created' | 'feed_updated' | 'feed_deleted' | 'folder_created' | 'folder_updated' | 'folder_deleted';
 

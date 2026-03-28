@@ -50,7 +50,7 @@ export default function AnalyticsScreen() {
                 title: 'Analytics Export',
                 message: jsonString,
             });
-        } catch (error) {
+        } catch {
             Alert.alert('Export Failed', 'Could not export analytics data');
         }
     };

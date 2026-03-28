@@ -1,6 +1,7 @@
 import { Database } from 'better-sqlite3';
 import { run, queryOne, db } from '../db/index.js';
-import { parseFeed, normalizeArticle, FeedType } from './feed-parser.js';
+import { parseFeed, normalizeArticle } from './feed-parser.js';
+import type { FeedType } from './feed-parser.js';
 import { cacheFeedIcon } from './icon-cache.js';
 import { cacheArticleThumbnail } from './thumbnail-cache.js';
 import { getUserSettings, Settings } from './settings.js';

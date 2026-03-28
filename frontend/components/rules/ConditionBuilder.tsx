@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Pressable, TextInput } from 'react-native';
 import { X } from 'lucide-react-native';
 import { useColors, spacing, typography, borderRadius } from '@/theme';
-import { RuleCondition, formatField, formatOperator } from '@/stores/rulesStore';
+import { RuleCondition, formatField } from '@/stores/rulesStore';
 import { PickerSelect } from '@/components/ui/PickerSelect';
 
 interface ConditionBuilderProps {
@@ -19,7 +19,7 @@ export function ConditionBuilder({ condition, onChange, onRemove }: ConditionBui
     const colors = useColors();
     const s = styles(colors);
 
-    const fieldOptions: Array<{ label: string; value: RuleCondition['field'] }> = [
+    const fieldOptions: { label: string; value: RuleCondition['field'] }[] = [
         { label: 'Title', value: 'title' },
         { label: 'Content', value: 'content' },
         { label: 'Author', value: 'author' },
@@ -29,7 +29,7 @@ export function ConditionBuilder({ condition, onChange, onRemove }: ConditionBui
         { label: 'Tags', value: 'tags' },
     ];
 
-    const operatorOptions: Array<{ label: string; value: RuleCondition['operator'] }> = [
+    const operatorOptions: { label: string; value: RuleCondition['operator'] }[] = [
         { label: 'Contains', value: 'contains' },
         { label: 'Does Not Contain', value: 'not_contains' },
         { label: 'Equals', value: 'equals' },

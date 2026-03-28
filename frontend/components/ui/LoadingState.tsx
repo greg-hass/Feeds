@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, ViewStyle } from 'react-native';
 import { useColors, spacing, borderRadius } from '@/theme';
-import { Loader2 } from 'lucide-react-native';
 
 export type LoadingVariant = 'spinner' | 'skeleton' | 'inline' | 'page';
 

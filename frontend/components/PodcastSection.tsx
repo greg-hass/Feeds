@@ -1,6 +1,6 @@
-import React, { useMemo, useEffect, useRef, useState } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet, Animated, useWindowDimensions } from 'react-native';
-import { Play, Pause, Clock, Headphones, ChevronRight } from 'lucide-react-native';
+import { Play, Clock, Headphones, ChevronRight } from 'lucide-react-native';
 import { Article } from '@/services/api';
 import { useColors, spacing, borderRadius, shadows } from '@/theme';
 import { useAudioStore } from '@/stores/audioStore';
@@ -58,7 +58,11 @@ export const PodcastSection: React.FC<PodcastSectionProps> = ({
 
     const handlePlayPodcast = (podcast: Article) => {
         if (currentArticleId === podcast.id) {
-            isPlaying ? pause() : resume();
+            if (isPlaying) {
+                pause();
+            } else {
+                resume();
+            }
         } else {
             play({
                 id: podcast.id,
@@ -241,9 +245,12 @@ const PodcastCard: React.FC<PodcastCardProps> = ({
     onPlay,
 }) => {
     const s = cardStyles(colors, isMobile);
-    // eslint-disable-next-line react-hooks/purity -- Date.now() purity check is acceptable for display-only
-    const isNew = useMemo(() => podcast.published_at &&
-        new Date(podcast.published_at).getTime() > Date.now() - 24 * 60 * 60 * 1000, [podcast.published_at]);
+    const [now] = useState(() => Date.now());
+    const isNew = useMemo(
+        () => podcast.published_at &&
+            new Date(podcast.published_at).getTime() > now - 24 * 60 * 60 * 1000,
+        [podcast.published_at, now],
+    );
 
     return (
         <TouchableOpacity
@@ -287,7 +294,9 @@ const PodcastCard: React.FC<PodcastCardProps> = ({
                 <View style={s.metaRow}>
                     <Clock size={12} color={colors.text.tertiary} />
                     <Text style={s.metaText}>
-                        {formatDistanceToNow(new Date(podcast.published_at || Date.now()), { addSuffix: true })}
+                        {podcast.published_at
+                            ? formatDistanceToNow(new Date(podcast.published_at), { addSuffix: true })
+                            : 'Just now'}
                     </Text>
                 </View>
             </View>

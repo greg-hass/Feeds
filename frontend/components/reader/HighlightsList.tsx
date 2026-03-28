@@ -4,7 +4,6 @@ import { Highlighter, StickyNote } from 'lucide-react-native';
 import { useColors, spacing, borderRadius, typography } from '@/theme';
 import {
     Highlight,
-    useHighlightsStore,
     formatHighlightCount,
     getHighlightColor,
     getHighlightAccentColor,

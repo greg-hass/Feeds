@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from 'expo-av';
-import { Platform } from 'react-native';
 
 interface AudioState {
     isPlaying: boolean;

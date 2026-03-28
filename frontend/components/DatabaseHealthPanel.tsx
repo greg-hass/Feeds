@@ -12,11 +12,11 @@ interface DatabaseStats {
         oldestArticleDate: string | null;
         ftsSizeMb: string;
     };
-    tables: Array<{
+    tables: {
         name: string;
         rows: number;
         estimatedSizeMb: string;
-    }>;
+    }[];
     maintenance: {
         fragmentationPercent: string;
         needsVacuum: boolean;
@@ -47,8 +47,8 @@ export const DatabaseHealthPanel = () => {
             }
             const data = await api.getDatabaseStats();
             setStats(data);
-        } catch (err) {
-            console.error('Failed to load database stats:', err);
+        } catch (error) {
+            console.error('Failed to load database stats:', error);
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -62,7 +62,7 @@ export const DatabaseHealthPanel = () => {
             const result = await api.optimizeDatabase();
             setMessage(result.message);
             await loadStats(false);
-        } catch (err) {
+        } catch {
             setMessage('Optimization failed');
         } finally {
             setOptimizing(false);

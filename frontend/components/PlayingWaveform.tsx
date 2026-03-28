@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { View, Animated, StyleSheet, Platform } from 'react-native';
-import { useColors } from '@/theme';
 
 export const PlayingWaveform = ({ color, size = 16 }: { color: string; size?: number }) => {
     const [anims] = useState(() => [

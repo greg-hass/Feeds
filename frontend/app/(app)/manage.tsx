@@ -1,13 +1,11 @@
 import * as DocumentPicker from "expo-document-picker";
-import { useMemo, useState, useCallback, useEffect } from "react";
+import { useMemo, useState, useCallback } from "react";
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  ActivityIndicator,
   Alert,
   Modal,
   Image,
@@ -16,16 +14,11 @@ import {
   Animated,
 } from "react-native";
 import { useRouter } from "expo-router";
-import {
-  useFeedStore,
-  useToastStore,
-  useArticleStore,
-  useSettingsStore,
-} from "@/stores";
+import { useFeedStore } from "@/stores/feedStore";
+import { useToastStore } from "@/stores/toastStore";
+import { useArticleStore } from "@/stores/articleStore";
 import { api, DiscoveredFeed, Feed, Folder, FeedPreview } from "@/services/api";
 import {
-  ArrowLeft,
-  Plus,
   Search,
   Rss,
   Youtube,
@@ -51,7 +44,6 @@ import {
   AlertCircle,
   ChevronRight,
   ChevronDown,
-  ArrowUpRight,
 } from "lucide-react-native";
 import { FeedInfoSheet } from "@/components/FeedInfoSheet";
 import { useColors, borderRadius, spacing } from "@/theme";
@@ -108,8 +100,6 @@ export default function ManageScreen() {
   } = useFeedStore();
   const { setFilter } = useArticleStore();
   const { show } = useToastStore();
-  const { settings } = useSettingsStore();
-
   const [discoveryType, setDiscoveryType] = useState<DiscoveryType>("all");
 
   // Use debounced discovery hook
@@ -130,7 +120,6 @@ export default function ManageScreen() {
       show(message, "error");
     },
   });
-  const [activeTab, setActiveTab] = useState<"search">("search");
   const [addingId, setAddingId] = useState<string | null>(null);
   const [newFolderName, setNewFolderName] = useState("");
   const [showMenu, setShowMenu] = useState(false);
@@ -267,14 +256,6 @@ export default function ManageScreen() {
     const entries = folders.map((folder) => [folder.id, folder.name] as const);
     return new Map(entries);
   }, [folders]);
-  const feedCountByFolderId = useMemo(() => {
-    const counts = new Map<number, number>();
-    feeds.forEach((feed) => {
-      if (!feed.folder_id) return;
-      counts.set(feed.folder_id, (counts.get(feed.folder_id) ?? 0) + 1);
-    });
-    return counts;
-  }, [feeds]);
   const filteredFeeds = useMemo(() => {
     const query = feedSearch.trim().toLowerCase();
     if (!query) return feeds;
@@ -483,7 +464,7 @@ export default function ManageScreen() {
       fetchFolders();
       setModalType(null);
       show("Changes saved", "success");
-    } catch (err) {
+    } catch {
       show("Failed to save changes", "error");
     }
   };
@@ -508,7 +489,7 @@ export default function ManageScreen() {
       fetchFeeds();
       setModalType(null);
       show("Feeds moved", "success");
-    } catch (err) {
+    } catch {
       const errorMsg =
         err instanceof Error ? err.message : "Failed to move feeds";
       show(errorMsg, "error");
@@ -523,7 +504,7 @@ export default function ManageScreen() {
       setNewFolderName("");
       fetchFolders();
       show(`Folder "${newFolderName}" created`, "success");
-    } catch (err) {
+    } catch {
       show("Failed to create folder", "error");
     }
   };
@@ -579,7 +560,7 @@ export default function ManageScreen() {
       } else {
         show("Failed to refresh feed", "error");
       }
-    } catch (err) {
+    } catch {
       show("Failed to refresh feed", "error");
     }
   };
@@ -597,7 +578,7 @@ export default function ManageScreen() {
       a.click();
       URL.revokeObjectURL(url);
       show("OPML exported", "success");
-    } catch (err) {
+    } catch {
       show("Failed to export OPML", "error");
     } finally {
       setIsExporting(false);
@@ -652,8 +633,8 @@ export default function ManageScreen() {
           }));
         },
       );
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      console.error(error);
       show("Failed to import OPML", "error");
       setProgressState((prev) => ({ ...prev, isActive: false }));
     }
@@ -1274,10 +1255,6 @@ export default function ManageScreen() {
                   {isExpanded && (
                     <View style={{ paddingLeft: spacing.xl }}>
                       {folderFeeds.map((feed) => {
-                        const healthStatus = getFeedHealth(feed);
-                        const isStale = healthStatus === "stale";
-                        const isDead = healthStatus === "dead";
-
                         return (
                           <View
                             key={feed.id}

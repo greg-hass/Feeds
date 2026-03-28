@@ -1,12 +1,12 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { queryAll, queryOne, run } from '../db/index.js';
 import { refreshFeed, FeedToRefreshWithCache } from '../services/feed-refresh.js';
-import { FeedType } from '../services/feed-parser.js';
+import type { FeedType } from '../services/feed-parser.js';
 import { getUserSettings } from '../services/settings.js';
 import { scheduleNextGlobalRefresh } from '../services/refresh-schedule.js';
 import { getRefreshBatchSize } from '../services/refresh-batch.js';
 import { onRefreshEvent, RefreshEvent } from '../services/refresh-events.js';
-import { Feed, RefreshFeedUpdate, RefreshStats, RefreshProgressEvent } from '../types/index.js';
+import type { Feed, RefreshFeedUpdate, RefreshStats, RefreshProgressEvent } from '../types/index.js';
 
 function isGenericIconUrl(url: string | null): boolean {
     if (!url) return true;

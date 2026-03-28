@@ -10,9 +10,6 @@ export function TopicDistributionChart() {
     const colors = useColors();
     const { topicDistribution } = useAnalyticsStore();
 
-    const totalCount = topicDistribution.reduce((sum, topic) => sum + topic.count, 0);
-    const topTopic = topicDistribution[0];
-
     const s = styles(colors);
 
     return (

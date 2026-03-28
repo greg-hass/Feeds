@@ -52,10 +52,13 @@ describe('Scheduler', () => {
         vi.resetModules();
         vi.clearAllMocks();
         vi.useFakeTimers();
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
     });
 
     afterEach(() => {
         vi.useRealTimers();
+        vi.restoreAllMocks();
         vi.resetAllMocks();
     });
 

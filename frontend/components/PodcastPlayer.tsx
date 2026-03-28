@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Modal, useWindowDimensions, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAudioStore } from '@/stores/audioStore';
@@ -6,13 +6,8 @@ import { useColors, borderRadius, spacing } from '@/theme';
 import {
     Play, Pause, RotateCcw, RotateCw,
     X, ChevronDown, Timer, Gauge,
-    Volume2, VolumeX, MoreVertical
 } from 'lucide-react-native';
 import Slider from '@react-native-community/slider';
-
-interface PodcastPlayerProps {
-    // No props needed now, uses store
-}
 
 export const PodcastPlayer = () => {
     const colors = useColors();

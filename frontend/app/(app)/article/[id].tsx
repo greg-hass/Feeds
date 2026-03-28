@@ -29,19 +29,17 @@ export default function ArticleScreen() {
     const colors = useColors();
     const { width } = useWindowDimensions();
     const isMobile = width < 1024;
-    const { currentArticle, fetchArticle, markRead, markUnread, toggleBookmark, articles, setArticleScrollPosition, getArticleScrollPosition, error, isLoading: isStoreLoading } = useArticleStore();
+    const { currentArticle, fetchArticle, markRead, markUnread, toggleBookmark, articles, setArticleScrollPosition, getArticleScrollPosition, error } = useArticleStore();
     const { settings } = useSettingsStore();
     const { show } = useToastStore();
-    const [isLoading, setIsLoading] = useState(true);
-    const [showReadability, setShowReadability] = useState(settings?.readability_enabled ?? false);
-    const [iconFailed, setIconFailed] = useState(false);
+    const showReadability = settings?.readability_enabled ?? false;
+    const [iconFailedArticleId, setIconFailedArticleId] = useState<number | null>(null);
     const scrollViewRef = useRef<ScrollView>(null);
     const currentArticleIdRef = useRef<number | null>(null);
 
     // Zen Mode & Progress
     const [scrollOffset, setScrollOffset] = useState(0);
     const [headerOpacity] = useState(() => new Animated.Value(1));
-    const [readingProgress, setReadingProgress] = useState(0);
 
     const { activeVideoId, playVideo, minimize, close: closeVideo, isMinimized } = useVideoStore();
     const { play: playPodcast } = useAudioStore();
@@ -53,6 +51,7 @@ export default function ArticleScreen() {
     });
     const contentHeightRef = useRef(0);
     const containerHeightRef = useRef(0);
+    const [readingProgressByArticle, setReadingProgressByArticle] = useState<Record<number, number>>({});
 
     const isYouTube = currentArticle?.feed_type === 'youtube' || isYouTubeUrl(currentArticle?.url || '');
     const videoId = extractVideoId(currentArticle?.url || currentArticle?.thumbnail_url || '');
@@ -65,13 +64,10 @@ export default function ArticleScreen() {
     const s = styles(colors, isMobile, settings?.reader_theme, settings?.reader_width || 'comfortable');
 
     const [fadeAnim] = useState(() => new Animated.Value(0));
-
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Syncing external settings state
-    useEffect(() => {
-        if (settings?.readability_enabled !== undefined) {
-            setShowReadability(settings.readability_enabled);
-        }
-    }, [settings?.readability_enabled]);
+    const isArticleLoaded = currentArticle?.id === articleId;
+    const isLoading = !isArticleLoaded;
+    const iconFailed = iconFailedArticleId === articleId;
+    const readingProgress = readingProgressByArticle[articleId] ?? 0;
 
     // Initialize WebBrowser for native platforms
     useEffect(() => {
@@ -81,13 +77,9 @@ export default function ArticleScreen() {
         };
     }, []);
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initializing state for new article load
     useEffect(() => {
         if (id) {
-            setIsLoading(true);
-            setIconFailed(false);
             fadeAnim.setValue(0);
-            setReadingProgress(0);
             fetchArticle(articleId)
                 .then(() => {
                     markRead(articleId);
@@ -97,16 +89,14 @@ export default function ArticleScreen() {
                         useNativeDriver: Platform.OS !== 'web',
                     }).start();
                 })
-                .finally(() => setIsLoading(false));
+                .catch(() => undefined);
         }
-    }, [id]);
+    }, [id, articleId, fetchArticle, markRead, fadeAnim]);
 
     useEffect(() => {
         if (!id || !currentArticle || currentArticle.id !== articleId) return;
-        if (isLoading) {
-            fadeAnim.setValue(1);
-        }
-    }, [currentArticle?.id, id, isLoading]);
+        fadeAnim.setValue(1);
+    }, [currentArticle, currentArticle?.id, id, articleId, fadeAnim]);
 
     // Derive adjacent articles from store using useMemo instead of useState+useEffect
     const adjacentArticles = useMemo(() => {
@@ -135,7 +125,7 @@ export default function ArticleScreen() {
                 minimize();
             }
         }
-    }, [currentArticle?.id, activeVideoId]);
+    }, [currentArticle, currentArticle?.id, currentArticle?.url, currentArticle?.thumbnail_url, activeVideoId, closeVideo, isYouTube, isMobile, isMinimized, minimize]);
 
     // Restore scroll position when screen is focused and article is loaded
     // eslint-disable-next-line react-hooks/preserve-manual-memoization -- Intentional deps for scroll restoration
@@ -163,9 +153,9 @@ export default function ArticleScreen() {
 
     const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
         const offset = event.nativeEvent.contentOffset.y;
-        const contentHeight = event.nativeEvent.contentSize.height;
-        const containerHeight = event.nativeEvent.layoutMeasurement.height;
-        const totalHeight = contentHeight - containerHeight;
+            const contentHeight = event.nativeEvent.contentSize.height;
+            const containerHeight = event.nativeEvent.layoutMeasurement.height;
+            const totalHeight = contentHeight - containerHeight;
 
         // Store heights for scroll depth calculation
         contentHeightRef.current = contentHeight;
@@ -174,7 +164,10 @@ export default function ArticleScreen() {
         // Update Reading Progress
         if (totalHeight > 0) {
             const progress = Math.min(offset / totalHeight, 1);
-            setReadingProgress(progress);
+            setReadingProgressByArticle((state) => ({
+                ...state,
+                [articleId]: progress,
+            }));
 
             // Analytics: Update scroll depth for reading session tracking
             const scrollDepth = calculateScrollDepth(offset, contentHeight, containerHeight);
@@ -244,7 +237,11 @@ export default function ArticleScreen() {
 
     const handleToggleRead = useCallback(() => {
         if (!currentArticle) return;
-        currentArticle.is_read ? markUnread(currentArticle.id) : markRead(currentArticle.id);
+        if (currentArticle.is_read) {
+            markUnread(currentArticle.id);
+        } else {
+            markRead(currentArticle.id);
+        }
     }, [currentArticle, markRead, markUnread]);
 
     const handleToggleBookmark = useCallback(() => {
@@ -267,13 +264,12 @@ export default function ArticleScreen() {
     // eslint-disable-next-line react-hooks/preserve-manual-memoization -- Intentional deps for retry handler
     const handleRetry = useCallback(() => {
         if (id) {
-            setIsLoading(true);
-            fetchArticle(articleId).finally(() => setIsLoading(false));
+            fetchArticle(articleId);
         }
     }, [id, fetchArticle, articleId]);
 
     const renderReader = () => {
-        if (error && !isLoading) {
+        if (error && !currentArticle) {
             return (
                 <ErrorView
                     message={error}
@@ -282,7 +278,7 @@ export default function ArticleScreen() {
             );
         }
 
-        if (!currentArticle || currentArticle.id !== articleId) {
+        if (!isArticleLoaded) {
             return (
                 <View style={s.loadingContainer}>
                     <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
@@ -369,11 +365,11 @@ export default function ArticleScreen() {
                     <Animated.View style={[s.contentContainer, { opacity: fadeAnim }]}>
                         <View style={s.articleIntro}>
                             <View style={s.feedHeader}>
-                                {currentArticle.feed_icon_url && !iconFailed ? (
+                            {currentArticle.feed_icon_url && !iconFailed ? (
                                     <Image
                                         source={{ uri: currentArticle.feed_icon_url }}
                                         style={s.feedIcon}
-                                        onError={() => setIconFailed(true)}
+                                        onError={() => setIconFailedArticleId(articleId)}
                                     />
                                 ) : (
                                     <View style={s.feedInitial}>
@@ -410,7 +406,13 @@ export default function ArticleScreen() {
                                 <View style={s.videoContainer}>
                                     {isMobile ? (
                                         <View style={s.mobileVideoWrapper}>
-                                            <iframe src={getEmbedUrl(videoId)} style={{ width: '100%', height: '100%', border: 'none', borderRadius: borderRadius.lg }} allowFullScreen />
+                                            <iframe
+                                                src={getEmbedUrl(videoId, false, true)}
+                                                style={{ width: '100%', height: '100%', border: 'none', borderRadius: borderRadius.lg }}
+                                                allowFullScreen
+                                                title="Inline YouTube preview"
+                                                loading="lazy"
+                                            />
                                             <TouchableOpacity style={s.mobilePipToggle} onPress={() => playVideo(videoId, currentArticle.title)}>
                                                 <Maximize2 size={16} color="#fff" />
                                             </TouchableOpacity>

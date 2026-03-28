@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { ProgressEvent, RefreshProgressEvent } from '@/services/api';
-import { ProgressState, FailedFeed } from '@/components/ProgressDialog';
+import { ProgressState } from '@/components/ProgressDialog';
 import { ProgressItemData, ItemStatus } from '@/components/ProgressItem';
 
 type AnyProgressEvent = ProgressEvent | RefreshProgressEvent;

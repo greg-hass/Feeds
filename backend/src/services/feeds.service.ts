@@ -1,6 +1,7 @@
 import { queryOne, queryAll, run, runMany } from '../db/index.js';
 import { discoverFeedsFromUrl } from '../services/discovery.js';
-import { parseFeed, normalizeArticle, detectFeedType, FeedType } from '../services/feed-parser.js';
+import { parseFeed, normalizeArticle, detectFeedType } from '../services/feed-parser.js';
+import type { FeedType } from '../services/feed-parser.js';
 import { fetchYouTubeIcon } from '../services/youtube-parser.js';
 import { refreshFeed } from '../services/feed-refresh.js';
 import { cacheFeedIcon, clearAllIconCaches, clearFeedIconCache } from '../services/icon-cache.js';
@@ -735,9 +736,9 @@ export class FeedsService {
 
                 // Rate limit to avoid being blocked
                 await new Promise(resolve => setTimeout(resolve, 500));
-            } catch (e) {
+            } catch (err) {
                 results.failed++;
-                results.details.push(`[${feed.id}] ${feed.title}: Error - ${e}`);
+                results.details.push(`[${feed.id}] ${feed.title}: Error - ${err}`);
             }
         }
 

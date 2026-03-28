@@ -36,15 +36,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 try {
                     await api.getFeeds();
                     setIsAuthenticated(true);
-                } catch (e) {
+                } catch {
                     await api.logout();
                     setIsAuthenticated(false);
                 }
             } else {
                 setIsAuthenticated(false);
             }
-        } catch (e) {
-            console.error('Auth check failed:', e);
+        } catch (error) {
+            console.error('Auth check failed:', error);
             setIsAuthenticated(false);
         } finally {
             setIsLoading(false);

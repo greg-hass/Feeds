@@ -72,7 +72,11 @@ export function useAuthBootstrap(enabled = true): UseAuthBootstrapResult {
         if (!enabled) {
             return;
         }
-        void refreshAuth();
+        const timeoutId = setTimeout(() => {
+            void refreshAuth();
+        }, 0);
+
+        return () => clearTimeout(timeoutId);
     }, [enabled, refreshAuth]);
 
     const completeLogin = useCallback(() => {

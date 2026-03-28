@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
-import { Check, X, Ban, Loader2 } from 'lucide-react-native';
+import { Check, X, Ban } from 'lucide-react-native';
 import { useColors, spacing } from '@/theme';
 
 export type ItemStatus = 'pending' | 'processing' | 'success' | 'skipped' | 'error';

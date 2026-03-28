@@ -69,17 +69,22 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
 
         if (completedRefresh) {
             const addedCount = refreshState.newContent.count || 0;
-            if (addedCount > 0) {
-                if (isAtTop()) {
-                    scrollToTop(false);
-                    setNewArticlesCount(0);
+            const timeoutId = setTimeout(() => {
+                if (addedCount > 0) {
+                    if (isAtTop()) {
+                        scrollToTop(false);
+                        setNewArticlesCount(0);
+                    } else {
+                        prepareForNewArticles(addedCount);
+                        setNewArticlesCount(addedCount);
+                    }
                 } else {
-                    prepareForNewArticles(addedCount);
-                    setNewArticlesCount(addedCount);
+                    setNewArticlesCount(0);
                 }
-            } else {
-                setNewArticlesCount(0);
-            }
+            }, 0);
+
+            previousRefreshPhaseRef.current = currentPhase;
+            return () => clearTimeout(timeoutId);
         }
 
         previousRefreshPhaseRef.current = currentPhase;

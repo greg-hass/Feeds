@@ -14,7 +14,6 @@ let userAccentColor = '#10b981'; // Default emerald
 
 // Background sync configuration
 const SYNC_TAG = 'feeds-background-sync';
-const LAST_SYNC_KEY = 'last-background-sync';
 const SYNC_INTERVAL_MINUTES = 5; // Check for updates every 5 minutes when possible
 
 self.addEventListener('install', (event) => {
@@ -161,7 +160,7 @@ async function getLastSyncTime() {
             const data = await response.json();
             return data.timestamp || 0;
         }
-    } catch (e) {
+    } catch {
         // Ignore errors
     }
     return 0;
@@ -176,7 +175,7 @@ async function setLastSyncTime(timestamp) {
         await cache.put('last-sync-time', new Response(JSON.stringify({ timestamp }), {
             headers: { 'Content-Type': 'application/json' }
         }));
-    } catch (e) {
+    } catch {
         // Ignore errors
     }
 }

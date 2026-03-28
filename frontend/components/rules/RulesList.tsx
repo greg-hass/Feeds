@@ -2,11 +2,9 @@ import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet, Switch, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
-    ChevronRight,
     Trash2,
     Settings,
     BarChart3,
-    Power,
     AlertTriangle,
 } from 'lucide-react-native';
 import { useColors, spacing, typography, borderRadius } from '@/theme';

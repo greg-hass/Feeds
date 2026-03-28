@@ -4,7 +4,7 @@ import DOMPurify from 'isomorphic-dompurify';
 import { queryOne, queryAll, run } from '../db/index.js';
 import { extractReadability, fetchAndExtractReadability } from '../services/readability.js';
 import { getUserSettings } from '../services/settings.js';
-import { Article } from '../types/index.js';
+import type { Article } from '../types/index.js';
 import { validateId } from '../utils/validation.js';
 import { ensureFeedsSchema } from '../utils/schema-ensure.js';
 

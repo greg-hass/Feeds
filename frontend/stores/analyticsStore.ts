@@ -41,7 +41,7 @@ export interface AnalyticsOverview {
     average_session_duration: number;
     articles_this_week: number;
     reading_streak_days: number;
-    top_feeds: Array<{ feed_id: number; feed_title: string; articles_read: number }>;
+    top_feeds: { feed_id: number; feed_title: string; articles_read: number }[];
     reading_by_day: DailyStats[];
     top_reading_hours: number[];
 }

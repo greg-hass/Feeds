@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
-import { BookOpen } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useColors, spacing, typography, borderRadius } from '@/theme';
 import { useAnalyticsStore, formatReadingTime } from '@/stores/analyticsStore';

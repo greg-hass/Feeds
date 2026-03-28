@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Pressable, TextInput } from 'react-native';
 import { X } from 'lucide-react-native';
 import { useColors, spacing, typography, borderRadius } from '@/theme';
-import { RuleAction, formatActionType } from '@/stores/rulesStore';
+import { RuleAction } from '@/stores/rulesStore';
 import { PickerSelect } from '@/components/ui/PickerSelect';
 
 interface ActionBuilderProps {
@@ -19,7 +19,7 @@ export function ActionBuilder({ action, onChange, onRemove }: ActionBuilderProps
     const colors = useColors();
     const s = styles(colors);
 
-    const actionOptions: Array<{ label: string; value: RuleAction['type'] }> = [
+    const actionOptions: { label: string; value: RuleAction['type'] }[] = [
         { label: 'Move to Folder', value: 'move_to_folder' },
         { label: 'Add Tag', value: 'add_tag' },
         { label: 'Mark as Read', value: 'mark_read' },

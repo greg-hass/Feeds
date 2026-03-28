@@ -1,9 +1,8 @@
 import React, { useEffect, lazy, Suspense, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Platform, Animated, useWindowDimensions } from 'react-native';
-import { useRouter } from 'expo-router';
 import { useDigestStore } from '@/stores/digestStore';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { Sparkles, BarChart3, BookOpen, RefreshCw, AlertCircle, Calendar, Type, Menu, X } from 'lucide-react-native';
+import { Sparkles, BarChart3, BookOpen, RefreshCw, AlertCircle, Calendar, Type, X } from 'lucide-react-native';
 import { useColors, spacing, borderRadius } from '@/theme';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import Sidebar from '@/components/Sidebar';
@@ -12,7 +11,6 @@ import Sidebar from '@/components/Sidebar';
 const Markdown = lazy(() => import('react-native-markdown-display').then(m => ({ default: m.default })));
 
 export const DigestView = () => {
-    const router = useRouter();
     const { width } = useWindowDimensions();
     const isMobile = width < 1024;
     const { latestDigest, isLoading, error, fetchLatestDigest, generateDigest } = useDigestStore();
@@ -21,12 +19,11 @@ export const DigestView = () => {
     const useNativeDriver = Platform.OS !== 'web';
     const [showTextSizeMenu, setShowTextSizeMenu] = useState(false);
     const [showMenu, setShowMenu] = useState(false);
-    const [headerOpacity] = useState(() => new Animated.Value(1));
     const [sidebarAnim] = useState(new Animated.Value(-300));
 
     useEffect(() => {
         fetchLatestDigest();
-    }, []);
+    }, [fetchLatestDigest]);
 
     const handleTextSizeChange = (size: 'small' | 'medium' | 'large') => {
         updateSettings({ font_size: size });

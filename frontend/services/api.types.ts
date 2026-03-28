@@ -134,14 +134,14 @@ export interface BackupExport {
     settings: Settings;
     global_last_refresh_at: string | null;
     global_next_refresh_at: string | null;
-    bookmarks: Array<{
+    bookmarks: {
         guid: string;
         url: string | null;
         title: string;
         published_at: string | null;
         feed_title: string;
         feed_type: string;
-    }>;
+    }[];
 }
 
 export interface BackupRestoreResult {
@@ -225,12 +225,12 @@ export interface SearchParams {
 export interface SearchSuggestions {
     query: string;
     recent_searches: SearchHistoryEntry[];
-    popular_searches: Array<{ query: string; count: number }>;
+    popular_searches: { query: string; count: number }[];
     saved_searches: SavedSearch[];
     tags: string[];
     authors: string[];
-    feeds: Array<{ id: number; title: string; type: string }>;
-    folders: Array<{ id: number; name: string }>;
+    feeds: { id: number; title: string; type: string }[];
+    folders: { id: number; name: string }[];
     articles: SearchResult[];
 }
 

@@ -1,5 +1,5 @@
 import { run, queryAll } from '../db/index.js';
-import { FeedType } from './feed-parser.js';
+import type { FeedType } from './feed-parser.js';
 import { getUserSettings } from './settings.js';
 
 /**

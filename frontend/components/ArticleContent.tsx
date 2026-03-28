@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Platform, useWindowDimensions, ActivityIndicator } from 'react-native';
-import { useColors, spacing, borderRadius, typography } from '@/theme';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Platform, useWindowDimensions } from 'react-native';
+import { useColors, borderRadius, typography } from '@/theme';
 import { extractVideoId } from '@/utils/youtube';
 import { openExternalLink } from '@/utils/externalLink';
 import { useVideoStore } from '@/stores/videoStore';
@@ -321,7 +321,7 @@ export default function ArticleContent({ html }: ArticleContentProps) {
                         try {
                             const data = JSON.parse(event.nativeEvent.data);
                             if (data.type === 'video') playVideo(data.videoId);
-                        } catch (e) { }
+                        } catch { }
                     }}
                     injectedJavaScript={`
                         document.querySelectorAll('a').forEach(link => {

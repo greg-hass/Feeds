@@ -1,4 +1,4 @@
-import { FeedType } from '../feed-parser.js';
+import type { FeedType } from '../feed-parser.js';
 
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 const YOUTUBE_API_BASE = 'https://www.googleapis.com/youtube/v3';

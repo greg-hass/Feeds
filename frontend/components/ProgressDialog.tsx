@@ -6,14 +6,12 @@ import {
     ScrollView,
     TouchableOpacity,
     Modal,
-    Platform,
-    Dimensions,
     useWindowDimensions,
 } from 'react-native';
 import { X, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
 import { ProgressBar } from './ProgressBar';
-import { ProgressItem, ProgressItemData, ItemStatus } from './ProgressItem';
+import { ProgressItem, ProgressItemData } from './ProgressItem';
 
 export interface ProgressStats {
     success: number;
@@ -49,20 +47,22 @@ export function ProgressDialog({ state, onClose, onRetryFailed }: ProgressDialog
     const { width } = useWindowDimensions();
     const scrollViewRef = useRef<ScrollView>(null);
     const [showFailedDetails, setShowFailedDetails] = React.useState(false);
+    const items = state.items;
+    const currentItemId = state.current?.id;
 
     const isMobile = width < 768;
 
     // Auto-scroll to keep current item visible
     useEffect(() => {
-        if (state.current && scrollViewRef.current) {
+        if (currentItemId && scrollViewRef.current) {
             // Find index of current item
-            const index = state.items.findIndex(item => item.id === state.current?.id);
+            const index = items.findIndex(item => item.id === currentItemId);
             if (index >= 0) {
                 // Scroll to approximate position (each item ~50px)
                 scrollViewRef.current.scrollTo({ y: index * 50, animated: true });
             }
         }
-    }, [state.current]);
+    }, [currentItemId, items]);
 
     const completedCount = state.stats.success + state.stats.skipped + state.stats.errors;
     const progressText = state.complete

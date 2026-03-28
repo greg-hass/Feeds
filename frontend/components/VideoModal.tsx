@@ -75,9 +75,6 @@ export function VideoModal({ videoId, visible, onClose, onMinimize, title }: Vid
                             allowFullScreen
                             style={{ borderBottomLeftRadius: borderRadius.lg, borderBottomRightRadius: borderRadius.lg }}
                             title="YouTube video player"
-                            // iOS PWA: inline playback support
-                            {...({ webkitplaysinline: 'true' } as any)}
-                            playsInline
                         />
                     ) : NativeWebView ? (
                         <NativeWebView

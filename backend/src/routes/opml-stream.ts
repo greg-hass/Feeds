@@ -3,8 +3,9 @@ import multipart from '@fastify/multipart';
 import { queryOne, run } from '../db/index.js';
 import { parseOPML, OPMLFeed, OPMLFolder } from '../services/opml-parser.js';
 import { refreshFeed, FeedToRefresh } from '../services/feed-refresh.js';
-import { parseFeed, FeedType } from '../services/feed-parser.js';
-import { Feed, Folder, ImportStats, ProgressEvent } from '../types/index.js';
+import { parseFeed } from '../services/feed-parser.js';
+import type { FeedType } from '../services/feed-parser.js';
+import type { Feed, Folder, ImportStats, ProgressEvent } from '../types/index.js';
 import { getUserSettings } from '../services/settings.js';
 
 // Timeout configuration

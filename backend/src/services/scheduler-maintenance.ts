@@ -36,6 +36,9 @@ function formatBytes(bytes: number): string {
 
 async function cleanupThumbnailCache(retentionDays: number) {
     const thumbnailsDir = getCacheDir('thumbnails');
+    if (typeof thumbnailsDir !== 'string' || thumbnailsDir.length === 0) {
+        return { deletedCount: 0, reclaimedBytes: 0, scanned: 0 };
+    }
     if (!existsSync(thumbnailsDir)) {
         return { deletedCount: 0, reclaimedBytes: 0, scanned: 0 };
     }
@@ -138,7 +141,7 @@ export async function runMaintenanceCleanup(userId: number) {
                 ids
             );
 
-            batchDeleted = result.changes;
+            batchDeleted = result?.changes ?? 0;
             typeDeleted += batchDeleted;
             totalDeleted += batchDeleted;
             batchCount++;

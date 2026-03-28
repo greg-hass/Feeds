@@ -3,12 +3,12 @@ import { View, StyleSheet, TouchableOpacity, Text, Animated, PanResponder, Platf
 import { useVideoStore } from '@/stores/videoStore';
 import { useColors, borderRadius, spacing } from '@/theme';
 import { getEmbedUrl } from '@/utils/youtube';
-import { X, Maximize2, Minimize2, GripHorizontal } from 'lucide-react-native';
+import { X, Maximize2, GripHorizontal } from 'lucide-react-native';
 
 export const FloatingPlayer = () => {
     const { activeVideoId, activeVideoTitle, isMinimized, restore, close } = useVideoStore();
     const colors = useColors();
-    const { width, height } = useWindowDimensions();
+    const { width } = useWindowDimensions();
     const isMobile = width < 1024;
     const useNativeDriver = Platform.OS !== 'web';
 

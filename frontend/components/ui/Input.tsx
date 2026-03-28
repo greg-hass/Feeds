@@ -92,6 +92,8 @@ export const Input = React.forwardRef<TextInput, InputProps>(({
     );
 });
 
+Input.displayName = 'Input';
+
 const getSizeStyles = (size: InputSize) => {
     switch (size) {
         case 'sm':

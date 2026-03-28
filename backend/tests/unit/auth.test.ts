@@ -13,14 +13,23 @@ vi.mock('../../src/db/index.js', () => ({
 const TEST_JWT_SECRET = 'test-secret-key-that-is-at-least-32-characters-long-for-testing';
 
 describe('Auth - generateToken', () => {
+    let consoleErrorSpy: ReturnType<typeof vi.spyOn> | null = null;
+    let consoleWarnSpy: ReturnType<typeof vi.spyOn> | null = null;
+
     beforeEach(async () => {
         process.env.JWT_SECRET = TEST_JWT_SECRET;
         // Clear module cache to reload with new env
         vi.resetModules();
+        consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     });
 
     afterEach(() => {
         delete process.env.JWT_SECRET;
+        consoleErrorSpy?.mockRestore();
+        consoleWarnSpy?.mockRestore();
+        consoleErrorSpy = null;
+        consoleWarnSpy = null;
         vi.resetModules();
     });
 
@@ -70,10 +79,14 @@ describe('Auth - authMiddleware', () => {
     let mockReply: Partial<FastifyReply>;
     let sentStatus: number | undefined;
     let sentPayload: any;
+    let consoleErrorSpy: ReturnType<typeof vi.spyOn> | null = null;
+    let consoleWarnSpy: ReturnType<typeof vi.spyOn> | null = null;
 
     beforeEach(async () => {
         process.env.JWT_SECRET = TEST_JWT_SECRET;
         vi.resetModules();
+        consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
         
         sentStatus = undefined;
         sentPayload = undefined;
@@ -96,6 +109,10 @@ describe('Auth - authMiddleware', () => {
     afterEach(() => {
         delete process.env.JWT_SECRET;
         delete process.env.NODE_ENV;
+        consoleErrorSpy?.mockRestore();
+        consoleWarnSpy?.mockRestore();
+        consoleErrorSpy = null;
+        consoleWarnSpy = null;
         vi.resetModules();
     });
 

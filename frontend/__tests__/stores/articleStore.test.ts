@@ -1,14 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { act } from '@testing-library/react';
-
-// Mock AsyncStorage
-vi.mock('@react-native-async-storage/async-storage', () => ({
-    default: {
-        getItem: vi.fn(),
-        setItem: vi.fn(),
-        removeItem: vi.fn(),
-    },
-}));
+import { api } from '@/services/api';
+import type { Article } from '@/services/api';
 
 // Mock API
 vi.mock('@/services/api', () => ({
@@ -30,9 +23,14 @@ vi.mock('@/services/api', () => ({
     },
 }));
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { api } from '@/services/api';
-import type { Article } from '@/services/api';
+// Mock AsyncStorage
+vi.mock('@react-native-async-storage/async-storage', () => ({
+    default: {
+        getItem: vi.fn(),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+    },
+}));
 
 const buildArticle = (overrides: Partial<Article> = {}): Article => ({
     id: 1,

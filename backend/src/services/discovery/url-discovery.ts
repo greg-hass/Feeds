@@ -1,10 +1,10 @@
 import * as cheerio from 'cheerio';
-import { FeedType } from '../feed-parser.js';
+import type { FeedType } from '../feed-parser.js';
 import { fetchYouTubeIcon } from '../youtube-parser.js';
 import { fetchRedditIcon } from '../reddit-parser.js';
 import iconService from '../icon-service.js';
 import { checkFeedActivity, checkYouTubeChannelActivity, checkRedditActivity } from './activity-check.js';
-import { DiscoveredFeed } from '../../types/discovery.js';
+import type { DiscoveredFeed } from '../../types/discovery.js';
 
 export type { DiscoveredFeed } from '../../types/discovery.js';
 

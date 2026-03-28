@@ -58,8 +58,6 @@ const YouTubePlayer = React.memo<YouTubePlayerProps>(({
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                             allowFullScreen
                             title="YouTube inline player"
-                            {...({ webkitplaysinline: 'true' } as any)}
-                            playsInline
                         />
                     ) : (
                         <WebView

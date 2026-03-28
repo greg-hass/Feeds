@@ -40,7 +40,7 @@ export function HighlightPopover({ highlight, visible, onClose }: HighlightPopov
         try {
             await updateHighlight(highlight.id, { color });
             showToast('Highlight color updated', 'success');
-        } catch (error) {
+        } catch {
             showToast('Failed to update color', 'error');
         }
     };
@@ -50,7 +50,7 @@ export function HighlightPopover({ highlight, visible, onClose }: HighlightPopov
             await updateHighlight(highlight.id, { note: note.trim() || undefined });
             setIsEditingNote(false);
             showToast('Note saved', 'success');
-        } catch (error) {
+        } catch {
             showToast('Failed to save note', 'error');
         }
     };
@@ -60,7 +60,7 @@ export function HighlightPopover({ highlight, visible, onClose }: HighlightPopov
             await deleteHighlight(highlight.id);
             onClose();
             showToast('Highlight deleted', 'success');
-        } catch (error) {
+        } catch {
             showToast('Failed to delete highlight', 'error');
         }
     };

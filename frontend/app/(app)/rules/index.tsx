@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable, ActivityIndicator, Animated, TouchableOpacity, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Plus, AlertCircle, RefreshCw, Filter, X, Menu } from 'lucide-react-native';
+import { Plus, AlertCircle, RefreshCw, Filter, X } from 'lucide-react-native';
 import { useColors, spacing, typography, borderRadius } from '@/theme';
 import { useRulesStore } from '@/stores/rulesStore';
 import { RulesList } from '@/components/rules/RulesList';
@@ -38,7 +38,7 @@ export default function RulesScreen() {
     // Fetch rules on mount
     useEffect(() => {
         fetchRules(showEnabledOnly);
-    }, [showEnabledOnly]);
+    }, [showEnabledOnly, fetchRules]);
 
     // Filter rules
     const displayedRules = showEnabledOnly ? rules.filter((r) => r.enabled) : rules;

@@ -39,7 +39,12 @@ export function extractVideoId(url: string): string | null {
  * Get YouTube embed URL for iframe
  * Optimized for iOS PWA inline playback
  */
-export function getEmbedUrl(videoId: string, autoplay = false, playsinline = true): string {
+export function getEmbedUrl(
+    videoId: string,
+    autoplay = false,
+    playsinline = true,
+    muted = false
+): string {
     const params: Record<string, string> = {
         rel: '0',
         modestbranding: '1',
@@ -51,7 +56,9 @@ export function getEmbedUrl(videoId: string, autoplay = false, playsinline = tru
 
     if (autoplay) {
         params.autoplay = '1';
-        params.mute = '1';
+        if (muted) {
+            params.mute = '1';
+        }
     }
 
     // Crucial for fixing "Error 153" (Video player configuration error)

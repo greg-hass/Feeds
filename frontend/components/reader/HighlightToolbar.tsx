@@ -57,7 +57,7 @@ export function HighlightToolbar({
             await createHighlight(params);
             showToast('Highlight created', 'success');
             onClose();
-        } catch (error) {
+        } catch {
             showToast('Failed to create highlight', 'error');
         }
     };

@@ -1,6 +1,6 @@
 declare module 'react-native-markdown-display' {
     import { ReactNode } from 'react';
-    import { StyleProp, TextStyle, ViewStyle } from 'react-native';
+    import { StyleProp } from 'react-native';
 
     export interface MarkdownProps {
         children: ReactNode;

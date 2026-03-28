@@ -171,16 +171,22 @@ export async function startServer() {
         startScheduler();
 
         // Graceful shutdown
+        let shuttingDown = false;
         const shutdown = async () => {
+            if (shuttingDown) return;
+            shuttingDown = true;
             app.log.info('Shutting down...');
             stopScheduler();
-            await app.close();
-            closeDatabase();
+            try {
+                await app.close();
+            } finally {
+                closeDatabase();
+            }
             process.exit(0);
         };
 
-        process.on('SIGINT', shutdown);
-        process.on('SIGTERM', shutdown);
+        process.once('SIGINT', shutdown);
+        process.once('SIGTERM', shutdown);
     } catch (err) {
         app.log.error(err);
         process.exit(1);

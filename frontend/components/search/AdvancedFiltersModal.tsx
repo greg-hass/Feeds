@@ -4,7 +4,6 @@ import { X, Calendar, Tag, User, Folder, Rss } from 'lucide-react-native';
 import { useColors, spacing, typography, borderRadius } from '@/theme';
 import { SearchFilters, useSearchStore } from '@/stores/searchStore';
 import { useFeedStore } from '@/stores/feedStore';
-import { PickerSelect } from '@/components/ui/PickerSelect';
 
 interface AdvancedFiltersModalProps {
     visible: boolean;
@@ -24,7 +23,7 @@ export function AdvancedFiltersModal({
     initialFilters = {},
 }: AdvancedFiltersModalProps) {
     const colors = useColors();
-    const { availableTags, availableAuthors, fetchAutocompleteData, autocompleteLoading } = useSearchStore();
+    const { availableTags, availableAuthors, fetchAutocompleteData } = useSearchStore();
     const { feeds, folders } = useFeedStore();
 
     const [filters, setFilters] = useState<SearchFilters>(initialFilters);
@@ -36,7 +35,7 @@ export function AdvancedFiltersModal({
         if (visible && availableTags.length === 0 && availableAuthors.length === 0) {
             fetchAutocompleteData();
         }
-    }, [visible]);
+    }, [visible, availableTags.length, availableAuthors.length, fetchAutocompleteData]);
 
     // Update local state when initialFilters change
     useEffect(() => {

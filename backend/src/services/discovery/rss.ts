@@ -1,6 +1,6 @@
 import { discoverFeedsFromUrl } from './url-discovery.js';
 import { buildDiscoverySearchQueries } from './query-utils.js';
-import { DiscoveredFeed as DiscoveredFeedType } from '../../types/discovery.js';
+import type { DiscoveredFeed as DiscoveredFeedType } from '../../types/discovery.js';
 
 const GOOGLE_SEARCH_API_KEY = process.env.GOOGLE_SEARCH_API_KEY;
 const GOOGLE_SEARCH_ENGINE_ID = process.env.GOOGLE_SEARCH_ENGINE_ID;

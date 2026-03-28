@@ -1,4 +1,4 @@
-import { FeedType } from '../services/feed-parser.js';
+import type { FeedType } from '../services/feed-parser.js';
 
 // Core data models
 export interface Feed {

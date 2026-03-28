@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { Alert } from 'react-native';
 import { api, Feed } from '@/services/api';
-import { useFeedStore } from '@/stores/feedStore';
-import { useArticleStore } from '@/stores/articleStore';
 import { useToastStore } from '@/stores/toastStore';
 
 interface UseBulkActionsProps {
@@ -10,7 +8,6 @@ interface UseBulkActionsProps {
 }
 
 export function useBulkActions({ onRefresh }: UseBulkActionsProps) {
-    const feedStore = useFeedStore();
     const { show } = useToastStore();
     const [selectedFeedIds, setSelectedFeedIds] = useState<Set<number>>(new Set());
 
@@ -49,7 +46,7 @@ export function useBulkActions({ onRefresh }: UseBulkActionsProps) {
                             onRefresh();
                             setSelectedFeedIds(new Set());
                             show(`Deleted ${selectedFeedIds.size} feeds`, 'success');
-                        } catch (err) {
+                        } catch {
                             show('Bulk delete failed', 'error');
                         }
                     }
@@ -71,9 +68,8 @@ export function useBulkActions({ onRefresh }: UseBulkActionsProps) {
             onRefresh();
             setSelectedFeedIds(new Set());
             show('Feeds moved', 'success');
-        } catch (err) {
-            const errorMsg = err instanceof Error ? err.message : 'Failed to move feeds';
-            show(errorMsg, 'error');
+        } catch {
+            show('Failed to move feeds', 'error');
         }
     };
 

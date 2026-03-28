@@ -2,7 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { queryOne, queryAll, run } from '../db/index.js';
 import { emitFeedChange } from '../services/feed-changes.js';
-import { Folder, SmartFolder } from '../types/index.js';
+import type { Folder, SmartFolder } from '../types/index.js';
 
 const createFolderSchema = z.object({
     name: z.string().min(1).max(100),

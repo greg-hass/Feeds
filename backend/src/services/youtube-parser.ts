@@ -94,8 +94,8 @@ export async function fetchYouTubeIcon(
         }
 
         console.log(`[YouTube Icon] No patterns matched for ${normalizedChannelId}`);
-    } catch (e) {
-        console.error(`[YouTube Icon] Error fetching: ${e}`);
+    } catch (err) {
+        console.error(`[YouTube Icon] Error fetching: ${err}`);
     }
 
     // Fallback: Try YouTube Data API if available (works for UC... style IDs)

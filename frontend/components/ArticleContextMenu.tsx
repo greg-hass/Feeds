@@ -2,8 +2,8 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView, Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import {
-    Check, CheckCircle, Bookmark, ExternalLink, Share2,
-    Copy, BookmarkCheck, BookmarkX, Circle, CircleDot, PauseCircle,
+    CheckCircle, Bookmark, ExternalLink, Share2,
+    Copy, BookmarkCheck, Circle, CircleDot, PauseCircle,
     Info
 } from 'lucide-react-native';
 import { useArticleStore } from '@/stores/articleStore';
@@ -13,7 +13,7 @@ import { Article } from '@/services/api';
 import { shareContent } from '@/utils/share';
 import { useColors, spacing, borderRadius } from '@/theme';
 import { openExternalLink } from '@/utils/externalLink';
-import { extractVideoId, isYouTubeUrl } from '@/utils/youtube';
+import { extractVideoId } from '@/utils/youtube';
 
 interface ArticleContextMenuProps {
     visible: boolean;
@@ -75,7 +75,7 @@ export const ArticleContextMenu: React.FC<ArticleContextMenuProps> = ({
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
             await pauseFeed(article.feed_id);
             show(`Paused "${article.feed_title}"`, 'success');
-        } catch (error) {
+        } catch {
             show('Failed to pause feed', 'error');
         }
         onClose();
@@ -105,7 +105,7 @@ export const ArticleContextMenu: React.FC<ArticleContextMenuProps> = ({
                 // For now, just log - can be enhanced later
                 console.log('Copy link (native):', article.url);
             }
-        } catch (error) {
+        } catch {
             console.error('Copy error:', error);
         }
         onClose();
@@ -130,7 +130,7 @@ export const ArticleContextMenu: React.FC<ArticleContextMenuProps> = ({
             }
             
             await openExternalLink(urlToOpen);
-        } catch (error) {
+        } catch {
             console.error('Open external error:', error);
         }
         onClose();

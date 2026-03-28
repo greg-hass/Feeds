@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -100,26 +100,26 @@ export const FeedInfoSheet = ({ feedId, visible, onClose, onEdit, onDelete }: Fe
     const { updateFeed } = useFeedStore();
 
     useEffect(() => {
+        const loadFeedInfo = async () => {
+            if (!feedId) return;
+            setLoading(true);
+            try {
+                const info = await api.getFeedInfo(feedId);
+                setFeedInfo(info);
+            } catch (err) {
+                console.error('Failed to load feed info:', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
         if (visible && feedId) {
             loadFeedInfo();
         } else {
             setFeedInfo(null);
             setLoading(true);
         }
-    }, [visible, feedId, loadFeedInfo]);
-
-    const loadFeedInfo = useCallback(async () => {
-        if (!feedId) return;
-        setLoading(true);
-        try {
-            const info = await api.getFeedInfo(feedId);
-            setFeedInfo(info);
-        } catch (err) {
-            console.error('Failed to load feed info:', err);
-        } finally {
-            setLoading(false);
-        }
-    }, [feedId]);
+    }, [visible, feedId]);
 
     const handlePauseResume = async () => {
         if (!feedInfo) return;

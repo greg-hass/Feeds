@@ -1,15 +1,8 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { useTimelineScroll, __timelineScrollTestUtils } from '@/hooks/useTimelineScroll';
 
 const prefetchArticle = vi.fn();
-
-vi.mock('@/stores', () => ({
-    useArticleStore: () => ({
-        prefetchArticle,
-    }),
-}));
-
-import { useTimelineScroll, __timelineScrollTestUtils } from '@/hooks/useTimelineScroll';
 
 describe('useTimelineScroll', () => {
     const articles = [

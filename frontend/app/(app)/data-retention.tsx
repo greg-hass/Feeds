@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Switch, ActivityIndicator, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, Switch, ActivityIndicator } from 'react-native';
 import { useColors, spacing, borderRadius } from '@/theme';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { Button } from '@/components/ui/Button';
@@ -40,11 +40,7 @@ export default function DataRetentionScreen() {
     const [stats, setStats] = useState<DatabaseStats | null>(null);
     const [preview, setPreview] = useState<CleanupPreview | null>(null);
 
-    useEffect(() => {
-        loadData();
-    }, []);
-
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         setLoading(true);
         try {
             const [retentionData, statsData, previewData] = await Promise.all([
@@ -66,7 +62,11 @@ export default function DataRetentionScreen() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [show]);
+
+    useEffect(() => {
+        void loadData();
+    }, [loadData]);
 
     const handleSave = async () => {
         if (!settings) return;

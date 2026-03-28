@@ -3,7 +3,7 @@ import { checkFeedActivity, checkYouTubeChannelActivity, checkRedditActivity } f
 import { searchRssFeeds } from './discovery/rss.js';
 import { discoverFeedsFromUrl } from './discovery/url-discovery.js';
 import { buildDiscoverySearchQueries, compactDiscoveryKeyword, normalizeDiscoveryKeyword, scoreDiscoveryRelevance } from './discovery/query-utils.js';
-import { DiscoveredFeed } from '../types/discovery.js';
+import type { DiscoveredFeed } from '../types/discovery.js';
 
 // Re-export from url-discovery for backward compatibility
 export { discoverFeedsFromUrl } from './discovery/url-discovery.js';

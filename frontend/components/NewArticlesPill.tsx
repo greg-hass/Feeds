@@ -34,27 +34,31 @@ export default function NewArticlesPill({
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Animation trigger
     useEffect(() => {
         if (shouldShow && displayCount && displayCount > 0) {
-            setIsVisible(true);
-            // Animate in
-            Animated.parallel([
-                Animated.timing(opacity, {
-                    toValue: 1,
-                    duration: 300,
-                    useNativeDriver,
-                }),
-                Animated.spring(translateY, {
-                    toValue: 0,
-                    friction: 8,
-                    tension: 100,
-                    useNativeDriver,
-                }),
-                Animated.spring(scale, {
-                    toValue: 1,
-                    friction: 8,
-                    tension: 100,
-                    useNativeDriver,
-                }),
-            ]).start();
+            const showTimeout = setTimeout(() => {
+                setIsVisible(true);
+                // Animate in
+                Animated.parallel([
+                    Animated.timing(opacity, {
+                        toValue: 1,
+                        duration: 300,
+                        useNativeDriver,
+                    }),
+                    Animated.spring(translateY, {
+                        toValue: 0,
+                        friction: 8,
+                        tension: 100,
+                        useNativeDriver,
+                    }),
+                    Animated.spring(scale, {
+                        toValue: 1,
+                        friction: 8,
+                        tension: 100,
+                        useNativeDriver,
+                    }),
+                ]).start();
+            }, 0);
+
+            return () => clearTimeout(showTimeout);
         } else {
             // Animate out
             Animated.parallel([

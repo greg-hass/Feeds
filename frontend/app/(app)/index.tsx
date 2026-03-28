@@ -1,6 +1,6 @@
 import { startTransition, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
-import { useColors, spacing, typography } from '@/theme';
+import { useColors, spacing } from '@/theme';
 import Timeline from '@/components/Timeline';
 import { FileText } from 'lucide-react-native';
 

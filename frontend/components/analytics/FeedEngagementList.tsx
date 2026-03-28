@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
-import { TrendingUp } from 'lucide-react-native';
 import { useColors, spacing, typography, borderRadius } from '@/theme';
 import { useAnalyticsStore, formatReadingTime, formatEngagementScore, getEngagementColor } from '@/stores/analyticsStore';
 

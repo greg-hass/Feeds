@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Animated, Image, Platform, useWindowDimensions } from 'react-native';
 import { useAudioStore } from '@/stores/audioStore';
-import { useColors, borderRadius, spacing } from '@/theme';
+import { useColors, spacing } from '@/theme';
 import { Play, Pause, X } from 'lucide-react-native';
 
 interface FloatingAudioPlayerProps {

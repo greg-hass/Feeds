@@ -19,14 +19,9 @@ import {
     SearchResult,
     SyncResponse,
     Digest,
-    Recommendation,
-    Interest,
     AuthResponse,
     AuthStatus,
-    ImportStats,
     ProgressEvent,
-    RefreshStats,
-    RefreshFeedUpdate,
     RefreshProgressEvent,
     BookmarksExport,
     SettingsExport,
@@ -321,11 +316,11 @@ class ApiClient {
                 oldestArticleDate: string | null;
                 ftsSizeMb: string;
             };
-            tables: Array<{
+            tables: {
                 name: string;
                 rows: number;
                 estimatedSizeMb: string;
-            }>;
+            }[];
             maintenance: {
                 fragmentationPercent: string;
                 needsVacuum: boolean;
@@ -650,7 +645,7 @@ class ApiClient {
         return this.request<SyncResponse>(`/sync${query ? `?${query}` : ''}`);
     }
 
-    async pushSyncChanges(readState: Array<{ article_id: number; is_read: boolean }>) {
+    async pushSyncChanges(readState: { article_id: number; is_read: boolean }[]) {
         return this.request<{ read_state: { accepted: number; rejected: number } }>('/sync/push', {
             method: 'POST',
             body: { read_state: readState },
