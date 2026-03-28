@@ -226,7 +226,7 @@ export async function searchRoutes(app: FastifyInstance) {
 
         // Add to search history
         if (filters.query || Object.keys(filters).length > 0) {
-            addSearchHistory(userId, filters.query || '', filters as SearchFilters, total);
+            addSearchHistory(userId, filters.query || '', filters as SearchFilters, total ?? 0);
         }
 
         return {

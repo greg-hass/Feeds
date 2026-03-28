@@ -5,6 +5,7 @@ import { cacheFeedIcon } from './icon-cache.js';
 import { cacheArticleThumbnail } from './thumbnail-cache.js';
 import { getUserSettings, Settings } from './settings.js';
 import { logBackgroundError } from '../utils/error-handler.js';
+import { fetchYouTubeIcon } from './youtube-parser.js';
 // Note: fetchAndExtractReadability is no longer used during refresh
 // Content is now fetched lazily when articles are opened (see routes/articles.ts)
 
