@@ -1,7 +1,11 @@
 import { useEffect, useCallback, useMemo, useState } from 'react';
 import { Alert, Platform, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useArticleStore, useFeedStore, useAudioStore, useVideoStore, useDigestStore } from '@/stores';
+import { useArticleStore } from '@/stores/articleStore';
+import { useFeedStore } from '@/stores/feedStore';
+import { useAudioStore } from '@/stores/audioStore';
+import { useVideoStore } from '@/stores/videoStore';
+import { useDigestStore } from '@/stores/digestStore';
 import { extractVideoId } from '@/utils/youtube';
 import { Article } from '@/services/api';
 import { getRefreshPresentation } from '@/utils/refreshStatus';

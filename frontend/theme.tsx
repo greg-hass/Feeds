@@ -1,7 +1,7 @@
 import { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColorScheme } from 'react-native';
-import { useSettingsStore } from './stores';
+import { useSettingsStore } from './stores/settingsStore';
 
 export const darkColors = {
     background: {
@@ -249,7 +249,6 @@ const ThemeContext = createContext<ThemeColors>(colors);
 
 // Cache for the last known theme to prevent flash on app resume
 let cachedTheme: string | null = null;
-let cachedIsDark: boolean | null = null;
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
     const systemTheme = useColorScheme();
@@ -257,7 +256,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     
     // Use cached values initially to prevent flash
     const [initialTheme, setInitialTheme] = useState<string | null>(cachedTheme);
-    const [initialIsDark, setInitialIsDark] = useState<boolean | null>(cachedIsDark);
     
     // Load persisted theme on mount
     useEffect(() => {
@@ -267,23 +265,16 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
                     try {
                         const parsed = JSON.parse(persisted);
                         const theme = parsed?.state?.settings?.theme || 'auto';
-                        const isDark = theme === 'dark' || (theme === 'auto' && systemTheme === 'dark');
                         cachedTheme = theme;
-                        cachedIsDark = isDark;
                         setInitialTheme(theme);
-                        setInitialIsDark(isDark);
                     } catch {
                         // Fallback to defaults
                         cachedTheme = 'auto';
-                        cachedIsDark = systemTheme === 'dark';
                         setInitialTheme('auto');
-                        setInitialIsDark(systemTheme === 'dark');
                     }
                 } else {
                     cachedTheme = 'auto';
-                    cachedIsDark = systemTheme === 'dark';
                     setInitialTheme('auto');
-                    setInitialIsDark(systemTheme === 'dark');
                 }
             });
         }
@@ -296,7 +287,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     // Update cache when theme changes
     useEffect(() => {
         cachedTheme = theme;
-        cachedIsDark = isDark;
     }, [theme, isDark]);
     
     const accentKey = (settings?.accent_color as AccentColor) || 'emerald';

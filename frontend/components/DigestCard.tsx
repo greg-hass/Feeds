@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Sparkles, ChevronRight } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { useDigestStore } from '@/stores';
+import { useDigestStore } from '@/stores/digestStore';
 import { useColors, borderRadius, spacing } from '@/theme';
 
 export const DigestCard = () => {

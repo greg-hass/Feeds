@@ -267,6 +267,8 @@ export const useFeedStore = create<FeedState>()(
                 const refreshController = createRefreshEventController({
                     scope: 'manual',
                     requestSync: () => debouncedSync(),
+                    getFeedStore: () => useFeedStore.getState(),
+                    getArticleStore: () => useArticleStore.getState(),
                 });
                 get().beginRefreshCycle('manual', 'refreshing');
                 get().updateRefreshProgressState({ total: estimatedTotal, completed: 0, currentTitle: '' });

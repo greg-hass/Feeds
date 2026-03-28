@@ -3,7 +3,11 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-nati
 import { useRouter } from 'expo-router';
 import Constants from 'expo-constants';
 import * as DocumentPicker from 'expo-document-picker';
-import { useSettingsStore, useToastStore, useFeedStore, useArticleStore, useDigestStore } from '@/stores';
+import { useSettingsStore } from '@/stores/settingsStore';
+import { useToastStore } from '@/stores/toastStore';
+import { useFeedStore } from '@/stores/feedStore';
+import { useArticleStore } from '@/stores/articleStore';
+import { useDigestStore } from '@/stores/digestStore';
 import { Settings, FeedFetchLimits, api } from '@/services/api';
 import { Sun, Moon, Monitor, Check, Trash2, Type, HardDrive, Download, Upload } from 'lucide-react-native';
 import { useColors, spacing, borderRadius, ACCENT_COLORS, AccentColor } from '@/theme';

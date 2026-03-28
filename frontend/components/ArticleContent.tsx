@@ -3,7 +3,8 @@ import { View, Text, StyleSheet, Platform, useWindowDimensions, ActivityIndicato
 import { useColors, spacing, borderRadius, typography } from '@/theme';
 import { extractVideoId } from '@/utils/youtube';
 import { openExternalLink } from '@/utils/externalLink';
-import { useVideoStore, useSettingsStore } from '@/stores';
+import { useVideoStore } from '@/stores/videoStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 
 // Lazy load WebView only on native platforms
 const NativeWebView = Platform.OS !== 'web'

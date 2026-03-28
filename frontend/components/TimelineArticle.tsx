@@ -3,7 +3,7 @@ import { Text, TouchableOpacity, Animated } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import * as Haptics from 'expo-haptics';
 import { Check, Bookmark } from 'lucide-react-native';
-import { useArticleStore } from '@/stores';
+import { useArticleStore } from '@/stores/articleStore';
 import { Article } from '@/services/api';
 import ArticleCard from './ArticleCard';
 import { ArticleContextMenu } from './ArticleContextMenu';

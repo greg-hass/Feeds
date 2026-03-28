@@ -1,5 +1,5 @@
 import { ApiError } from './api';
-import { useToastStore } from '@/stores';
+import { useToastStore } from '@/stores/toastStore';
 
 /**
  * Centralized error handling for the Feeds application.

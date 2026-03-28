@@ -1,23 +1,44 @@
 import { RefreshProgressEvent } from '@/services/api.types';
-import { useArticleStore, useFeedStore } from '@/stores';
+import type { FeedState, ArticleState } from '@/stores/types';
 
 interface RefreshEventControllerOptions {
     scope: 'background' | 'manual';
     requestSync?: () => void;
     onComplete?: (totalNewArticles: number) => void;
+    getFeedStore: () => Pick<
+        FeedState,
+        | 'feeds'
+        | 'refreshState'
+        | 'beginRefreshCycle'
+        | 'updateRefreshProgressState'
+        | 'completeRefreshCycle'
+        | 'failRefreshCycle'
+        | 'markRefreshStale'
+        | 'applySyncChanges'
+        | 'fetchFeeds'
+        | 'fetchFolders'
+        | 'updateLocalFeed'
+    >;
+    getArticleStore: () => Pick<
+        ArticleState,
+        | 'filter'
+        | 'applySyncChanges'
+        | 'fetchArticles'
+        | 'updateFeedMetadata'
+    >;
 }
 
 export function createRefreshEventController(options: RefreshEventControllerOptions) {
     let totalNewArticles = 0;
 
     const estimateTotalFeeds = () => {
-        const feedCount = useFeedStore.getState().feeds.length;
+        const feedCount = options.getFeedStore().feeds.length;
         return Math.max(feedCount, 1);
     };
 
     const handleEvent = (event: RefreshProgressEvent) => {
-        const feedStore = useFeedStore.getState();
-        const articleStore = useArticleStore.getState();
+        const feedStore = options.getFeedStore();
+        const articleStore = options.getArticleStore();
 
         if (event.type === 'start') {
             totalNewArticles = 0;

@@ -8,7 +8,7 @@ import {
     useWindowDimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useFeedStore } from '@/stores';
+import { useFeedStore } from '@/stores/feedStore';
 import { useColors, spacing, borderRadius, shadows } from '@/theme';
 import { getFeedHealth, getFeedHealthInfo, FeedHealthStatus } from '@/utils/feedHealth';
 import {

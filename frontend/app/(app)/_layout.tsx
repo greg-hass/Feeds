@@ -1,7 +1,8 @@
 import { startTransition, useEffect, useState } from 'react';
 import { View, StyleSheet, useWindowDimensions, Platform, ActivityIndicator } from 'react-native';
 import { Slot } from 'expo-router';
-import { useFeedStore, useSettingsStore } from '@/stores';
+import { useFeedStore } from '@/stores/feedStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { useColors } from '@/theme';
 import Sidebar from '@/components/Sidebar';
 import MobileNav from '@/components/MobileNav';

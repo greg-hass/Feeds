@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
-import { useArticleStore, useFeedStore, useSettingsStore } from '@/stores';
+import { useArticleStore } from '@/stores/articleStore';
+import { useFeedStore } from '@/stores/feedStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { enableSync, fetchChanges, syncManager } from '@/lib/sync';
 import { api } from '@/services/api';
 import { createRefreshEventController } from '@/lib/refreshEvents';
@@ -149,6 +151,8 @@ export function useRefreshLifecycle({
             onComplete: () => {
                 void finalizeRefresh();
             },
+            getFeedStore: () => useFeedStore.getState(),
+            getArticleStore: () => useArticleStore.getState(),
         });
 
         const syncNow = async (

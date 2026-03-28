@@ -3,7 +3,7 @@ import { View, Text, ScrollView, StyleSheet, Pressable, ActivityIndicator, Anima
 import { useRouter } from 'expo-router';
 import { Plus, AlertCircle, RefreshCw, Filter, X, Menu } from 'lucide-react-native';
 import { useColors, spacing, typography, borderRadius } from '@/theme';
-import { useRulesStore } from '@/stores';
+import { useRulesStore } from '@/stores/rulesStore';
 import { RulesList } from '@/components/rules/RulesList';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import Sidebar from '@/components/Sidebar';

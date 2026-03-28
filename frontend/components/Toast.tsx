@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Animated, TouchableOpacity, Platform, useWindowDimensions } from 'react-native';
-import { useToastStore } from '@/stores';
+import { useToastStore } from '@/stores/toastStore';
 import { X, CheckCircle, AlertCircle, Info } from 'lucide-react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
 

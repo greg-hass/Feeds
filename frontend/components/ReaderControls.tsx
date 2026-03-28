@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, LayoutAnimation, Platform, useWindowDimensions } from 'react-native';
-import { useSettingsStore } from '@/stores';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { useColors, borderRadius, spacing } from '@/theme';
 import { Check, Type } from 'lucide-react-native';
 

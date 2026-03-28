@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect, useLayoutEffect, useCallback } from 'react';
 import { FlatList } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { useArticleStore } from '@/stores';
+import { useArticleStore } from '@/stores/articleStore';
 
 type TimelineArticle = { id: number };
 

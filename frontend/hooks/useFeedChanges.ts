@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { api } from '@/services/api';
-import { useFeedStore } from '@/stores';
+import { useFeedStore } from '@/stores/feedStore';
 
 export function useFeedChanges(enabled: boolean) {
     const abortControllerRef = useRef<AbortController | null>(null);

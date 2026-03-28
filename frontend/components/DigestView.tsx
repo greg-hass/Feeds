@@ -1,7 +1,8 @@
 import React, { useEffect, lazy, Suspense, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Platform, Animated, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useDigestStore, useSettingsStore } from '@/stores';
+import { useDigestStore } from '@/stores/digestStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { Sparkles, BarChart3, BookOpen, RefreshCw, AlertCircle, Calendar, Type, Menu, X } from 'lucide-react-native';
 import { useColors, spacing, borderRadius } from '@/theme';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';

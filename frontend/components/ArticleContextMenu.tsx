@@ -6,7 +6,9 @@ import {
     Copy, BookmarkCheck, BookmarkX, Circle, CircleDot, PauseCircle,
     Info
 } from 'lucide-react-native';
-import { useArticleStore, useFeedStore, useToastStore } from '@/stores';
+import { useArticleStore } from '@/stores/articleStore';
+import { useFeedStore } from '@/stores/feedStore';
+import { useToastStore } from '@/stores/toastStore';
 import { Article } from '@/services/api';
 import { shareContent } from '@/utils/share';
 import { useColors, spacing, borderRadius } from '@/theme';

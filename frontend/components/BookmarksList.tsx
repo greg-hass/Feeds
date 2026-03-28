@@ -15,7 +15,7 @@ import {
 import { useRouter } from 'expo-router';
 import { formatDistanceToNow } from 'date-fns';
 import { api, Article, BookmarkFolder } from '@/services/api';
-import { useArticleStore } from '@/stores';
+import { useArticleStore } from '@/stores/articleStore';
 import {
   Archive,
   AlertCircle,

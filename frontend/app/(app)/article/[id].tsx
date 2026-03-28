@@ -2,7 +2,11 @@ import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image, useWindowDimensions, Platform, Animated, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { formatDistanceToNow } from 'date-fns';
-import { useArticleStore, useSettingsStore, useToastStore, useVideoStore, useAudioStore } from '@/stores';
+import { useArticleStore } from '@/stores/articleStore';
+import { useSettingsStore } from '@/stores/settingsStore';
+import { useToastStore } from '@/stores/toastStore';
+import { useVideoStore } from '@/stores/videoStore';
+import { useAudioStore } from '@/stores/audioStore';
 import { useReadingSession, calculateScrollDepth } from '@/hooks/useReadingSession';
 import {
     ArrowLeft, ExternalLink, Circle, CircleCheck,

@@ -1,6 +1,7 @@
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, ActivityIndicator, Platform } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
-import { useFeedStore, useArticleStore } from '@/stores';
+import { useFeedStore } from '@/stores/feedStore';
+import { useArticleStore } from '@/stores/articleStore';
 import {
     Rss, Youtube, MessageSquare, Headphones,
     Folder, Search, Settings,

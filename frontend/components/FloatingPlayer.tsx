@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Animated, PanResponder, Platform, useWindowDimensions } from 'react-native';
-import { useVideoStore } from '@/stores';
+import { useVideoStore } from '@/stores/videoStore';
 import { useColors, borderRadius, spacing } from '@/theme';
 import { getEmbedUrl } from '@/utils/youtube';
 import { X, Maximize2, Minimize2, GripHorizontal } from 'lucide-react-native';

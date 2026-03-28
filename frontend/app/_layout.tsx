@@ -4,8 +4,8 @@ import { ActivityIndicator, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { initializeSync } from '@/stores';
 import { ThemeProvider, useColors } from '@/theme';
+import { initializeSync } from '@/stores/initializeSync';
 import ToastContainer from '@/components/Toast';
 
 const queryClient = new QueryClient({
