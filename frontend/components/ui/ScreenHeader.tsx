@@ -25,6 +25,7 @@ interface ScreenHeaderProps {
     style?: ViewStyle;
     showMenuButton?: boolean;
     onMenuPress?: () => void;
+    isRefreshing?: boolean;
     lastRefreshed?: Date | null;
     refreshIndicator?: {
         color: string;
@@ -44,6 +45,7 @@ export const ScreenHeader = ({
     style,
     showMenuButton = false,
     onMenuPress,
+    isRefreshing,
     lastRefreshed,
     refreshIndicator,
 }: ScreenHeaderProps) => {

@@ -260,7 +260,9 @@ export function useRefreshLifecycle({
                 return;
             }
 
-            void refreshNow(false);
+            // If the app has been away long enough, do the full refresh cycle so
+            // the user gets the same progress feedback as a manual refresh.
+            void refreshNow(true);
         };
 
         const appStateSub = AppState.addEventListener('change', (state) => {

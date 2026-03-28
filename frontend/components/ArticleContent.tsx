@@ -29,9 +29,15 @@ export default function ArticleContent({ html }: ArticleContentProps) {
     const fontSize = settings?.font_size || 'medium';
     const readerTheme = settings?.reader_theme || 'default';
     const customLineHeight = settings?.reader_line_height;
+    const readerWidth = settings?.reader_width || 'comfortable';
     const showImages = settings?.show_images ?? true;
 
     const sizes = fontSizes[fontSize];
+    const maxContentWidth = readerWidth === 'narrow'
+        ? Math.min(width - 48, 640)
+        : readerWidth === 'wide'
+            ? Math.min(width - 48, 900)
+            : Math.min(width - 48, 760);
 
     // Theme colors for the reader content
     let contentColors = {
@@ -78,6 +84,9 @@ export default function ArticleContent({ html }: ArticleContentProps) {
             background-color: ${contentColors.bg};
             margin: 0;
             padding: ${prefix ? '0' : '24px'};
+            width: 100%;
+            max-width: ${maxContentWidth}px;
+            box-sizing: border-box;
             word-wrap: break-word;
             -webkit-font-smoothing: antialiased;
             letter-spacing: -0.011em;
@@ -93,6 +102,13 @@ export default function ArticleContent({ html }: ArticleContentProps) {
         ${s}p, ${s}span, ${s}div, ${s}li, ${s}section, ${s}article, ${s}main, ${s}header, ${s}footer {
             color: ${contentColors.text} !important;
             font-family: ${readerFontStack} !important;
+        }
+
+        ${s}.zen-article {
+            width: 100%;
+            max-width: ${maxContentWidth}px;
+            margin: 0 auto;
+            box-sizing: border-box;
         }
 
         ${s}h1, ${s}h2, ${s}h3, ${s}h4 {

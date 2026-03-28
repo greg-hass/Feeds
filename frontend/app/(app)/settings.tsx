@@ -2,23 +2,28 @@ import { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import Constants from 'expo-constants';
+import * as DocumentPicker from 'expo-document-picker';
 import { useSettingsStore, useToastStore, useFeedStore, useArticleStore, useDigestStore } from '@/stores';
 import { Settings, FeedFetchLimits, api } from '@/services/api';
-import { Sun, Moon, Monitor, Check, Trash2, Type, HardDrive } from 'lucide-react-native';
+import { Sun, Moon, Monitor, Check, Trash2, Type, HardDrive, Download, Upload } from 'lucide-react-native';
 import { useColors, spacing, borderRadius, ACCENT_COLORS, AccentColor } from '@/theme';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { LoadingState } from '@/components/ui/LoadingState';
+import { Button } from '@/components/ui/Button';
 import { Dropdown } from '@/components/Dropdown';
+import { exportTextFile } from '@/utils/fileExport';
 
 export default function SettingsScreen() {
     const router = useRouter();
     const colors = useColors();
-    const { settings, globalNextRefreshAt, fetchSettings, updateSettings } = useSettingsStore();
+    const { settings, globalLastRefreshAt, globalNextRefreshAt, fetchSettings, updateSettings } = useSettingsStore();
     const { settings: digestSettings, fetchSettings: fetchDigestSettings, updateSettings: updateDigestSettings } = useDigestStore();
     const { fetchFeeds, refreshAllFeeds } = useFeedStore();
     const { show } = useToastStore();
     const [backendBuild, setBackendBuild] = useState<{ version: string; sha: string } | null>(null);
+    const [exportingBackup, setExportingBackup] = useState<'opml' | 'bookmarks' | 'settings' | 'backup' | null>(null);
+    const [restoringBackup, setRestoringBackup] = useState(false);
 
     const s = styles(colors);
     const frontendVersion =
@@ -94,6 +99,7 @@ export default function SettingsScreen() {
     };
 
     const nextRefreshLabel = formatNextRefresh(globalNextRefreshAt);
+    const lastRefreshLabel = formatNextRefresh(globalLastRefreshAt);
 
     const handleDigestToggle = async (key: string, value: any) => {
         await updateDigestSettings({ [key]: value });
@@ -135,6 +141,109 @@ export default function SettingsScreen() {
         }
     };
 
+    const handleExportBackup = async (kind: 'opml' | 'bookmarks' | 'settings' | 'backup') => {
+        setExportingBackup(kind);
+        try {
+            if (kind === 'opml') {
+                const opml = await api.exportOpml();
+                const saved = await exportTextFile({
+                    filename: 'feeds-backup.opml',
+                    content: opml,
+                    mimeType: 'text/xml',
+                    title: 'Feeds OPML Backup',
+                });
+                show(saved ? 'OPML exported' : 'Export canceled', saved ? 'success' : 'info');
+                return;
+            }
+
+            if (kind === 'bookmarks') {
+                const backup = await api.exportBookmarks();
+                const saved = await exportTextFile({
+                    filename: 'feeds-bookmarks.json',
+                    content: JSON.stringify(backup, null, 2),
+                    title: 'Feeds Bookmarks Backup',
+                });
+                show(saved ? 'Bookmarks exported' : 'Export canceled', saved ? 'success' : 'info');
+                return;
+            }
+
+            if (kind === 'settings') {
+                const backup = await api.exportSettingsBackup();
+                const saved = await exportTextFile({
+                    filename: 'feeds-settings.json',
+                    content: JSON.stringify(backup, null, 2),
+                    title: 'Feeds Settings Backup',
+                });
+                show(saved ? 'Settings exported' : 'Export canceled', saved ? 'success' : 'info');
+                return;
+            }
+
+            const backup = await api.exportBackup();
+            const saved = await exportTextFile({
+                filename: 'feeds-backup.json',
+                content: JSON.stringify(backup, null, 2),
+                title: 'Feeds Full Backup',
+            });
+            show(saved ? 'Backup exported' : 'Export canceled', saved ? 'success' : 'info');
+        } catch (error) {
+            show(`Failed to export ${kind}`, 'error');
+        } finally {
+            setExportingBackup(null);
+        }
+    };
+
+    const readBackupFile = async (asset: { uri?: string; file?: { text: () => Promise<string> }; name?: string }): Promise<string> => {
+        if (asset.file) {
+            return asset.file.text();
+        }
+
+        if (!asset.uri) {
+            throw new Error('Missing file URI');
+        }
+
+        const response = await fetch(asset.uri);
+        return response.text();
+    };
+
+    const handleRestoreBackup = async () => {
+        setRestoringBackup(true);
+        try {
+            const result = await DocumentPicker.getDocumentAsync({
+                type: '*/*',
+                copyToCacheDirectory: true,
+            });
+
+            if (result.canceled) {
+                return;
+            }
+
+            const file = result.assets[0];
+            const fileName = file.name?.toLowerCase() || '';
+            if (!fileName.endsWith('.json')) {
+                show('Please select a JSON backup file', 'error');
+                return;
+            }
+
+            const text = await readBackupFile(file as any);
+            const backup = JSON.parse(text);
+            const response = await api.restoreBackup(backup);
+
+            await fetchSettings();
+            await fetchDigestSettings();
+            await fetchFeeds();
+            await useArticleStore.getState().fetchBookmarks();
+
+            show(
+                `Backup restored: ${response.restored.settings ? 'settings' : ''}${response.restored.bookmarks ? `, ${response.restored.bookmarks} bookmarks` : ''}`,
+                'success',
+            );
+        } catch (error) {
+            show('Failed to restore backup', 'error');
+        } finally {
+            setRestoringBackup(false);
+        }
+    };
+
 
     if (!settings) {
         return (
@@ -153,6 +262,16 @@ export default function SettingsScreen() {
         reddit_days: settings.feed_fetch_limits?.reddit_days ?? 7,
         podcast_count: settings.feed_fetch_limits?.podcast_count ?? 5,
     };
+    const lineHeightOptions = [
+        { label: 'Compact', value: 1.45 },
+        { label: 'Comfortable', value: 1.6 },
+        { label: 'Spacious', value: 1.8 },
+    ];
+    const widthOptions = [
+        { label: 'Narrow', value: 'narrow' },
+        { label: 'Comfortable', value: 'comfortable' },
+        { label: 'Wide', value: 'wide' },
+    ] as const;
 
     return (
         <View style={s.container}>
@@ -163,7 +282,10 @@ export default function SettingsScreen() {
                 <View style={s.section}>
                     <SectionHeader title="Appearance" />
                     <View style={s.card}>
-                        <Text style={s.label}>Theme</Text>
+                        <View style={s.cardIntro}>
+                            <Text style={s.label}>Theme</Text>
+                            <Text style={s.hint}>Choose how the app should look and feel</Text>
+                        </View>
                         <View style={s.themeRow}>
                             <TouchableOpacity
                                 style={[s.themeOption, settings.theme === 'light' && s.themeOptionActive]}
@@ -243,6 +365,7 @@ export default function SettingsScreen() {
 
                         <View style={s.accentSection}>
                             <Text style={s.label}>Accent Colour</Text>
+                            <Text style={s.hint}>Used for active states and highlights</Text>
                             <View style={s.accentRow}>
                                 {(Object.keys(ACCENT_COLORS) as AccentColor[]).map((key) => (
                                     <TouchableOpacity
@@ -269,6 +392,10 @@ export default function SettingsScreen() {
                 <View style={s.section}>
                     <SectionHeader title="Reading" />
                     <View style={s.card}>
+                        <View style={s.cardIntro}>
+                            <Text style={s.label}>Reader Preferences</Text>
+                            <Text style={s.hint}>Tune article rendering for comfortable reading</Text>
+                        </View>
                         <View style={s.row}>
                             <View>
                                 <Text style={s.label}>Reader Mode</Text>
@@ -355,6 +482,58 @@ export default function SettingsScreen() {
                                 </TouchableOpacity>
                             </View>
                         </View>
+
+                        <View style={s.divider} />
+
+                        <View style={s.row}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={s.label}>Line Height</Text>
+                                <Text style={s.hint}>Comfort for long reads</Text>
+                            </View>
+                            <View style={s.picker}>
+                                {lineHeightOptions.map((option) => (
+                                    <TouchableOpacity
+                                        key={option.label}
+                                        onPress={() => handleToggle('reader_line_height', option.value)}
+                                        style={[
+                                            s.pickerOption,
+                                            (settings.reader_line_height ?? 1.6) === option.value && { backgroundColor: colors.primary.dark }
+                                        ]}
+                                    >
+                                        <Text style={[
+                                            s.pickerText,
+                                            (settings.reader_line_height ?? 1.6) === option.value && { color: colors.text.inverse, fontWeight: '600' }
+                                        ]}>{option.label}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        <View style={s.divider} />
+
+                        <View style={s.row}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={s.label}>Reading Width</Text>
+                                <Text style={s.hint}>Controls article column width</Text>
+                            </View>
+                            <View style={s.picker}>
+                                {widthOptions.map((option) => (
+                                    <TouchableOpacity
+                                        key={option.value}
+                                        onPress={() => handleToggle('reader_width', option.value)}
+                                        style={[
+                                            s.pickerOption,
+                                            (settings.reader_width ?? 'comfortable') === option.value && { backgroundColor: colors.primary.dark }
+                                        ]}
+                                    >
+                                        <Text style={[
+                                            s.pickerText,
+                                            (settings.reader_width ?? 'comfortable') === option.value && { color: colors.text.inverse, fontWeight: '600' }
+                                        ]}>{option.label}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
                     </View>
                 </View>
 
@@ -363,6 +542,10 @@ export default function SettingsScreen() {
                     <SectionHeader title="Feed Fetching Rules" />
                     <Text style={s.sectionHint}>Limit articles fetched per feed type. Bookmarks are not affected.</Text>
                     <View style={s.card}>
+                        <View style={s.cardIntro}>
+                            <Text style={s.label}>Fetch Limits</Text>
+                            <Text style={s.hint}>Control how much content is pulled in for each source</Text>
+                        </View>
                         {/* RSS Feeds */}
                         <View style={s.row}>
                             <View style={{ flex: 1 }}>
@@ -467,6 +650,10 @@ export default function SettingsScreen() {
                 <View style={s.section}>
                     <SectionHeader title="Daily Digest" />
                     <View style={s.card}>
+                        <View style={s.cardIntro}>
+                            <Text style={s.label}>Digest Schedule</Text>
+                            <Text style={s.hint}>Pick when the AI summary should be prepared</Text>
+                        </View>
                         <View style={s.row}>
                             <View>
                                 <Text style={s.label}>Enable Digest</Text>
@@ -527,6 +714,10 @@ export default function SettingsScreen() {
                 <View style={s.section}>
                     <SectionHeader title="Refresh & Storage" />
                     <View style={s.card}>
+                        <View style={s.cardIntro}>
+                            <Text style={s.label}>Refresh Schedule</Text>
+                            <Text style={s.hint}>Set how often the backend checks for new articles</Text>
+                        </View>
                         <View style={s.row}>
                             <View style={{ flex: 1 }}>
                                 <Text style={s.label}>Refresh Interval</Text>
@@ -542,6 +733,11 @@ export default function SettingsScreen() {
                         <View style={s.nextRefreshRow}>
                             <Text style={s.nextRefreshLabel}>Next Refresh</Text>
                             <Text style={s.nextRefreshValue}>{nextRefreshLabel}</Text>
+                        </View>
+
+                        <View style={s.nextRefreshRow}>
+                            <Text style={s.nextRefreshLabel}>Last Refresh</Text>
+                            <Text style={s.nextRefreshValue}>{lastRefreshLabel}</Text>
                         </View>
 
                         <View style={s.divider} />
@@ -585,6 +781,69 @@ export default function SettingsScreen() {
                     </View>
                 </View>
 
+                {/* Backup */}
+                <View style={s.section}>
+                    <SectionHeader title="Backup" />
+                    <Text style={s.sectionHint}>Export your subscriptions, saved articles, and app settings.</Text>
+                    <View style={s.card}>
+                        <View style={s.cardIntro}>
+                            <Text style={s.label}>Backup Sets</Text>
+                            <Text style={s.hint}>Export the parts of your library you want to keep safe</Text>
+                        </View>
+                        <Button
+                            title="Export OPML"
+                            variant="secondary"
+                            onPress={() => handleExportBackup('opml')}
+                            loading={exportingBackup === 'opml'}
+                            disabled={exportingBackup !== null}
+                            icon={!exportingBackup ? <Download size={18} color={colors.text.primary} /> : undefined}
+                        />
+
+                        <View style={{ height: spacing.sm }} />
+
+                        <Button
+                            title="Export Bookmarks"
+                            variant="secondary"
+                            onPress={() => handleExportBackup('bookmarks')}
+                            loading={exportingBackup === 'bookmarks'}
+                            disabled={exportingBackup !== null}
+                            icon={!exportingBackup ? <Download size={18} color={colors.text.primary} /> : undefined}
+                        />
+
+                        <View style={{ height: spacing.sm }} />
+
+                        <Button
+                            title="Export Settings"
+                            variant="secondary"
+                            onPress={() => handleExportBackup('settings')}
+                            loading={exportingBackup === 'settings'}
+                            disabled={exportingBackup !== null}
+                            icon={!exportingBackup ? <Download size={18} color={colors.text.primary} /> : undefined}
+                        />
+
+                        <View style={{ height: spacing.sm }} />
+
+                        <Button
+                            title="Export Backup"
+                            onPress={() => handleExportBackup('backup')}
+                            loading={exportingBackup === 'backup'}
+                            disabled={exportingBackup !== null}
+                            icon={!exportingBackup ? <Download size={18} color={colors.text.inverse} /> : undefined}
+                        />
+
+                        <View style={{ height: spacing.sm }} />
+
+                        <Button
+                            title="Restore Backup"
+                            variant="secondary"
+                            onPress={handleRestoreBackup}
+                            loading={restoringBackup}
+                            disabled={restoringBackup || exportingBackup !== null}
+                            icon={!restoringBackup ? <Upload size={18} color={colors.text.primary} /> : undefined}
+                        />
+                    </View>
+                </View>
+
                 {/* Version */}
                 <Text style={s.version}>Frontend v{frontendVersion} ({frontendBuildSha})</Text>
                 <Text style={s.version}>Backend v{backendBuild?.version || 'unknown'} ({backendBuild?.sha || 'unknown'})</Text>
@@ -610,9 +869,16 @@ const styles = (colors: any) => StyleSheet.create({
         marginBottom: spacing.lg,
     },
     card: {
-        backgroundColor: colors.background.secondary,
-        borderRadius: borderRadius.lg,
-        padding: spacing.md,
+        backgroundColor: colors.background.primary,
+        borderRadius: borderRadius.xl,
+        padding: spacing.lg,
+        borderWidth: 1,
+        borderColor: colors.border.DEFAULT,
+        gap: spacing.sm,
+    },
+    cardIntro: {
+        gap: 2,
+        marginBottom: spacing.xs,
     },
     row: {
         flexDirection: 'row',
@@ -721,6 +987,7 @@ const styles = (colors: any) => StyleSheet.create({
     accentSection: {
         flexDirection: 'column',
         gap: spacing.sm,
+        marginTop: spacing.xs,
     },
     accentRow: {
         flexDirection: 'row',
@@ -744,6 +1011,7 @@ const styles = (colors: any) => StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingVertical: spacing.xs,
+        paddingTop: spacing.sm,
     },
     dangerLabel: {
         fontSize: 15,

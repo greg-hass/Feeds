@@ -1,4 +1,4 @@
-import { Feed, Folder, SmartFolder, Article, ArticleDetail, Settings } from '@/services/api';
+import { Feed, Folder, SmartFolder, Article, ArticleDetail, Settings, BookmarkFolder } from '@/services/api';
 import { SyncChanges } from '@/lib/sync';
 
 export interface FeedState {
@@ -53,6 +53,7 @@ export interface FeedState {
 export interface ArticleState {
     articles: Article[];
     bookmarkedArticles: Article[];
+    bookmarkFolders: BookmarkFolder[];
     currentArticle: ArticleDetail | null;
     contentCache: Record<number, ArticleDetail>;
     cursor: string | null;
@@ -73,7 +74,7 @@ export interface ArticleState {
     setArticleScrollPosition: (articleId: number, position: number) => void;
     getArticleScrollPosition: (articleId: number) => number;
     fetchArticles: (reset?: boolean, isLiveUpdate?: boolean, skipLoadingSet?: boolean) => Promise<void>;
-    fetchBookmarks: () => Promise<void>;
+    fetchBookmarks: (params?: { folderId?: number; archived?: boolean; query?: string }) => Promise<void>;
     fetchArticle: (id: number) => Promise<void>;
     prefetchArticle: (id: number) => Promise<void>;
     markRead: (id: number) => Promise<void>;

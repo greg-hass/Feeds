@@ -6,6 +6,7 @@ import { handleError } from '@/services/errorHandler';
 
 interface SettingsState {
     settings: Settings | null;
+    globalLastRefreshAt: string | null;
     globalNextRefreshAt: string | null;
     isLoading: boolean;
 
@@ -17,6 +18,7 @@ export const useSettingsStore = create<SettingsState>()(
     persist(
         (set, get) => ({
             settings: null,
+            globalLastRefreshAt: null,
             globalNextRefreshAt: null,
             isLoading: false,
 
@@ -26,6 +28,7 @@ export const useSettingsStore = create<SettingsState>()(
                     const response = await api.getSettings();
                     set({
                         settings: response.settings,
+                        globalLastRefreshAt: response.global_last_refresh_at || null,
                         globalNextRefreshAt: response.global_next_refresh_at || null,
                         isLoading: false
                     });
@@ -41,6 +44,7 @@ export const useSettingsStore = create<SettingsState>()(
                         font_size: 'medium',
                         show_images: true,
                         keep_screen_awake: true,
+                        reader_width: 'comfortable',
                         accent_color: 'emerald',
                         feed_fetch_limits: {
                             rss_days: 14,
@@ -57,9 +61,10 @@ export const useSettingsStore = create<SettingsState>()(
             },
 
             updateSettings: async (updates: Partial<Settings>) => {
-                const { settings, global_next_refresh_at } = await api.updateSettings(updates);
+                const { settings, global_last_refresh_at, global_next_refresh_at } = await api.updateSettings(updates);
                 set({
                     settings,
+                    globalLastRefreshAt: global_last_refresh_at || null,
                     globalNextRefreshAt: global_next_refresh_at || null,
                 });
             },
@@ -69,6 +74,7 @@ export const useSettingsStore = create<SettingsState>()(
             storage: createJSONStorage(() => AsyncStorage),
             partialize: (state: SettingsState) => ({
                 settings: state.settings,
+                globalLastRefreshAt: state.globalLastRefreshAt,
                 globalNextRefreshAt: state.globalNextRefreshAt,
             }),
         }

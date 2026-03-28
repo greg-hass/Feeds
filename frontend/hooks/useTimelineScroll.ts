@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback } from 'react';
+import { useRef, useState, useEffect, useLayoutEffect, useCallback } from 'react';
 import { FlatList } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { useArticleStore } from '@/stores';
@@ -53,6 +53,7 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: any) => {
     const { prefetchArticle } = useArticleStore();
     const [restoreAttempt, setRestoreAttempt] = useState(0);
     const flatListRef = useRef<FlatList>(null);
+    const [isFlatListReady, setIsFlatListReady] = useState(false);
     const currentScrollKey = useRef('');
     const hasRestoredScroll = useRef(false);
     const isRestoring = useRef(false);
@@ -61,8 +62,11 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: any) => {
     const prependCompensationSnapshot = useRef<ScrollSnapshot | null>(null);
     const currentScrollOffset = useRef(0);
     const currentAnchorId = useRef<number | null>(null);
-    const currentAnchorIndex = useRef(0);
     const currentAnchorOffset = useRef(0);
+    const attachFlatListRef = useCallback((node: FlatList | null) => {
+        flatListRef.current = node;
+        setIsFlatListReady(Boolean(node));
+    }, []);
 
     const scrollKey = getScrollKey(filter);
 
@@ -95,8 +99,8 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: any) => {
         }, 80);
     }, []);
 
-    useEffect(() => {
-        if (hasRestoredScroll.current || articles.length === 0 || !flatListRef.current) {
+    useLayoutEffect(() => {
+        if (hasRestoredScroll.current || articles.length === 0 || !isFlatListReady) {
             return;
         }
 
@@ -109,31 +113,8 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: any) => {
 
         isRestoring.current = true;
 
-        const anchorIndex = snapshot.anchorArticleId
-            ? articles.findIndex((article) => article.id === snapshot.anchorArticleId)
-            : -1;
-
         const timeoutId = setTimeout(() => {
             if (!flatListRef.current) {
-                return;
-            }
-
-            if (anchorIndex >= 0) {
-                flatListRef.current.scrollToIndex({
-                    index: anchorIndex,
-                    animated: false,
-                    viewOffset: snapshot.anchorOffset,
-                });
-
-                requestAnimationFrame(() => {
-                    if (!flatListRef.current) return;
-                    flatListRef.current.scrollToOffset({
-                        offset: snapshot.absoluteOffset,
-                        animated: false,
-                    });
-                    currentScrollOffset.current = snapshot.absoluteOffset;
-                    completeRestore();
-                });
                 return;
             }
 
@@ -146,7 +127,7 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: any) => {
         }, 120);
 
         return () => clearTimeout(timeoutId);
-    }, [articles, scrollKey, restoreAttempt, completeRestore]);
+    }, [articles, isFlatListReady, scrollKey, restoreAttempt, completeRestore]);
 
     const updateSnapshot = useCallback((nextOffset: number) => {
         scrollSnapshots[scrollKey] = {
@@ -173,29 +154,22 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: any) => {
         }
     }, [updateSnapshot]);
 
-    const articlesRef = useRef(articles);
-    useEffect(() => {
-        articlesRef.current = articles;
-    }, [articles]);
-
-    const [onViewableItemsChanged] = useState(() => ({ viewableItems }: any) => {
-        const currentArticles = articlesRef.current;
+    const onViewableItemsChanged = useCallback(({ viewableItems }: any) => {
         const visibleItems = viewableItems
             .filter((item: any) => item.isViewable && item.item?.id != null);
 
         if (visibleItems.length > 0) {
             const firstVisible = visibleItems[0];
             currentAnchorId.current = firstVisible.item.id;
-            currentAnchorIndex.current = firstVisible.index ?? 0;
             currentAnchorOffset.current = Math.max(0, currentScrollOffset.current);
 
             const lastIndex = visibleItems[visibleItems.length - 1].index;
-            if (currentArticles && currentArticles.length > lastIndex + 1) {
-                const nextArticles = currentArticles.slice(lastIndex + 1, lastIndex + 4);
+            if (articles && articles.length > lastIndex + 1) {
+                const nextArticles = articles.slice(lastIndex + 1, lastIndex + 4);
                 nextArticles.forEach((article) => prefetchArticle(article.id));
             }
         }
-    });
+    }, [articles, prefetchArticle]);
 
     const prepareForNewArticles = useCallback((newArticlesCount: number) => {
         if (newArticlesCount <= 0) return;
@@ -284,6 +258,7 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: any) => {
 
     return {
         flatListRef,
+        attachFlatListRef,
         onViewableItemsChanged,
         handleScroll,
         handleScrollToIndexFailed,

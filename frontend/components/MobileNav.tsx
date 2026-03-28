@@ -2,7 +2,7 @@ import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet, Platform } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { Home, Bookmark, Rss, Settings } from 'lucide-react-native';
-import { useColors, spacing, borderRadius } from '@/theme';
+import { useColors, borderRadius } from '@/theme';
 
 interface NavItem {
     icon: typeof Home;
@@ -59,7 +59,7 @@ export default function MobileNav() {
                         <IconComponent
                             size={22}
                             color={active ? colors.primary.DEFAULT : colors.text.tertiary}
-                            strokeWidth={active ? 2.5 : 1.5}
+                            strokeWidth={active ? 2.4 : 1.6}
                         />
                         <Text style={[s.label, active && s.labelActive]}>
                             {item.label}
@@ -93,21 +93,29 @@ const styles = (colors: any) => {
         paddingBottom: bottomPadding,
         paddingTop: 6,
         position: 'relative',
+        ...Platform.select({
+            web: {
+                boxShadow: '0 -2px 10px rgba(0,0,0,0.04)',
+            },
+        }),
     },
     navItem: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 10,
+        paddingVertical: 9,
         gap: 3,
-        minHeight: 52,
+        minHeight: 50,
         marginHorizontal: 4,
-        borderRadius: borderRadius.lg,
+        borderRadius: borderRadius.xl,
     },
     navItemActive: {
+        backgroundColor: colors.background.secondary,
+        borderWidth: 1,
+        borderColor: colors.border.DEFAULT,
     },
     label: {
-        fontSize: 9,
+        fontSize: 10,
         color: colors.text.tertiary,
         fontWeight: '500',
     },

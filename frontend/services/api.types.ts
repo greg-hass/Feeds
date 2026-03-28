@@ -71,12 +71,29 @@ export interface Article {
     site_name?: string | null;
     byline?: string | null;
     hero_image?: string | null;
+    bookmark_folder_id?: number | null;
+    bookmark_folder_name?: string | null;
+    bookmark_archived_at?: string | null;
+    bookmark_note?: string | null;
 }
 
 export interface ArticleDetail extends Article {
     content: string | null;
     readability_content: string | null;
     enclosure_type: string | null;
+}
+
+export interface BookmarkFolder {
+    id: number;
+    name: string;
+    created_at: string;
+    updated_at: string;
+    bookmark_count?: number;
+}
+
+export interface BookmarksResponse {
+    articles: Article[];
+    folders: BookmarkFolder[];
 }
 
 export interface DiscoveredFeed {
@@ -100,6 +117,41 @@ export interface FeedPreview {
     summary?: string;
 }
 
+export interface SettingsExport {
+    exported_at: string;
+    settings: Settings;
+    global_last_refresh_at: string | null;
+    global_next_refresh_at: string | null;
+}
+
+export interface BookmarksExport {
+    exported_at: string;
+    articles: Article[];
+}
+
+export interface BackupExport {
+    exported_at: string;
+    settings: Settings;
+    global_last_refresh_at: string | null;
+    global_next_refresh_at: string | null;
+    bookmarks: Array<{
+        guid: string;
+        url: string | null;
+        title: string;
+        published_at: string | null;
+        feed_title: string;
+        feed_type: string;
+    }>;
+}
+
+export interface BackupRestoreResult {
+    success: boolean;
+    restored: {
+        settings: boolean;
+        bookmarks: number;
+    };
+}
+
 // ============================================================================
 // Settings & Configuration
 // ============================================================================
@@ -121,6 +173,7 @@ export interface Settings {
     font_size: 'small' | 'medium' | 'large';
     show_images: boolean;
     keep_screen_awake?: boolean;
+    reader_width?: 'narrow' | 'comfortable' | 'wide';
     font_family?: 'sans' | 'serif';
     reader_theme?: 'default' | 'sepia' | 'paper' | 'dark';
     reader_line_height?: number;
@@ -161,8 +214,74 @@ export interface MarkReadScope {
 export interface SearchParams {
     unread_only?: boolean;
     type?: string;
+    feedId?: number;
+    folderId?: number;
+    author?: string;
+    tags?: string[];
     limit?: number;
     includeTotal?: boolean;
+}
+
+export interface SearchSuggestions {
+    query: string;
+    recent_searches: SearchHistoryEntry[];
+    popular_searches: Array<{ query: string; count: number }>;
+    saved_searches: SavedSearch[];
+    tags: string[];
+    authors: string[];
+    feeds: Array<{ id: number; title: string; type: string }>;
+    folders: Array<{ id: number; name: string }>;
+    articles: SearchResult[];
+}
+
+export interface SavedSearchFilters {
+    query?: string;
+    unread_only?: boolean;
+    feed_id?: number;
+    folder_id?: number;
+    feed_ids?: number[];
+    folder_ids?: number[];
+    author?: string;
+    tags?: string[];
+    is_read?: boolean;
+    is_bookmarked?: boolean;
+    has_video?: boolean;
+    has_audio?: boolean;
+    date_from?: string;
+    date_to?: string;
+    type?: string;
+}
+
+export interface SavedSearch {
+    id: number;
+    user_id: number;
+    name: string;
+    query: string;
+    filters: SavedSearchFilters;
+    use_count: number;
+    last_used_at: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface SavedSearchExecutionResponse {
+    search: SavedSearch;
+    results: SearchResult[];
+    pagination: {
+        total?: number;
+        limit: number;
+        offset: number;
+        has_more: boolean;
+    };
+}
+
+export interface SearchHistoryEntry {
+    id: number;
+    user_id: number;
+    query: string;
+    filters: SavedSearchFilters;
+    result_count: number;
+    searched_at: string;
 }
 
 // ============================================================================

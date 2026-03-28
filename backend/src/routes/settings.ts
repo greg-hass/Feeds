@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { run, db } from '../db/index.js';
-import { getUserSettings } from '../services/settings.js';
+import { run, db, queryAll, queryOne } from '../db/index.js';
+import { getUserSettings, updateUserSettingsRaw } from '../services/settings.js';
 import { getGlobalRefreshSchedule, scheduleNextGlobalRefresh } from '../services/refresh-schedule.js';
 import { cleanupOldArticles } from '../services/feed-cleanup.js';
 
@@ -22,11 +22,25 @@ const updateSettingsSchema = z.object({
     font_size: z.enum(['small', 'medium', 'large']).optional(),
     show_images: z.boolean().optional(),
     keep_screen_awake: z.boolean().optional(),
+    reader_width: z.enum(['narrow', 'comfortable', 'wide']).optional(),
     accent_color: z.enum(['emerald', 'sky', 'indigo', 'purple', 'rose', 'orange', 'amber', 'lime', 'cyan', 'teal', 'slate']).optional(),
     font_family: z.enum(['sans', 'serif']).optional(),
     reader_theme: z.enum(['default', 'sepia', 'paper', 'dark']).optional(),
     reader_line_height: z.number().optional(),
     feed_fetch_limits: feedFetchLimitsSchema.optional(),
+});
+
+const restoreBackupSchema = z.object({
+    exported_at: z.string().optional(),
+    settings: updateSettingsSchema.partial().passthrough(),
+    global_last_refresh_at: z.string().nullable().optional(),
+    global_next_refresh_at: z.string().nullable().optional(),
+    bookmarks: z.array(z.object({
+        guid: z.string().optional().nullable(),
+        url: z.string().optional().nullable(),
+        title: z.string().optional().nullable(),
+        published_at: z.string().optional().nullable(),
+    })).optional(),
 });
 
 // Track if we've already ensured the column exists this session
@@ -55,7 +69,107 @@ export async function settingsRoutes(app: FastifyInstance): Promise<void> {
         const refreshedRawSettings = getGlobalRefreshSchedule(userId);
         return {
             settings,
+            global_last_refresh_at: refreshedRawSettings.lastRefreshAt,
             global_next_refresh_at: refreshedRawSettings.nextRefreshAt
+        };
+    });
+
+    app.get('/export', async () => {
+        ensureSettingsColumn();
+        const settings = getUserSettings(userId);
+        const schedule = getGlobalRefreshSchedule(userId);
+        return {
+            exported_at: new Date().toISOString(),
+            settings,
+            global_last_refresh_at: schedule.lastRefreshAt,
+            global_next_refresh_at: schedule.nextRefreshAt,
+        };
+    });
+
+    app.get('/backup', async () => {
+        ensureSettingsColumn();
+        const settings = getUserSettings(userId);
+        const schedule = getGlobalRefreshSchedule(userId);
+        const bookmarks = queryAll<{
+            guid: string;
+            url: string | null;
+            title: string;
+            published_at: string | null;
+            feed_title: string;
+            feed_type: string;
+        }>(
+            `SELECT 
+                a.guid,
+                a.url,
+                a.title,
+                a.published_at,
+                f.title as feed_title,
+                f.type as feed_type
+             FROM articles a
+             JOIN feeds f ON f.id = a.feed_id
+             WHERE f.user_id = ? AND f.deleted_at IS NULL AND f.paused_at IS NULL AND a.is_bookmarked = 1
+             ORDER BY a.published_at DESC
+             LIMIT 1000`,
+            [userId]
+        );
+
+        return {
+            exported_at: new Date().toISOString(),
+            settings,
+            global_last_refresh_at: schedule.lastRefreshAt,
+            global_next_refresh_at: schedule.nextRefreshAt,
+            bookmarks,
+        };
+    });
+
+    app.post('/backup', async (request: FastifyRequest) => {
+        ensureSettingsColumn();
+        const body = restoreBackupSchema.parse(request.body);
+
+        const restoredSettings = {
+            ...getUserSettings(userId),
+            ...body.settings,
+        };
+
+        updateUserSettingsRaw(userId, restoredSettings);
+
+        if (body.global_last_refresh_at !== undefined || body.global_next_refresh_at !== undefined) {
+            updateUserSettingsRaw(userId, {
+                global_last_refresh_at: body.global_last_refresh_at ?? null,
+                global_next_refresh_at: body.global_next_refresh_at ?? null,
+            });
+        }
+
+        let restoredBookmarks = 0;
+        if (body.bookmarks?.length) {
+            for (const bookmark of body.bookmarks) {
+                const article = queryOne<{ id: number }>(
+                    `SELECT a.id
+                     FROM articles a
+                     JOIN feeds f ON f.id = a.feed_id
+                     WHERE f.user_id = ? AND f.deleted_at IS NULL AND (a.guid = ? OR a.url = ?)
+                     ORDER BY a.published_at DESC
+                     LIMIT 1`,
+                    [userId, bookmark.guid ?? null, bookmark.url ?? null]
+                );
+
+                if (!article) continue;
+
+                run('UPDATE articles SET is_bookmarked = 1 WHERE id = ?', [article.id]);
+                restoredBookmarks++;
+            }
+        }
+
+        if (body.global_last_refresh_at === undefined && body.global_next_refresh_at === undefined && body.settings.refresh_interval_minutes !== undefined) {
+            scheduleNextGlobalRefresh(userId, body.settings.refresh_interval_minutes);
+        }
+
+        return {
+            success: true,
+            restored: {
+                settings: true,
+                bookmarks: restoredBookmarks,
+            },
         };
     });
 
@@ -90,6 +204,7 @@ export async function settingsRoutes(app: FastifyInstance): Promise<void> {
 
         return {
             settings: newSettings,
+            global_last_refresh_at: currentSchedule.lastRefreshAt,
             global_next_refresh_at: globalNextRefreshAt,
         };
     });

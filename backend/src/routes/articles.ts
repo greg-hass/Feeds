@@ -10,6 +10,26 @@ import { ensureFeedsSchema } from '../utils/schema-ensure.js';
 
 const bookmarkSchema = z.object({
     bookmarked: z.boolean(),
+    folder_id: z.number().nullable().optional(),
+    archived: z.boolean().nullable().optional(),
+});
+
+const bookmarkFolderSchema = z.object({
+    name: z.string().min(1).max(100),
+});
+
+const bookmarkFilterSchema = z.object({
+    folder_id: z.coerce.number().optional(),
+    archived: z.preprocess(
+        (value) => {
+            if (value === 'true') return true;
+            if (value === 'false') return false;
+            return value;
+        },
+        z.boolean().optional()
+    ),
+    query: z.string().optional(),
+    limit: z.coerce.number().min(1).max(200).optional().default(200),
 });
 
 const listArticlesSchema = z.object({
@@ -111,6 +131,66 @@ function resolveArticleThumbnailUrl(articleId: number, cachedPath: string | null
         return `${THUMBNAIL_ENDPOINT_PREFIX}/${articleId}`;
     }
     return fallback;
+}
+
+type BookmarkFolderRow = {
+    id: number;
+    name: string;
+    created_at: string;
+    updated_at: string;
+};
+
+type BookmarkItemRow = {
+    user_id: number;
+    article_id: number;
+    folder_id: number | null;
+    archived_at: string | null;
+    note: string | null;
+};
+
+function getBookmarkItem(articleId: number, userId: number): BookmarkItemRow | undefined {
+    return queryOne<BookmarkItemRow>(
+        'SELECT * FROM bookmark_items WHERE article_id = ? AND user_id = ?',
+        [articleId, userId]
+    );
+}
+
+function upsertBookmarkItem(
+    articleId: number,
+    userId: number,
+    updates: { folder_id?: number | null; archived?: boolean | null }
+): void {
+    const existing = getBookmarkItem(articleId, userId);
+    const folderId = updates.folder_id !== undefined ? updates.folder_id : existing?.folder_id ?? null;
+
+    if (existing) {
+        if (updates.archived === undefined) {
+            run(
+                `UPDATE bookmark_items
+                 SET folder_id = ?,
+                     updated_at = datetime('now')
+                 WHERE article_id = ? AND user_id = ?`,
+                [folderId, articleId, userId]
+            );
+            return;
+        }
+
+        run(
+            `UPDATE bookmark_items
+             SET folder_id = ?,
+                 archived_at = ?,
+                 updated_at = datetime('now')
+             WHERE article_id = ? AND user_id = ?`,
+            [folderId, updates.archived ? new Date().toISOString() : null, articleId, userId]
+        );
+        return;
+    }
+
+    run(
+        `INSERT INTO bookmark_items (user_id, article_id, folder_id, archived_at)
+         VALUES (?, ?, ?, ?)`,
+        [userId, articleId, folderId, updates.archived ? new Date().toISOString() : null]
+    );
 }
 
 export async function articlesRoutes(app: FastifyInstance) {
@@ -445,7 +525,7 @@ export async function articlesRoutes(app: FastifyInstance) {
     // Toggle bookmark on article
     app.patch('/:id/bookmark', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
         const articleId = parseInt(request.params.id, 10);
-        const { bookmarked } = bookmarkSchema.parse(request.body);
+        const { bookmarked, folder_id, archived } = bookmarkSchema.parse(request.body);
 
         // Verify article belongs to user's feeds
         const article = queryOne<{ id: number }>(
@@ -459,16 +539,130 @@ export async function articlesRoutes(app: FastifyInstance) {
             return reply.status(404).send({ error: 'Article not found' });
         }
 
-        run(
-            'UPDATE articles SET is_bookmarked = ? WHERE id = ?',
-            [bookmarked ? 1 : 0, articleId]
-        );
+        run('UPDATE articles SET is_bookmarked = ? WHERE id = ?', [bookmarked ? 1 : 0, articleId]);
+
+        if (bookmarked) {
+            if (folder_id !== undefined) {
+                const folder = queryOne<{ id: number }>(
+                    'SELECT id FROM bookmark_folders WHERE id = ? AND user_id = ?',
+                    [folder_id, userId]
+                );
+                if (!folder) {
+                    return reply.status(404).send({ error: 'Bookmark folder not found' });
+                }
+            }
+
+            upsertBookmarkItem(articleId, userId, {
+                folder_id,
+                archived,
+            });
+        } else {
+            run('DELETE FROM bookmark_items WHERE article_id = ? AND user_id = ?', [articleId, userId]);
+        }
 
         return { success: true, is_bookmarked: bookmarked };
     });
 
+    app.get('/bookmarks/folders', async () => {
+        const folders = queryAll<BookmarkFolderRow & { bookmark_count: number }>(
+            `SELECT
+                bf.id,
+                bf.name,
+                bf.created_at,
+                bf.updated_at,
+                COUNT(bi.article_id) as bookmark_count
+             FROM bookmark_folders bf
+             LEFT JOIN bookmark_items bi
+                ON bi.folder_id = bf.id
+               AND bi.user_id = bf.user_id
+               AND bi.archived_at IS NULL
+             WHERE bf.user_id = ?
+             GROUP BY bf.id
+             ORDER BY bf.name ASC`,
+            [userId]
+        );
+
+        return { folders };
+    });
+
+    app.post('/bookmarks/folders', async (request: FastifyRequest) => {
+        const body = bookmarkFolderSchema.parse(request.body);
+
+        const existing = queryOne<{ id: number }>(
+            'SELECT id FROM bookmark_folders WHERE user_id = ? AND LOWER(name) = LOWER(?)',
+            [userId, body.name]
+        );
+        if (existing) {
+            return queryOne<BookmarkFolderRow & { bookmark_count: number }>(
+                `SELECT
+                    bf.id,
+                    bf.name,
+                    bf.created_at,
+                    bf.updated_at,
+                    COUNT(bi.article_id) as bookmark_count
+                 FROM bookmark_folders bf
+                 LEFT JOIN bookmark_items bi
+                    ON bi.folder_id = bf.id
+                   AND bi.user_id = bf.user_id
+                   AND bi.archived_at IS NULL
+                 WHERE bf.id = ? AND bf.user_id = ?
+                 GROUP BY bf.id`,
+                [existing.id, userId]
+            );
+        }
+
+        const result = run(
+            `INSERT INTO bookmark_folders (user_id, name)
+             VALUES (?, ?)`,
+            [userId, body.name]
+        );
+
+        return queryOne<BookmarkFolderRow & { bookmark_count: number }>(
+            `SELECT
+                bf.id,
+                bf.name,
+                bf.created_at,
+                bf.updated_at,
+                COUNT(bi.article_id) as bookmark_count
+             FROM bookmark_folders bf
+             LEFT JOIN bookmark_items bi
+                ON bi.folder_id = bf.id
+               AND bi.user_id = bf.user_id
+               AND bi.archived_at IS NULL
+             WHERE bf.id = ? AND bf.user_id = ?
+             GROUP BY bf.id`,
+            [result.lastInsertRowid as number, userId]
+        );
+    });
+
     // List bookmarked articles
-    app.get('/bookmarks', async (request: FastifyRequest) => {
+    app.get('/bookmarks', async (request: FastifyRequest<{ Querystring: { folder_id?: string; archived?: string; query?: string; limit?: string } }>) => {
+        const filters = bookmarkFilterSchema.parse(request.query);
+
+        const conditions: string[] = ['f.user_id = ?', 'f.deleted_at IS NULL', 'f.paused_at IS NULL', 'a.is_bookmarked = 1'];
+        const params: unknown[] = [userId];
+
+        if (filters.folder_id !== undefined) {
+            conditions.push('bi.folder_id = ?');
+            params.push(filters.folder_id);
+        }
+
+        if (filters.archived === true) {
+            conditions.push('bi.archived_at IS NOT NULL');
+        } else {
+            conditions.push('bi.archived_at IS NULL');
+        }
+
+        if (filters.query?.trim()) {
+            conditions.push(`(
+                LOWER(a.title) LIKE ? OR
+                LOWER(COALESCE(a.summary, '')) LIKE ? OR
+                LOWER(COALESCE(a.author, '')) LIKE ? OR
+                LOWER(f.title) LIKE ?
+            )`);
+            const like = `%${filters.query.trim().toLowerCase()}%`;
+            params.push(like, like, like, like);
+        }
 
         const articles = queryAll<Article & {
             feed_title: string;
@@ -478,23 +672,90 @@ export async function articlesRoutes(app: FastifyInstance) {
             feed_type: string;
             is_read: number | null;
             is_bookmarked: number;
+            bookmark_folder_id: number | null;
+            bookmark_folder_name: string | null;
+            bookmark_archived_at: string | null;
+            bookmark_note: string | null;
         }>(
             `SELECT 
                 a.id, a.feed_id, a.guid, a.title, a.url, a.author, a.summary, 
                 a.enclosure_url, a.enclosure_type, a.thumbnail_url, a.thumbnail_cached_path, a.published_at, a.is_bookmarked,
                 f.title as feed_title, f.icon_url as feed_icon_url, f.icon_cached_path as feed_icon_cached_path, f.updated_at as feed_updated_at, f.icon_updated_at as feed_icon_updated_at, f.type as feed_type,
+                rs.is_read,
+                bi.folder_id as bookmark_folder_id,
+                bf.name as bookmark_folder_name,
+                bi.archived_at as bookmark_archived_at,
+                bi.note as bookmark_note
+             FROM articles a
+             JOIN feeds f ON f.id = a.feed_id
+             LEFT JOIN read_state rs ON rs.article_id = a.id AND rs.user_id = ?
+             LEFT JOIN bookmark_items bi ON bi.article_id = a.id AND bi.user_id = ?
+             LEFT JOIN bookmark_folders bf ON bf.id = bi.folder_id
+             WHERE ${conditions.join(' AND ')}
+             ORDER BY a.published_at DESC
+             LIMIT ?`,
+            [userId, userId, userId, ...params.slice(1), filters.limit]
+        );
+
+        const folders = queryAll<BookmarkFolderRow & { bookmark_count: number }>(
+            `SELECT
+                bf.id,
+                bf.name,
+                bf.created_at,
+                bf.updated_at,
+                COUNT(bi.article_id) as bookmark_count
+             FROM bookmark_folders bf
+             LEFT JOIN bookmark_items bi
+                ON bi.folder_id = bf.id
+               AND bi.user_id = bf.user_id
+               AND bi.archived_at IS ${filters.archived === true ? 'NOT NULL' : 'NULL'}
+             WHERE bf.user_id = ?
+             GROUP BY bf.id
+             ORDER BY bf.name ASC`,
+            [userId]
+        );
+
+        return {
+            articles: articles.map((article) => ({
+                ...normalizeArticleResponse(article),
+                bookmark_folder_id: article.bookmark_folder_id,
+                bookmark_folder_name: article.bookmark_folder_name,
+                bookmark_archived_at: article.bookmark_archived_at,
+                bookmark_note: article.bookmark_note,
+            })),
+            folders,
+        };
+    });
+
+    // Export bookmarked articles
+    app.get('/bookmarks/export', async () => {
+        const articles = queryAll<Article & {
+            feed_title: string;
+            feed_type: string;
+            is_read: number | null;
+            is_bookmarked: number;
+        }>(
+            `SELECT 
+                a.id, a.feed_id, a.guid, a.title, a.url, a.author, a.summary, 
+                a.enclosure_url, a.enclosure_type, a.thumbnail_url, a.published_at, a.is_bookmarked,
+                f.title as feed_title, f.type as feed_type,
                 rs.is_read
              FROM articles a
              JOIN feeds f ON f.id = a.feed_id
              LEFT JOIN read_state rs ON rs.article_id = a.id AND rs.user_id = ?
              WHERE f.user_id = ? AND f.deleted_at IS NULL AND f.paused_at IS NULL AND a.is_bookmarked = 1
              ORDER BY a.published_at DESC
-             LIMIT 200`,
+             LIMIT 1000`,
             [userId, userId]
         );
 
         return {
-            articles: articles.map(normalizeArticleResponse),
+            exported_at: new Date().toISOString(),
+            articles: articles.map((article) => ({
+                ...article,
+                is_read: Boolean(article.is_read),
+                is_bookmarked: Boolean(article.is_bookmarked),
+            })),
         };
     });
 

@@ -419,6 +419,52 @@ describe('Feeds API Routes', () => {
             expect(body).toBeDefined();
         });
 
+        it('should bulk pause feeds', async () => {
+            const response = await app.inject({
+                method: 'POST',
+                url: '/api/v1/feeds/bulk',
+                payload: {
+                    action: 'pause',
+                    feed_ids: [1, 2],
+                },
+            });
+
+            expect(response.statusCode).toBe(200);
+            const feedOne = db.prepare('SELECT * FROM feeds WHERE id = ?').get(1) as any;
+            const feedTwo = db.prepare('SELECT * FROM feeds WHERE id = ?').get(2) as any;
+            const feedThree = db.prepare('SELECT * FROM feeds WHERE id = ?').get(3) as any;
+
+            expect(feedOne.paused_at).toBeDefined();
+            expect(feedTwo.paused_at).toBeDefined();
+            expect(feedThree.paused_at).toBeNull();
+        });
+
+        it('should bulk resume feeds', async () => {
+            db.prepare(`
+                UPDATE feeds
+                SET paused_at = datetime('now')
+                WHERE id IN (1, 2)
+            `).run();
+
+            const response = await app.inject({
+                method: 'POST',
+                url: '/api/v1/feeds/bulk',
+                payload: {
+                    action: 'resume',
+                    feed_ids: [1, 2],
+                },
+            });
+
+            expect(response.statusCode).toBe(200);
+            const feedOne = db.prepare('SELECT * FROM feeds WHERE id = ?').get(1) as any;
+            const feedTwo = db.prepare('SELECT * FROM feeds WHERE id = ?').get(2) as any;
+            const feedThree = db.prepare('SELECT * FROM feeds WHERE id = ?').get(3) as any;
+
+            expect(feedOne.paused_at).toBeNull();
+            expect(feedTwo.paused_at).toBeNull();
+            expect(feedThree.paused_at).toBeNull();
+        });
+
         it('should return 400 for invalid action', async () => {
             const response = await app.inject({
                 method: 'POST',

@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Image, Animated, Platform } from 'react-native';
 import { Headphones } from 'lucide-react-native';
 import { Article } from '@/services/api';
-import { useColors, spacing, borderRadius } from '@/theme';
+import { useColors, borderRadius } from '@/theme';
 import { extractVideoId } from '@/utils/youtube';
-import { densitySpacing, thumbnailSize, fontSizes } from '@/utils/densitySpacing';
+import { densitySpacing, fontSizes } from '@/utils/densitySpacing';
 import ArticleFooter from './ArticleFooter';
 import YouTubePlayer from './YouTubePlayer';
 
@@ -206,12 +206,20 @@ const styles = (
     isMobile: boolean
 ) => ({
     articleCard: {
-        backgroundColor: 'transparent',
+        backgroundColor: colors.background.primary,
         paddingHorizontal: densitySpacing.md,
         paddingVertical: densitySpacing.md,
-        marginBottom: 0,
+        marginBottom: densitySpacing.sm,
         position: 'relative' as const,
         overflow: 'hidden' as const,
+        borderWidth: 1,
+        borderColor: colors.border.DEFAULT,
+        borderRadius: borderRadius.xl,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.04,
+        shadowRadius: 10,
+        elevation: 1,
         ...Platform.select({
             web: {
                 cursor: 'pointer' as const,
@@ -221,6 +229,7 @@ const styles = (
     },
     articleActive: {
         backgroundColor: colors.primary.soft,
+        borderColor: colors.primary.DEFAULT,
     },
     articleFeatured: {
         paddingHorizontal: densitySpacing.md,
@@ -240,19 +249,24 @@ const styles = (
     feedPill: {
         flexDirection: 'row' as const,
         alignItems: 'center' as const,
-        paddingVertical: 2,
+        paddingVertical: 3,
+        paddingHorizontal: 6,
         alignSelf: 'flex-start' as const,
-        marginBottom: 5,
+        marginBottom: 6,
         gap: 5,
+        backgroundColor: colors.background.secondary,
+        borderRadius: borderRadius.full,
+        borderWidth: 1,
+        borderColor: colors.border.DEFAULT,
     },
     feedIcon: {
-        width: 15,
-        height: 15,
+        width: 14,
+        height: 14,
         borderRadius: 3,
     },
     feedInitial: {
-        width: 15,
-        height: 15,
+        width: 14,
+        height: 14,
         borderRadius: 3,
         backgroundColor: colors.primary.DEFAULT,
         justifyContent: 'center' as const,
@@ -270,11 +284,11 @@ const styles = (
         maxWidth: 210,
     },
     articleTitle: {
-        fontSize: fontSizes.title - 1,
+        fontSize: fontSizes.title - 2,
         fontWeight: '700' as const,
         color: colors.text.primary,
         lineHeight: 20,
-        marginBottom: 5,
+        marginBottom: 6,
     },
     articleTitleRead: {
         color: colors.text.secondary,
@@ -282,8 +296,8 @@ const styles = (
     featuredSummary: {
         fontSize: fontSizes.summary - 1,
         color: colors.text.secondary,
-        lineHeight: 17,
-        marginBottom: 3,
+        lineHeight: 18,
+        marginBottom: 4,
     },
     thumbnailWrapper: {
         width: isMobile ? 72 : 84,
@@ -323,7 +337,7 @@ const styles = (
     unreadIndicator: {
         position: 'absolute' as const,
         top: densitySpacing.md,
-        left: 0,
+        left: densitySpacing.md,
         width: 3,
         height: 18,
         borderRadius: borderRadius.full,
@@ -331,8 +345,8 @@ const styles = (
     },
     separator: {
         position: 'absolute' as const,
-        left: densitySpacing.lg,
-        right: densitySpacing.lg,
+        left: densitySpacing.md,
+        right: densitySpacing.md,
         bottom: 0,
         height: 1,
         backgroundColor: colors.border.light ?? colors.border.DEFAULT,

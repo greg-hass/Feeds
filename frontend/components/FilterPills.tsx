@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { useColors, spacing, borderRadius } from '@/theme';
+import { useColors, spacing } from '@/theme';
 import { EqualWidthPills, EqualWidthPillItem } from '@/components/ui/EqualWidthPills';
 
 interface FilterPillsProps {
@@ -67,23 +67,26 @@ export default FilterPills;
 
 const styles = (colors: any) => StyleSheet.create({
     filterWrapper: {
+        backgroundColor: colors.background.primary,
         borderBottomWidth: 1,
         borderBottomColor: colors.border.DEFAULT,
-        paddingVertical: spacing.sm,
+        borderTopWidth: 1,
+        borderTopColor: colors.border.DEFAULT,
+        paddingVertical: spacing.xs,
         width: '100%',
     },
     filterRow: {
         paddingHorizontal: spacing.lg,
     },
     filterPill: {
-        paddingVertical: 5,
+        paddingVertical: 6,
     },
     filterPillActive: {
         backgroundColor: colors.primary?.DEFAULT ?? colors.primary,
         borderColor: colors.primary?.DEFAULT ?? colors.primary,
     },
     filterText: {
-        fontSize: 9,
+        fontSize: 10,
         fontWeight: '700' as const,
         color: colors.text.secondary,
         textAlign: 'center' as const,

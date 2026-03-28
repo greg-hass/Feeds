@@ -19,7 +19,7 @@ const updateFeedSchema = z.object({
 });
 
 const bulkActionSchema = z.object({
-    action: z.enum(['move', 'delete', 'mark_read', 'update_refresh_interval']),
+    action: z.enum(['move', 'delete', 'mark_read', 'update_refresh_interval', 'pause', 'resume']),
     feed_ids: z.array(z.coerce.number()),
     folder_id: z.coerce.number().nullable().optional(),
     refresh_interval_minutes: z.number().min(5).max(1440).optional(),

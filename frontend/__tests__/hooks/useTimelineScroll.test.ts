@@ -56,7 +56,7 @@ describe('useTimelineScroll', () => {
         });
 
         act(() => {
-            secondMount.result.current.flatListRef.current = flatListMock as any;
+            secondMount.result.current.attachFlatListRef(flatListMock as any);
         });
 
         secondMount.rerender({ items: [...articles] });
@@ -65,15 +65,11 @@ describe('useTimelineScroll', () => {
             await new Promise((resolve) => setTimeout(resolve, 220));
         });
 
-        expect(flatListMock.scrollToIndex).toHaveBeenCalledWith({
-            index: 2,
-            animated: false,
-            viewOffset: 540,
-        });
         expect(flatListMock.scrollToOffset).toHaveBeenCalledWith({
             offset: 540,
             animated: false,
         });
+        expect(flatListMock.scrollToIndex).not.toHaveBeenCalled();
     });
 
     it('keeps the same anchor article visible when new items are prepended', async () => {
@@ -95,7 +91,7 @@ describe('useTimelineScroll', () => {
         });
 
         act(() => {
-            result.current.flatListRef.current = flatListMock as any;
+            result.current.attachFlatListRef(flatListMock as any);
         });
 
         rerender({ items: [...articles] });

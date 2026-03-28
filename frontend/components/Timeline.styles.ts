@@ -1,5 +1,5 @@
 import { StyleSheet, Platform } from 'react-native';
-import { borderRadius, spacing, shadows } from '@/theme';
+import { borderRadius, spacing } from '@/theme';
 
 export const timelineStyles = (colors: any, isMobile: boolean) => StyleSheet.create({
     container: {
@@ -11,13 +11,13 @@ export const timelineStyles = (colors: any, isMobile: boolean) => StyleSheet.cre
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: spacing.lg,
-        paddingTop: spacing.lg,
-        paddingBottom: spacing.md,
+        paddingTop: spacing.md,
+        paddingBottom: spacing.sm,
     },
     filterWrapper: {
         borderBottomWidth: 1,
         borderBottomColor: colors.border.DEFAULT,
-        paddingVertical: spacing.sm,
+        paddingVertical: spacing.xs,
     },
     filterScroll: {
         paddingHorizontal: spacing.lg,
@@ -51,8 +51,10 @@ export const timelineStyles = (colors: any, isMobile: boolean) => StyleSheet.cre
         gap: 6,
         backgroundColor: colors.background.secondary,
         paddingHorizontal: spacing.sm,
-        paddingVertical: 2,
-        borderRadius: borderRadius.sm,
+        paddingVertical: 3,
+        borderRadius: borderRadius.full,
+        borderWidth: 1,
+        borderColor: colors.border.DEFAULT,
     },
     refreshText: {
         fontSize: 10,
@@ -69,7 +71,7 @@ export const timelineStyles = (colors: any, isMobile: boolean) => StyleSheet.cre
         padding: spacing.sm,
     },
     list: {
-        paddingHorizontal: spacing.sm,
+        paddingHorizontal: spacing.md,
         paddingTop: spacing.sm,
         paddingBottom: spacing.lg,
     },
@@ -111,7 +113,7 @@ export const timelineStyles = (colors: any, isMobile: boolean) => StyleSheet.cre
     unreadIndicator: {
         position: 'absolute',
         top: 0,
-        right: 0,
+        right: spacing.md,
         width: 4,
         height: '100%',
         backgroundColor: colors.primary.DEFAULT,

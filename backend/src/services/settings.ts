@@ -16,6 +16,7 @@ const defaultSettings = {
   font_size: "medium" as const,
   show_images: true,
   keep_screen_awake: true,
+  reader_width: "comfortable" as const,
   accent_color: "emerald",
   feed_fetch_limits: {
     rss_days: 14,

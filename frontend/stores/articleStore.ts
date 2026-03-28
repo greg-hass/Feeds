@@ -83,6 +83,7 @@ export const useArticleStore = create<ArticleState>()(
     (set, get) => ({
       articles: [],
       bookmarkedArticles: [],
+      bookmarkFolders: [],
       currentArticle: null,
       cursor: null,
       hasMore: true,
@@ -179,11 +180,11 @@ export const useArticleStore = create<ArticleState>()(
         }
       },
 
-      fetchBookmarks: async () => {
+      fetchBookmarks: async (params = {}) => {
         set({ isLoading: true, error: null });
         try {
-          const { articles } = await api.getBookmarks();
-          set({ bookmarkedArticles: articles, isLoading: false, error: null });
+          const { articles, folders } = await api.getBookmarks(params);
+          set({ bookmarkedArticles: articles, bookmarkFolders: folders, isLoading: false, error: null });
         } catch (error) {
           const parsedError = handleError(error, {
             context: "fetchBookmarks",

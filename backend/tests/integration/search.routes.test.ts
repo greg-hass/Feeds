@@ -5,6 +5,7 @@ import Database from 'better-sqlite3';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { unlinkSync } from 'fs';
+import { closeDatabase } from '../../src/db/index.js';
 
 // Mock rate limiter
 vi.mock('../../src/middleware/rate-limit.js', () => ({
@@ -21,6 +22,7 @@ describe('Search API Routes', () => {
     let db: Database.Database;
 
     beforeEach(async () => {
+        closeDatabase();
         testDbPath = join(tmpdir(), `search-test-${Date.now()}.db`);
         
         // Create test database
@@ -61,6 +63,7 @@ describe('Search API Routes', () => {
         db.exec(`
             CREATE TABLE articles (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL DEFAULT 1,
                 feed_id INTEGER NOT NULL,
                 guid TEXT NOT NULL,
                 title TEXT,
@@ -73,6 +76,7 @@ describe('Search API Routes', () => {
                 enclosure_type TEXT,
                 published_at DATETIME,
                 is_bookmarked INTEGER DEFAULT 0,
+                deleted_at DATETIME,
                 UNIQUE(feed_id, guid)
             );
         `);
@@ -105,6 +109,7 @@ describe('Search API Routes', () => {
                 filters TEXT,
                 use_count INTEGER DEFAULT 0,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                last_used_at DATETIME,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );
         `);
@@ -116,6 +121,16 @@ describe('Search API Routes', () => {
                 query TEXT,
                 filters TEXT,
                 result_count INTEGER,
+                searched_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        db.exec(`
+            CREATE TABLE article_tags (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                article_id INTEGER NOT NULL,
+                tag TEXT NOT NULL,
+                source TEXT DEFAULT 'manual',
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );
         `);
@@ -137,8 +152,8 @@ describe('Search API Routes', () => {
         
         for (const article of articles) {
             db.prepare(`
-                INSERT INTO articles (id, feed_id, guid, title, url, content, summary, author, published_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '-${article.id} days'))
+                INSERT INTO articles (id, user_id, feed_id, guid, title, url, content, summary, author, published_at, deleted_at)
+                VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, datetime('now', '-${article.id} days'), NULL)
             `).run(
                 article.id,
                 article.feed_id,
@@ -156,6 +171,10 @@ describe('Search API Routes', () => {
                 VALUES (?, ?, ?, ?)
             `).run(article.id, article.title, article.content, article.summary);
         }
+
+        db.prepare(`
+            INSERT INTO article_tags (article_id, tag) VALUES (?, ?)
+        `).run(1, 'javascript');
         
         // Mark some articles as read
         db.exec(`
@@ -185,6 +204,7 @@ describe('Search API Routes', () => {
     afterEach(async () => {
         await app.close();
         db.close();
+        closeDatabase();
         try {
             unlinkSync(testDbPath);
         } catch {}
@@ -237,6 +257,32 @@ describe('Search API Routes', () => {
             expect(body.results).toBeDefined();
         });
 
+        it('should filter by author without a query term', async () => {
+            const response = await app.inject({
+                method: 'GET',
+                url: '/api/v1/search?author=John%20Doe',
+            });
+
+            expect(response.statusCode).toBe(200);
+            const body = JSON.parse(response.payload);
+            expect(body.results).toBeDefined();
+            expect(body.results.length).toBeGreaterThan(0);
+            expect(body.results.every((result: { title: string }) => result.title)).toBe(true);
+        });
+
+        it('should filter by tags without a query term', async () => {
+            const response = await app.inject({
+                method: 'GET',
+                url: '/api/v1/search?tags=javascript',
+            });
+
+            expect(response.statusCode).toBe(200);
+            const body = JSON.parse(response.payload);
+            expect(body.results).toBeDefined();
+            expect(body.results.length).toBeGreaterThan(0);
+            expect(body.results[0].title).toContain('JavaScript');
+        });
+
         it('should support pagination with limit', async () => {
             const response = await app.inject({
                 method: 'GET',
@@ -258,6 +304,20 @@ describe('Search API Routes', () => {
             const body = JSON.parse(response.payload);
             expect(body.total).toBeDefined();
             expect(typeof body.total).toBe('number');
+        });
+
+        it('should record quick search history', async () => {
+            const before = db.prepare('SELECT COUNT(*) as count FROM search_history').get() as { count: number };
+
+            const response = await app.inject({
+                method: 'GET',
+                url: '/api/v1/search?q=JavaScript',
+            });
+
+            expect(response.statusCode).toBe(200);
+
+            const after = db.prepare('SELECT COUNT(*) as count FROM search_history').get() as { count: number };
+            expect(after.count).toBe(before.count + 1);
         });
 
         it('should allow skipping total count', async () => {
@@ -284,14 +344,16 @@ describe('Search API Routes', () => {
             expect(body.total).toBe(0);
         });
 
-        it('should return 400 for missing query', async () => {
+        it('should return an empty result set for missing query and no filters', async () => {
             const response = await app.inject({
                 method: 'GET',
                 url: '/api/v1/search',
             });
 
-            // Zod validation should catch this - checking it doesn't crash
-            expect(response.statusCode).toBeGreaterThanOrEqual(400);
+            expect(response.statusCode).toBe(200);
+            const body = JSON.parse(response.payload);
+            expect(body.results).toEqual([]);
+            expect(body.total).toBe(0);
         });
 
         it('should apply rate limiting', async () => {
@@ -657,6 +719,51 @@ describe('Search API Routes', () => {
                 const body = JSON.parse(response.payload);
                 expect(body.searches.length).toBeLessThanOrEqual(5);
             }
+        });
+    });
+
+    describe('GET /api/v1/search/suggestions', () => {
+        it('should return search suggestions', async () => {
+            db.prepare(`
+                INSERT INTO search_history (user_id, query, filters, result_count)
+                VALUES (?, ?, ?, ?)
+            `).run(1, 'JavaScript', '{}', 3);
+
+            db.prepare(`
+                INSERT INTO saved_searches (user_id, name, query, filters)
+                VALUES (?, ?, ?, ?)
+            `).run(1, 'JavaScript Saved', 'JavaScript', '{}');
+
+            const response = await app.inject({
+                method: 'GET',
+                url: '/api/v1/search/suggestions?q=JavaScript',
+            });
+
+            expect(response.statusCode).toBe(200);
+            const body = JSON.parse(response.payload);
+            expect(body.query).toBe('JavaScript');
+            expect(body.recent_searches).toBeDefined();
+            expect(body.popular_searches).toBeDefined();
+            expect(body.saved_searches).toBeDefined();
+            expect(body.tags).toBeDefined();
+            expect(body.authors).toBeDefined();
+            expect(body.feeds).toBeDefined();
+            expect(body.folders).toBeDefined();
+            expect(body.articles).toBeDefined();
+            expect(body.articles.length).toBeGreaterThan(0);
+        });
+
+        it('should return default suggestions without a query', async () => {
+            const response = await app.inject({
+                method: 'GET',
+                url: '/api/v1/search/suggestions',
+            });
+
+            expect(response.statusCode).toBe(200);
+            const body = JSON.parse(response.payload);
+            expect(body.query).toBe('');
+            expect(body.recent_searches).toBeDefined();
+            expect(body.popular_searches).toBeDefined();
         });
     });
 

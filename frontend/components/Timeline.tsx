@@ -56,7 +56,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     } = useTimeline(onArticlePress);
 
     const {
-        flatListRef, onViewableItemsChanged, handleScroll, handleScrollToIndexFailed, saveScrollPosition,
+        attachFlatListRef, onViewableItemsChanged, handleScroll, handleScrollToIndexFailed, saveScrollPosition,
         scrollToTop, isAtTop, shouldMaintainVisibleContentPosition, prepareForNewArticles
     } = useTimelineScroll(articles, filter);
 
@@ -280,7 +280,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                 <View style={{ flex: 1 }}>
                     <FlatList
                         testID="article-list"
-                        ref={flatListRef}
+                        ref={attachFlatListRef}
                         data={articles}
                         renderItem={renderArticle}
                         keyExtractor={(item) => item.id.toString()}

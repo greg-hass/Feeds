@@ -20,7 +20,6 @@ const NativeWebView = Platform.OS !== 'web'
 export function VideoModal({ videoId, visible, onClose, onMinimize, title }: VideoModalProps) {
     const colors = useColors();
     const { width, height } = useWindowDimensions();
-    const isMobile = width < 1024;
 
     if (!videoId) return null;
 
@@ -51,16 +50,17 @@ export function VideoModal({ videoId, visible, onClose, onMinimize, title }: Vid
                 <View style={[s.content, { width: videoWidth, height: videoHeight }]}>
                     <View style={s.header}>
                         <View style={s.headerTitleContainer}>
+                            <Text style={s.headerEyebrow}>Video Preview</Text>
                             <Text style={s.headerTitle} numberOfLines={1}>{title}</Text>
                         </View>
                         <View style={s.headerActions}>
                             {onMinimize && (
                                 <TouchableOpacity onPress={onMinimize} style={s.headerButton} accessibilityLabel="Minimize video">
-                                    <Minimize2 size={20} color={colors.text.inverse} />
+                                    <Minimize2 size={18} color={colors.text.primary} />
                                 </TouchableOpacity>
                             )}
                             <TouchableOpacity onPress={onClose} style={s.headerButton} accessibilityLabel="Close video">
-                                <X size={20} color={colors.text.inverse} />
+                                <X size={18} color={colors.text.primary} />
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -99,37 +99,47 @@ export function VideoModal({ videoId, visible, onClose, onMinimize, title }: Vid
 const styles = (colors: any) => StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        backgroundColor: 'rgba(0, 0, 0, 0.55)',
         justifyContent: 'center',
         alignItems: 'center',
+        padding: spacing.xl,
     },
     backdrop: {
         ...StyleSheet.absoluteFillObject,
     },
     content: {
-        backgroundColor: colors.background.secondary,
-        borderRadius: borderRadius.lg,
+        backgroundColor: colors.background.primary,
+        borderRadius: borderRadius.xl,
         borderWidth: 1,
         borderColor: colors.border.DEFAULT,
+        overflow: 'hidden',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.28,
+        shadowOpacity: 0.2,
         shadowRadius: 16,
         elevation: 8,
     },
     header: {
-        position: 'absolute',
-        top: -38,
-        left: 0,
-        right: 0,
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        zIndex: 10,
+        gap: spacing.md,
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.sm,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border.DEFAULT,
+        backgroundColor: colors.background.secondary,
     },
     headerTitleContainer: {
         flex: 1,
-        paddingLeft: spacing.sm,
+        gap: 2,
+    },
+    headerEyebrow: {
+        fontSize: 10,
+        fontWeight: '800',
+        color: colors.text.tertiary,
+        textTransform: 'uppercase',
+        letterSpacing: 0.8,
     },
     headerTitle: {
         color: colors.text.primary,
@@ -141,9 +151,9 @@ const styles = (colors: any) => StyleSheet.create({
         gap: spacing.xs,
     },
     headerButton: {
-        padding: 5,
+        padding: 7,
         borderRadius: borderRadius.md,
-        backgroundColor: colors.background.secondary,
+        backgroundColor: colors.background.primary,
         borderWidth: 1,
         borderColor: colors.border.DEFAULT,
     },

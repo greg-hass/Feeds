@@ -28,6 +28,16 @@ import {
     RefreshStats,
     RefreshFeedUpdate,
     RefreshProgressEvent,
+    BookmarksExport,
+    SettingsExport,
+    BackupExport,
+    BackupRestoreResult,
+    SearchSuggestions,
+    BookmarkFolder,
+    BookmarksResponse,
+    SavedSearch,
+    SavedSearchFilters,
+    SavedSearchExecutionResponse,
 } from './api.types';
 
 const AUTH_TOKEN_KEY = '@feeds_auth_token';
@@ -386,7 +396,7 @@ class ApiClient {
         }>('/maintenance/cleanup');
     }
 
-    async bulkFeedAction(action: 'move' | 'delete' | 'mark_read' | 'update_refresh_interval', feedIds: number[], folderId?: number | null, refreshInterval?: number) {
+    async bulkFeedAction(action: 'move' | 'delete' | 'mark_read' | 'update_refresh_interval' | 'pause' | 'resume', feedIds: number[], folderId?: number | null, refreshInterval?: number) {
         return this.request<{ affected: number }>('/feeds/bulk', {
             method: 'POST',
             body: { action, feed_ids: feedIds, folder_id: folderId, refresh_interval_minutes: refreshInterval },
@@ -451,15 +461,37 @@ class ApiClient {
         });
     }
 
-    async bookmarkArticle(id: number, bookmarked: boolean) {
+    async bookmarkArticle(
+        id: number,
+        bookmarked: boolean,
+        options: { folder_id?: number | null; archived?: boolean | null } = {}
+    ) {
         return this.request<{ success: boolean; is_bookmarked: boolean }>(`/articles/${id}/bookmark`, {
             method: 'PATCH',
-            body: { bookmarked },
+            body: { bookmarked, ...options },
         });
     }
 
-    async getBookmarks() {
-        return this.request<{ articles: Article[] }>('/articles/bookmarks');
+    async getBookmarks(params: { folderId?: number; archived?: boolean; query?: string; limit?: number } = {}) {
+        const searchParams = new URLSearchParams();
+        if (params.folderId !== undefined) searchParams.set('folder_id', String(params.folderId));
+        if (params.archived !== undefined) searchParams.set('archived', params.archived ? 'true' : 'false');
+        if (params.query?.trim()) searchParams.set('query', params.query.trim());
+        if (params.limit) searchParams.set('limit', String(params.limit));
+
+        const suffix = searchParams.toString() ? `?${searchParams.toString()}` : '';
+        return this.request<BookmarksResponse>(`/articles/bookmarks${suffix}`);
+    }
+
+    async getBookmarkFolders() {
+        return this.request<{ folders: BookmarkFolder[] }>('/articles/bookmarks/folders');
+    }
+
+    async createBookmarkFolder(name: string) {
+        return this.request<BookmarkFolder>('/articles/bookmarks/folders', {
+            method: 'POST',
+            body: { name },
+        });
     }
 
     async fetchReadability(id: number) {
@@ -473,12 +505,56 @@ class ApiClient {
         const searchParams = new URLSearchParams({ q: query });
         if (params.unread_only) searchParams.set('unread_only', 'true');
         if (params.type) searchParams.set('type', params.type);
+        if (params.feedId) searchParams.set('feed_id', String(params.feedId));
+        if (params.folderId) searchParams.set('folder_id', String(params.folderId));
+        if (params.author) searchParams.set('author', params.author);
+        if (params.tags?.length) {
+            params.tags.forEach((tag) => searchParams.append('tags', tag));
+        }
         if (params.limit) searchParams.set('limit', String(params.limit));
         if (params.includeTotal === false) searchParams.set('include_total', 'false');
 
         return this.request<{ results: SearchResult[]; total?: number; next_cursor: string | null }>(
             `/search?${searchParams.toString()}`
         );
+    }
+
+    async searchSuggestions(query: string, limit = 8) {
+        const searchParams = new URLSearchParams();
+        if (query.trim()) {
+            searchParams.set('q', query.trim());
+        }
+        searchParams.set('limit', String(limit));
+
+        return this.request<SearchSuggestions>(`/search/suggestions?${searchParams.toString()}`);
+    }
+
+    async getSavedSearches() {
+        return this.request<{ searches: SavedSearch[] }>('/search/saved');
+    }
+
+    async createSavedSearch(name: string, query: string, filters: SavedSearchFilters) {
+        return this.request<SavedSearch>('/search/saved', {
+            method: 'POST',
+            body: { name, query, filters },
+        });
+    }
+
+    async executeSavedSearch(id: number, options: { limit?: number; offset?: number; includeTotal?: boolean } = {}) {
+        const searchParams = new URLSearchParams();
+        if (options.limit) searchParams.set('limit', String(options.limit));
+        if (options.offset) searchParams.set('offset', String(options.offset));
+        if (options.includeTotal === false) searchParams.set('include_total', 'false');
+
+        return this.request<SavedSearchExecutionResponse>(
+            `/search/saved/${id}/execute${searchParams.toString() ? `?${searchParams.toString()}` : ''}`
+        );
+    }
+
+    async deleteSavedSearch(id: number) {
+        return this.request<{ success: boolean }>(`/search/saved/${id}`, {
+            method: 'DELETE',
+        });
     }
 
     // Discovery
@@ -523,6 +599,25 @@ class ApiClient {
         });
     }
 
+    async exportBookmarks() {
+        return this.request<BookmarksExport>('/articles/bookmarks/export');
+    }
+
+    async exportSettingsBackup() {
+        return this.request<SettingsExport>('/settings/export');
+    }
+
+    async exportBackup() {
+        return this.request<BackupExport>('/settings/backup');
+    }
+
+    async restoreBackup(backup: BackupExport) {
+        return this.request<BackupRestoreResult>('/settings/backup', {
+            method: 'POST',
+            body: backup,
+        });
+    }
+
     async discoverFromUrl(url: string) {
         return this.request<{ discoveries: DiscoveredFeed[]; error?: string }>('/discovery/url', {
             method: 'POST',
@@ -536,11 +631,11 @@ class ApiClient {
 
     // Settings
     async getSettings() {
-        return this.request<{ settings: Settings; global_next_refresh_at: string | null }>('/settings');
+        return this.request<{ settings: Settings; global_last_refresh_at: string | null; global_next_refresh_at: string | null }>('/settings');
     }
 
     async updateSettings(settings: Partial<Settings>) {
-        return this.request<{ settings: Settings; global_next_refresh_at: string | null }>('/settings', {
+        return this.request<{ settings: Settings; global_last_refresh_at: string | null; global_next_refresh_at: string | null }>('/settings', {
             method: 'PATCH',
             body: settings,
         });

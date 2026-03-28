@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -21,7 +21,6 @@ import {
     Play,
     ExternalLink,
     Calendar,
-    FileText,
     Trash2,
     Pencil,
     Image as ImageIcon,
@@ -107,9 +106,9 @@ export const FeedInfoSheet = ({ feedId, visible, onClose, onEdit, onDelete }: Fe
             setFeedInfo(null);
             setLoading(true);
         }
-    }, [visible, feedId]);
+    }, [visible, feedId, loadFeedInfo]);
 
-    const loadFeedInfo = async () => {
+    const loadFeedInfo = useCallback(async () => {
         if (!feedId) return;
         setLoading(true);
         try {
@@ -120,7 +119,7 @@ export const FeedInfoSheet = ({ feedId, visible, onClose, onEdit, onDelete }: Fe
         } finally {
             setLoading(false);
         }
-    };
+    }, [feedId]);
 
     const handlePauseResume = async () => {
         if (!feedInfo) return;
@@ -240,7 +239,7 @@ export const FeedInfoSheet = ({ feedId, visible, onClose, onEdit, onDelete }: Fe
                             {/* Feed Title & Type */}
                             <View style={s.titleSection}>
                                 <View style={s.iconContainer}>
-                                    <TypeIcon size={32} color={colors.primary?.DEFAULT ?? colors.primary} />
+                                    <TypeIcon size={24} color={colors.primary?.DEFAULT ?? colors.primary} />
                                 </View>
                                 <View style={s.titleInfo}>
                                     <Text style={s.feedTitle} numberOfLines={2}>
@@ -424,13 +423,13 @@ const styles = (colors: any) =>
     StyleSheet.create({
         overlay: {
             flex: 1,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            backgroundColor: 'rgba(0, 0, 0, 0.42)',
             justifyContent: 'center',
             alignItems: 'center',
             padding: spacing.lg,
         },
         sheet: {
-            backgroundColor: colors.background.secondary,
+            backgroundColor: colors.background.primary,
             borderRadius: borderRadius.xl,
             width: '100%',
             maxWidth: 480,
@@ -448,10 +447,11 @@ const styles = (colors: any) =>
         titleSection: {
             flexDirection: 'row',
             marginBottom: spacing.lg,
+            alignItems: 'center',
         },
         iconContainer: {
-            width: 56,
-            height: 56,
+            width: 48,
+            height: 48,
             borderRadius: borderRadius.lg,
             backgroundColor: colors.background.tertiary,
             alignItems: 'center',
@@ -463,13 +463,13 @@ const styles = (colors: any) =>
             justifyContent: 'center',
         },
         feedTitle: {
-            fontSize: 18,
+            fontSize: 17,
             fontWeight: '700',
             color: colors.text.primary,
-            marginBottom: spacing.xs,
+            marginBottom: 2,
         },
         feedType: {
-            fontSize: 13,
+            fontSize: 12,
             color: colors.text.tertiary,
         },
         section: {
@@ -503,6 +503,8 @@ const styles = (colors: any) =>
             paddingHorizontal: spacing.sm,
             paddingVertical: spacing.xs,
             borderRadius: borderRadius.full,
+            borderWidth: 1,
+            borderColor: colors.border.DEFAULT,
         },
         statusDot: {
             width: 8,
@@ -603,15 +605,19 @@ const styles = (colors: any) =>
             alignItems: 'center',
             justifyContent: 'center',
             padding: spacing.md,
-            borderRadius: borderRadius.md,
+            borderRadius: borderRadius.lg,
             backgroundColor: colors.background.tertiary,
             gap: spacing.sm,
+            borderWidth: 1,
+            borderColor: colors.border.DEFAULT,
         },
         actionButtonPrimary: {
             backgroundColor: colors.primary?.DEFAULT ?? colors.primary,
+            borderColor: colors.primary?.DEFAULT ?? colors.primary,
         },
         actionButtonDanger: {
             backgroundColor: colors.error + '10',
+            borderColor: colors.error + '30',
         },
         actionButtonText: {
             fontSize: 14,

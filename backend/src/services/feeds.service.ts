@@ -108,7 +108,7 @@ export interface UpdateFeedInput {
 }
 
 export interface BulkFeedInput {
-    action: 'move' | 'delete' | 'mark_read' | 'update_refresh_interval';
+    action: 'move' | 'delete' | 'mark_read' | 'update_refresh_interval' | 'pause' | 'resume';
     feed_ids: number[];
     folder_id?: number | null;
     refresh_interval_minutes?: number;
@@ -422,23 +422,24 @@ export class FeedsService {
             throw new ValidationError('feed_ids required');
         }
 
+        const feedIdsClause = input.feed_ids.map(() => '?').join(',');
         let affected = 0;
         switch (input.action) {
             case 'move':
                 if (input.folder_id === undefined) {
                     throw new ValidationError('folder_id required');
                 }
-                affected = run(`UPDATE feeds SET folder_id = ?, updated_at = datetime('now') WHERE id IN (${input.feed_ids.map(() => '?').join(',')}) AND user_id = ? AND deleted_at IS NULL`, [input.folder_id ?? null, ...input.feed_ids, userId]).changes;
+                affected = run(`UPDATE feeds SET folder_id = ?, updated_at = datetime('now') WHERE id IN (${feedIdsClause}) AND user_id = ? AND deleted_at IS NULL`, [input.folder_id ?? null, ...input.feed_ids, userId]).changes;
                 break;
             case 'delete':
-                affected = run(`UPDATE feeds SET deleted_at = datetime('now'), updated_at = datetime('now') WHERE id IN (${input.feed_ids.map(() => '?').join(',')}) AND user_id = ? AND deleted_at IS NULL`, [...input.feed_ids, userId]).changes;
+                affected = run(`UPDATE feeds SET deleted_at = datetime('now'), updated_at = datetime('now') WHERE id IN (${feedIdsClause}) AND user_id = ? AND deleted_at IS NULL`, [...input.feed_ids, userId]).changes;
                 break;
             case 'mark_read':
                 run(
                     `INSERT OR REPLACE INTO read_state (user_id, article_id, is_read, read_at, updated_at)
                     SELECT ?, id, 1, datetime('now'), datetime('now')
                     FROM articles
-                    WHERE feed_id IN (${input.feed_ids.map(() => '?').join(',')})`,
+                    WHERE feed_id IN (${feedIdsClause})`,
                     [userId, ...input.feed_ids]
                 );
                 affected = input.feed_ids.length;
@@ -447,7 +448,21 @@ export class FeedsService {
                 if (input.refresh_interval_minutes === undefined) {
                     throw new ValidationError('refresh_interval_minutes required');
                 }
-                affected = run(`UPDATE feeds SET refresh_interval_minutes = ?, updated_at = datetime('now') WHERE id IN (${input.feed_ids.map(() => '?').join(',')}) AND user_id = ? AND deleted_at IS NULL`, [FIXED_REFRESH_INTERVAL_MINUTES, ...input.feed_ids, userId]).changes;
+                affected = run(`UPDATE feeds SET refresh_interval_minutes = ?, updated_at = datetime('now') WHERE id IN (${feedIdsClause}) AND user_id = ? AND deleted_at IS NULL`, [FIXED_REFRESH_INTERVAL_MINUTES, ...input.feed_ids, userId]).changes;
+                break;
+            case 'pause':
+                affected = run(
+                    `UPDATE feeds SET paused_at = datetime('now'), updated_at = datetime('now')
+                     WHERE id IN (${feedIdsClause}) AND user_id = ? AND deleted_at IS NULL AND paused_at IS NULL`,
+                    [...input.feed_ids, userId]
+                ).changes;
+                break;
+            case 'resume':
+                affected = run(
+                    `UPDATE feeds SET paused_at = NULL, updated_at = datetime('now')
+                     WHERE id IN (${feedIdsClause}) AND user_id = ? AND deleted_at IS NULL AND paused_at IS NOT NULL`,
+                    [...input.feed_ids, userId]
+                ).changes;
                 break;
         }
         return { affected };

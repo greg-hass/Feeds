@@ -7,13 +7,14 @@ import { useReadingSession, calculateScrollDepth } from '@/hooks/useReadingSessi
 import {
     ArrowLeft, ExternalLink, Circle, CircleCheck,
     Headphones, Play, Bookmark, Share2,
-    ChevronLeft, ChevronRight, Maximize2, Type
+    ChevronLeft, ChevronRight, Maximize2
 } from 'lucide-react-native';
 import { useColors, borderRadius, spacing, typography } from '@/theme';
 import { extractVideoId, getEmbedUrl, isYouTubeUrl } from '@/utils/youtube';
 import { shareContent } from '@/utils/share';
 import { initWebBrowser, cleanupWebBrowser, openExternalLink } from '@/utils/externalLink';
 import ArticleContent from '@/components/ArticleContent';
+import { ReaderControls } from '@/components/ReaderControls';
 import { VideoModal } from '@/components/VideoModal';
 import { ErrorView } from '@/components/ErrorView';
 
@@ -25,7 +26,7 @@ export default function ArticleScreen() {
     const { width } = useWindowDimensions();
     const isMobile = width < 1024;
     const { currentArticle, fetchArticle, markRead, markUnread, toggleBookmark, articles, setArticleScrollPosition, getArticleScrollPosition, error, isLoading: isStoreLoading } = useArticleStore();
-    const { settings, updateSettings } = useSettingsStore();
+    const { settings } = useSettingsStore();
     const { show } = useToastStore();
     const [isLoading, setIsLoading] = useState(true);
     const [showReadability, setShowReadability] = useState(settings?.readability_enabled ?? false);
@@ -37,7 +38,6 @@ export default function ArticleScreen() {
     const [scrollOffset, setScrollOffset] = useState(0);
     const [headerOpacity] = useState(() => new Animated.Value(1));
     const [readingProgress, setReadingProgress] = useState(0);
-    const [showTextSizeMenu, setShowTextSizeMenu] = useState(false);
 
     const { activeVideoId, playVideo, minimize, close: closeVideo, isMinimized } = useVideoStore();
     const { play: playPodcast } = useAudioStore();
@@ -58,7 +58,7 @@ export default function ArticleScreen() {
         ? `https://www.youtube.com/watch?v=${videoId}`
         : (currentArticle?.url || null);
 
-    const s = styles(colors, isMobile, settings?.reader_theme);
+    const s = styles(colors, isMobile, settings?.reader_theme, settings?.reader_width || 'comfortable');
 
     const [fadeAnim] = useState(() => new Animated.Value(0));
 
@@ -352,36 +352,6 @@ export default function ArticleScreen() {
                         <TouchableOpacity onPress={handleOpenExternal} style={s.actionButton} accessibilityLabel="Open original article">
                             <ExternalLink size={20} color={colors.text.secondary} />
                         </TouchableOpacity>
-                        <View style={{ position: 'relative' as const }}>
-                            <TouchableOpacity onPress={() => setShowTextSizeMenu(!showTextSizeMenu)} style={s.actionButton} accessibilityLabel="Adjust text size">
-                                <Type size={20} color={showTextSizeMenu ? colors.primary.DEFAULT : colors.text.secondary} />
-                            </TouchableOpacity>
-                            {showTextSizeMenu && (
-                                <View style={s.textSizeMenu}>
-                                    <TouchableOpacity
-                                        onPress={() => { updateSettings({ font_size: 'small' }); setShowTextSizeMenu(false); }}
-                                        style={[s.textSizeOption, settings?.font_size === 'small' && s.textSizeOptionActive]}
-                                        accessibilityLabel="Set text size to small"
-                                    >
-                                        <Text style={[s.textSizeLabel, { fontSize: 12 }]}>A</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        onPress={() => { updateSettings({ font_size: 'medium' }); setShowTextSizeMenu(false); }}
-                                        style={[s.textSizeOption, (settings?.font_size === 'medium' || !settings?.font_size) && s.textSizeOptionActive]}
-                                        accessibilityLabel="Set text size to medium"
-                                    >
-                                        <Text style={[s.textSizeLabel, { fontSize: 16 }]}>A</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        onPress={() => { updateSettings({ font_size: 'large' }); setShowTextSizeMenu(false); }}
-                                        style={[s.textSizeOption, settings?.font_size === 'large' && s.textSizeOptionActive]}
-                                        accessibilityLabel="Set text size to large"
-                                    >
-                                        <Text style={[s.textSizeLabel, { fontSize: 20 }]}>A</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            )}
-                        </View>
                     </View>
                 </Animated.View>
 
@@ -393,67 +363,70 @@ export default function ArticleScreen() {
                     scrollEventThrottle={16}
                 >
                     <Animated.View style={[s.contentContainer, { opacity: fadeAnim }]}>
-                        <View style={s.feedHeader}>
-                            {currentArticle.feed_icon_url && !iconFailed ? (
-                                <Image
-                                    source={{ uri: currentArticle.feed_icon_url }}
-                                    style={s.feedIcon}
-                                    onError={() => setIconFailed(true)}
-                                />
-                            ) : (
-                                <View style={s.feedInitial}>
-                                    <Text style={s.initialText}>{currentArticle.feed_title?.charAt(0)}</Text>
-                                </View>
-                            )}
-                            <Text style={s.feedName}>{currentArticle.feed_title}</Text>
-                        </View>
-                        <Text style={s.title}>{currentArticle.title}</Text>
-
-                        <View style={s.meta}>
-                            {currentArticle.author && <Text style={s.author}>{currentArticle.author}</Text>}
-                            {currentArticle.published_at && (
-                                <Text style={s.date}>
-                                    {formatDistanceToNow(new Date(currentArticle.published_at), { addSuffix: true })} • 5 min read
-                                </Text>
-                            )}
-                        </View>
-                        {isContentLoading && (
-                            <View style={s.inlineLoading}>
-                                <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
-                                <Text style={s.inlineLoadingText}>Loading full article…</Text>
-                            </View>
-                        )}
-
-                        {currentArticle.has_audio && (
-                            <TouchableOpacity style={s.listenButton} onPress={handlePlayPodcast} activeOpacity={0.8}>
-                                <Headphones size={20} color="#fff" />
-                                <Text style={s.listenButtonText}>Listen to Podcast</Text>
-                            </TouchableOpacity>
-                        )}
-
-                        {isYouTube && videoId && Platform.OS === 'web' && (
-                            <View style={s.videoContainer}>
-                                {isMobile ? (
-                                    <View style={s.mobileVideoWrapper}>
-                                        <iframe src={getEmbedUrl(videoId)} style={{ width: '100%', height: '100%', border: 'none', borderRadius: borderRadius.lg }} allowFullScreen />
-                                        <TouchableOpacity style={s.mobilePipToggle} onPress={() => playVideo(videoId, currentArticle.title)}>
-                                            <Maximize2 size={16} color="#fff" />
-                                        </TouchableOpacity>
-                                    </View>
+                        <View style={s.articleIntro}>
+                            <View style={s.feedHeader}>
+                                {currentArticle.feed_icon_url && !iconFailed ? (
+                                    <Image
+                                        source={{ uri: currentArticle.feed_icon_url }}
+                                        style={s.feedIcon}
+                                        onError={() => setIconFailed(true)}
+                                    />
                                 ) : (
-                                    <TouchableOpacity style={s.videoPlaceholder} onPress={handlePlayVideo} activeOpacity={0.9}>
-                                        <Image source={{ uri: currentArticle.thumbnail_url || `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` }} style={s.heroImageFull} resizeMode="cover" />
-                                        <View style={s.playOverlay}><View style={s.playButton}><Play size={32} color="#fff" fill="#fff" style={{ marginLeft: 4 }} /></View></View>
-                                    </TouchableOpacity>
+                                    <View style={s.feedInitial}>
+                                        <Text style={s.initialText}>{currentArticle.feed_title?.charAt(0)}</Text>
+                                    </View>
+                                )}
+                                <Text style={s.feedName}>{currentArticle.feed_title}</Text>
+                            </View>
+                            <Text style={s.title}>{currentArticle.title}</Text>
+
+                            <View style={s.meta}>
+                                {currentArticle.author && <Text style={s.author}>{currentArticle.author}</Text>}
+                                {currentArticle.published_at && (
+                                    <Text style={s.date}>
+                                        {formatDistanceToNow(new Date(currentArticle.published_at), { addSuffix: true })} • 5 min read
+                                    </Text>
                                 )}
                             </View>
-                        )}
+                            {isContentLoading && (
+                                <View style={s.inlineLoading}>
+                                    <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
+                                    <Text style={s.inlineLoadingText}>Loading full article…</Text>
+                                </View>
+                            )}
+
+                            {currentArticle.has_audio && (
+                                <TouchableOpacity style={s.listenButton} onPress={handlePlayPodcast} activeOpacity={0.8}>
+                                    <Headphones size={18} color={colors.primary.DEFAULT} />
+                                    <Text style={s.listenButtonText}>Listen to Podcast</Text>
+                                </TouchableOpacity>
+                            )}
+
+                            {isYouTube && videoId && Platform.OS === 'web' && (
+                                <View style={s.videoContainer}>
+                                    {isMobile ? (
+                                        <View style={s.mobileVideoWrapper}>
+                                            <iframe src={getEmbedUrl(videoId)} style={{ width: '100%', height: '100%', border: 'none', borderRadius: borderRadius.lg }} allowFullScreen />
+                                            <TouchableOpacity style={s.mobilePipToggle} onPress={() => playVideo(videoId, currentArticle.title)}>
+                                                <Maximize2 size={16} color="#fff" />
+                                            </TouchableOpacity>
+                                        </View>
+                                    ) : (
+                                        <TouchableOpacity style={s.videoPlaceholder} onPress={handlePlayVideo} activeOpacity={0.9}>
+                                            <Image source={{ uri: currentArticle.thumbnail_url || `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` }} style={s.heroImageFull} resizeMode="cover" />
+                                            <View style={s.playOverlay}><View style={s.playButton}><Play size={32} color="#fff" fill="#fff" style={{ marginLeft: 4 }} /></View></View>
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+                            )}
+                        </View>
 
                         <ArticleContent html={displayContent} />
                     </Animated.View>
                 </ScrollView>
 
 
+                <ReaderControls />
             </View>
         );
     };
@@ -473,10 +446,15 @@ export default function ArticleScreen() {
     );
 }
 
-const styles = (colors: any, isMobile: boolean, readerTheme?: string) => {
+const styles = (colors: any, isMobile: boolean, readerTheme?: string, readerWidth: 'narrow' | 'comfortable' | 'wide' = 'comfortable') => {
     let bgColor = colors.background.primary;
     if (readerTheme === 'sepia') bgColor = colors.reader.sepia.background;
     if (readerTheme === 'paper') bgColor = colors.reader.paper.background;
+    const maxContentWidth = readerWidth === 'narrow'
+        ? 640
+        : readerWidth === 'wide'
+            ? 880
+            : 740;
 
     return StyleSheet.create({
         container: {
@@ -507,7 +485,7 @@ const styles = (colors: any, isMobile: boolean, readerTheme?: string) => {
             flexDirection: 'row',
             justifyContent: 'space-between',
             alignItems: 'center',
-            paddingHorizontal: spacing.lg,
+            paddingHorizontal: spacing.md,
             paddingTop: spacing.sm,
             paddingBottom: spacing.sm,
             borderBottomWidth: 1,
@@ -527,18 +505,22 @@ const styles = (colors: any, isMobile: boolean, readerTheme?: string) => {
         headerLeft: {
             flexDirection: 'row',
             alignItems: 'center',
-            gap: spacing.sm,
+            gap: spacing.xs,
         },
         backButton: {
             padding: spacing.xs,
             marginLeft: -spacing.xs,
+            borderRadius: borderRadius.md,
+            backgroundColor: colors.background.secondary,
+            borderWidth: 1,
+            borderColor: colors.border.DEFAULT,
         },
         navigation: {
             flexDirection: 'row',
             gap: spacing.xs,
         },
         navButton: {
-            padding: 5,
+            padding: 6,
             borderRadius: borderRadius.md,
             backgroundColor: colors.background.secondary,
             borderWidth: 1,
@@ -552,8 +534,8 @@ const styles = (colors: any, isMobile: boolean, readerTheme?: string) => {
             gap: spacing.xs,
         },
         actionButton: {
-            width: 34,
-            height: 34,
+            width: 32,
+            height: 32,
             borderRadius: borderRadius.md,
             justifyContent: 'center',
             alignItems: 'center',
@@ -587,9 +569,23 @@ const styles = (colors: any, isMobile: boolean, readerTheme?: string) => {
         },
         contentContainer: {
             width: '100%',
-            maxWidth: 720,
+            maxWidth: maxContentWidth,
             paddingHorizontal: spacing.lg,
             borderRadius: isMobile ? 0 : borderRadius.lg,
+        },
+        articleIntro: {
+            width: '100%',
+            padding: spacing.lg,
+            marginBottom: spacing.lg,
+            borderRadius: borderRadius.xl,
+            backgroundColor: colors.background.primary,
+            borderWidth: 1,
+            borderColor: colors.border.DEFAULT,
+            ...Platform.select({
+                web: {
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.04)',
+                },
+            }),
         },
         feedHeader: {
             flexDirection: 'row',
@@ -622,17 +618,17 @@ const styles = (colors: any, isMobile: boolean, readerTheme?: string) => {
         },
         title: {
             fontFamily: typography.sans.family,
-            fontSize: isMobile ? 25 : 29,
+            fontSize: isMobile ? 24 : 28,
             fontWeight: '800',
             color: colors.text.primary,
-            lineHeight: isMobile ? 31 : 35,
+            lineHeight: isMobile ? 30 : 34,
             marginBottom: spacing.sm,
             letterSpacing: isMobile ? -0.8 : -1,
         },
         meta: {
             flexDirection: 'row',
             gap: spacing.xs,
-            marginBottom: spacing.lg,
+            marginBottom: spacing.md,
             opacity: 0.7,
             flexWrap: 'wrap',
         },
@@ -703,8 +699,8 @@ const styles = (colors: any, isMobile: boolean, readerTheme?: string) => {
             flexDirection: 'row',
             alignItems: 'center',
             backgroundColor: colors.background.secondary,
-            paddingHorizontal: 16,
-            paddingVertical: 7,
+            paddingHorizontal: 14,
+            paddingVertical: 8,
             borderRadius: borderRadius.full,
             alignSelf: 'flex-start',
             marginBottom: spacing.lg,
@@ -715,39 +711,7 @@ const styles = (colors: any, isMobile: boolean, readerTheme?: string) => {
         listenButtonText: {
             color: colors.primary.DEFAULT,
             fontSize: 13,
-            fontWeight: '800',
-        },
-        textSizeMenu: {
-            position: 'absolute',
-            top: 42,
-            right: 0,
-            backgroundColor: colors.background.secondary,
-            borderRadius: borderRadius.md,
-            borderWidth: 1,
-            borderColor: colors.border.DEFAULT,
-            flexDirection: 'row',
-            padding: 3,
-            gap: 3,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.08,
-            shadowRadius: 4,
-            elevation: 3,
-            zIndex: 100,
-        },
-        textSizeOption: {
-            width: 34,
-            height: 34,
-            justifyContent: 'center',
-            alignItems: 'center',
-            borderRadius: borderRadius.sm,
-        },
-        textSizeOptionActive: {
-            backgroundColor: colors.primary.soft ?? `${colors.primary.DEFAULT}22`,
-        },
-        textSizeLabel: {
             fontWeight: '700',
-            color: colors.text.primary,
         },
     });
 };

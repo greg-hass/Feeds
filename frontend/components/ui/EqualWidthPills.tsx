@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ViewStyle, TextStyle, ReactNode } from 'react-native';
-import { useColors, spacing, borderRadius } from '@/theme';
+import { View, Text, TouchableOpacity, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import type { ReactNode } from 'react';
+import { useColors, borderRadius } from '@/theme';
 
 export interface EqualWidthPillItem {
     id: string;

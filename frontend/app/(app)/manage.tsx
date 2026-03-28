@@ -43,6 +43,7 @@ import {
   RefreshCcw,
   Info,
   Pause,
+  Play,
   Clock,
   Skull,
   X,
@@ -745,6 +746,11 @@ export default function ManageScreen() {
     }
   };
 
+  const clearBulkSelection = useCallback(() => {
+    setSelectedFeedIds(new Set());
+    setIsBulkMode(false);
+  }, []);
+
   const toggleSelectFeed = (id: number) => {
     const next = new Set(selectedFeedIds);
     if (next.has(id)) {
@@ -758,28 +764,34 @@ export default function ManageScreen() {
   const handleBulkDelete = () => {
     if (selectedFeedIds.size === 0) return;
 
-    Alert.alert(
-      "Bulk Delete",
-      `Delete ${selectedFeedIds.size} selected feeds?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await api.bulkFeedAction("delete", Array.from(selectedFeedIds));
-              fetchFeeds();
-              setIsBulkMode(false);
-              setSelectedFeedIds(new Set());
-              show(`Deleted ${selectedFeedIds.size} feeds`, "success");
-            } catch (err) {
-              show("Bulk delete failed", "error");
-            }
-          },
-        },
-      ],
-    );
+    const selectedCount = selectedFeedIds.size;
+    const runDelete = async () => {
+      try {
+        const result = await api.bulkFeedAction("delete", Array.from(selectedFeedIds));
+        fetchFeeds();
+        setIsBulkMode(false);
+        setSelectedFeedIds(new Set());
+        show(`Deleted ${result.affected} feeds`, "success");
+      } catch {
+        show("Bulk delete failed", "error");
+      }
+    };
+
+    if (Platform.OS === "web") {
+      if (window.confirm(`Delete ${selectedCount} selected feeds?`)) {
+        void runDelete();
+      }
+      return;
+    }
+
+    Alert.alert("Bulk Delete", `Delete ${selectedCount} selected feeds?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: runDelete,
+      },
+    ]);
   };
 
   const handleBulkMove = () => {
@@ -787,6 +799,80 @@ export default function ManageScreen() {
     setModalType("move_feed");
     setSelectedFeed(null); // Use null to indicate bulk move
     setSelectedFolderId(null);
+  };
+
+  const handleBulkPause = () => {
+    if (selectedFeedIds.size === 0) return;
+
+    const selectedCount = selectedFeedIds.size;
+    const runPause = async () => {
+      try {
+        const result = await api.bulkFeedAction("pause", Array.from(selectedFeedIds));
+        fetchFeeds();
+        setIsBulkMode(false);
+        setSelectedFeedIds(new Set());
+        show(`Paused ${result.affected} feeds`, "success");
+      } catch {
+        show("Bulk pause failed", "error");
+      }
+    };
+
+    if (Platform.OS === "web") {
+      if (
+        window.confirm(
+          `Pause ${selectedCount} selected feeds?\n\nPaused feeds will stop refreshing until resumed.`,
+        )
+      ) {
+        void runPause();
+      }
+      return;
+    }
+
+    Alert.alert(
+      "Bulk Pause",
+      `Pause ${selectedCount} selected feeds?\n\nPaused feeds will stop refreshing until resumed.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Pause", onPress: runPause },
+      ],
+    );
+  };
+
+  const handleBulkResume = () => {
+    if (selectedFeedIds.size === 0) return;
+
+    const selectedCount = selectedFeedIds.size;
+    const runResume = async () => {
+      try {
+        const result = await api.bulkFeedAction("resume", Array.from(selectedFeedIds));
+        fetchFeeds();
+        setIsBulkMode(false);
+        setSelectedFeedIds(new Set());
+        show(`Resumed ${result.affected} feeds`, "success");
+      } catch {
+        show("Bulk resume failed", "error");
+      }
+    };
+
+    if (Platform.OS === "web") {
+      if (
+        window.confirm(
+          `Resume ${selectedCount} selected feeds?\n\nResumed feeds will be checked by the scheduler again.`,
+        )
+      ) {
+        void runResume();
+      }
+      return;
+    }
+
+    Alert.alert(
+      "Bulk Resume",
+      `Resume ${selectedCount} selected feeds?\n\nResumed feeds will be checked by the scheduler again.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Resume", onPress: runResume },
+      ],
+    );
   };
 
   const getTypeIcon = (type: Feed["type"]) => {
@@ -827,64 +913,72 @@ export default function ManageScreen() {
         {/* Add Feed */}
         <View style={s.section}>
           <SectionHeader title="Add Feed" />
+          <View style={s.addFeedHeader}>
+            <Text style={s.addFeedHint}>
+              Search by URL, keyword, or source type. The discovery chips below
+              help narrow the results.
+            </Text>
+          </View>
 
           {/* Type Filter Pills */}
-          <EqualWidthPills
-            items={discoveryTypes.map((type) => ({
-              id: type,
-              label: type.charAt(0).toUpperCase() + type.slice(1),
-              active: discoveryType === type,
-              onPress: () => setDiscoveryType(type),
-            }))}
-            rowStyle={s.filterPillsScroll}
-            pillStyle={s.filterPill}
-            activePillStyle={s.filterPillActive}
-            textStyle={s.filterPillText}
-            activeTextStyle={s.filterPillTextActive}
-            inactiveBackgroundColor={colors.background.tertiary}
-            activeBackgroundColor={colors.primary.DEFAULT}
-            inactiveBorderColor={colors.border.DEFAULT}
-            activeBorderColor={colors.primary.DEFAULT}
-            inactiveTextColor={colors.text.secondary}
-            activeTextColor={colors.text.inverse}
-            textSize={discoveryPillTextSize}
-          />
-
-          {/* Search Input with Clear Button */}
-          <View style={s.inputRow}>
-            <View style={inputWrapperStyle}>
-              <Input
-                style={inputStyle}
-                placeholder={`Paste URL or search ${discoveryPlaceholder}…`}
-                value={urlInput}
-                onChangeText={setUrlInput}
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="default"
-                returnKeyType="search"
-                onSubmitEditing={handleDiscover}
-                accessibilityLabel={`Search ${discoveryPlaceholder}`}
-              />
-              {urlInput.length > 0 && (
-                <TouchableOpacity
-                  style={s.clearButton}
-                  onPress={() => {
-                    setUrlInput("");
-                    clearDiscovery();
-                  }}
-                  hitSlop={clearButtonHitSlop}
-                >
-                  <X size={16} color={colors.text.tertiary} />
-                </TouchableOpacity>
-              )}
-            </View>
-            <Button
-              onPress={handleDiscover}
-              disabled={isDiscovering || !urlInput.trim()}
-              loading={isDiscovering}
-              icon={!isDiscovering ? searchIcon : undefined}
-              style={searchButtonStyle}
+          <View style={s.sectionCard}>
+            <EqualWidthPills
+              items={discoveryTypes.map((type) => ({
+                id: type,
+                label: type.charAt(0).toUpperCase() + type.slice(1),
+                active: discoveryType === type,
+                onPress: () => setDiscoveryType(type),
+              }))}
+              rowStyle={s.filterPillsScroll}
+              pillStyle={s.filterPill}
+              activePillStyle={s.filterPillActive}
+              textStyle={s.filterPillText}
+              activeTextStyle={s.filterPillTextActive}
+              inactiveBackgroundColor={colors.background.tertiary}
+              activeBackgroundColor={colors.primary.DEFAULT}
+              inactiveBorderColor={colors.border.DEFAULT}
+              activeBorderColor={colors.primary.DEFAULT}
+              inactiveTextColor={colors.text.secondary}
+              activeTextColor={colors.text.inverse}
+              textSize={discoveryPillTextSize}
             />
+
+            {/* Search Input with Clear Button */}
+            <View style={s.inputRow}>
+              <View style={inputWrapperStyle}>
+                <Input
+                  style={inputStyle}
+                  placeholder={`Paste URL or search ${discoveryPlaceholder}…`}
+                  value={urlInput}
+                  onChangeText={setUrlInput}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="default"
+                  returnKeyType="search"
+                  onSubmitEditing={handleDiscover}
+                  accessibilityLabel={`Search ${discoveryPlaceholder}`}
+                />
+                {urlInput.length > 0 && (
+                  <TouchableOpacity
+                    style={s.clearButton}
+                    onPress={() => {
+                      setUrlInput("");
+                      clearDiscovery();
+                    }}
+                    hitSlop={clearButtonHitSlop}
+                  >
+                    <X size={16} color={colors.text.tertiary} />
+                  </TouchableOpacity>
+                )}
+              </View>
+              <Button
+                onPress={handleDiscover}
+                disabled={isDiscovering || !urlInput.trim()}
+                loading={isDiscovering}
+                icon={!isDiscovering ? searchIcon : undefined}
+                style={searchButtonStyle}
+              />
+            </View>
           </View>
 
           {/* Loading Shimmer - only show on initial load, not when refreshing */}
@@ -1348,6 +1442,10 @@ export default function ManageScreen() {
                           (colors.primary?.DEFAULT ?? colors.primary) + "11",
                         borderColor:
                           (colors.primary?.DEFAULT ?? colors.primary) + "44",
+                        shadowColor: colors.primary?.DEFAULT ?? colors.primary,
+                        shadowOpacity: 0.08,
+                        shadowRadius: 8,
+                        shadowOffset: { width: 0, height: 2 },
                       },
                   ]}
                 >
@@ -1416,6 +1514,11 @@ export default function ManageScreen() {
                         >
                           {feed.title}
                         </Text>
+                        {isBulkMode && selectedFeedIds.has(feed.id) && (
+                          <View style={s.bulkSelectedBadge}>
+                            <Check size={10} color={colors.text.inverse} />
+                          </View>
+                        )}
                         <View style={s.feedTypeBadge}>
                           {getTypeIcon(feed.type)}
                         </View>
@@ -1582,30 +1685,86 @@ export default function ManageScreen() {
       </ScrollView>
 
       {/* Bulk Toolbar */}
-      {isBulkMode && selectedFeedIds.size > 0 && (
+      {isBulkMode && (
         <View style={s.bulkToolbar}>
-          <TouchableOpacity
-            style={[
-              s.bulkButton,
-              { backgroundColor: colors.background.tertiary },
-            ]}
-            onPress={handleSelectAll}
-          >
-            <Check size={18} color={colors.text.secondary} />
-            <Text style={[s.bulkButtonText, { color: colors.text.secondary }]}>
-              {selectedFeedIds.size === visibleFeedCount
-                ? "Deselect All"
-                : "Select All"}
-            </Text>
-          </TouchableOpacity>
-          <Text style={s.bulkText}>{selectedFeedIds.size} selected</Text>
+          <View style={s.bulkSummaryRow}>
+            <View style={s.bulkCountPill}>
+              <Check size={14} color={colors.text.secondary} />
+              <Text style={s.bulkCountText}>
+                {selectedFeedIds.size} selected
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[
+                s.bulkButton,
+                s.bulkSelectButton,
+                { backgroundColor: colors.background.tertiary },
+              ]}
+              onPress={handleSelectAll}
+            >
+              <Check size={18} color={colors.text.secondary} />
+              <Text
+                style={[s.bulkButtonText, { color: colors.text.secondary }]}
+              >
+                {selectedFeedIds.size === visibleFeedCount
+                  ? "Deselect All"
+                  : "Select All"}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                s.bulkButton,
+                s.bulkSelectButton,
+                { backgroundColor: colors.background.primary },
+              ]}
+              onPress={clearBulkSelection}
+            >
+              <X size={16} color={colors.text.tertiary} />
+              <Text style={[s.bulkButtonText, { color: colors.text.tertiary }]}>
+                Done
+              </Text>
+            </TouchableOpacity>
+          </View>
           <View style={s.bulkActions}>
             <TouchableOpacity
               style={[
                 s.bulkButton,
+                s.bulkActionButton,
+                { backgroundColor: colors.warning + "22" },
+                selectedFeedIds.size === 0 && s.bulkButtonDisabled,
+              ]}
+              onPress={handleBulkPause}
+              disabled={selectedFeedIds.size === 0}
+            >
+              <Pause size={18} color={colors.warning} />
+              <Text style={[s.bulkButtonText, { color: colors.warning }]}>
+                Pause
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                s.bulkButton,
+                s.bulkActionButton,
+                { backgroundColor: colors.success + "22" },
+                selectedFeedIds.size === 0 && s.bulkButtonDisabled,
+              ]}
+              onPress={handleBulkResume}
+              disabled={selectedFeedIds.size === 0}
+            >
+              <Play size={18} color={colors.success} />
+              <Text style={[s.bulkButtonText, { color: colors.success }]}>
+                Resume
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                s.bulkButton,
+                s.bulkActionButton,
                 { backgroundColor: colors.secondary.DEFAULT + "22" },
+                selectedFeedIds.size === 0 && s.bulkButtonDisabled,
               ]}
               onPress={handleBulkMove}
+              disabled={selectedFeedIds.size === 0}
             >
               <FolderInput size={18} color={colors.secondary.DEFAULT} />
               <Text
@@ -1615,8 +1774,14 @@ export default function ManageScreen() {
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[s.bulkButton, { backgroundColor: "#ef444422" }]}
+              style={[
+                s.bulkButton,
+                s.bulkActionButton,
+                { backgroundColor: "#ef444422" },
+                selectedFeedIds.size === 0 && s.bulkButtonDisabled,
+              ]}
               onPress={handleBulkDelete}
+              disabled={selectedFeedIds.size === 0}
             >
               <Trash2 size={18} color="#ef4444" />
               <Text style={[s.bulkButtonText, { color: "#ef4444" }]}>
@@ -1674,10 +1839,19 @@ export default function ManageScreen() {
             {/* Header */}
             <View style={s.moveModalHeader}>
               <View style={s.moveModalHeaderContent}>
-                <Text style={s.moveModalTitle}>Move Feed</Text>
+                <Text style={s.moveModalTitle}>
+                  {selectedFeedIds.size > 0 && !selectedFeed
+                    ? "Move Selected Feeds"
+                    : "Move Feed"}
+                </Text>
                 {selectedFeed && (
                   <Text style={s.moveModalSubtitle} numberOfLines={1}>
                     {selectedFeed.title}
+                  </Text>
+                )}
+                {selectedFeedIds.size > 0 && !selectedFeed && (
+                  <Text style={s.moveModalSubtitle}>
+                    {selectedFeedIds.size} selected
                   </Text>
                 )}
               </View>
@@ -1797,8 +1971,19 @@ export default function ManageScreen() {
             {selectedFolder && (
               <>
                 <View style={s.viewFolderHeader}>
-                  <FolderIcon size={24} color={colors.secondary.DEFAULT} />
-                  <Text style={s.viewFolderTitle}>{selectedFolder.name}</Text>
+                  <View style={s.viewFolderIconContainer}>
+                    <FolderIcon size={20} color={colors.secondary.DEFAULT} />
+                  </View>
+                  <View style={s.viewFolderTitleContainer}>
+                    <Text style={s.viewFolderTitle}>{selectedFolder.name}</Text>
+                    <Text style={s.viewFolderSubtitle}>
+                      {
+                        feeds.filter((f: Feed) => f.folder_id === selectedFolder.id)
+                          .length
+                      }{" "}
+                      feeds
+                    </Text>
+                  </View>
                   <TouchableOpacity
                     onPress={() => setModalType(null)}
                     style={s.viewFolderClose}
@@ -1806,14 +1991,6 @@ export default function ManageScreen() {
                     <X size={20} color={colors.text.secondary} />
                   </TouchableOpacity>
                 </View>
-
-                <Text style={s.viewFolderSubtitle}>
-                  {
-                    feeds.filter((f: Feed) => f.folder_id === selectedFolder.id)
-                      .length
-                  }{" "}
-                  feeds
-                </Text>
 
                 <ScrollView
                   style={s.viewFolderList}
@@ -2109,54 +2286,80 @@ const styles = (colors: any) =>
       padding: spacing.lg,
     },
     section: {
-      marginBottom: spacing.xxl,
+      marginBottom: spacing.xl,
+    },
+    sectionCard: {
+      backgroundColor: colors.background.primary,
+      borderRadius: borderRadius.xl,
+      borderWidth: 1,
+      borderColor: colors.border.DEFAULT,
+      padding: spacing.lg,
+      gap: spacing.md,
+      ...Platform.select({
+        web: {
+          boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
+        },
+      }),
     },
     inputRow: {
       flexDirection: "row",
       flexWrap: "wrap",
       gap: spacing.sm,
       alignItems: "center",
+      marginTop: spacing.xs,
     },
     discoveries: {
       marginTop: spacing.lg,
     },
     discoveriesTitle: {
-      fontSize: 13,
+      fontSize: 12,
       color: colors.text.tertiary,
+      fontWeight: "700",
+      letterSpacing: 0.8,
+      textTransform: "uppercase",
       marginBottom: spacing.sm,
     },
     groupSection: {
       marginBottom: spacing.lg,
+      backgroundColor: colors.background.primary,
+      borderRadius: borderRadius.xl,
+      borderWidth: 1,
+      borderColor: colors.border.DEFAULT,
+      padding: spacing.lg,
+      gap: spacing.sm,
     },
     groupHeader: {
       flexDirection: "row",
       alignItems: "center",
       gap: spacing.sm,
-      marginBottom: spacing.sm,
-      paddingHorizontal: spacing.xs,
+      marginBottom: spacing.xs,
     },
     groupTitle: {
-      fontSize: 14,
-      fontWeight: "600",
+      fontSize: 13,
+      fontWeight: "700",
       color: colors.text.primary,
       flex: 1,
     },
     groupCount: {
-      fontSize: 12,
+      fontSize: 11,
       color: colors.text.tertiary,
-      backgroundColor: colors.background.tertiary,
+      backgroundColor: colors.background.secondary,
       paddingHorizontal: spacing.sm,
       paddingVertical: 2,
       borderRadius: borderRadius.full,
+      borderWidth: 1,
+      borderColor: colors.border.DEFAULT,
     },
     discoveryItem: {
       flexDirection: "row",
       alignItems: "center",
       backgroundColor: colors.background.secondary,
-      borderRadius: borderRadius.md,
+      borderRadius: borderRadius.lg,
       padding: spacing.md,
       gap: spacing.md,
       marginBottom: spacing.sm,
+      borderWidth: 1,
+      borderColor: colors.border.DEFAULT,
     },
     discoveryInfo: {
       flex: 1,
@@ -2174,7 +2377,7 @@ const styles = (colors: any) =>
     feedItem: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: colors.background.secondary,
+      backgroundColor: colors.background.primary,
       borderRadius: borderRadius.lg,
       marginBottom: spacing.md,
       overflow: "hidden",
@@ -2218,6 +2421,15 @@ const styles = (colors: any) =>
       alignItems: "center",
       paddingRight: spacing.xs,
     },
+    addFeedHeader: {
+      gap: 2,
+      marginBottom: spacing.xs,
+    },
+    addFeedHint: {
+      fontSize: 12,
+      color: colors.text.tertiary,
+      lineHeight: 16,
+    },
     searchRow: {
       marginTop: spacing.sm,
       marginBottom: spacing.sm,
@@ -2254,10 +2466,25 @@ const styles = (colors: any) =>
       alignItems: "center",
       gap: spacing.xs,
       flex: 1,
+      flexWrap: "wrap",
     },
     feedTypeBadge: {
       marginLeft: 4,
-      opacity: 0.8,
+      opacity: 0.85,
+      paddingHorizontal: 6,
+      paddingVertical: 3,
+      borderRadius: borderRadius.full,
+      backgroundColor: colors.background.tertiary,
+      borderWidth: 1,
+      borderColor: colors.border.DEFAULT,
+    },
+    bulkSelectedBadge: {
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: colors.primary.DEFAULT,
     },
     errorIcon: {
       flexShrink: 0,
@@ -2417,25 +2644,27 @@ const styles = (colors: any) =>
     },
     // Preview Modal styles
     previewModal: {
-      backgroundColor: colors.background.secondary,
+      backgroundColor: colors.background.primary,
       borderRadius: borderRadius.xl,
       padding: spacing.xl,
       maxHeight: "80%",
+      width: "92%",
+      maxWidth: 420,
     },
     previewHeader: {
       flexDirection: "row",
       alignItems: "center",
-      marginBottom: spacing.lg,
+      marginBottom: spacing.md,
     },
     previewIcon: {
-      width: 56,
-      height: 56,
+      width: 48,
+      height: 48,
       borderRadius: borderRadius.lg,
       marginRight: spacing.md,
     },
     previewIconPlaceholder: {
-      width: 56,
-      height: 56,
+      width: 48,
+      height: 48,
       borderRadius: borderRadius.lg,
       justifyContent: "center",
       alignItems: "center",
@@ -2445,7 +2674,7 @@ const styles = (colors: any) =>
       flex: 1,
     },
     previewTitle: {
-      fontSize: 18,
+      fontSize: 17,
       fontWeight: "700",
       color: colors.text.primary,
       marginBottom: 2,
@@ -2457,6 +2686,8 @@ const styles = (colors: any) =>
     previewClose: {
       padding: spacing.sm,
       marginLeft: spacing.sm,
+      borderRadius: borderRadius.full,
+      backgroundColor: colors.background.tertiary,
     },
     previewSectionTitle: {
       fontSize: 13,
@@ -2499,11 +2730,13 @@ const styles = (colors: any) =>
       gap: spacing.md,
     },
     previewMeta: {
-      backgroundColor: colors.background.tertiary,
-      borderRadius: borderRadius.lg,
+      backgroundColor: colors.background.secondary,
+      borderRadius: borderRadius.xl,
       padding: spacing.md,
       marginBottom: spacing.lg,
       gap: spacing.sm,
+      borderWidth: 1,
+      borderColor: colors.border.DEFAULT,
     },
     previewMetaRow: {
       flexDirection: "row",
@@ -2530,8 +2763,10 @@ const styles = (colors: any) =>
       gap: spacing.xs,
       backgroundColor: colors.status.warning + "15",
       padding: spacing.md,
-      borderRadius: borderRadius.md,
+      borderRadius: borderRadius.lg,
       marginBottom: spacing.lg,
+      borderWidth: 1,
+      borderColor: colors.status.warning + "30",
     },
     previewDuplicateText: {
       fontSize: 13,
@@ -2547,7 +2782,7 @@ const styles = (colors: any) =>
     },
     // View Folder Modal styles
     viewFolderModal: {
-      backgroundColor: colors.background.secondary,
+      backgroundColor: colors.background.primary,
       borderRadius: borderRadius.xl,
       padding: spacing.xl,
       maxHeight: "80%",
@@ -2557,23 +2792,32 @@ const styles = (colors: any) =>
     viewFolderHeader: {
       flexDirection: "row",
       alignItems: "center",
-      marginBottom: spacing.sm,
+      marginBottom: spacing.md,
+    },
+    viewFolderIconContainer: {
+      width: 40,
+      height: 40,
+      borderRadius: borderRadius.lg,
+      backgroundColor: colors.background.tertiary,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    viewFolderTitleContainer: {
+      flex: 1,
+      marginLeft: spacing.md,
     },
     viewFolderTitle: {
-      flex: 1,
-      fontSize: 20,
+      fontSize: 18,
       fontWeight: "700",
       color: colors.text.primary,
-      marginLeft: spacing.md,
     },
     viewFolderClose: {
       padding: spacing.sm,
     },
     viewFolderSubtitle: {
-      fontSize: 14,
+      fontSize: 13,
       color: colors.text.tertiary,
-      marginBottom: spacing.lg,
-      marginLeft: spacing.xl + 24, // Align with title
+      marginTop: 2,
     },
     viewFolderList: {
       maxHeight: 300,
@@ -2583,18 +2827,20 @@ const styles = (colors: any) =>
       flexDirection: "row",
       alignItems: "center",
       padding: spacing.md,
-      backgroundColor: colors.background.tertiary,
-      borderRadius: borderRadius.md,
+      backgroundColor: colors.background.secondary,
+      borderRadius: borderRadius.lg,
       marginBottom: spacing.sm,
+      borderWidth: 1,
+      borderColor: colors.border.DEFAULT,
     },
     viewFolderFeedIcon: {
-      width: 32,
-      height: 32,
+      width: 36,
+      height: 36,
       borderRadius: borderRadius.md,
     },
     viewFolderFeedIconPlaceholder: {
-      width: 32,
-      height: 32,
+      width: 36,
+      height: 36,
       borderRadius: borderRadius.md,
       justifyContent: "center",
       alignItems: "center",
@@ -2621,7 +2867,7 @@ const styles = (colors: any) =>
       justifyContent: "flex-end",
     },
     moveModalContainer: {
-      backgroundColor: colors.background.secondary,
+      backgroundColor: colors.background.primary,
       borderTopLeftRadius: borderRadius.xxl,
       borderTopRightRadius: borderRadius.xxl,
       maxHeight: "85%",
@@ -2664,7 +2910,7 @@ const styles = (colors: any) =>
       marginHorizontal: spacing.lg,
       marginVertical: spacing.xs,
       borderRadius: borderRadius.lg,
-      backgroundColor: colors.background.tertiary,
+      backgroundColor: colors.background.secondary,
     },
     moveModalOptionSelected: {
       backgroundColor: (colors.primary?.DEFAULT ?? colors.primary) + "15",
@@ -2862,9 +3108,9 @@ const styles = (colors: any) =>
       backgroundColor: colors.background.secondary,
       borderRadius: borderRadius.lg,
       padding: spacing.md,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: spacing.lg,
+      flexDirection: "column",
+      alignItems: "stretch",
+      gap: spacing.md,
       borderWidth: 1,
       borderColor: colors.border.DEFAULT,
       // Shadow
@@ -2883,15 +3129,37 @@ const styles = (colors: any) =>
         },
       }),
     },
+    bulkSummaryRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.sm,
+      flexWrap: "wrap",
+    },
+    bulkCountPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.xs,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs,
+      borderRadius: borderRadius.full,
+      backgroundColor: colors.background.elevated,
+      borderWidth: 1,
+      borderColor: colors.border.DEFAULT,
+    },
+    bulkCountText: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: colors.text.primary,
+    },
     bulkText: {
-      flex: 1,
+      flexShrink: 1,
       fontSize: 14,
       fontWeight: "600",
       color: colors.text.primary,
-      marginLeft: spacing.sm,
     },
     bulkActions: {
       flexDirection: "row",
+      flexWrap: "wrap",
       gap: spacing.sm,
     },
     bulkButton: {
@@ -2902,9 +3170,20 @@ const styles = (colors: any) =>
       borderRadius: borderRadius.md,
       gap: spacing.xs,
     },
+    bulkSelectButton: {
+      flexShrink: 0,
+    },
+    bulkActionButton: {
+      flexGrow: 1,
+      flexBasis: "48%",
+      justifyContent: "center",
+    },
     bulkButtonText: {
       fontSize: 13,
       fontWeight: "600",
+    },
+    bulkButtonDisabled: {
+      opacity: 0.45,
     },
     // Mobile Sidebar
     checkbox: {

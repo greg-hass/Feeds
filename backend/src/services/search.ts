@@ -9,6 +9,9 @@ const query = queryAll;
 
 export interface SearchFilters {
     query?: string;
+    unread_only?: boolean;
+    feed_id?: number;
+    folder_id?: number;
     feed_ids?: number[];
     folder_ids?: number[];
     author?: string;
@@ -58,6 +61,18 @@ export interface SearchHistoryEntry {
     searched_at: string;
 }
 
+export interface SearchSuggestions {
+    query: string;
+    recent_searches: SearchHistoryEntry[];
+    popular_searches: Array<{ query: string; count: number }>;
+    saved_searches: SavedSearch[];
+    tags: string[];
+    authors: string[];
+    feeds: Array<{ id: number; title: string; type: string }>;
+    folders: Array<{ id: number; name: string }>;
+    articles: SearchResult[];
+}
+
 // ============================================================================
 // SEARCH OPERATIONS
 // ============================================================================
@@ -78,8 +93,8 @@ export function searchArticles(
     if (filters.query && filters.query.trim()) {
         whereClauses.push(`(
             a.id IN (
-                SELECT article_id FROM article_fts
-                WHERE article_fts MATCH ?
+                SELECT rowid FROM articles_fts
+                WHERE articles_fts MATCH ?
             )
         )`);
         params.push(filters.query.trim());
@@ -205,8 +220,8 @@ export function countSearchResults(userId: number, filters: SearchFilters): numb
     if (filters.query && filters.query.trim()) {
         whereClauses.push(`(
             a.id IN (
-                SELECT article_id FROM article_fts
-                WHERE article_fts MATCH ?
+                SELECT rowid FROM articles_fts
+                WHERE articles_fts MATCH ?
             )
         )`);
         params.push(filters.query.trim());
@@ -482,15 +497,29 @@ export function getPopularSearches(userId: number, limit: number = 10): Array<{ 
     );
 }
 
+function escapeLike(term: string): string {
+    return term.replace(/[\\%_]/g, '\\$&');
+}
+
 /**
  * Get all unique tags for autocomplete
  */
-export function getAllTags(userId: number): string[] {
+export function getAllTags(userId: number, searchTerm: string = '', limit: number = 20): string[] {
+    const trimmed = searchTerm.trim().toLowerCase();
+    const params: unknown[] = [userId];
+    let whereClause = 'article_id IN (SELECT id FROM articles WHERE user_id = ?)';
+
+    if (trimmed) {
+        whereClause += ' AND LOWER(tag) LIKE ? ESCAPE \'\\\'';
+        params.push(`%${escapeLike(trimmed)}%`);
+    }
+
     const tags = query<{ tag: string }>(
         `SELECT DISTINCT tag FROM article_tags
-         WHERE article_id IN (SELECT id FROM articles WHERE user_id = ?)
-         ORDER BY tag ASC`,
-        [userId]
+         WHERE ${whereClause}
+         ORDER BY tag ASC
+         LIMIT ?`,
+        [...params, limit]
     );
     return tags.map(t => t.tag);
 }
@@ -498,12 +527,113 @@ export function getAllTags(userId: number): string[] {
 /**
  * Get all unique authors for autocomplete
  */
-export function getAllAuthors(userId: number): string[] {
+export function getAllAuthors(userId: number, searchTerm: string = '', limit: number = 20): string[] {
+    const trimmed = searchTerm.trim().toLowerCase();
+    const params: unknown[] = [userId];
+    let whereClause = 'user_id = ? AND author IS NOT NULL AND author != \'\' AND deleted_at IS NULL';
+
+    if (trimmed) {
+        whereClause += ' AND LOWER(author) LIKE ? ESCAPE \'\\\'';
+        params.push(`%${escapeLike(trimmed)}%`);
+    }
+
     const authors = query<{ author: string }>(
         `SELECT DISTINCT author FROM articles
-         WHERE user_id = ? AND author IS NOT NULL AND author != '' AND deleted_at IS NULL
-         ORDER BY author ASC`,
-        [userId]
+         WHERE ${whereClause}
+         ORDER BY author ASC
+         LIMIT ?`,
+        [...params, limit]
     );
     return authors.map(a => a.author);
+}
+
+/**
+ * Get all matching feeds for autocomplete
+ */
+export function getAllFeeds(
+    userId: number,
+    searchTerm: string = '',
+    limit: number = 10
+): Array<{ id: number; title: string; type: string }> {
+    const trimmed = searchTerm.trim().toLowerCase();
+    const params: unknown[] = [userId];
+    let whereClause = 'user_id = ? AND deleted_at IS NULL';
+
+    if (trimmed) {
+        whereClause += ' AND (LOWER(title) LIKE ? ESCAPE \'\\\' OR LOWER(url) LIKE ? ESCAPE \'\\\' )';
+        const like = `%${escapeLike(trimmed)}%`;
+        params.push(like, like);
+    }
+
+    return query<{ id: number; title: string; type: string }>(
+        `SELECT id, title, type
+         FROM feeds
+         WHERE ${whereClause}
+         ORDER BY title ASC
+         LIMIT ?`,
+        [...params, limit]
+    );
+}
+
+/**
+ * Get all matching folders for autocomplete
+ */
+export function getAllFolders(
+    userId: number,
+    searchTerm: string = '',
+    limit: number = 10
+): Array<{ id: number; name: string }> {
+    const trimmed = searchTerm.trim().toLowerCase();
+    const params: unknown[] = [userId];
+    let whereClause = 'user_id = ?';
+
+    if (trimmed) {
+        whereClause += ' AND LOWER(name) LIKE ? ESCAPE \'\\\'';
+        params.push(`%${escapeLike(trimmed)}%`);
+    }
+
+    return query<{ id: number; name: string }>(
+        `SELECT id, name
+         FROM folders
+         WHERE ${whereClause}
+         ORDER BY name ASC
+         LIMIT ?`,
+        [...params, limit]
+    );
+}
+
+/**
+ * Build search suggestions for quick discovery
+ */
+export function getSearchSuggestions(
+    userId: number,
+    query: string = '',
+    limit: number = 8
+): SearchSuggestions {
+    const trimmed = query.trim();
+    const normalized = trimmed.toLowerCase();
+    const suggestionLimit = Math.max(1, Math.min(limit, 20));
+    const history = getSearchHistory(userId, suggestionLimit);
+    const savedSearches = getSavedSearches(userId);
+
+    return {
+        query: trimmed,
+        recent_searches: normalized
+            ? history.filter(entry => entry.query.toLowerCase().includes(normalized)).slice(0, suggestionLimit)
+            : history,
+        popular_searches: getPopularSearches(userId, suggestionLimit),
+        saved_searches: normalized
+            ? savedSearches.filter(search =>
+                search.name.toLowerCase().includes(normalized) ||
+                search.query.toLowerCase().includes(normalized)
+            ).slice(0, suggestionLimit)
+            : savedSearches.slice(0, suggestionLimit),
+        tags: getAllTags(userId, trimmed, suggestionLimit),
+        authors: getAllAuthors(userId, trimmed, suggestionLimit),
+        feeds: getAllFeeds(userId, trimmed, suggestionLimit),
+        folders: getAllFolders(userId, trimmed, suggestionLimit),
+        articles: trimmed.length > 1
+            ? searchArticles(userId, { query: trimmed }, Math.min(suggestionLimit, 5), 0)
+            : [],
+    };
 }

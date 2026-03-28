@@ -5,6 +5,7 @@ import Database from 'better-sqlite3';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { unlinkSync } from 'fs';
+import { closeDatabase } from '../../src/db/index.js';
 
 // Mock readability service
 vi.mock('../../src/services/readability.js', () => ({
@@ -32,6 +33,7 @@ describe('Articles API Routes', () => {
     let db: Database.Database;
 
     beforeEach(async () => {
+        closeDatabase();
         testDbPath = join(tmpdir(), `articles-test-${Date.now()}.db`);
         
         // Create test database
@@ -66,6 +68,10 @@ describe('Articles API Routes', () => {
                 url TEXT UNIQUE NOT NULL,
                 title TEXT,
                 type TEXT DEFAULT 'rss',
+                icon_url TEXT,
+                icon_cached_path TEXT,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                icon_updated_at DATETIME,
                 paused_at DATETIME,
                 deleted_at DATETIME
             );
@@ -82,6 +88,7 @@ describe('Articles API Routes', () => {
                 summary TEXT,
                 author TEXT,
                 thumbnail_url TEXT,
+                thumbnail_cached_path TEXT,
                 enclosure_url TEXT,
                 enclosure_type TEXT,
                 published_at DATETIME,
@@ -101,6 +108,26 @@ describe('Articles API Routes', () => {
                 PRIMARY KEY (user_id, article_id)
             );
         `);
+
+        db.exec(`
+            CREATE TABLE bookmark_folders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE bookmark_items (
+                user_id INTEGER NOT NULL,
+                article_id INTEGER NOT NULL,
+                folder_id INTEGER,
+                archived_at DATETIME,
+                note TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (user_id, article_id)
+            );
+        `);
         
         // Insert test feeds
         db.exec(`
@@ -114,8 +141,13 @@ describe('Articles API Routes', () => {
             INSERT INTO articles (id, feed_id, guid, title, url, summary, published_at, is_bookmarked) VALUES
             (1, 1, 'article-1', 'Article 1', 'https://example.com/article1', 'Summary 1', datetime('now', '-1 day'), 0),
             (2, 1, 'article-2', 'Article 2', 'https://example.com/article2', 'Summary 2', datetime('now', '-2 days'), 1),
-            (3, 2, 'yt:video:abc123', 'YouTube Video', 'https://youtube.com/watch?v=abc123', 'Video summary', datetime('now', '-3 days'), 0),
+            (3, 2, 'yt:video:abc123def45', 'YouTube Video', 'https://youtube.com/watch?v=abc123def45', 'Video summary', datetime('now', '-3 days'), 0),
             (4, 1, 'article-4', 'Article 4', 'https://example.com/article4', 'Summary 4', datetime('now', '-4 days'), 0);
+        `);
+
+        db.exec(`
+            INSERT INTO bookmark_items (user_id, article_id, folder_id, archived_at) VALUES
+            (1, 2, NULL, NULL);
         `);
         
         // Mark some articles as read
@@ -146,6 +178,7 @@ describe('Articles API Routes', () => {
     afterEach(async () => {
         await app.close();
         db.close();
+        closeDatabase();
         try {
             unlinkSync(testDbPath);
         } catch {}
@@ -296,7 +329,7 @@ describe('Articles API Routes', () => {
             
             if (response.statusCode === 200) {
                 const body = JSON.parse(response.payload);
-                expect(body.article.url).toBe('https://www.youtube.com/watch?v=abc123');
+                expect(body.article.url).toBe('https://www.youtube.com/watch?v=abc123def45');
             }
         });
     });
@@ -492,6 +525,76 @@ describe('Articles API Routes', () => {
                 expect(body.articles.length).toBe(1);
                 expect(body.articles[0].title).toBe('Article 2');
             }
+        });
+
+        it('should filter bookmarked articles by folder and include folder metadata', async () => {
+            const folderResponse = await app.inject({
+                method: 'POST',
+                url: '/api/v1/articles/bookmarks/folders',
+                payload: {
+                    name: 'Reading',
+                },
+            });
+
+            expect(folderResponse.statusCode).toBe(200);
+            const folder = JSON.parse(folderResponse.payload);
+
+            db.prepare(
+                'UPDATE bookmark_items SET folder_id = ? WHERE user_id = ? AND article_id = ?'
+            ).run(folder.id, 1, 2);
+
+            const response = await app.inject({
+                method: 'GET',
+                url: `/api/v1/articles/bookmarks?folder_id=${folder.id}`,
+            });
+
+            expect(response.statusCode).toBe(200);
+            const body = JSON.parse(response.payload);
+            expect(body.articles.length).toBe(1);
+            expect(body.articles[0].bookmark_folder_id).toBe(folder.id);
+            expect(body.articles[0].bookmark_folder_name).toBe('Reading');
+            expect(body.folders.some((item: any) => item.name === 'Reading')).toBe(true);
+        });
+
+        it('should hide archived bookmarks by default and show them when requested', async () => {
+            db.prepare(
+                'UPDATE bookmark_items SET archived_at = datetime(\'now\') WHERE user_id = ? AND article_id = ?'
+            ).run(1, 2);
+
+            const activeResponse = await app.inject({
+                method: 'GET',
+                url: '/api/v1/articles/bookmarks',
+            });
+
+            expect(activeResponse.statusCode).toBe(200);
+            const activeBody = JSON.parse(activeResponse.payload);
+            expect(activeBody.articles.length).toBe(0);
+
+            const archivedResponse = await app.inject({
+                method: 'GET',
+                url: '/api/v1/articles/bookmarks?archived=true',
+            });
+
+            expect(archivedResponse.statusCode).toBe(200);
+            const archivedBody = JSON.parse(archivedResponse.payload);
+            expect(archivedBody.articles.length).toBe(1);
+            expect(archivedBody.articles[0].bookmark_archived_at).toBeTruthy();
+        });
+    });
+
+    describe('GET /api/v1/articles/bookmarks/export', () => {
+        it('should export bookmarked articles', async () => {
+            const response = await app.inject({
+                method: 'GET',
+                url: '/api/v1/articles/bookmarks/export',
+            });
+
+            expect(response.statusCode).toBe(200);
+            const body = JSON.parse(response.payload);
+            expect(body.exported_at).toBeTruthy();
+            expect(body.articles).toBeDefined();
+            expect(body.articles.length).toBe(1);
+            expect(body.articles[0].title).toBe('Article 2');
         });
     });
 

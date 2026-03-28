@@ -6,6 +6,7 @@ import {
     searchArticles,
     countSearchResults,
     getSavedSearches,
+    getSearchSuggestions,
     createSavedSearch,
     updateSavedSearch,
     deleteSavedSearch,
@@ -20,11 +21,13 @@ import {
 } from '../services/search.js';
 
 const searchSchema = z.object({
-    q: z.string().min(1),
+    q: z.string().optional().default(''),
     unread_only: z.coerce.boolean().default(false),
     type: z.enum(['rss', 'youtube', 'reddit', 'podcast']).optional(),
     feed_id: z.coerce.number().optional(),
     folder_id: z.coerce.number().optional(),
+    author: z.string().optional(),
+    tags: z.union([z.array(z.string()), z.string().transform(value => [value])]).optional(),
     limit: z.coerce.number().min(1).max(100).default(50),
     cursor: z.string().optional(),
     include_total: z.preprocess(
@@ -35,6 +38,11 @@ const searchSchema = z.object({
         },
         z.boolean().default(true)
     ),
+});
+
+const searchSuggestionsSchema = z.object({
+    q: z.string().optional().default(''),
+    limit: z.coerce.number().min(1).max(20).default(8),
 });
 
 const advancedSearchSchema = z.object({
@@ -90,6 +98,16 @@ export async function searchRoutes(app: FastifyInstance) {
     // Full-text search
     app.get('/', async (request: FastifyRequest) => {
         const query = searchSchema.parse(request.query);
+        const trimmedQuery = query.q?.trim() ?? '';
+        const tags = query.tags ?? [];
+        const hasFilterScope = Boolean(
+            query.unread_only ||
+            query.type ||
+            query.feed_id ||
+            query.folder_id ||
+            query.author?.trim() ||
+            tags.length
+        );
 
         // Build FTS query - properly escape special characters
         const escapeFts = (term: string): string => {
@@ -97,15 +115,11 @@ export async function searchRoutes(app: FastifyInstance) {
             return term.replace(/"/g, '""');
         };
 
-        const ftsQuery = query.q
+        const ftsQuery = trimmedQuery
             .split(/\s+/)
             .filter(w => w.length > 2)  // Filter out very short terms
             .map(w => `"${escapeFts(w)}"`)
             .join(' OR ');
-
-        if (!ftsQuery) {
-            return { results: [], total: 0, next_cursor: null };
-        }
 
         const conditions: string[] = ['f.user_id = ?', 'f.deleted_at IS NULL'];
         const params: unknown[] = [userId];
@@ -129,6 +143,39 @@ export async function searchRoutes(app: FastifyInstance) {
             params.push(query.folder_id);
         }
 
+        if (query.author?.trim()) {
+            conditions.push('LOWER(a.author) LIKE LOWER(?) ESCAPE \'\\\'');
+            params.push(`%${query.author.trim().replace(/[\\%_]/g, '\\$&')}%`);
+        }
+
+        if (tags.length > 0) {
+            conditions.push(`a.id IN (
+                SELECT article_id FROM article_tags
+                WHERE tag IN (${tags.map(() => '?').join(', ')})
+            )`);
+            params.push(...tags);
+        }
+
+        if (!ftsQuery && !hasFilterScope) {
+            if (trimmedQuery) {
+                addSearchHistory(
+                    userId,
+                    trimmedQuery,
+                    {
+                        query: trimmedQuery,
+                        unread_only: query.unread_only,
+                        type: query.type,
+                        feed_id: query.feed_id,
+                        folder_id: query.folder_id,
+                        author: query.author,
+                        tags,
+                    },
+                    0
+                );
+            }
+            return { results: [], total: 0, next_cursor: null };
+        }
+
         // Cursor for pagination
         let offsetClause = '';
         if (query.cursor) {
@@ -140,35 +187,57 @@ export async function searchRoutes(app: FastifyInstance) {
             }
         }
 
-        const results = queryAll<{
-            id: number;
-            feed_id: number;
-            feed_title: string;
-            title: string;
-            author: string | null;
-            summary: string | null;
-            published_at: string | null;
-            is_read: number | null;
-            snippet: string;
-            rank: number;
-        }>(
-            `SELECT 
-        a.id, a.feed_id, f.title as feed_title, a.title, a.author, a.summary, 
-        a.published_at, rs.is_read,
-        snippet(articles_fts, 2, '<mark>', '</mark>', '...', 40) as snippet,
-        bm25(articles_fts) as rank
-       FROM articles_fts fts
-       JOIN articles a ON a.id = fts.rowid
-       JOIN feeds f ON f.id = a.feed_id
-       LEFT JOIN read_state rs ON rs.article_id = a.id AND rs.user_id = ?
-       WHERE articles_fts MATCH ? AND ${conditions.join(' AND ')}
-       ORDER BY rank
-       LIMIT ? ${offsetClause}`,
-            [userId, ftsQuery, ...params, query.limit + 1]
-        );
+        const searchResults = ftsQuery
+            ? queryAll<{
+                id: number;
+                feed_id: number;
+                feed_title: string;
+                title: string;
+                author: string | null;
+                summary: string | null;
+                published_at: string | null;
+                is_read: number | null;
+                snippet: string;
+                rank: number;
+            }>(
+                `SELECT 
+            a.id, a.feed_id, f.title as feed_title, a.title, a.author, a.summary, 
+            a.published_at, rs.is_read,
+            snippet(articles_fts, 2, '<mark>', '</mark>', '...', 40) as snippet,
+            bm25(articles_fts) as rank
+           FROM articles_fts fts
+           JOIN articles a ON a.id = fts.rowid
+           JOIN feeds f ON f.id = a.feed_id
+           LEFT JOIN read_state rs ON rs.article_id = a.id AND rs.user_id = ?
+           WHERE articles_fts MATCH ? AND ${conditions.join(' AND ')}
+           ORDER BY rank
+           LIMIT ? ${offsetClause}`,
+                [userId, ftsQuery, ...params, query.limit + 1]
+            )
+            : queryAll<{
+                id: number;
+                feed_id: number;
+                feed_title: string;
+                title: string;
+                author: string | null;
+                summary: string | null;
+                published_at: string | null;
+                is_read: number | null;
+            }>(
+                `SELECT 
+            a.id, a.feed_id, f.title as feed_title, a.title, a.author, a.summary, 
+            a.published_at, rs.is_read
+           FROM articles a
+           JOIN feeds f ON f.id = a.feed_id
+           LEFT JOIN read_state rs ON rs.article_id = a.id AND rs.user_id = ?
+           WHERE ${conditions.join(' AND ')}
+           ORDER BY a.published_at DESC
+           LIMIT ? ${offsetClause}`,
+                [userId, ...params, query.limit + 1]
+            );
 
-        const hasMore = results.length > query.limit;
-        if (hasMore) results.pop();
+        const hasMore = searchResults.length > query.limit;
+        if (hasMore) searchResults.pop();
 
         // Calculate next cursor
         let nextCursor = null;
@@ -179,28 +248,54 @@ export async function searchRoutes(app: FastifyInstance) {
             nextCursor = Buffer.from(String(currentOffset + query.limit)).toString('base64');
         }
 
-        const formattedResults = results.map(r => ({
+        const formattedResults = searchResults.map(r => ({
             id: r.id,
             feed_id: r.feed_id,
             feed_title: r.feed_title,
             title: r.title,
-            snippet: r.snippet,
+            snippet: 'snippet' in r ? r.snippet : (r.summary || r.title),
             published_at: r.published_at,
             is_read: Boolean(r.is_read),
-            score: Math.abs(r.rank),
+            score: 'rank' in r ? Math.abs((r as { rank: number }).rank) : 0,
         }));
 
         const total = query.include_total
-            ? queryAll<{ count: number }>(
-                `SELECT COUNT(*) as count
-           FROM articles_fts fts
-           JOIN articles a ON a.id = fts.rowid
-           JOIN feeds f ON f.id = a.feed_id
-           LEFT JOIN read_state rs ON rs.article_id = a.id AND rs.user_id = ?
-           WHERE articles_fts MATCH ? AND ${conditions.join(' AND ')}`,
-                [userId, ftsQuery, ...params]
-            )[0]?.count || 0
+            ? (ftsQuery
+                ? queryAll<{ count: number }>(
+                    `SELECT COUNT(*) as count
+               FROM articles_fts fts
+               JOIN articles a ON a.id = fts.rowid
+               JOIN feeds f ON f.id = a.feed_id
+               LEFT JOIN read_state rs ON rs.article_id = a.id AND rs.user_id = ?
+               WHERE articles_fts MATCH ? AND ${conditions.join(' AND ')}`,
+                    [userId, ftsQuery, ...params]
+                )[0]?.count || 0
+                : queryAll<{ count: number }>(
+                    `SELECT COUNT(*) as count
+               FROM articles a
+               JOIN feeds f ON f.id = a.feed_id
+               LEFT JOIN read_state rs ON rs.article_id = a.id AND rs.user_id = ?
+               WHERE ${conditions.join(' AND ')}`,
+                    [userId, ...params]
+                )[0]?.count || 0)
             : undefined;
+
+        if (trimmedQuery || hasFilterScope) {
+            addSearchHistory(
+                userId,
+                trimmedQuery,
+                {
+                    query: trimmedQuery,
+                    unread_only: query.unread_only,
+                    type: query.type,
+                    feed_id: query.feed_id,
+                    folder_id: query.folder_id,
+                    author: query.author,
+                    tags,
+                },
+                total ?? formattedResults.length
+            );
+        }
 
         return {
             results: formattedResults,
@@ -238,6 +333,16 @@ export async function searchRoutes(app: FastifyInstance) {
                 has_more: include_total ? offset + results.length < (total || 0) : results.length === limit,
             },
         };
+    });
+
+    /**
+     * Search suggestions
+     * GET /search/suggestions?q=&limit=
+     */
+    app.get('/suggestions', async (request: FastifyRequest<{ Querystring: { q?: string; limit?: string } }>) => {
+        const query = searchSuggestionsSchema.parse(request.query);
+        const suggestions = getSearchSuggestions(userId, query.q, query.limit);
+        return suggestions;
     });
 
     // ========================================================================
