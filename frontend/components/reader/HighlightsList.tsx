@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { View, Text, FlatList, Pressable, StyleSheet } from 'react-native';
 import { Highlighter, StickyNote } from 'lucide-react-native';
 import { useColors, spacing, borderRadius, typography } from '@/theme';
@@ -26,11 +26,14 @@ export function HighlightsList({
     onNavigateToHighlight,
 }: HighlightsListProps) {
     const colors = useColors();
-    const s = styles(colors);
+    const s = useMemo(() => styles(colors), [colors]);
 
-    const sortedHighlights = [...highlights].sort((a, b) => a.start_offset - b.start_offset);
+    const sortedHighlights = useMemo(
+        () => [...highlights].sort((a, b) => a.start_offset - b.start_offset),
+        [highlights]
+    );
 
-    const renderItem = ({ item }: { item: Highlight }) => {
+    const renderItem = useCallback(({ item }: { item: Highlight }) => {
         const backgroundColor = getHighlightColor(item.color);
         const borderColor = getHighlightAccentColor(item.color);
 
@@ -78,7 +81,7 @@ export function HighlightsList({
                 </View>
             </Pressable>
         );
-    };
+    }, [colors, onHighlightPress, onNavigateToHighlight, s]);
 
     return (
         <View style={s.container}>

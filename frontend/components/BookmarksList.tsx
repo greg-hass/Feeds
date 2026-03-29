@@ -74,7 +74,7 @@ export default function BookmarksList({
   const [newFolderName, setNewFolderName] = useState('');
   const [newFolderError, setNewFolderError] = useState<string | null>(null);
 
-  const s = styles(colors, isMobile);
+  const s = useMemo(() => styles(colors, isMobile), [colors, isMobile]);
 
   const loadBookmarks = useCallback(() => {
     return fetchBookmarks({
@@ -172,9 +172,9 @@ export default function BookmarksList({
     setSelectedFolderId(undefined);
   }, []);
 
-  const handleOpenMenu = (article: Article) => {
+  const handleOpenMenu = useCallback((article: Article) => {
     setMenuArticle(article);
-  };
+  }, []);
 
   const applyBookmarkUpdate = useCallback(async (
     article: Article,

@@ -54,6 +54,8 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: any) => {
     const [restoreAttempt, setRestoreAttempt] = useState(0);
     const flatListRef = useRef<FlatList>(null);
     const [isFlatListReady, setIsFlatListReady] = useState(false);
+    const articlesRef = useRef(articles);
+    const prefetchArticleRef = useRef(prefetchArticle);
     const currentScrollKey = useRef('');
     const hasRestoredScroll = useRef(false);
     const isRestoring = useRef(false);
@@ -67,6 +69,14 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: any) => {
         flatListRef.current = node;
         setIsFlatListReady(Boolean(node));
     }, []);
+
+    useEffect(() => {
+        articlesRef.current = articles;
+    }, [articles]);
+
+    useEffect(() => {
+        prefetchArticleRef.current = prefetchArticle;
+    }, [prefetchArticle]);
 
     const scrollKey = getScrollKey(filter);
 
@@ -164,12 +174,13 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: any) => {
             currentAnchorOffset.current = Math.max(0, currentScrollOffset.current);
 
             const lastIndex = visibleItems[visibleItems.length - 1].index;
-            if (articles && articles.length > lastIndex + 1) {
-                const nextArticles = articles.slice(lastIndex + 1, lastIndex + 4);
-                nextArticles.forEach((article) => prefetchArticle(article.id));
+            const currentArticles = articlesRef.current;
+            if (currentArticles && currentArticles.length > lastIndex + 1) {
+                const nextArticles = currentArticles.slice(lastIndex + 1, lastIndex + 4);
+                nextArticles.forEach((article) => prefetchArticleRef.current(article.id));
             }
         }
-    }, [articles, prefetchArticle]);
+    }, []);
 
     const prepareForNewArticles = useCallback((newArticlesCount: number) => {
         if (newArticlesCount <= 0) return;

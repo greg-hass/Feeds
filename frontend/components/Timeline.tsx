@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { View, FlatList, RefreshControl, ActivityIndicator, Platform, LayoutAnimation, UIManager, Animated, TouchableOpacity } from 'react-native';
 import { Article } from '@/services/api';
 import { useColors, spacing } from '@/theme';
@@ -205,6 +205,28 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
         }
         : null;
 
+    const viewabilityConfig = useMemo(
+        () => ({ itemVisiblePercentThreshold: 50 }),
+        []
+    );
+
+    const handleEndReached = useCallback(() => {
+        if (hasMore) {
+            fetchArticles(false);
+        }
+    }, [fetchArticles, hasMore]);
+
+    const maintainVisibleContentPosition = useMemo(
+        () =>
+            shouldMaintainVisibleContentPosition()
+                ? {
+                    minIndexForVisible: 0,
+                    autoscrollToTopThreshold: undefined,
+                }
+                : undefined,
+        [shouldMaintainVisibleContentPosition]
+    );
+
     return (
         <View testID="timeline-screen" style={styles.container}>
             <ScreenHeader
@@ -290,7 +312,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                         renderItem={renderArticle}
                         keyExtractor={(item) => item.id.toString()}
                         contentContainerStyle={styles.list}
-                        onEndReached={() => hasMore && fetchArticles(false)}
+                        onEndReached={handleEndReached}
                         onEndReachedThreshold={0.5}
                         refreshControl={
                             <RefreshControl
@@ -310,7 +332,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                         }
                         onViewableItemsChanged={onViewableItemsChanged}
                         onScrollToIndexFailed={handleScrollToIndexFailed}
-                        viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
+                        viewabilityConfig={viewabilityConfig}
                         scrollEventThrottle={16}
                         onScroll={handleScroll}
                         // Performance props
@@ -320,14 +342,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                         windowSize={11}
                         updateCellsBatchingPeriod={50}
                         // Maintain visible content position when prepending items (Twitter/X style)
-                        maintainVisibleContentPosition={
-                            shouldMaintainVisibleContentPosition()
-                                ? {
-                                    minIndexForVisible: 0,
-                                    autoscrollToTopThreshold: undefined,
-                                }
-                                : undefined
-                        }
+                        maintainVisibleContentPosition={maintainVisibleContentPosition}
                     />
                 </View>
             ) : null}

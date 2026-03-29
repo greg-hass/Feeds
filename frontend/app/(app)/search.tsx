@@ -41,7 +41,7 @@ export default function SearchScreen() {
 
     const [fadeAnim] = useState(() => new Animated.Value(0));
 
-    const s = styles(colors);
+    const s = useMemo(() => styles(colors), [colors]);
 
     const clearScope = useCallback(() => {
         setSelectedFeedId(undefined);
