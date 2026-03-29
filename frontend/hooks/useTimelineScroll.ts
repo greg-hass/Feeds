@@ -109,36 +109,6 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: any) => {
         }, 80);
     }, []);
 
-    useLayoutEffect(() => {
-        if (hasRestoredScroll.current || articles.length === 0 || !isFlatListReady) {
-            return;
-        }
-
-        const snapshot = getSnapshot(scrollKey);
-        if (snapshot.absoluteOffset <= 0) {
-            hasRestoredScroll.current = true;
-            currentScrollOffset.current = 0;
-            return;
-        }
-
-        isRestoring.current = true;
-
-        const timeoutId = setTimeout(() => {
-            if (!flatListRef.current) {
-                return;
-            }
-
-            flatListRef.current.scrollToOffset({
-                offset: snapshot.absoluteOffset,
-                animated: false,
-            });
-            currentScrollOffset.current = snapshot.absoluteOffset;
-            completeRestore();
-        }, 120);
-
-        return () => clearTimeout(timeoutId);
-    }, [articles, isFlatListReady, scrollKey, restoreAttempt, completeRestore]);
-
     const updateSnapshot = useCallback((nextOffset: number) => {
         scrollSnapshots[scrollKey] = {
             absoluteOffset: nextOffset,
@@ -146,6 +116,75 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: any) => {
             anchorOffset: currentAnchorOffset.current,
         };
     }, [scrollKey]);
+
+    const updateCurrentSnapshot = useCallback((offset: number) => {
+        currentScrollOffset.current = offset;
+
+        if (offset >= 0) {
+            updateSnapshot(offset);
+        }
+    }, [updateSnapshot]);
+
+    const restoreFromSnapshot = useCallback((snapshot: ScrollSnapshot) => {
+        const list = flatListRef.current;
+        if (!list) {
+            return false;
+        }
+
+        const currentArticles = articlesRef.current;
+        if (snapshot.anchorArticleId != null) {
+            const anchorIndex = currentArticles.findIndex((article) => article.id === snapshot.anchorArticleId);
+            if (anchorIndex >= 0) {
+                try {
+                    list.scrollToIndex({
+                        index: anchorIndex,
+                        animated: false,
+                        viewOffset: snapshot.anchorOffset,
+                    });
+                    currentScrollOffset.current = snapshot.absoluteOffset;
+                    completeRestore();
+                    return true;
+                } catch {
+                    // Fall back to absolute offset below.
+                }
+            }
+        }
+
+        if (snapshot.absoluteOffset > 0) {
+            list.scrollToOffset({
+                offset: snapshot.absoluteOffset,
+                animated: false,
+            });
+            currentScrollOffset.current = snapshot.absoluteOffset;
+            completeRestore();
+            return true;
+        }
+
+        return false;
+    }, [completeRestore]);
+
+    useLayoutEffect(() => {
+        if (hasRestoredScroll.current || articles.length === 0 || !isFlatListReady) {
+            return;
+        }
+
+        isRestoring.current = true;
+
+        const timeoutId = setTimeout(() => {
+            const snapshot = getSnapshot(scrollKey);
+            if (!flatListRef.current) {
+                return;
+            }
+
+            if (!restoreFromSnapshot(snapshot)) {
+                hasRestoredScroll.current = true;
+                isRestoring.current = false;
+                currentScrollOffset.current = 0;
+            }
+        }, 120);
+
+        return () => clearTimeout(timeoutId);
+    }, [articles, isFlatListReady, scrollKey, restoreAttempt, restoreFromSnapshot]);
 
     const saveScrollPosition = useCallback(() => {
         updateSnapshot(currentScrollOffset.current);
@@ -156,13 +195,16 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: any) => {
             return;
         }
 
-        const offset = e.nativeEvent.contentOffset.y;
-        currentScrollOffset.current = offset;
+        updateCurrentSnapshot(e.nativeEvent.contentOffset.y);
+    }, [updateCurrentSnapshot]);
 
-        if (offset >= 0) {
-            updateSnapshot(offset);
+    const handleScrollEnd = useCallback((e: any) => {
+        if (!hasRestoredScroll.current || isRestoring.current || isPrependCompensating.current) {
+            return;
         }
-    }, [updateSnapshot]);
+
+        updateCurrentSnapshot(e.nativeEvent.contentOffset.y);
+    }, [updateCurrentSnapshot]);
 
     const onViewableItemsChanged = useCallback(({ viewableItems }: any) => {
         const visibleItems = viewableItems
@@ -272,6 +314,7 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: any) => {
         attachFlatListRef,
         onViewableItemsChanged,
         handleScroll,
+        handleScrollEnd,
         handleScrollToIndexFailed,
         saveScrollPosition,
         scrollToTop,

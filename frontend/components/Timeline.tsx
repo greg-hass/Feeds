@@ -56,7 +56,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     } = useTimeline(onArticlePress);
 
     const {
-        attachFlatListRef, onViewableItemsChanged, handleScroll, handleScrollToIndexFailed, saveScrollPosition,
+        attachFlatListRef, onViewableItemsChanged, handleScroll, handleScrollEnd, handleScrollToIndexFailed, saveScrollPosition,
         scrollToTop, isAtTop, shouldMaintainVisibleContentPosition, prepareForNewArticles
     } = useTimelineScroll(articles, filter);
 
@@ -335,6 +335,8 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                         viewabilityConfig={viewabilityConfig}
                         scrollEventThrottle={16}
                         onScroll={handleScroll}
+                        onScrollEndDrag={handleScrollEnd}
+                        onMomentumScrollEnd={handleScrollEnd}
                         // Performance props
                         removeClippedSubviews={Platform.OS === 'android'}
                         initialNumToRender={10}

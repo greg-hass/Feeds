@@ -58,11 +58,12 @@ describe('useTimelineScroll', () => {
             await new Promise((resolve) => setTimeout(resolve, 220));
         });
 
-        expect(flatListMock.scrollToOffset).toHaveBeenCalledWith({
-            offset: 540,
+        expect(flatListMock.scrollToIndex).toHaveBeenCalledWith({
+            index: 2,
             animated: false,
+            viewOffset: 540,
         });
-        expect(flatListMock.scrollToIndex).not.toHaveBeenCalled();
+        expect(flatListMock.scrollToOffset).not.toHaveBeenCalled();
     });
 
     it('keeps the same anchor article visible when new items are prepended', async () => {
