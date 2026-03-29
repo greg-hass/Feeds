@@ -181,6 +181,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
             onArticlePress={handleArticlePressWithSave}
             onVideoPress={handleVideoPress}
             onPlayPress={handlePlayPress}
+            onArticlePressStart={saveScrollPosition}
             getBookmarkScale={getBookmarkScale}
             getBookmarkRotation={getBookmarkRotation}
             onFeedInfoPress={handleFeedInfoPress}

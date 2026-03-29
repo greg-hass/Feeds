@@ -13,6 +13,8 @@ let refreshAbortController: AbortController | null = null;
 const isAbortError = (error: unknown) =>
     error instanceof Error && error.name === 'AbortError';
 
+const REFRESH_FEEDS_TIMEOUT_MS = 120_000;
+
 const createInitialRefreshState = () => ({
     phase: 'idle' as const,
     scope: null,
@@ -258,6 +260,10 @@ export const useFeedStore = create<FeedState>()(
             },
 
             refreshAllFeeds: async (ids) => {
+                if (refreshAbortController || get().refreshState.activity.isRefreshing || get().refreshState.activity.isSyncing) {
+                    return;
+                }
+
                 set({ isLoading: true });
                 const controller = new AbortController();
                 refreshAbortController = controller;
@@ -274,6 +280,7 @@ export const useFeedStore = create<FeedState>()(
                 get().updateRefreshProgressState({ total: estimatedTotal, completed: 0, currentTitle: '' });
 
                 let refreshTimeout: ReturnType<typeof setTimeout> | null = null;
+                let refreshWatchdog: ReturnType<typeof setTimeout> | null = null;
                 const syncChanges = async (include: string, skipCursorUpdate: boolean) => {
                     const syncResult = await fetchChanges(include, { skipCursorUpdate });
                     if (!syncResult) return;
@@ -297,8 +304,24 @@ export const useFeedStore = create<FeedState>()(
                     }, 300);
                 };
 
+                const clearRefreshWatchdog = () => {
+                    if (refreshWatchdog) {
+                        clearTimeout(refreshWatchdog);
+                        refreshWatchdog = null;
+                    }
+                };
+
 
                 try {
+                    refreshWatchdog = setTimeout(() => {
+                        if (controller.signal.aborted) {
+                            return;
+                        }
+
+                        controller.abort();
+                        get().failRefreshCycle('Refresh timed out');
+                    }, REFRESH_FEEDS_TIMEOUT_MS);
+
                     await api.refreshFeedsWithProgress(
                         ids,
                         refreshController.handleEvent,
@@ -330,6 +353,7 @@ export const useFeedStore = create<FeedState>()(
                         handleError(error, { context: 'refreshAllFeeds' });
                     }
                 } finally {
+                    clearRefreshWatchdog();
                     if (refreshAbortController === controller) {
                         refreshAbortController = null;
                     }

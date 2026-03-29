@@ -19,6 +19,7 @@ interface ArticleCardProps {
     onArticlePress: (item: Article) => void;
     onVideoPress: (item: Article) => void;
     onPlayPress: (item: Article) => void;
+    onPressIn?: () => void;
     onBookmarkToggle: (id: number) => void;
     onLongPress?: () => void;
     getBookmarkScale: (id: number) => Animated.Value;
@@ -40,6 +41,7 @@ const ArticleCard = React.memo<ArticleCardProps>(({
     onArticlePress,
     onVideoPress,
     onPlayPress,
+    onPressIn,
     onBookmarkToggle,
     onLongPress,
     getBookmarkScale,
@@ -134,6 +136,7 @@ const ArticleCard = React.memo<ArticleCardProps>(({
             >
                 <TouchableOpacity
                     activeOpacity={0.9}
+                    onPressIn={onPressIn}
                     onPress={() => onVideoPress(item)}
                     onLongPress={onLongPress}
                     delayLongPress={200}
@@ -163,6 +166,7 @@ const ArticleCard = React.memo<ArticleCardProps>(({
         <TouchableOpacity
             testID={testID || `article-card-${item.id}`}
             activeOpacity={0.9}
+            onPressIn={onPressIn}
             onPress={() => onArticlePress(item)}
             onLongPress={onLongPress}
             delayLongPress={200}

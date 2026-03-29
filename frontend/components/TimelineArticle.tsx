@@ -20,6 +20,7 @@ interface TimelineArticleProps {
     onArticlePress: (item: Article) => void;
     onVideoPress: (item: Article) => void;
     onPlayPress: (item: Article) => void;
+    onArticlePressStart?: () => void;
     getBookmarkScale: (id: number) => Animated.Value;
     getBookmarkRotation: (id: number) => Animated.Value;
     onFeedInfoPress?: (feedId: number) => void;
@@ -28,7 +29,7 @@ interface TimelineArticleProps {
 const TimelineArticle: React.FC<TimelineArticleProps> = ({
     item, isActive, isMobile, activeVideoId, playingArticleId, isPlaying,
     colors, onArticlePress, onVideoPress, onPlayPress,
-    getBookmarkScale, getBookmarkRotation, onFeedInfoPress
+    onArticlePressStart, getBookmarkScale, getBookmarkRotation, onFeedInfoPress
 }) => {
     const s = timelineStyles(colors, isMobile);
     const [contextMenuVisible, setContextMenuVisible] = useState(false);
@@ -89,6 +90,7 @@ const TimelineArticle: React.FC<TimelineArticleProps> = ({
                 onArticlePress={onArticlePress}
                 onVideoPress={onVideoPress}
                 onPlayPress={onPlayPress}
+                onPressIn={onArticlePressStart}
                 onBookmarkToggle={(id) => useArticleStore.getState().toggleBookmark(id)}
                 onLongPress={handleLongPress}
                 getBookmarkScale={getBookmarkScale}
