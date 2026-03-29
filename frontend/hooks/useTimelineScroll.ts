@@ -65,6 +65,7 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: any) => {
     const currentScrollOffset = useRef(0);
     const currentAnchorId = useRef<number | null>(null);
     const currentAnchorOffset = useRef(0);
+    const itemLayouts = useRef<Record<number, number>>({});
     const attachFlatListRef = useCallback((node: FlatList | null) => {
         flatListRef.current = node;
         setIsFlatListReady(Boolean(node));
@@ -87,6 +88,7 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: any) => {
             isPrependCompensating.current = false;
             pendingNewArticlesCount.current = 0;
             prependCompensationSnapshot.current = null;
+            itemLayouts.current = {};
             currentScrollKey.current = scrollKey;
             currentScrollOffset.current = getSnapshot(scrollKey).absoluteOffset;
         }
@@ -190,6 +192,10 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: any) => {
         updateSnapshot(currentScrollOffset.current);
     }, [updateSnapshot]);
 
+    const registerItemLayout = useCallback((articleId: number, y: number) => {
+        itemLayouts.current[articleId] = y;
+    }, []);
+
     const handleScroll = useCallback((e: any) => {
         if (!hasRestoredScroll.current || isRestoring.current || isPrependCompensating.current) {
             return;
@@ -213,7 +219,10 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: any) => {
         if (visibleItems.length > 0) {
             const firstVisible = visibleItems[0];
             currentAnchorId.current = firstVisible.item.id;
-            currentAnchorOffset.current = Math.max(0, currentScrollOffset.current);
+            const anchorLayoutY = itemLayouts.current[firstVisible.item.id];
+            currentAnchorOffset.current = anchorLayoutY != null
+                ? Math.max(0, anchorLayoutY - currentScrollOffset.current)
+                : 0;
 
             const lastIndex = visibleItems[visibleItems.length - 1].index;
             const currentArticles = articlesRef.current;
@@ -316,6 +325,7 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: any) => {
         handleScroll,
         handleScrollEnd,
         handleScrollToIndexFailed,
+        registerItemLayout,
         saveScrollPosition,
         scrollToTop,
         isAtTop,
