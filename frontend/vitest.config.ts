@@ -17,6 +17,7 @@ export default defineConfig({
             '@react-native-async-storage/async-storage': path.resolve(__dirname, '__tests__/mocks/async-storage.js'),
             'expo-av': path.resolve(__dirname, '__tests__/mocks/expo-av.js'),
             'expo-constants': path.resolve(__dirname, '__tests__/mocks/expo-constants.js'),
+            'expo-keep-awake': path.resolve(__dirname, '__tests__/mocks/expo-keep-awake.js'),
             'expo-router': path.resolve(__dirname, '__tests__/mocks/expo-router.js'),
         },
     },
