@@ -10,6 +10,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useFeedStore } from '@/stores/feedStore';
 import { useColors, spacing, borderRadius, shadows } from '@/theme';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { getFeedHealth, getFeedHealthInfo, FeedHealthStatus } from '@/utils/feedHealth';
 import {
     Activity,
@@ -19,7 +20,6 @@ import {
     PauseCircle,
     XCircle,
     RefreshCw,
-    ArrowLeft,
 } from 'lucide-react-native';
 
 interface HealthStats {
@@ -114,18 +114,7 @@ export default function FeedHealthPage() {
 
     return (
         <View style={s.container}>
-            {/* Header */}
-            <View style={s.header}>
-                <TouchableOpacity
-                    style={s.backButton}
-                    onPress={() => router.back()}
-                    activeOpacity={0.7}
-                >
-                    <ArrowLeft size={24} color={colors.text.primary} />
-                </TouchableOpacity>
-                <Text style={s.title}>Feed Health</Text>
-                <View style={s.placeholder} />
-            </View>
+            <ScreenHeader title="Feed Health" />
 
             <ScrollView style={s.scrollView} contentContainerStyle={s.scrollContent}>
                 {/* Overview Cards */}
@@ -255,28 +244,6 @@ const styles = (colors: any, isMobile: boolean) =>
         container: {
             flex: 1,
             backgroundColor: colors.background.primary,
-        },
-        header: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingHorizontal: spacing.lg,
-            paddingTop: spacing.xl,
-            paddingBottom: spacing.md,
-            borderBottomWidth: 1,
-            borderBottomColor: colors.border.DEFAULT,
-        },
-        backButton: {
-            padding: spacing.sm,
-            borderRadius: borderRadius.md,
-        },
-        title: {
-            fontSize: 20,
-            fontWeight: '700',
-            color: colors.text.primary,
-        },
-        placeholder: {
-            width: 44,
         },
         scrollView: {
             flex: 1,

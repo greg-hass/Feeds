@@ -173,14 +173,13 @@ export const DigestView = () => {
             />
 
             <ScrollView style={s.scrollView} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
-                <View style={s.digestHeader}>
+                <View style={s.digestMeta}>
                     <View style={s.headerBadge}>
-                        <Sparkles size={12} color={colors.primary.DEFAULT} />
+                        <Sparkles size={11} color={colors.primary.DEFAULT} />
                         <Text style={s.badgeText}>
                             {latestDigest.edition ? `${latestDigest.edition.toUpperCase()} INSIGHTS` : 'AI INSIGHTS'}
                         </Text>
                     </View>
-                    <Text style={s.title}>{latestDigest.title || 'Intelligence Briefing'}</Text>
                     <View style={s.headerMeta}>
                         <Calendar size={14} color={colors.text.tertiary} />
                         <Text style={s.date}>
@@ -362,38 +361,33 @@ const styles = (colors: any, textSize: 'small' | 'medium' | 'large' = 'medium', 
         fontWeight: '700',
         color: colors.text.primary,
     },
-    digestHeader: {
-        marginBottom: spacing.xxl,
-        alignItems: 'center',
+    digestMeta: {
+        marginBottom: spacing.lg,
+        alignItems: 'flex-start',
+        width: '100%',
+        gap: 8,
     },
     headerBadge: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
         backgroundColor: colors.primary.DEFAULT + '15',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
         borderRadius: borderRadius.full,
-        marginBottom: spacing.md,
+        alignSelf: 'flex-start',
     },
     badgeText: {
-        fontSize: 10,
-        fontWeight: '900',
+        fontSize: 9,
+        fontWeight: '800',
         color: colors.primary.DEFAULT,
-        letterSpacing: 1.5,
-    },
-    title: {
-        fontSize: 32,
-        fontWeight: '900',
-        color: colors.text.primary,
-        textAlign: 'center',
-        letterSpacing: -1,
+        letterSpacing: 1.2,
     },
     headerMeta: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
-        marginTop: spacing.sm,
+        flexWrap: 'wrap',
     },
     date: {
         fontSize: 14,
@@ -403,7 +397,7 @@ const styles = (colors: any, textSize: 'small' | 'medium' | 'large' = 'medium', 
     statsRow: {
         flexDirection: 'row',
         gap: spacing.md,
-        marginBottom: spacing.xxl,
+        marginBottom: spacing.xl,
     },
     statCard: {
         flex: 1,

@@ -1,26 +1,24 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, LayoutAnimation, Platform, useWindowDimensions } from 'react-native';
+import React from 'react';
+import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useColors, borderRadius, spacing } from '@/theme';
-import { Check, Type } from 'lucide-react-native';
+import { Check } from 'lucide-react-native';
 
 type ReaderTheme = 'default' | 'sepia' | 'paper' | 'dark';
 type ReaderWidth = 'narrow' | 'comfortable' | 'wide';
 type FontSize = 'small' | 'medium' | 'large';
 type FontFamily = 'sans' | 'serif';
 
-export const ReaderControls = () => {
+interface ReaderControlsProps {
+    visible: boolean;
+    onClose: () => void;
+}
+
+export const ReaderControls = ({ visible, onClose }: ReaderControlsProps) => {
     const { settings, updateSettings } = useSettingsStore();
     const colors = useColors();
-    const { width } = useWindowDimensions();
-    const [isExpanded, setIsExpanded] = useState(false);
 
-    if (!settings) return null;
-
-    const toggleExpanded = () => {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        setIsExpanded((prev) => !prev);
-    };
+    if (!settings || !visible) return null;
 
     const currentFontSize = settings.font_size || 'medium';
     const currentReaderTheme = settings.reader_theme || 'default';
@@ -49,165 +47,157 @@ export const ReaderControls = () => {
     };
 
     const s = styles(colors);
-    const isMobileWeb = Platform.OS === 'web' && width < 768;
 
     return (
-        <View style={[s.container, isMobileWeb && { bottom: 85 }]}>
-            <View style={[s.pill, isExpanded && s.pillExpanded]}>
-                {isExpanded ? (
-                    <View style={s.expandedContent}>
-                        <View style={s.rowHeader}>
-                            <Text style={s.sectionLabel}>Reader</Text>
-                            <TouchableOpacity onPress={toggleExpanded} style={s.closeButton} accessibilityLabel="Close reader controls">
-                                <Text style={s.closeText}>Done</Text>
+        <View style={s.container}>
+            <View style={s.pill}>
+                <View style={s.expandedContent}>
+                    <View style={s.rowHeader}>
+                        <Text style={s.sectionLabel}>Reader</Text>
+                        <TouchableOpacity onPress={onClose} style={s.closeButton} accessibilityLabel="Close reader controls">
+                            <Text style={s.closeText}>Done</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={s.section}>
+                        <Text style={s.groupLabel}>Text Size</Text>
+                        <View style={s.row}>
+                            <TouchableOpacity onPress={() => setFontSize('small')} style={[s.iconButton, currentFontSize === 'small' && s.iconButtonActive]} accessibilityLabel="Set text size to small">
+                                <Text style={s.sizeTextSmall}>A</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => setFontSize('medium')} style={[s.iconButton, currentFontSize === 'medium' && s.iconButtonActive]} accessibilityLabel="Set text size to medium">
+                                <Text style={s.sizeTextMedium}>A</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => setFontSize('large')} style={[s.iconButton, currentFontSize === 'large' && s.iconButtonActive]} accessibilityLabel="Set text size to large">
+                                <Text style={s.sizeTextLarge}>A</Text>
                             </TouchableOpacity>
                         </View>
+                    </View>
 
-                        <View style={s.section}>
-                            <Text style={s.groupLabel}>Text Size</Text>
-                            <View style={s.row}>
-                                <TouchableOpacity onPress={() => setFontSize('small')} style={[s.iconButton, currentFontSize === 'small' && s.iconButtonActive]} accessibilityLabel="Set text size to small">
-                                    <Text style={s.sizeTextSmall}>A</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity onPress={() => setFontSize('medium')} style={[s.iconButton, currentFontSize === 'medium' && s.iconButtonActive]} accessibilityLabel="Set text size to medium">
-                                    <Text style={s.sizeTextMedium}>A</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity onPress={() => setFontSize('large')} style={[s.iconButton, currentFontSize === 'large' && s.iconButtonActive]} accessibilityLabel="Set text size to large">
-                                    <Text style={s.sizeTextLarge}>A</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-
-                        <View style={s.section}>
-                            <Text style={s.groupLabel}>Font</Text>
-                            <View style={s.row}>
-                                <TouchableOpacity
-                                    onPress={() => setFontFamily('sans')}
-                                    style={[s.pillButton, currentFontFamily === 'sans' && s.pillButtonActive]}
-                                    accessibilityLabel="Set font family to sans"
-                                >
-                                    <Text style={[s.pillButtonText, currentFontFamily === 'sans' && s.pillButtonTextActive]}>Sans</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    onPress={() => setFontFamily('serif')}
-                                    style={[s.pillButton, currentFontFamily === 'serif' && s.pillButtonActive]}
-                                    accessibilityLabel="Set font family to serif"
-                                >
-                                    <Text style={[s.pillButtonText, currentFontFamily === 'serif' && s.pillButtonTextActive]}>Serif</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-
-                        <View style={s.section}>
-                            <Text style={s.groupLabel}>Line Height</Text>
-                            <View style={s.row}>
-                                <TouchableOpacity
-                                    onPress={() => setLineHeight(1.45)}
-                                    style={[s.pillButton, currentLineHeight === 1.45 && s.pillButtonActive]}
-                                    accessibilityLabel="Set line height to compact"
-                                >
-                                    <Text style={[s.pillButtonText, currentLineHeight === 1.45 && s.pillButtonTextActive]}>Compact</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    onPress={() => setLineHeight(1.6)}
-                                    style={[s.pillButton, currentLineHeight === 1.6 && s.pillButtonActive]}
-                                    accessibilityLabel="Set line height to comfortable"
-                                >
-                                    <Text style={[s.pillButtonText, currentLineHeight === 1.6 && s.pillButtonTextActive]}>Comfort</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    onPress={() => setLineHeight(1.8)}
-                                    style={[s.pillButton, currentLineHeight === 1.8 && s.pillButtonActive]}
-                                    accessibilityLabel="Set line height to spacious"
-                                >
-                                    <Text style={[s.pillButtonText, currentLineHeight === 1.8 && s.pillButtonTextActive]}>Spacious</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-
-                        <View style={s.section}>
-                            <Text style={s.groupLabel}>Width</Text>
-                            <View style={s.row}>
-                                <TouchableOpacity
-                                    onPress={() => setReaderWidth('narrow')}
-                                    style={[s.pillButton, currentWidth === 'narrow' && s.pillButtonActive]}
-                                    accessibilityLabel="Set reading width to narrow"
-                                >
-                                    <Text style={[s.pillButtonText, currentWidth === 'narrow' && s.pillButtonTextActive]}>Narrow</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    onPress={() => setReaderWidth('comfortable')}
-                                    style={[s.pillButton, currentWidth === 'comfortable' && s.pillButtonActive]}
-                                    accessibilityLabel="Set reading width to comfortable"
-                                >
-                                    <Text style={[s.pillButtonText, currentWidth === 'comfortable' && s.pillButtonTextActive]}>Comfort</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    onPress={() => setReaderWidth('wide')}
-                                    style={[s.pillButton, currentWidth === 'wide' && s.pillButtonActive]}
-                                    accessibilityLabel="Set reading width to wide"
-                                >
-                                    <Text style={[s.pillButtonText, currentWidth === 'wide' && s.pillButtonTextActive]}>Wide</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-
-                        <View style={s.section}>
-                            <Text style={s.groupLabel}>Theme</Text>
-                            <View style={s.themeRow}>
-                                <TouchableOpacity
-                                    onPress={() => setTheme('default')}
-                                    style={[
-                                        s.themeCircle,
-                                        { backgroundColor: colors.background.primary },
-                                        currentReaderTheme === 'default' && s.themeCircleActive
-                                    ]}
-                                    accessibilityLabel="Set reader theme to default"
-                                >
-                                    {currentReaderTheme === 'default' && <Check size={12} color={colors.primary.DEFAULT} />}
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    onPress={() => setTheme('sepia')}
-                                    style={[
-                                        s.themeCircle,
-                                        { backgroundColor: '#f4ecd8' },
-                                        currentReaderTheme === 'sepia' && s.themeCircleActive
-                                    ]}
-                                    accessibilityLabel="Set reader theme to sepia"
-                                >
-                                    {currentReaderTheme === 'sepia' && <Check size={12} color="#5b4636" />}
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    onPress={() => setTheme('paper')}
-                                    style={[
-                                        s.themeCircle,
-                                        { backgroundColor: '#fdfcf8' },
-                                        currentReaderTheme === 'paper' && s.themeCircleActive
-                                    ]}
-                                    accessibilityLabel="Set reader theme to paper"
-                                >
-                                    {currentReaderTheme === 'paper' && <Check size={12} color="#2c3e50" />}
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    onPress={() => setTheme('dark')}
-                                    style={[
-                                        s.themeCircle,
-                                        { backgroundColor: '#111827' },
-                                        currentReaderTheme === 'dark' && s.themeCircleActive
-                                    ]}
-                                    accessibilityLabel="Set reader theme to dark"
-                                >
-                                    {currentReaderTheme === 'dark' && <Check size={12} color="#fff" />}
-                                </TouchableOpacity>
-                            </View>
+                    <View style={s.section}>
+                        <Text style={s.groupLabel}>Font</Text>
+                        <View style={s.row}>
+                            <TouchableOpacity
+                                onPress={() => setFontFamily('sans')}
+                                style={[s.pillButton, currentFontFamily === 'sans' && s.pillButtonActive]}
+                                accessibilityLabel="Set font family to sans"
+                            >
+                                <Text style={[s.pillButtonText, currentFontFamily === 'sans' && s.pillButtonTextActive]}>Sans</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => setFontFamily('serif')}
+                                style={[s.pillButton, currentFontFamily === 'serif' && s.pillButtonActive]}
+                                accessibilityLabel="Set font family to serif"
+                            >
+                                <Text style={[s.pillButtonText, currentFontFamily === 'serif' && s.pillButtonTextActive]}>Serif</Text>
+                            </TouchableOpacity>
                         </View>
                     </View>
-                ) : (
-                    <TouchableOpacity style={s.collapsedTrigger} onPress={toggleExpanded}>
-                        <Type size={20} color={colors.text.primary} />
-                        <Text style={s.triggerText}>Reader</Text>
-                    </TouchableOpacity>
-                )}
+
+                    <View style={s.section}>
+                        <Text style={s.groupLabel}>Line Height</Text>
+                        <View style={s.row}>
+                            <TouchableOpacity
+                                onPress={() => setLineHeight(1.45)}
+                                style={[s.pillButton, currentLineHeight === 1.45 && s.pillButtonActive]}
+                                accessibilityLabel="Set line height to compact"
+                            >
+                                <Text style={[s.pillButtonText, currentLineHeight === 1.45 && s.pillButtonTextActive]}>Compact</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => setLineHeight(1.6)}
+                                style={[s.pillButton, currentLineHeight === 1.6 && s.pillButtonActive]}
+                                accessibilityLabel="Set line height to comfortable"
+                            >
+                                <Text style={[s.pillButtonText, currentLineHeight === 1.6 && s.pillButtonTextActive]}>Comfort</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => setLineHeight(1.8)}
+                                style={[s.pillButton, currentLineHeight === 1.8 && s.pillButtonActive]}
+                                accessibilityLabel="Set line height to spacious"
+                            >
+                                <Text style={[s.pillButtonText, currentLineHeight === 1.8 && s.pillButtonTextActive]}>Spacious</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
+                    <View style={s.section}>
+                        <Text style={s.groupLabel}>Width</Text>
+                        <View style={s.row}>
+                            <TouchableOpacity
+                                onPress={() => setReaderWidth('narrow')}
+                                style={[s.pillButton, currentWidth === 'narrow' && s.pillButtonActive]}
+                                accessibilityLabel="Set reading width to narrow"
+                            >
+                                <Text style={[s.pillButtonText, currentWidth === 'narrow' && s.pillButtonTextActive]}>Narrow</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => setReaderWidth('comfortable')}
+                                style={[s.pillButton, currentWidth === 'comfortable' && s.pillButtonActive]}
+                                accessibilityLabel="Set reading width to comfortable"
+                            >
+                                <Text style={[s.pillButtonText, currentWidth === 'comfortable' && s.pillButtonTextActive]}>Comfort</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => setReaderWidth('wide')}
+                                style={[s.pillButton, currentWidth === 'wide' && s.pillButtonActive]}
+                                accessibilityLabel="Set reading width to wide"
+                            >
+                                <Text style={[s.pillButtonText, currentWidth === 'wide' && s.pillButtonTextActive]}>Wide</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
+                    <View style={s.section}>
+                        <Text style={s.groupLabel}>Theme</Text>
+                        <View style={s.themeRow}>
+                            <TouchableOpacity
+                                onPress={() => setTheme('default')}
+                                style={[
+                                    s.themeCircle,
+                                    { backgroundColor: colors.background.primary },
+                                    currentReaderTheme === 'default' && s.themeCircleActive
+                                ]}
+                                accessibilityLabel="Set reader theme to default"
+                            >
+                                {currentReaderTheme === 'default' && <Check size={12} color={colors.primary.DEFAULT} />}
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => setTheme('sepia')}
+                                style={[
+                                    s.themeCircle,
+                                    { backgroundColor: '#f4ecd8' },
+                                    currentReaderTheme === 'sepia' && s.themeCircleActive
+                                ]}
+                                accessibilityLabel="Set reader theme to sepia"
+                            >
+                                {currentReaderTheme === 'sepia' && <Check size={12} color="#5b4636" />}
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => setTheme('paper')}
+                                style={[
+                                    s.themeCircle,
+                                    { backgroundColor: '#fdfcf8' },
+                                    currentReaderTheme === 'paper' && s.themeCircleActive
+                                ]}
+                                accessibilityLabel="Set reader theme to paper"
+                            >
+                                {currentReaderTheme === 'paper' && <Check size={12} color="#2c3e50" />}
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => setTheme('dark')}
+                                style={[
+                                    s.themeCircle,
+                                    { backgroundColor: '#111827' },
+                                    currentReaderTheme === 'dark' && s.themeCircleActive
+                                ]}
+                                accessibilityLabel="Set reader theme to dark"
+                            >
+                                {currentReaderTheme === 'dark' && <Check size={12} color="#fff" />}
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
             </View>
         </View>
     );
@@ -215,18 +205,16 @@ export const ReaderControls = () => {
 
 const styles = (colors: any) => StyleSheet.create({
     container: {
-        position: 'absolute',
-        bottom: Platform.OS === 'web' ? 40 : 100,
-        left: 0,
-        right: 0,
+        width: '100%',
         alignItems: 'center',
-        zIndex: 1000,
+        paddingHorizontal: spacing.lg,
+        paddingTop: spacing.sm,
+        paddingBottom: spacing.sm,
     },
     pill: {
         backgroundColor: colors.background.secondary,
-        borderRadius: borderRadius.full,
-        paddingHorizontal: spacing.md,
-        paddingVertical: spacing.sm,
+        borderRadius: borderRadius.xl,
+        padding: spacing.lg,
         borderWidth: 1,
         borderColor: colors.border.DEFAULT,
         shadowColor: '#000',
@@ -234,24 +222,8 @@ const styles = (colors: any) => StyleSheet.create({
         shadowOpacity: 0.06,
         shadowRadius: 5,
         elevation: 2,
-        minWidth: 180,
-    },
-    pillExpanded: {
-        borderRadius: borderRadius.xl,
-        padding: spacing.lg,
-        minWidth: 330,
+        width: '100%',
         maxWidth: 420,
-    },
-    collapsedTrigger: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.xs,
-    },
-    triggerText: {
-        fontSize: 13,
-        fontWeight: '700',
-        color: colors.text.primary,
-        letterSpacing: -0.2,
     },
     expandedContent: {
         gap: spacing.md,

@@ -11,7 +11,7 @@ import { useReadingSession, calculateScrollDepth } from '@/hooks/useReadingSessi
 import {
     ArrowLeft, ExternalLink, Circle, CircleCheck,
     Headphones, Play, Bookmark, Share2,
-    ChevronLeft, ChevronRight, Maximize2
+    ChevronLeft, ChevronRight, Maximize2, Type
 } from 'lucide-react-native';
 import { useColors, borderRadius, spacing, typography } from '@/theme';
 import { extractVideoId, getEmbedUrl, isYouTubeUrl } from '@/utils/youtube';
@@ -34,6 +34,7 @@ export default function ArticleScreen() {
     const { show } = useToastStore();
     const showReadability = settings?.readability_enabled ?? false;
     const [iconFailedArticleId, setIconFailedArticleId] = useState<number | null>(null);
+    const [readerControlsVisible, setReaderControlsVisible] = useState(false);
     const scrollViewRef = useRef<ScrollView>(null);
     const currentArticleIdRef = useRef<number | null>(null);
 
@@ -336,6 +337,13 @@ export default function ArticleScreen() {
                     </View>
 
                     <View style={s.headerActions}>
+                        <TouchableOpacity
+                            onPress={() => setReaderControlsVisible((prev) => !prev)}
+                            style={s.actionButton}
+                            accessibilityLabel={readerControlsVisible ? 'Close reader settings' : 'Open reader settings'}
+                        >
+                            <Type size={18} color={readerControlsVisible ? colors.primary.DEFAULT : colors.text.secondary} />
+                        </TouchableOpacity>
                         <TouchableOpacity onPress={handleToggleRead} style={s.actionButton} accessibilityLabel={currentArticle.is_read ? 'Mark as unread' : 'Mark as read'}>
                             {currentArticle.is_read ? (
                                 <CircleCheck size={20} color={colors.primary.DEFAULT} />
@@ -431,8 +439,10 @@ export default function ArticleScreen() {
                     </Animated.View>
                 </ScrollView>
 
-
-                <ReaderControls />
+                <ReaderControls
+                    visible={readerControlsVisible}
+                    onClose={() => setReaderControlsVisible(false)}
+                />
             </View>
         );
     };

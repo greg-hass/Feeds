@@ -3,8 +3,9 @@ import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Activity
 import { useRouter } from 'expo-router';
 import { formatDistanceToNow } from 'date-fns';
 import { api, SearchResult, SearchSuggestions, SavedSearch } from '@/services/api';
-import { Search as SearchIcon, ArrowLeft, X, Clock, Trash2, Filter, FolderOpen, BookOpen, Star, Hash, User, Newspaper, Globe, Layers, Bookmark } from 'lucide-react-native';
+import { Search as SearchIcon, X, Clock, Trash2, Filter, FolderOpen, BookOpen, Star, Hash, User, Newspaper, Globe, Layers, Bookmark } from 'lucide-react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
 const FILTERS = [
     { label: 'All', value: undefined },
     { label: 'YouTube', value: 'youtube' },
@@ -383,17 +384,9 @@ export default function SearchScreen() {
 
     return (
         <View testID="search-screen" style={s.container}>
-            {/* Header */}
-            <View style={s.header}>
-                <TouchableOpacity
-                    testID="search-back-button"
-                    onPress={() => router.back()}
-                    style={s.backButton}
-                    accessibilityLabel="Go back"
-                >
-                    <ArrowLeft size={24} color={colors.text.primary} />
-                </TouchableOpacity>
+            <ScreenHeader title="Search" />
 
+            <View style={s.searchControls}>
                 <View style={[s.searchInputContainer, isFocused && s.searchFocused]}>
                     <SearchIcon size={18} color={isFocused ? colors.primary.DEFAULT : colors.text.tertiary} />
                     <TextInput
@@ -420,10 +413,8 @@ export default function SearchScreen() {
                         </TouchableOpacity>
                     )}
                 </View>
-            </View>
 
-            {/* Filters Bar */}
-                    <View style={s.filterBar}>
+                <View style={s.filterBar}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filterScroll}>
                     <TouchableOpacity
                         style={[s.filterPill, unreadOnly && s.filterPillActive]}
@@ -448,6 +439,7 @@ export default function SearchScreen() {
                         </TouchableOpacity>
                     ))}
                 </ScrollView>
+            </View>
             </View>
 
             {renderPresetChips()}
@@ -794,11 +786,7 @@ const styles = (colors: any) => StyleSheet.create({
         flex: 1,
         backgroundColor: colors.background.primary,
     },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: spacing.lg,
-        gap: spacing.md,
+    searchControls: {
         backgroundColor: colors.background.primary,
         ...Platform.select({
             web: {
@@ -806,12 +794,7 @@ const styles = (colors: any) => StyleSheet.create({
             },
         }),
     },
-    backButton: {
-        padding: spacing.sm,
-        marginLeft: -spacing.sm,
-    },
     searchInputContainer: {
-        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: colors.background.secondary,
