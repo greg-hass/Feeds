@@ -2,7 +2,9 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import jwt from 'jsonwebtoken';
 import { queryOne, run } from '../db/index.js';
 
-const JWT_SECRET = process.env.JWT_SECRET;
+function getJwtSecret(): string | undefined {
+    return process.env.JWT_SECRET;
+}
 
 /**
  * In-memory store for sliding expiration tracking
@@ -65,8 +67,10 @@ cleanupTimer.unref?.();
  * app.addHook('onRequest', authMiddleware);
  */
 export async function authMiddleware(request: FastifyRequest, reply: FastifyReply) {
+    const jwtSecret = getJwtSecret();
+
     // If no JWT_SECRET is set, fail closed in production
-    if (!JWT_SECRET) {
+    if (!jwtSecret) {
         if (process.env.NODE_ENV === 'production') {
             console.error('FATAL: JWT_SECRET not set in production. Authentication disabled.');
             return reply.status(500).send({ error: 'Server configuration error' });
@@ -99,7 +103,7 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
     
     try {
         // First verify the JWT signature and basic validity
-        const decoded = jwt.verify(token, JWT_SECRET) as { 
+        const decoded = jwt.verify(token, jwtSecret) as {
             userId: number; 
             username: string;
             tokenVersion?: number;
@@ -162,7 +166,9 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
  * Generate a JWT token for a user
  */
 export function generateToken(userId: number, username: string): string {
-    if (!JWT_SECRET) {
+    const jwtSecret = getJwtSecret();
+
+    if (!jwtSecret) {
         throw new Error('JWT_SECRET not configured');
     }
     
@@ -177,7 +183,7 @@ export function generateToken(userId: number, username: string): string {
     // Generate token with long expiry (1 year) - actual expiration handled by sliding window
     return jwt.sign(
         { userId, username, tokenVersion },
-        JWT_SECRET,
+        jwtSecret,
         { expiresIn: '365d' } // JWT itself valid for 1 year
     );
 }
