@@ -30,7 +30,7 @@ export async function iconsRoutes(app: FastifyInstance) {
 
         if (!feed.icon_cached_path) {
             if (feed.icon_url) {
-                return reply.redirect(302, feed.icon_url);
+                return reply.redirect(feed.icon_url, 302);
             }
             return reply.status(404).send({ error: 'Icon not cached yet' });
         }
@@ -41,7 +41,7 @@ export async function iconsRoutes(app: FastifyInstance) {
         }
         if (!existsSync(filePath)) {
             if (feed.icon_url) {
-                return reply.redirect(302, feed.icon_url);
+                return reply.redirect(feed.icon_url, 302);
             }
             return reply.status(404).send({ error: 'Icon missing' });
         }

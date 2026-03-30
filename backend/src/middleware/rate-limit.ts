@@ -21,7 +21,8 @@ export function createRateLimiter(options: {
     const { windowMs, maxRequests, keyGenerator } = options;
 
     return async function rateLimiter(request: FastifyRequest, reply: FastifyReply): Promise<boolean> {
-        const key = keyGenerator ? keyGenerator(request) : `${request.ip}:${request.routerPath}`;
+        const routeKey = request.routeOptions.url || request.url.split('?')[0];
+        const key = keyGenerator ? keyGenerator(request) : `${request.ip}:${routeKey}`;
 
         const now = Date.now();
         const entry = rateLimitStore.get(key);

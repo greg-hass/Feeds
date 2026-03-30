@@ -15,15 +15,15 @@
         "test:ci": "vitest --run --coverage --reporter=verbose"
     },
     "dependencies": {
-        "@fastify/cors": "^9.0.1",
-        "@fastify/multipart": "^8.3.0",
-        "@fastify/static": "^7.0.4",
-        "@mozilla/readability": "^0.5.0",
+        "@fastify/cors": "^11.2.0",
+        "@fastify/multipart": "^9.4.0",
+        "@fastify/static": "^9.0.0",
+        "@mozilla/readability": "^0.6.0",
         "bcrypt": "^6.0.0",
         "better-sqlite3": "^12.6.2",
         "cheerio": "^1.0.0",
         "dotenv": "^17.2.3",
-        "fastify": "^4.28.1",
+        "fastify": "^5.8.4",
         "feedparser": "^2.2.10",
         "isomorphic-dompurify": "^3.0.0-rc.2",
         "jsdom": "^24.1.1",
@@ -41,10 +41,10 @@
         "@types/jsonwebtoken": "^9.0.10",
         "@types/node": "^22.5.0",
         "@types/node-cron": "^3.0.11",
-        "@vitest/coverage-v8": "^2.0.5",
+        "@vitest/coverage-v8": "^4.1.2",
         "tsx": "^4.19.0",
         "typescript": "^5.5.4",
-        "vitest": "^2.0.5"
+        "vitest": "^4.1.2"
     },
     "engines": {
         "node": ">=20.0.0"
