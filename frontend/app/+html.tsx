@@ -14,6 +14,11 @@ body {
 body {
     min-height: 100vh;
 }
+
+*:focus-visible {
+    outline: 2px solid #0ea5a4;
+    outline-offset: 2px;
+}
 `;
 
 export default function Root({ children }: PropsWithChildren) {

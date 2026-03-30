@@ -1,6 +1,7 @@
 import { startTransition, useEffect, useState } from 'react';
 import { View, StyleSheet, useWindowDimensions, Platform, ActivityIndicator } from 'react-native';
 import { Slot } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFeedStore } from '@/stores/feedStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useColors } from '@/theme';
@@ -78,9 +79,12 @@ export default function AppLayout() {
     // Show loading state while checking auth
     if (!mounted || isAuthenticated === null) {
         return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background.primary }}>
+            <SafeAreaView
+                edges={['top', 'left', 'right']}
+                style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background.primary }}
+            >
                 <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
-            </View>
+            </SafeAreaView>
         );
     }
 
@@ -97,7 +101,7 @@ export default function AppLayout() {
 
     return (
         <ErrorBoundary>
-            <View style={s.container}>
+            <SafeAreaView edges={['top', 'left', 'right']} style={s.container}>
                 {isDesktop && <Sidebar />}
                 {isDesktop && isReaderRoute && !isDigest && !isBookmarks && (
                     <View style={s.timelinePane}>
@@ -137,7 +141,7 @@ export default function AppLayout() {
                     onReload={applyUpdate}
                     onDismiss={dismissUpdate}
                 />
-            </View >
+            </SafeAreaView>
         </ErrorBoundary>
     );
 }

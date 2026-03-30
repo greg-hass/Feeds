@@ -23,6 +23,8 @@ import { VideoModal } from '@/components/VideoModal';
 import { ErrorView } from '@/components/ErrorView';
 import { useShallow } from 'zustand/react/shallow';
 
+const iconButtonHitSlop = { top: 10, bottom: 10, left: 10, right: 10 } as const;
+
 export default function ArticleScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const articleId = Number(id);
@@ -337,7 +339,7 @@ export default function ArticleScreen() {
                 }]}>
                     <View style={s.headerLeft}>
                         {isMobile && (
-                            <TouchableOpacity onPress={() => router.back()} style={s.backButton} accessibilityLabel="Go back">
+                            <TouchableOpacity onPress={() => router.back()} style={s.backButton} hitSlop={iconButtonHitSlop} accessibilityLabel="Go back">
                                 <ArrowLeft size={22} color={colors.text.primary} />
                             </TouchableOpacity>
                         )}
@@ -346,6 +348,7 @@ export default function ArticleScreen() {
                                 onPress={() => navigateToArticle(adjacentArticles.prev)}
                                 style={[s.navButton, !adjacentArticles.prev && s.navButtonDisabled]}
                                 disabled={!adjacentArticles.prev}
+                                hitSlop={iconButtonHitSlop}
                                 accessibilityLabel="Previous article"
                             >
                                 <ChevronLeft size={18} color={adjacentArticles.prev ? colors.primary.DEFAULT : colors.text.tertiary} />
@@ -354,6 +357,7 @@ export default function ArticleScreen() {
                                 onPress={() => navigateToArticle(adjacentArticles.next)}
                                 style={[s.navButton, !adjacentArticles.next && s.navButtonDisabled]}
                                 disabled={!adjacentArticles.next}
+                                hitSlop={iconButtonHitSlop}
                                 accessibilityLabel="Next article"
                             >
                                 <ChevronRight size={18} color={adjacentArticles.next ? colors.primary.DEFAULT : colors.text.tertiary} />
@@ -365,24 +369,25 @@ export default function ArticleScreen() {
                         <TouchableOpacity
                             onPress={() => setReaderControlsVisible((prev) => !prev)}
                             style={s.actionButton}
+                            hitSlop={iconButtonHitSlop}
                             accessibilityLabel={readerControlsVisible ? 'Close reader settings' : 'Open reader settings'}
                         >
                             <Type size={18} color={readerControlsVisible ? colors.primary.DEFAULT : colors.text.secondary} />
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={handleToggleRead} style={s.actionButton} accessibilityLabel={currentArticle.is_read ? 'Mark as unread' : 'Mark as read'}>
+                        <TouchableOpacity onPress={handleToggleRead} style={s.actionButton} hitSlop={iconButtonHitSlop} accessibilityLabel={currentArticle.is_read ? 'Mark as unread' : 'Mark as read'}>
                             {currentArticle.is_read ? (
                                 <CircleCheck size={20} color={colors.primary.DEFAULT} />
                             ) : (
                                 <Circle size={20} color={colors.text.secondary} />
                             )}
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={handleToggleBookmark} style={s.actionButton} accessibilityLabel={currentArticle.is_bookmarked ? 'Remove bookmark' : 'Bookmark article'}>
+                        <TouchableOpacity onPress={handleToggleBookmark} style={s.actionButton} hitSlop={iconButtonHitSlop} accessibilityLabel={currentArticle.is_bookmarked ? 'Remove bookmark' : 'Bookmark article'}>
                             <Bookmark size={20} color={currentArticle.is_bookmarked ? colors.primary.DEFAULT : colors.text.secondary} fill={currentArticle.is_bookmarked ? colors.primary.DEFAULT : 'transparent'} />
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={handleShare} style={s.actionButton} accessibilityLabel="Share article">
+                        <TouchableOpacity onPress={handleShare} style={s.actionButton} hitSlop={iconButtonHitSlop} accessibilityLabel="Share article">
                             <Share2 size={20} color={colors.text.secondary} />
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={handleOpenExternal} style={s.actionButton} accessibilityLabel="Open original article">
+                        <TouchableOpacity onPress={handleOpenExternal} style={s.actionButton} hitSlop={iconButtonHitSlop} accessibilityLabel="Open original article">
                             <ExternalLink size={20} color={colors.text.secondary} />
                         </TouchableOpacity>
                     </View>
@@ -555,6 +560,10 @@ const styles = (colors: any, isMobile: boolean, readerTheme?: string, readerWidt
             backgroundColor: colors.background.secondary,
             borderWidth: 1,
             borderColor: colors.border.DEFAULT,
+            minWidth: 44,
+            minHeight: 44,
+            alignItems: 'center',
+            justifyContent: 'center',
         },
         navigation: {
             flexDirection: 'row',
@@ -566,6 +575,10 @@ const styles = (colors: any, isMobile: boolean, readerTheme?: string, readerWidt
             backgroundColor: colors.background.secondary,
             borderWidth: 1,
             borderColor: colors.border.DEFAULT,
+            minWidth: 44,
+            minHeight: 44,
+            alignItems: 'center',
+            justifyContent: 'center',
         },
         navButtonDisabled: {
             opacity: 0.4,
@@ -575,8 +588,8 @@ const styles = (colors: any, isMobile: boolean, readerTheme?: string, readerWidt
             gap: spacing.xs,
         },
         actionButton: {
-            width: 32,
-            height: 32,
+            width: 44,
+            height: 44,
             borderRadius: borderRadius.md,
             justifyContent: 'center',
             alignItems: 'center',

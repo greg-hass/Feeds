@@ -4,6 +4,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useColors } from '@/theme';
 import { initializeSync } from '@/stores/initializeSync';
 import ToastContainer from '@/components/Toast';
@@ -60,11 +61,13 @@ function RootShell() {
 export default function RootLayout() {
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
-            <QueryClientProvider client={queryClient}>
-                <ThemeProvider>
-                    <RootShell />
-                </ThemeProvider>
-            </QueryClientProvider>
+            <SafeAreaProvider>
+                <QueryClientProvider client={queryClient}>
+                    <ThemeProvider>
+                        <RootShell />
+                    </ThemeProvider>
+                </QueryClientProvider>
+            </SafeAreaProvider>
         </GestureHandlerRootView>
     );
 }

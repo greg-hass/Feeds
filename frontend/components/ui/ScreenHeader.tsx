@@ -4,6 +4,8 @@ import { useRouter } from 'expo-router';
 import { ArrowLeft, X, Menu } from 'lucide-react-native';
 import { useColors, spacing, borderRadius } from '@/theme';
 
+const iconButtonHitSlop = { top: 10, bottom: 10, left: 10, right: 10 } as const;
+
 export interface HeaderAction {
     icon: React.ReactNode;
     onPress: () => void;
@@ -97,6 +99,7 @@ export const ScreenHeader = ({
                     <TouchableOpacity 
                         onPress={onMenuPress}
                         style={s.menuButton}
+                        hitSlop={iconButtonHitSlop}
                         accessibilityLabel="Open menu"
                         accessibilityRole="button"
                     >
@@ -107,6 +110,7 @@ export const ScreenHeader = ({
                     <TouchableOpacity 
                         onPress={handleBack}
                         style={s.backButton}
+                        hitSlop={iconButtonHitSlop}
                         accessibilityLabel={backButtonVariant === 'close' ? 'Close' : 'Go back'}
                         accessibilityRole="button"
                     >
@@ -146,6 +150,7 @@ export const ScreenHeader = ({
                                 action.variant === 'primary' && s.actionButtonPrimary,
                                 action.variant === 'danger' && s.actionButtonDanger,
                             ]}
+                            hitSlop={iconButtonHitSlop}
                             disabled={action.disabled || action.loading}
                             accessibilityLabel={action.accessibilityLabel}
                             accessibilityRole="button"
@@ -198,6 +203,10 @@ const styles = (colors: any) => StyleSheet.create({
         padding: spacing.sm,
         marginLeft: -spacing.sm,
         borderRadius: borderRadius.full,
+        minWidth: 44,
+        minHeight: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     titleContainerWithMenu: {
         marginLeft: spacing.sm,
@@ -212,6 +221,10 @@ const styles = (colors: any) => StyleSheet.create({
         padding: spacing.sm,
         marginLeft: -spacing.sm,
         borderRadius: borderRadius.full,
+        minWidth: 44,
+        minHeight: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     headerTitle: {
         fontSize: 18,
@@ -232,8 +245,8 @@ const styles = (colors: any) => StyleSheet.create({
     actionButton: {
         padding: 4,
         borderRadius: borderRadius.md,
-        minWidth: 34,
-        minHeight: 34,
+        minWidth: 44,
+        minHeight: 44,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: colors.background.secondary,
