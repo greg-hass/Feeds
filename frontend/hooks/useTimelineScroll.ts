@@ -96,9 +96,10 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: any) => {
 
     useFocusEffect(
         useCallback(() => {
+            // Force scroll restoration when screen comes into focus
+            // This handles the case when returning from article view
             const snapshot = getSnapshot(scrollKey);
-            if (snapshot.absoluteOffset > 0 && hasRestoredScroll.current) {
-                hasRestoredScroll.current = false;
+            if (snapshot.absoluteOffset > 0) {
                 setRestoreAttempt((attempt) => attempt + 1);
             }
         }, [scrollKey])
@@ -166,11 +167,12 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: any) => {
     }, [completeRestore]);
 
     useLayoutEffect(() => {
-        if (hasRestoredScroll.current || articles.length === 0 || !isFlatListReady) {
+        if (articles.length === 0 || !isFlatListReady) {
             return;
         }
 
         isRestoring.current = true;
+        hasRestoredScroll.current = false;
 
         const timeoutId = setTimeout(() => {
             const snapshot = getSnapshot(scrollKey);
