@@ -56,7 +56,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     } = useTimeline(onArticlePress);
 
     const {
-        attachFlatListRef, onViewableItemsChanged, handleScroll, handleScrollEnd, handleScrollToIndexFailed, registerItemLayout, saveScrollPosition,
+        attachFlatListRef, onViewableItemsChanged, handleScroll, handleScrollEnd, handleScrollToIndexFailed, saveScrollPosition,
         scrollToTop, isAtTop, shouldMaintainVisibleContentPosition, prepareForNewArticles
     } = useTimelineScroll(articles, filter);
 
@@ -170,28 +170,22 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     const clearFilters = () => setFilter({ unread_only: false, type: undefined });
 
     const renderArticle = ({ item }: { item: Article; index: number }) => (
-        <View
-            onLayout={(event) => {
-                registerItemLayout(item.id, event.nativeEvent.layout.y);
-            }}
-        >
-            <TimelineArticle
-                item={item}
-                isActive={activeArticleId === item.id}
-                isMobile={isMobile}
-                activeVideoId={activeVideoId}
-                playingArticleId={playingArticleId}
-                isPlaying={isPlaying}
-                colors={colors}
-                onArticlePress={handleArticlePressWithSave}
-                onVideoPress={handleVideoPress}
-                onPlayPress={handlePlayPress}
-                onArticlePressStart={saveScrollPosition}
-                getBookmarkScale={getBookmarkScale}
-                getBookmarkRotation={getBookmarkRotation}
-                onFeedInfoPress={handleFeedInfoPress}
-            />
-        </View>
+        <TimelineArticle
+            item={item}
+            isActive={activeArticleId === item.id}
+            isMobile={isMobile}
+            activeVideoId={activeVideoId}
+            playingArticleId={playingArticleId}
+            isPlaying={isPlaying}
+            colors={colors}
+            onArticlePress={handleArticlePressWithSave}
+            onVideoPress={handleVideoPress}
+            onPlayPress={handlePlayPress}
+            onArticlePressStart={saveScrollPosition}
+            getBookmarkScale={getBookmarkScale}
+            getBookmarkRotation={getBookmarkRotation}
+            onFeedInfoPress={handleFeedInfoPress}
+        />
     );
 
     const refreshRotation = refreshSpin.interpolate({

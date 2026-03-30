@@ -127,7 +127,9 @@ export async function parseFeed(url: string, options?: { skipIconFetch?: boolean
         throw new Error(`Failed to fetch feed: ${response.status} ${response.statusText}`);
     }
 
-    const text = await response.text();
+    const responseStream = response.body
+        ? Readable.fromWeb(response.body as any)
+        : Readable.from([await response.text()]);
 
     return new Promise((resolve, reject) => {
         const feedparser = new FeedParser({ feedurl: url });
@@ -212,9 +214,7 @@ export async function parseFeed(url: string, options?: { skipIconFetch?: boolean
             });
         });
 
-        // Stream the text to feedparser
-        const stream = Readable.from([text]);
-        stream.pipe(feedparser);
+        responseStream.pipe(feedparser);
     }).then(async (feed: any) => {
         if (options?.skipIconFetch) {
             return feed;

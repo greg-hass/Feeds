@@ -6,6 +6,7 @@ import { useSettingsStore } from '@/stores/settingsStore';
 import { enableSync, fetchChanges, syncManager } from '@/lib/sync';
 import { api } from '@/services/api';
 import { createRefreshEventController } from '@/lib/refreshEvents';
+import { useShallow } from 'zustand/react/shallow';
 
 interface UseRefreshLifecycleOptions {
     enabled: boolean;
@@ -16,14 +17,16 @@ export function useRefreshLifecycle({
     enabled,
     realtimeEnabled = enabled,
 }: UseRefreshLifecycleOptions) {
-    const { fetchSettings } = useSettingsStore();
-    const { fetchArticles } = useArticleStore();
-    const {
-        beginRefreshCycle,
-        completeRefreshCycle,
-        failRefreshCycle,
-        markRefreshStale,
-    } = useFeedStore();
+    const fetchSettings = useSettingsStore((state) => state.fetchSettings);
+    const fetchArticles = useArticleStore((state) => state.fetchArticles);
+    const [beginRefreshCycle, completeRefreshCycle, failRefreshCycle, markRefreshStale] = useFeedStore(
+        useShallow((state) => [
+            state.beginRefreshCycle,
+            state.completeRefreshCycle,
+            state.failRefreshCycle,
+            state.markRefreshStale,
+        ])
+    );
     const lastIsRefreshingRef = useRef(false);
     const requiresFullArticleRefresh = () => Boolean(useArticleStore.getState().filter.folder_id);
 

@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useMemo, useState } from 'react';
+import { useEffect, useCallback, useMemo, useRef } from 'react';
 import { Alert, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useArticleStore } from '@/stores/articleStore';
@@ -9,14 +9,44 @@ import { useDigestStore } from '@/stores/digestStore';
 import { extractVideoId } from '@/utils/youtube';
 import { Article } from '@/services/api';
 import { getRefreshPresentation } from '@/utils/refreshStatus';
+import { useShallow } from 'zustand/react/shallow';
 
 export const useTimeline = (onArticlePress?: (article: Article) => void) => {
     const router = useRouter();
-    const { articles, isLoading, hasMore, filter, fetchArticles, setFilter, markAllRead, prefetchArticle } = useArticleStore();
-    const { feeds, folders, refreshAllFeeds, isLoading: isFeedLoading, refreshState } = useFeedStore();
-    const { currentArticleId: playingArticleId, isPlaying, play, pause, resume } = useAudioStore();
-    const { activeVideoId, playVideo } = useVideoStore();
-    const { fetchPendingDigest } = useDigestStore();
+    const [articles, isLoading, hasMore, filter, fetchArticles, setFilter, markAllRead, prefetchArticle] = useArticleStore(
+        useShallow((state) => [
+            state.articles,
+            state.isLoading,
+            state.hasMore,
+            state.filter,
+            state.fetchArticles,
+            state.setFilter,
+            state.markAllRead,
+            state.prefetchArticle,
+        ])
+    );
+    const [feeds, folders, refreshAllFeeds, isFeedLoading, refreshState] = useFeedStore(
+        useShallow((state) => [
+            state.feeds,
+            state.folders,
+            state.refreshAllFeeds,
+            state.isLoading,
+            state.refreshState,
+        ])
+    );
+    const [playingArticleId, isPlaying, play, pause, resume] = useAudioStore(
+        useShallow((state) => [
+            state.currentArticleId,
+            state.isPlaying,
+            state.play,
+            state.pause,
+            state.resume,
+        ])
+    );
+    const [activeVideoId, playVideo] = useVideoStore(
+        useShallow((state) => [state.activeVideoId, state.playVideo])
+    );
+    const fetchPendingDigest = useDigestStore((state) => state.fetchPendingDigest);
 
     useEffect(() => {
         fetchPendingDigest();
@@ -32,17 +62,17 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
         refreshText: refreshPresentation.shortLabel,
     }), [refreshPresentation]);
 
-    const [bookmarkScales] = useState(() => new Map<number, Animated.Value>());
-    const [bookmarkRotations] = useState(() => new Map<number, Animated.Value>());
+    const bookmarkScales = useRef(new Map<number, Animated.Value>());
+    const bookmarkRotations = useRef(new Map<number, Animated.Value>());
 
     const getBookmarkScale = (id: number) => {
-        if (!bookmarkScales.has(id)) bookmarkScales.set(id, new Animated.Value(1));
-        return bookmarkScales.get(id)!;
+        if (!bookmarkScales.current.has(id)) bookmarkScales.current.set(id, new Animated.Value(1));
+        return bookmarkScales.current.get(id)!;
     };
 
     const getBookmarkRotation = (id: number) => {
-        if (!bookmarkRotations.has(id)) bookmarkRotations.set(id, new Animated.Value(0));
-        return bookmarkRotations.get(id)!;
+        if (!bookmarkRotations.current.has(id)) bookmarkRotations.current.set(id, new Animated.Value(0));
+        return bookmarkRotations.current.get(id)!;
     };
 
     const handleMarkAllRead = () => {

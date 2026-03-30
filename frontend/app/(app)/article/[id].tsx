@@ -21,6 +21,7 @@ import ArticleContent from '@/components/ArticleContent';
 import { ReaderControls } from '@/components/ReaderControls';
 import { VideoModal } from '@/components/VideoModal';
 import { ErrorView } from '@/components/ErrorView';
+import { useShallow } from 'zustand/react/shallow';
 
 export default function ArticleScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
@@ -29,9 +30,31 @@ export default function ArticleScreen() {
     const colors = useColors();
     const { width } = useWindowDimensions();
     const isMobile = width < 1024;
-    const { currentArticle, fetchArticle, markRead, markUnread, toggleBookmark, articles, setArticleScrollPosition, getArticleScrollPosition, error } = useArticleStore();
-    const { settings } = useSettingsStore();
-    const { show } = useToastStore();
+    const [
+        currentArticle,
+        fetchArticle,
+        markRead,
+        markUnread,
+        toggleBookmark,
+        articles,
+        setArticleScrollPosition,
+        getArticleScrollPosition,
+        error,
+    ] = useArticleStore(
+        useShallow((state) => [
+            state.currentArticle,
+            state.fetchArticle,
+            state.markRead,
+            state.markUnread,
+            state.toggleBookmark,
+            state.articles,
+            state.setArticleScrollPosition,
+            state.getArticleScrollPosition,
+            state.error,
+        ])
+    );
+    const settings = useSettingsStore((state) => state.settings);
+    const show = useToastStore((state) => state.show);
     const showReadability = settings?.readability_enabled ?? false;
     const [iconFailedArticleId, setIconFailedArticleId] = useState<number | null>(null);
     const [readerControlsVisible, setReaderControlsVisible] = useState(false);
@@ -42,8 +65,10 @@ export default function ArticleScreen() {
     const [scrollOffset, setScrollOffset] = useState(0);
     const [headerOpacity] = useState(() => new Animated.Value(1));
 
-    const { activeVideoId, playVideo, minimize, close: closeVideo, isMinimized } = useVideoStore();
-    const { play: playPodcast } = useAudioStore();
+    const [activeVideoId, playVideo, minimize, closeVideo, isMinimized] = useVideoStore(
+        useShallow((state) => [state.activeVideoId, state.playVideo, state.minimize, state.close, state.isMinimized])
+    );
+    const playPodcast = useAudioStore((state) => state.play);
 
     // Analytics: Track reading session
     const { updateScrollDepth } = useReadingSession({
