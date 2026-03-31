@@ -67,6 +67,7 @@ export interface ArticleState {
         {
             absoluteOffset: number;
             anchorArticleId: number | null;
+            restoreArticleId: number | null;
         }
     >;
     filter: {
@@ -82,11 +83,19 @@ export interface ArticleState {
     getArticleScrollPosition: (articleId: number) => number;
     setTimelineScrollSnapshot: (
         key: string,
-        snapshot: { absoluteOffset: number; anchorArticleId: number | null },
+        snapshot: {
+            absoluteOffset: number;
+            anchorArticleId: number | null;
+            restoreArticleId: number | null;
+        },
     ) => void;
     getTimelineScrollSnapshot: (
         key: string,
-    ) => { absoluteOffset: number; anchorArticleId: number | null };
+    ) => {
+        absoluteOffset: number;
+        anchorArticleId: number | null;
+        restoreArticleId: number | null;
+    };
     clearTimelineScrollSnapshots: () => void;
     fetchArticles: (reset?: boolean, isLiveUpdate?: boolean, skipLoadingSet?: boolean) => Promise<void>;
     fetchBookmarks: (params?: { folderId?: number; archived?: boolean; query?: string }) => Promise<void>;

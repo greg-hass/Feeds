@@ -140,6 +140,7 @@ export const useArticleStore = create<ArticleState>()(
           get().timelineScrollSnapshots[key] || {
             absoluteOffset: 0,
             anchorArticleId: null,
+            restoreArticleId: null,
           }
         );
       },

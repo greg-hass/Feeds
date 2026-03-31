@@ -92,7 +92,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
 
     // Connect saveScrollPosition to handleArticlePress
     const handleArticlePressWithSave = useCallback((item: Article) => {
-        saveScrollPosition();
+        saveScrollPosition(item.id);
         handleArticlePress(item);
     }, [handleArticlePress, saveScrollPosition]);
 

@@ -149,12 +149,14 @@ describe('Article Store', () => {
                 useArticleStore.getState().setTimelineScrollSnapshot('timeline:all', {
                     absoluteOffset: 180,
                     anchorArticleId: 42,
+                    restoreArticleId: 42,
                 });
             });
 
             expect(useArticleStore.getState().timelineScrollSnapshots['timeline:all']).toEqual({
                 absoluteOffset: 180,
                 anchorArticleId: 42,
+                restoreArticleId: 42,
             });
         });
 
@@ -164,6 +166,7 @@ describe('Article Store', () => {
             expect(useArticleStore.getState().getTimelineScrollSnapshot('missing')).toEqual({
                 absoluteOffset: 0,
                 anchorArticleId: null,
+                restoreArticleId: null,
             });
         });
     });

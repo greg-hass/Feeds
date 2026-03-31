@@ -39,6 +39,7 @@ describe('useTimelineScroll', () => {
         __timelineScrollTestUtils.setSnapshot('timeline:unread', {
             absoluteOffset: 540,
             anchorArticleId: 3,
+            restoreArticleId: null,
         });
 
         const secondMount = renderHook(({ items }) =>
@@ -73,6 +74,7 @@ describe('useTimelineScroll', () => {
         __timelineScrollTestUtils.setSnapshot('timeline:unread', {
             absoluteOffset: 420,
             anchorArticleId: 3,
+            restoreArticleId: null,
         });
 
         const { result, rerender } = renderHook(({ items }) =>
@@ -110,5 +112,42 @@ describe('useTimelineScroll', () => {
             viewPosition: 0,
         });
         expect(flatListMock.scrollToOffset).not.toHaveBeenCalled();
+    });
+
+    it('restores to the opened article when a restore target exists', async () => {
+        const flatListMock = {
+            scrollToIndex: vi.fn(),
+            scrollToOffset: vi.fn(),
+        };
+
+        __timelineScrollTestUtils.setSnapshot('timeline:unread', {
+            absoluteOffset: 540,
+            anchorArticleId: 2,
+            restoreArticleId: 3,
+        });
+
+        const mount = renderHook(({ items }) =>
+            useTimelineScroll(items, { unread_only: true }),
+        {
+            initialProps: { items: articles },
+        });
+
+        act(() => {
+            mount.result.current.attachFlatListRef(flatListMock as any);
+        });
+
+        mount.rerender({ items: [...articles] });
+
+        await act(async () => {
+            await new Promise((resolve) => setTimeout(resolve, 50));
+        });
+
+        expect(flatListMock.scrollToIndex).toHaveBeenCalledWith({
+            index: 2,
+            animated: false,
+            viewPosition: 0,
+        });
+        expect(flatListMock.scrollToOffset).not.toHaveBeenCalled();
+        expect(__timelineScrollTestUtils.getSnapshot('timeline:unread').restoreArticleId).toBeNull();
     });
 });

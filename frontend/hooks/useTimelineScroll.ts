@@ -15,11 +15,13 @@ type TimelineFilter = {
 type ScrollSnapshot = {
     absoluteOffset: number;
     anchorArticleId: number | null;
+    restoreArticleId: number | null;
 };
 
 const EMPTY_SNAPSHOT: ScrollSnapshot = {
     absoluteOffset: 0,
     anchorArticleId: null,
+    restoreArticleId: null,
 };
 
 function getScrollKey(filter: TimelineFilter): string {
@@ -99,11 +101,16 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: TimelineF
         prependCompensationSnapshot.current = null;
     }, [scrollKey]);
 
-    const updateSnapshot = useCallback((nextOffset: number) => {
+    const updateSnapshot = useCallback((
+        nextOffset: number,
+        overrides: Partial<ScrollSnapshot> = {},
+    ) => {
         const safeOffset = Math.max(nextOffset, 0);
+        const currentSnapshot = getSnapshot(scrollKey);
         setSnapshot(scrollKey, {
             absoluteOffset: safeOffset,
-            anchorArticleId: currentAnchorId.current,
+            anchorArticleId: overrides.anchorArticleId ?? currentAnchorId.current,
+            restoreArticleId: overrides.restoreArticleId ?? currentSnapshot.restoreArticleId,
         });
     }, [scrollKey]);
 
@@ -123,6 +130,24 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: TimelineF
             return false;
         }
 
+        if (snapshot.restoreArticleId != null) {
+            const restoreIndex = articlesRef.current.findIndex((article) => article.id === snapshot.restoreArticleId);
+            if (restoreIndex >= 0) {
+                list.scrollToIndex({
+                    index: restoreIndex,
+                    animated: false,
+                    viewPosition: 0,
+                });
+                currentAnchorId.current = snapshot.restoreArticleId;
+                setSnapshot(scrollKey, {
+                    ...snapshot,
+                    restoreArticleId: null,
+                });
+                markRestoreComplete();
+                return true;
+            }
+        }
+
         if (snapshot.absoluteOffset <= 0) {
             currentScrollOffset.current = 0;
             markRestoreComplete();
@@ -136,7 +161,7 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: TimelineF
         currentScrollOffset.current = snapshot.absoluteOffset;
         markRestoreComplete();
         return true;
-    }, [markRestoreComplete]);
+    }, [markRestoreComplete, scrollKey]);
 
     useFocusEffect(
         useCallback(() => {
@@ -160,8 +185,10 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: TimelineF
         }
     }, [articles.length, isFlatListReady, restoreAttempt, restoreFromSnapshot, scrollKey, markRestoreComplete]);
 
-    const saveScrollPosition = useCallback(() => {
-        updateSnapshot(currentScrollOffset.current);
+    const saveScrollPosition = useCallback((restoreArticleId?: number | null) => {
+        updateSnapshot(currentScrollOffset.current, {
+            restoreArticleId: restoreArticleId ?? null,
+        });
     }, [updateSnapshot]);
 
     const handleScroll = useCallback((e: any) => {
