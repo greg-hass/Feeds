@@ -57,7 +57,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
 
     const {
         attachFlatListRef, onViewableItemsChanged, handleScroll, handleScrollEnd, handleScrollToIndexFailed, saveScrollPosition,
-        scrollToTop, isAtTop, shouldMaintainVisibleContentPosition, prepareForNewArticles
+        scrollToTop, isAtTop, shouldMaintainVisibleContentPosition, prepareForNewArticles, isRestoringPosition
     } = useTimelineScroll(articles, filter);
 
     useEffect(() => {
@@ -346,7 +346,19 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                         updateCellsBatchingPeriod={50}
                         // Maintain visible content position when prepending items (Twitter/X style)
                         maintainVisibleContentPosition={maintainVisibleContentPosition}
+                        style={isRestoringPosition ? { opacity: 0 } : undefined}
+                        pointerEvents={isRestoringPosition ? 'none' : 'auto'}
                     />
+                    {isRestoringPosition ? (
+                        <View
+                            pointerEvents="none"
+                            style={{
+                                position: 'absolute',
+                                inset: 0,
+                                backgroundColor: colors.background.primary,
+                            }}
+                        />
+                    ) : null}
                 </View>
             ) : null}
 

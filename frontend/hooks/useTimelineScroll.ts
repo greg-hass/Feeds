@@ -59,6 +59,7 @@ export const __timelineScrollTestUtils = {
 export const useTimelineScroll = (articles: TimelineArticle[], filter: TimelineFilter) => {
     const prefetchArticle = useArticleStore((state) => state.prefetchArticle);
     const [restoreAttempt, setRestoreAttempt] = useState(0);
+    const [isRestoringPosition, setIsRestoringPosition] = useState(false);
     const flatListRef = useRef<FlatList>(null);
     const [isFlatListReady, setIsFlatListReady] = useState(false);
     const articlesRef = useRef(articles);
@@ -99,6 +100,7 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: TimelineF
         pendingRestoreArticleId.current = snapshot.restoreArticleId;
         hasRestoredScroll.current = false;
         isRestoring.current = false;
+        setIsRestoringPosition(snapshot.absoluteOffset > 0 || snapshot.restoreArticleId != null);
         isPrependCompensating.current = false;
         prependCompensationSnapshot.current = null;
     }, [scrollKey]);
@@ -124,6 +126,9 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: TimelineF
     const markRestoreComplete = useCallback(() => {
         hasRestoredScroll.current = true;
         isRestoring.current = false;
+        if (pendingRestoreArticleId.current == null) {
+            setIsRestoringPosition(false);
+        }
     }, []);
 
     const restoreFromSnapshot = useCallback((snapshot: ScrollSnapshot) => {
@@ -149,6 +154,7 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: TimelineF
 
         if (snapshot.absoluteOffset <= 0) {
             currentScrollOffset.current = 0;
+            setIsRestoringPosition(false);
             markRestoreComplete();
             return true;
         }
@@ -167,6 +173,7 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: TimelineF
             const snapshot = getSnapshot(scrollKey);
             if (snapshot.absoluteOffset > 0) {
                 hasRestoredScroll.current = false;
+                setIsRestoringPosition(true);
                 setRestoreAttempt((attempt) => attempt + 1);
             }
         }, [scrollKey])
@@ -223,6 +230,7 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: TimelineF
                 restoreArticleId: null,
             });
             pendingRestoreArticleId.current = null;
+            setIsRestoringPosition(false);
         }
 
         const lastIndex = visibleItems[visibleItems.length - 1].index;
@@ -364,5 +372,6 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: TimelineF
         isAtTop,
         shouldMaintainVisibleContentPosition,
         prepareForNewArticles,
+        isRestoringPosition,
     };
 };
