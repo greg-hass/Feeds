@@ -39,7 +39,6 @@ describe('useTimelineScroll', () => {
         __timelineScrollTestUtils.setSnapshot('timeline:unread', {
             absoluteOffset: 540,
             anchorArticleId: 3,
-            anchorOffset: 540,
         });
 
         const secondMount = renderHook(({ items }) =>
@@ -58,12 +57,11 @@ describe('useTimelineScroll', () => {
             await new Promise((resolve) => setTimeout(resolve, 220));
         });
 
-        expect(flatListMock.scrollToIndex).toHaveBeenCalledWith({
-            index: 2,
+        expect(flatListMock.scrollToOffset).toHaveBeenCalledWith({
+            offset: 540,
             animated: false,
-            viewOffset: 540,
         });
-        expect(flatListMock.scrollToOffset).not.toHaveBeenCalled();
+        expect(flatListMock.scrollToIndex).not.toHaveBeenCalled();
     });
 
     it('keeps the same anchor article visible when new items are prepended', async () => {
@@ -75,7 +73,6 @@ describe('useTimelineScroll', () => {
         __timelineScrollTestUtils.setSnapshot('timeline:unread', {
             absoluteOffset: 420,
             anchorArticleId: 3,
-            anchorOffset: 420,
         });
 
         const { result, rerender } = renderHook(({ items }) =>
@@ -110,7 +107,7 @@ describe('useTimelineScroll', () => {
         expect(flatListMock.scrollToIndex).toHaveBeenCalledWith({
             index: 4,
             animated: false,
-            viewOffset: 420,
+            viewPosition: 0,
         });
         expect(flatListMock.scrollToOffset).not.toHaveBeenCalled();
     });

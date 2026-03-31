@@ -70,6 +70,7 @@ describe('Article Store', () => {
             expect(state.isLoading).toBe(false);
             expect(state.error).toBeNull();
             expect(state.scrollPosition).toBe(0);
+            expect(state.timelineScrollSnapshots).toEqual({});
             expect(state.filter.unread_only).toBe(true);
         });
     });
@@ -137,6 +138,33 @@ describe('Article Store', () => {
             
             const position = useArticleStore.getState().getArticleScrollPosition(999);
             expect(position).toBe(0);
+        });
+    });
+
+    describe('timeline scroll snapshots', () => {
+        it('should persist timeline snapshots by key', async () => {
+            const { useArticleStore } = await import('@/stores/articleStore');
+
+            act(() => {
+                useArticleStore.getState().setTimelineScrollSnapshot('timeline:all', {
+                    absoluteOffset: 180,
+                    anchorArticleId: 42,
+                });
+            });
+
+            expect(useArticleStore.getState().timelineScrollSnapshots['timeline:all']).toEqual({
+                absoluteOffset: 180,
+                anchorArticleId: 42,
+            });
+        });
+
+        it('should return a default snapshot for unknown keys', async () => {
+            const { useArticleStore } = await import('@/stores/articleStore');
+
+            expect(useArticleStore.getState().getTimelineScrollSnapshot('missing')).toEqual({
+                absoluteOffset: 0,
+                anchorArticleId: null,
+            });
         });
     });
 

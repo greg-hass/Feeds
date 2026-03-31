@@ -5,15 +5,24 @@ import { useArticleStore } from '@/stores/articleStore';
 
 type TimelineArticle = { id: number };
 
+type TimelineFilter = {
+    unread_only?: boolean;
+    type?: string;
+    feed_id?: number;
+    folder_id?: number;
+};
+
 type ScrollSnapshot = {
     absoluteOffset: number;
     anchorArticleId: number | null;
-    anchorOffset: number;
 };
 
-const scrollSnapshots: Record<string, ScrollSnapshot> = {};
+const EMPTY_SNAPSHOT: ScrollSnapshot = {
+    absoluteOffset: 0,
+    anchorArticleId: null,
+};
 
-function getScrollKey(filter: any): string {
+function getScrollKey(filter: TimelineFilter): string {
     const parts: string[] = ['timeline'];
 
     if (filter.unread_only) parts.push('unread');
@@ -29,27 +38,23 @@ function getScrollKey(filter: any): string {
 }
 
 function getSnapshot(scrollKey: string): ScrollSnapshot {
-    return scrollSnapshots[scrollKey] || {
-        absoluteOffset: 0,
-        anchorArticleId: null,
-        anchorOffset: 0,
-    };
+    return useArticleStore.getState().getTimelineScrollSnapshot(scrollKey);
+}
+
+function setSnapshot(scrollKey: string, snapshot: ScrollSnapshot) {
+    useArticleStore.getState().setTimelineScrollSnapshot(scrollKey, snapshot);
 }
 
 export const __timelineScrollTestUtils = {
     getScrollKey,
     getSnapshot,
-    setSnapshot: (key: string, snapshot: ScrollSnapshot) => {
-        scrollSnapshots[key] = snapshot;
-    },
+    setSnapshot,
     clearSnapshots: () => {
-        Object.keys(scrollSnapshots).forEach((key) => {
-            delete scrollSnapshots[key];
-        });
+        useArticleStore.getState().clearTimelineScrollSnapshots();
     },
 };
 
-export const useTimelineScroll = (articles: TimelineArticle[], filter: any) => {
+export const useTimelineScroll = (articles: TimelineArticle[], filter: TimelineFilter) => {
     const prefetchArticle = useArticleStore((state) => state.prefetchArticle);
     const [restoreAttempt, setRestoreAttempt] = useState(0);
     const flatListRef = useRef<FlatList>(null);
@@ -60,11 +65,10 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: any) => {
     const hasRestoredScroll = useRef(false);
     const isRestoring = useRef(false);
     const isPrependCompensating = useRef(false);
-    const pendingNewArticlesCount = useRef(0);
     const prependCompensationSnapshot = useRef<ScrollSnapshot | null>(null);
     const currentScrollOffset = useRef(0);
     const currentAnchorId = useRef<number | null>(null);
-    const currentAnchorOffset = useRef(0);
+
     const attachFlatListRef = useCallback((node: FlatList | null) => {
         flatListRef.current = node;
         setIsFlatListReady(Boolean(node));
@@ -81,50 +85,37 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: any) => {
     const scrollKey = getScrollKey(filter);
 
     useEffect(() => {
-        if (currentScrollKey.current !== scrollKey) {
-            hasRestoredScroll.current = false;
-            isRestoring.current = false;
-            isPrependCompensating.current = false;
-            pendingNewArticlesCount.current = 0;
-            prependCompensationSnapshot.current = null;
-            currentScrollKey.current = scrollKey;
-            currentScrollOffset.current = getSnapshot(scrollKey).absoluteOffset;
+        if (currentScrollKey.current === scrollKey) {
+            return;
         }
+
+        const snapshot = getSnapshot(scrollKey);
+        currentScrollKey.current = scrollKey;
+        currentScrollOffset.current = snapshot.absoluteOffset;
+        currentAnchorId.current = snapshot.anchorArticleId;
+        hasRestoredScroll.current = false;
+        isRestoring.current = false;
+        isPrependCompensating.current = false;
+        prependCompensationSnapshot.current = null;
     }, [scrollKey]);
 
-    useFocusEffect(
-        useCallback(() => {
-            // Force scroll restoration when screen comes into focus
-            // This handles the case when returning from article view
-            const snapshot = getSnapshot(scrollKey);
-            if (snapshot.absoluteOffset > 0) {
-                setRestoreAttempt((attempt) => attempt + 1);
-            }
-        }, [scrollKey])
-    );
-
-    const completeRestore = useCallback(() => {
-        setTimeout(() => {
-            hasRestoredScroll.current = true;
-            isRestoring.current = false;
-        }, 80);
-    }, []);
-
     const updateSnapshot = useCallback((nextOffset: number) => {
-        scrollSnapshots[scrollKey] = {
-            absoluteOffset: nextOffset,
+        const safeOffset = Math.max(nextOffset, 0);
+        setSnapshot(scrollKey, {
+            absoluteOffset: safeOffset,
             anchorArticleId: currentAnchorId.current,
-            anchorOffset: currentAnchorOffset.current,
-        };
+        });
     }, [scrollKey]);
 
     const updateCurrentSnapshot = useCallback((offset: number) => {
         currentScrollOffset.current = offset;
-
-        if (offset >= 0) {
-            updateSnapshot(offset);
-        }
+        updateSnapshot(offset);
     }, [updateSnapshot]);
+
+    const markRestoreComplete = useCallback(() => {
+        hasRestoredScroll.current = true;
+        isRestoring.current = false;
+    }, []);
 
     const restoreFromSnapshot = useCallback((snapshot: ScrollSnapshot) => {
         const list = flatListRef.current;
@@ -132,61 +123,42 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: any) => {
             return false;
         }
 
-        const currentArticles = articlesRef.current;
-        if (snapshot.anchorArticleId != null) {
-            const anchorIndex = currentArticles.findIndex((article) => article.id === snapshot.anchorArticleId);
-            if (anchorIndex >= 0) {
-                try {
-                    list.scrollToIndex({
-                        index: anchorIndex,
-                        animated: false,
-                        viewOffset: snapshot.anchorOffset,
-                    });
-                    currentScrollOffset.current = snapshot.absoluteOffset;
-                    completeRestore();
-                    return true;
-                } catch {
-                    // Fall back to absolute offset below.
-                }
-            }
-        }
-
-        if (snapshot.absoluteOffset > 0) {
-            list.scrollToOffset({
-                offset: snapshot.absoluteOffset,
-                animated: false,
-            });
-            currentScrollOffset.current = snapshot.absoluteOffset;
-            completeRestore();
+        if (snapshot.absoluteOffset <= 0) {
+            currentScrollOffset.current = 0;
+            markRestoreComplete();
             return true;
         }
 
-        return false;
-    }, [completeRestore]);
+        list.scrollToOffset({
+            offset: snapshot.absoluteOffset,
+            animated: false,
+        });
+        currentScrollOffset.current = snapshot.absoluteOffset;
+        markRestoreComplete();
+        return true;
+    }, [markRestoreComplete]);
+
+    useFocusEffect(
+        useCallback(() => {
+            const snapshot = getSnapshot(scrollKey);
+            if (snapshot.absoluteOffset > 0) {
+                hasRestoredScroll.current = false;
+                setRestoreAttempt((attempt) => attempt + 1);
+            }
+        }, [scrollKey])
+    );
 
     useLayoutEffect(() => {
-        if (articles.length === 0 || !isFlatListReady) {
+        if (!isFlatListReady || articles.length === 0 || hasRestoredScroll.current) {
             return;
         }
 
         isRestoring.current = true;
-        hasRestoredScroll.current = false;
-
-        const timeoutId = setTimeout(() => {
-            const snapshot = getSnapshot(scrollKey);
-            if (!flatListRef.current) {
-                return;
-            }
-
-            if (!restoreFromSnapshot(snapshot)) {
-                hasRestoredScroll.current = true;
-                isRestoring.current = false;
-                currentScrollOffset.current = 0;
-            }
-        }, 120);
-
-        return () => clearTimeout(timeoutId);
-    }, [articles, isFlatListReady, scrollKey, restoreAttempt, restoreFromSnapshot]);
+        const restored = restoreFromSnapshot(getSnapshot(scrollKey));
+        if (!restored) {
+            markRestoreComplete();
+        }
+    }, [articles.length, isFlatListReady, restoreAttempt, restoreFromSnapshot, scrollKey, markRestoreComplete]);
 
     const saveScrollPosition = useCallback(() => {
         updateSnapshot(currentScrollOffset.current);
@@ -209,73 +181,76 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: any) => {
     }, [updateCurrentSnapshot]);
 
     const onViewableItemsChanged = useCallback(({ viewableItems }: any) => {
-        const visibleItems = viewableItems
-            .filter((item: any) => item.isViewable && item.item?.id != null);
+        const visibleItems = viewableItems.filter((item: any) => item.isViewable && item.item?.id != null);
 
-        if (visibleItems.length > 0) {
-            const firstVisible = visibleItems[0];
-            currentAnchorId.current = firstVisible.item.id;
-            currentAnchorOffset.current = 0;
+        if (visibleItems.length === 0) {
+            return;
+        }
 
-            const lastIndex = visibleItems[visibleItems.length - 1].index;
-            const currentArticles = articlesRef.current;
-            if (currentArticles && currentArticles.length > lastIndex + 1) {
-                const nextArticles = currentArticles.slice(lastIndex + 1, lastIndex + 4);
-                nextArticles.forEach((article) => prefetchArticleRef.current(article.id));
-            }
+        const firstVisible = visibleItems[0];
+        currentAnchorId.current = firstVisible.item.id;
+
+        const lastIndex = visibleItems[visibleItems.length - 1].index;
+        const currentArticles = articlesRef.current;
+        if (currentArticles && currentArticles.length > lastIndex + 1) {
+            const nextArticles = currentArticles.slice(lastIndex + 1, lastIndex + 4);
+            nextArticles.forEach((article) => prefetchArticleRef.current(article.id));
         }
     }, []);
 
     const prepareForNewArticles = useCallback((newArticlesCount: number) => {
-        if (newArticlesCount <= 0) return;
+        if (newArticlesCount <= 0 || isRestoring.current) {
+            return;
+        }
 
         const snapshot = getSnapshot(scrollKey);
-        if (snapshot.absoluteOffset <= 50 || isRestoring.current) {
-            pendingNewArticlesCount.current = 0;
-            prependCompensationSnapshot.current = null;
+        if (snapshot.absoluteOffset <= 50 || snapshot.anchorArticleId == null) {
             isPrependCompensating.current = false;
+            prependCompensationSnapshot.current = null;
             return;
         }
 
         currentScrollOffset.current = snapshot.absoluteOffset;
-        pendingNewArticlesCount.current = newArticlesCount;
-        prependCompensationSnapshot.current = snapshot;
         isPrependCompensating.current = true;
+        prependCompensationSnapshot.current = snapshot;
     }, [scrollKey]);
 
     useEffect(() => {
-        if (!isPrependCompensating.current || pendingNewArticlesCount.current <= 0 || !flatListRef.current) {
+        if (!isPrependCompensating.current || !flatListRef.current) {
             return;
         }
 
         const compensationSnapshot = prependCompensationSnapshot.current;
         const previousAnchorId = compensationSnapshot?.anchorArticleId;
-        if (!previousAnchorId) {
+        if (previousAnchorId == null) {
             isPrependCompensating.current = false;
-            pendingNewArticlesCount.current = 0;
             prependCompensationSnapshot.current = null;
             return;
         }
 
-        const timeoutId = setTimeout(() => {
-            const targetIndex = articles.findIndex((article) => article.id === previousAnchorId);
-            if (targetIndex >= 0 && flatListRef.current) {
-                flatListRef.current.scrollToIndex({
-                    index: targetIndex,
-                    animated: false,
-                    viewOffset: compensationSnapshot?.anchorOffset ?? 0,
-                });
-            }
+        const targetIndex = articles.findIndex((article) => article.id === previousAnchorId);
+        if (targetIndex < 0) {
+            isPrependCompensating.current = false;
+            prependCompensationSnapshot.current = null;
+            return;
+        }
 
-            setTimeout(() => {
-                isPrependCompensating.current = false;
-                pendingNewArticlesCount.current = 0;
-                prependCompensationSnapshot.current = null;
-            }, 60);
-        }, 80);
+        try {
+            flatListRef.current.scrollToIndex({
+                index: targetIndex,
+                animated: false,
+                viewPosition: 0,
+            });
+        } catch {
+            flatListRef.current.scrollToOffset({
+                offset: compensationSnapshot?.absoluteOffset ?? 0,
+                animated: false,
+            });
+        }
 
-        return () => clearTimeout(timeoutId);
-    }, [articles, scrollKey]);
+        isPrependCompensating.current = false;
+        prependCompensationSnapshot.current = null;
+    }, [articles]);
 
     const scrollToTop = useCallback((animated = true) => {
         if (!flatListRef.current) return;
@@ -283,7 +258,6 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: any) => {
         flatListRef.current.scrollToOffset({ offset: 0, animated });
         currentScrollOffset.current = 0;
         currentAnchorId.current = articles[0]?.id ?? null;
-        currentAnchorOffset.current = 0;
         updateSnapshot(0);
     }, [articles, updateSnapshot]);
 
@@ -305,11 +279,12 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: any) => {
     }) => {
         if (!flatListRef.current) return;
 
+        const snapshot = getSnapshot(scrollKey);
         flatListRef.current.scrollToOffset({
-            offset: info.index * Math.max(info.averageItemLength, 120),
+            offset: snapshot.absoluteOffset || (info.index * Math.max(info.averageItemLength, 120)),
             animated: false,
         });
-    }, []);
+    }, [scrollKey]);
 
     return {
         flatListRef,

@@ -91,6 +91,7 @@ export const useArticleStore = create<ArticleState>()(
       error: null,
       scrollPosition: 0,
       articleScrollPositions: {},
+      timelineScrollSnapshots: {},
       filter: {
         unread_only: true,
       },
@@ -123,6 +124,28 @@ export const useArticleStore = create<ArticleState>()(
 
       getArticleScrollPosition: (articleId) => {
         return get().articleScrollPositions[articleId] || 0;
+      },
+
+      setTimelineScrollSnapshot: (key, snapshot) => {
+        set((state) => ({
+          timelineScrollSnapshots: {
+            ...state.timelineScrollSnapshots,
+            [key]: snapshot,
+          },
+        }));
+      },
+
+      getTimelineScrollSnapshot: (key) => {
+        return (
+          get().timelineScrollSnapshots[key] || {
+            absoluteOffset: 0,
+            anchorArticleId: null,
+          }
+        );
+      },
+
+      clearTimelineScrollSnapshots: () => {
+        set({ timelineScrollSnapshots: {} });
       },
 
       fetchArticles: async (
@@ -490,6 +513,7 @@ export const useArticleStore = create<ArticleState>()(
         filter: state.filter,
         bookmarkedArticles: state.bookmarkedArticles, // Cache bookmarks too
         articleScrollPositions: state.articleScrollPositions, // Persist scroll positions
+        timelineScrollSnapshots: state.timelineScrollSnapshots,
         // contentCache is deliberately excluded to keep storage light and fresh
       }),
     },

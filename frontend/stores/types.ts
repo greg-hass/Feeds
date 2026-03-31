@@ -62,6 +62,13 @@ export interface ArticleState {
     error: string | null;
     scrollPosition: number;
     articleScrollPositions: Record<number, number>;
+    timelineScrollSnapshots: Record<
+        string,
+        {
+            absoluteOffset: number;
+            anchorArticleId: number | null;
+        }
+    >;
     filter: {
         feed_id?: number;
         folder_id?: number;
@@ -73,6 +80,14 @@ export interface ArticleState {
     setScrollPosition: (position: number) => void;
     setArticleScrollPosition: (articleId: number, position: number) => void;
     getArticleScrollPosition: (articleId: number) => number;
+    setTimelineScrollSnapshot: (
+        key: string,
+        snapshot: { absoluteOffset: number; anchorArticleId: number | null },
+    ) => void;
+    getTimelineScrollSnapshot: (
+        key: string,
+    ) => { absoluteOffset: number; anchorArticleId: number | null };
+    clearTimelineScrollSnapshots: () => void;
     fetchArticles: (reset?: boolean, isLiveUpdate?: boolean, skipLoadingSet?: boolean) => Promise<void>;
     fetchBookmarks: (params?: { folderId?: number; archived?: boolean; query?: string }) => Promise<void>;
     fetchArticle: (id: number) => Promise<void>;
