@@ -68,6 +68,7 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: TimelineF
     const isRestoring = useRef(false);
     const isPrependCompensating = useRef(false);
     const prependCompensationSnapshot = useRef<ScrollSnapshot | null>(null);
+    const pendingRestoreArticleId = useRef<number | null>(null);
     const currentScrollOffset = useRef(0);
     const currentAnchorId = useRef<number | null>(null);
 
@@ -95,6 +96,7 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: TimelineF
         currentScrollKey.current = scrollKey;
         currentScrollOffset.current = snapshot.absoluteOffset;
         currentAnchorId.current = snapshot.anchorArticleId;
+        pendingRestoreArticleId.current = snapshot.restoreArticleId;
         hasRestoredScroll.current = false;
         isRestoring.current = false;
         isPrependCompensating.current = false;
@@ -133,16 +135,13 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: TimelineF
         if (snapshot.restoreArticleId != null) {
             const restoreIndex = articlesRef.current.findIndex((article) => article.id === snapshot.restoreArticleId);
             if (restoreIndex >= 0) {
+                pendingRestoreArticleId.current = snapshot.restoreArticleId;
                 list.scrollToIndex({
                     index: restoreIndex,
                     animated: false,
                     viewPosition: 0,
                 });
                 currentAnchorId.current = snapshot.restoreArticleId;
-                setSnapshot(scrollKey, {
-                    ...snapshot,
-                    restoreArticleId: null,
-                });
                 markRestoreComplete();
                 return true;
             }
@@ -216,6 +215,15 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: TimelineF
 
         const firstVisible = visibleItems[0];
         currentAnchorId.current = firstVisible.item.id;
+        if (pendingRestoreArticleId.current != null && firstVisible.item.id === pendingRestoreArticleId.current) {
+            const snapshot = getSnapshot(scrollKey);
+            setSnapshot(scrollKey, {
+                ...snapshot,
+                anchorArticleId: pendingRestoreArticleId.current,
+                restoreArticleId: null,
+            });
+            pendingRestoreArticleId.current = null;
+        }
 
         const lastIndex = visibleItems[visibleItems.length - 1].index;
         const currentArticles = articlesRef.current;
@@ -307,6 +315,37 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: TimelineF
         if (!flatListRef.current) return;
 
         const snapshot = getSnapshot(scrollKey);
+        const restoreArticleId = pendingRestoreArticleId.current ?? snapshot.restoreArticleId;
+        if (restoreArticleId != null) {
+            const restoreIndex = articlesRef.current.findIndex((article) => article.id === restoreArticleId);
+            if (restoreIndex >= 0) {
+                flatListRef.current.scrollToOffset({
+                    offset: restoreIndex * Math.max(info.averageItemLength, 120),
+                    animated: false,
+                });
+
+                setTimeout(() => {
+                    if (!flatListRef.current) {
+                        return;
+                    }
+
+                    try {
+                        flatListRef.current.scrollToIndex({
+                            index: restoreIndex,
+                            animated: false,
+                            viewPosition: 0,
+                        });
+                    } catch {
+                        flatListRef.current.scrollToOffset({
+                            offset: snapshot.absoluteOffset || (restoreIndex * Math.max(info.averageItemLength, 120)),
+                            animated: false,
+                        });
+                    }
+                }, 50);
+                return;
+            }
+        }
+
         flatListRef.current.scrollToOffset({
             offset: snapshot.absoluteOffset || (info.index * Math.max(info.averageItemLength, 120)),
             animated: false,

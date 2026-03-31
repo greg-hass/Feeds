@@ -148,6 +148,19 @@ describe('useTimelineScroll', () => {
             viewPosition: 0,
         });
         expect(flatListMock.scrollToOffset).not.toHaveBeenCalled();
+
+        act(() => {
+            mount.result.current.onViewableItemsChanged({
+                viewableItems: [
+                    {
+                        isViewable: true,
+                        index: 2,
+                        item: { id: 3 },
+                    },
+                ],
+            });
+        });
+
         expect(__timelineScrollTestUtils.getSnapshot('timeline:unread').restoreArticleId).toBeNull();
     });
 });
