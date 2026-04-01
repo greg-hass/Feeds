@@ -40,6 +40,7 @@ describe('useTimelineScroll', () => {
             absoluteOffset: 540,
             anchorArticleId: 3,
             restoreArticleId: null,
+            restoreFallbackArticleId: null,
         });
 
         const secondMount = renderHook(({ items }) =>
@@ -75,6 +76,7 @@ describe('useTimelineScroll', () => {
             absoluteOffset: 420,
             anchorArticleId: 3,
             restoreArticleId: null,
+            restoreFallbackArticleId: null,
         });
 
         const { result, rerender } = renderHook(({ items }) =>
@@ -124,6 +126,7 @@ describe('useTimelineScroll', () => {
             absoluteOffset: 540,
             anchorArticleId: 2,
             restoreArticleId: 3,
+            restoreFallbackArticleId: 4,
         });
 
         const mount = renderHook(({ items }) =>
@@ -162,5 +165,41 @@ describe('useTimelineScroll', () => {
         });
 
         expect(__timelineScrollTestUtils.getSnapshot('timeline:unread').restoreArticleId).toBeNull();
+    });
+
+    it('falls back to the neighboring article when the opened article is no longer present', async () => {
+        const flatListMock = {
+            scrollToIndex: vi.fn(),
+            scrollToOffset: vi.fn(),
+        };
+
+        __timelineScrollTestUtils.setSnapshot('timeline:unread', {
+            absoluteOffset: 540,
+            anchorArticleId: 2,
+            restoreArticleId: 3,
+            restoreFallbackArticleId: 4,
+        });
+
+        const mount = renderHook(({ items }) =>
+            useTimelineScroll(items, { unread_only: true }),
+        {
+            initialProps: { items: [{ id: 1 }, { id: 2 }, { id: 4 }] },
+        });
+
+        act(() => {
+            mount.result.current.attachFlatListRef(flatListMock as any);
+        });
+
+        mount.rerender({ items: [{ id: 1 }, { id: 2 }, { id: 4 }] });
+
+        await act(async () => {
+            await new Promise((resolve) => setTimeout(resolve, 50));
+        });
+
+        expect(flatListMock.scrollToIndex).toHaveBeenCalledWith({
+            index: 2,
+            animated: false,
+            viewPosition: 0,
+        });
     });
 });

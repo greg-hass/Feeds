@@ -68,6 +68,7 @@ export interface ArticleState {
             absoluteOffset: number;
             anchorArticleId: number | null;
             restoreArticleId: number | null;
+            restoreFallbackArticleId: number | null;
         }
     >;
     filter: {
@@ -87,6 +88,7 @@ export interface ArticleState {
             absoluteOffset: number;
             anchorArticleId: number | null;
             restoreArticleId: number | null;
+            restoreFallbackArticleId: number | null;
         },
     ) => void;
     getTimelineScrollSnapshot: (
@@ -95,6 +97,7 @@ export interface ArticleState {
         absoluteOffset: number;
         anchorArticleId: number | null;
         restoreArticleId: number | null;
+        restoreFallbackArticleId: number | null;
     };
     clearTimelineScrollSnapshots: () => void;
     fetchArticles: (reset?: boolean, isLiveUpdate?: boolean, skipLoadingSet?: boolean) => Promise<void>;

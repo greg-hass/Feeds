@@ -16,12 +16,14 @@ type ScrollSnapshot = {
     absoluteOffset: number;
     anchorArticleId: number | null;
     restoreArticleId: number | null;
+    restoreFallbackArticleId: number | null;
 };
 
 const EMPTY_SNAPSHOT: ScrollSnapshot = {
     absoluteOffset: 0,
     anchorArticleId: null,
     restoreArticleId: null,
+    restoreFallbackArticleId: null,
 };
 
 function getScrollKey(filter: TimelineFilter): string {
@@ -70,6 +72,7 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: TimelineF
     const isPrependCompensating = useRef(false);
     const prependCompensationSnapshot = useRef<ScrollSnapshot | null>(null);
     const pendingRestoreArticleId = useRef<number | null>(null);
+    const pendingRestoreFallbackArticleId = useRef<number | null>(null);
     const currentScrollOffset = useRef(0);
     const currentAnchorId = useRef<number | null>(null);
 
@@ -98,9 +101,14 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: TimelineF
         currentScrollOffset.current = snapshot.absoluteOffset;
         currentAnchorId.current = snapshot.anchorArticleId;
         pendingRestoreArticleId.current = snapshot.restoreArticleId;
+        pendingRestoreFallbackArticleId.current = snapshot.restoreFallbackArticleId;
         hasRestoredScroll.current = false;
         isRestoring.current = false;
-        setIsRestoringPosition(snapshot.absoluteOffset > 0 || snapshot.restoreArticleId != null);
+        setIsRestoringPosition(
+            snapshot.absoluteOffset > 0 ||
+            snapshot.restoreArticleId != null ||
+            snapshot.restoreFallbackArticleId != null
+        );
         isPrependCompensating.current = false;
         prependCompensationSnapshot.current = null;
     }, [scrollKey]);
@@ -115,6 +123,8 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: TimelineF
             absoluteOffset: safeOffset,
             anchorArticleId: overrides.anchorArticleId ?? currentAnchorId.current,
             restoreArticleId: overrides.restoreArticleId ?? currentSnapshot.restoreArticleId,
+            restoreFallbackArticleId:
+                overrides.restoreFallbackArticleId ?? currentSnapshot.restoreFallbackArticleId,
         });
     }, [scrollKey]);
 
@@ -137,16 +147,24 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: TimelineF
             return false;
         }
 
-        if (snapshot.restoreArticleId != null) {
-            const restoreIndex = articlesRef.current.findIndex((article) => article.id === snapshot.restoreArticleId);
+        const restoreTargetCandidates = [
+            snapshot.restoreArticleId,
+            snapshot.restoreFallbackArticleId,
+        ].filter((candidate): candidate is number => candidate != null);
+        if (restoreTargetCandidates.length > 0) {
+            const restoreIndex = articlesRef.current.findIndex((article) =>
+                restoreTargetCandidates.includes(article.id)
+            );
             if (restoreIndex >= 0) {
+                const restoreTargetId = articlesRef.current[restoreIndex]?.id ?? null;
                 pendingRestoreArticleId.current = snapshot.restoreArticleId;
+                pendingRestoreFallbackArticleId.current = snapshot.restoreFallbackArticleId;
                 list.scrollToIndex({
                     index: restoreIndex,
                     animated: false,
                     viewPosition: 0,
                 });
-                currentAnchorId.current = snapshot.restoreArticleId;
+                currentAnchorId.current = restoreTargetId;
                 markRestoreComplete();
                 return true;
             }
@@ -191,9 +209,13 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: TimelineF
         }
     }, [articles.length, isFlatListReady, restoreAttempt, restoreFromSnapshot, scrollKey, markRestoreComplete]);
 
-    const saveScrollPosition = useCallback((restoreArticleId?: number | null) => {
+    const saveScrollPosition = useCallback((
+        restoreArticleId?: number | null,
+        restoreFallbackArticleId?: number | null,
+    ) => {
         updateSnapshot(currentScrollOffset.current, {
             restoreArticleId: restoreArticleId ?? null,
+            restoreFallbackArticleId: restoreFallbackArticleId ?? null,
         });
     }, [updateSnapshot]);
 
@@ -222,14 +244,17 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: TimelineF
 
         const firstVisible = visibleItems[0];
         currentAnchorId.current = firstVisible.item.id;
-        if (pendingRestoreArticleId.current != null && firstVisible.item.id === pendingRestoreArticleId.current) {
+        const pendingRestoreId = pendingRestoreArticleId.current ?? pendingRestoreFallbackArticleId.current;
+        if (pendingRestoreId != null && firstVisible.item.id === pendingRestoreId) {
             const snapshot = getSnapshot(scrollKey);
             setSnapshot(scrollKey, {
                 ...snapshot,
-                anchorArticleId: pendingRestoreArticleId.current,
+                anchorArticleId: pendingRestoreId,
                 restoreArticleId: null,
+                restoreFallbackArticleId: null,
             });
             pendingRestoreArticleId.current = null;
+            pendingRestoreFallbackArticleId.current = null;
             setIsRestoringPosition(false);
         }
 
@@ -323,9 +348,16 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: TimelineF
         if (!flatListRef.current) return;
 
         const snapshot = getSnapshot(scrollKey);
-        const restoreArticleId = pendingRestoreArticleId.current ?? snapshot.restoreArticleId;
-        if (restoreArticleId != null) {
-            const restoreIndex = articlesRef.current.findIndex((article) => article.id === restoreArticleId);
+        const restoreTargetCandidates = [
+            pendingRestoreArticleId.current,
+            snapshot.restoreArticleId,
+            pendingRestoreFallbackArticleId.current,
+            snapshot.restoreFallbackArticleId,
+        ].filter((candidate): candidate is number => candidate != null);
+        if (restoreTargetCandidates.length > 0) {
+            const restoreIndex = articlesRef.current.findIndex((article) =>
+                restoreTargetCandidates.includes(article.id)
+            );
             if (restoreIndex >= 0) {
                 flatListRef.current.scrollToOffset({
                     offset: restoreIndex * Math.max(info.averageItemLength, 120),

@@ -141,6 +141,7 @@ export const useArticleStore = create<ArticleState>()(
             absoluteOffset: 0,
             anchorArticleId: null,
             restoreArticleId: null,
+            restoreFallbackArticleId: null,
           }
         );
       },

@@ -150,6 +150,7 @@ describe('Article Store', () => {
                     absoluteOffset: 180,
                     anchorArticleId: 42,
                     restoreArticleId: 42,
+                    restoreFallbackArticleId: 43,
                 });
             });
 
@@ -157,6 +158,7 @@ describe('Article Store', () => {
                 absoluteOffset: 180,
                 anchorArticleId: 42,
                 restoreArticleId: 42,
+                restoreFallbackArticleId: 43,
             });
         });
 
@@ -167,6 +169,7 @@ describe('Article Store', () => {
                 absoluteOffset: 0,
                 anchorArticleId: null,
                 restoreArticleId: null,
+                restoreFallbackArticleId: null,
             });
         });
     });
