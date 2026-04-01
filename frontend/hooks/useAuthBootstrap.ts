@@ -48,20 +48,18 @@ export function useAuthBootstrap(enabled = true): UseAuthBootstrapResult {
                 return;
             }
 
-            try {
-                await api.getFeeds();
-                setSessionExpired(false);
-                transitionAuthState('authenticated');
-            } catch (error: any) {
+            // Do not block initial render on a network request. If the token exists,
+            // let the app render and validate the session in the background.
+            setSessionExpired(false);
+            transitionAuthState('authenticated');
+
+            void api.getFeeds().catch(async (error: any) => {
                 if (error?.code === 'SESSION_EXPIRED') {
                     setSessionExpired(true);
-                } else {
-                    setSessionExpired(false);
+                    await api.logout();
+                    transitionAuthState('unauthenticated');
                 }
-
-                await api.logout();
-                transitionAuthState('unauthenticated');
-            }
+            });
         } catch (error) {
             console.error('Auth bootstrap failed:', error);
             transitionAuthState('unauthenticated');
