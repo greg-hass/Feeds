@@ -43,7 +43,7 @@ export function useAuthBootstrap(enabled = true): UseAuthBootstrapResult {
         transitionAuthState('checking');
 
         try {
-            await api.init();
+            await withTimeout(api.init(), AUTH_BOOTSTRAP_TIMEOUT_MS);
 
             const status = await withTimeout(api.getAuthStatus(), AUTH_BOOTSTRAP_TIMEOUT_MS);
             if (!status.authEnabled) {
