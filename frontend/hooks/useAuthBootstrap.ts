@@ -16,6 +16,19 @@ interface UseAuthBootstrapResult {
     refreshAuth: () => Promise<void>;
 }
 
+const AUTH_BOOTSTRAP_TIMEOUT_MS = 3000;
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+    return await Promise.race([
+        promise,
+        new Promise<never>((_, reject) => {
+            setTimeout(() => {
+                reject(new Error(`Timed out after ${timeoutMs}ms`));
+            }, timeoutMs);
+        }),
+    ]);
+}
+
 export function useAuthBootstrap(enabled = true): UseAuthBootstrapResult {
     const [authState, setAuthState] = useState<AuthBootstrapState>('checking');
     const [needsSetup, setNeedsSetup] = useState(false);
@@ -32,7 +45,7 @@ export function useAuthBootstrap(enabled = true): UseAuthBootstrapResult {
         try {
             await api.init();
 
-            const status = await api.getAuthStatus();
+            const status = await withTimeout(api.getAuthStatus(), AUTH_BOOTSTRAP_TIMEOUT_MS);
             if (!status.authEnabled) {
                 setNeedsSetup(false);
                 setSessionExpired(false);
@@ -62,6 +75,10 @@ export function useAuthBootstrap(enabled = true): UseAuthBootstrapResult {
             });
         } catch (error) {
             console.error('Auth bootstrap failed:', error);
+            // Never hold the shell on the startup spinner indefinitely.
+            // Fall back to unauthenticated when bootstrap cannot complete promptly.
+            setNeedsSetup(false);
+            setSessionExpired(false);
             transitionAuthState('unauthenticated');
         }
     }, [transitionAuthState]);
