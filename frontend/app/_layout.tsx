@@ -1,5 +1,5 @@
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { startTransition, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -36,9 +36,7 @@ function RootShell() {
     const colors = useColors();
 
     useEffect(() => {
-        startTransition(() => {
-            setMounted(true);
-        });
+        setMounted(true);
     }, []);
 
     if (!mounted) {

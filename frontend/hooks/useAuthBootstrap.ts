@@ -1,4 +1,4 @@
-import { startTransition, useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { api } from '@/services/api';
 
 export type AuthBootstrapState =
@@ -34,9 +34,7 @@ export function useAuthBootstrap(enabled = true): UseAuthBootstrapResult {
     const [needsSetup, setNeedsSetup] = useState(false);
     const [sessionExpired, setSessionExpired] = useState(false);
     const transitionAuthState = useCallback((nextState: AuthBootstrapState) => {
-        startTransition(() => {
-            setAuthState(nextState);
-        });
+        setAuthState(nextState);
     }, []);
 
     const refreshAuth = useCallback(async () => {

@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View, StyleSheet, useWindowDimensions, Platform, ActivityIndicator } from 'react-native';
 import { Slot } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -35,9 +35,7 @@ export default function AppLayout() {
     } = useAuthBootstrap(mounted);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Mounting pattern for hydration
     useEffect(() => {
-        startTransition(() => {
-            setMounted(true);
-        });
+        setMounted(true);
     }, []);
     const { width } = useWindowDimensions();
     const isDesktop = width >= 1024;
