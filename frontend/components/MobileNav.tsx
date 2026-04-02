@@ -78,7 +78,7 @@ const styles = (colors: any) => {
         borderTopWidth: 1,
         borderTopColor: colors.border.DEFAULT,
         paddingBottom: Platform.OS === 'web'
-            ? ('calc(env(safe-area-inset-bottom) + 8px)' as any)
+            ? ('env(safe-area-inset-bottom)' as any)
             : 20,
         paddingTop: 8,
         position: 'relative',

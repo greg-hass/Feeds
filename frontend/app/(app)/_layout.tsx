@@ -39,6 +39,7 @@ export default function AppLayout() {
     }, []);
     const { width } = useWindowDimensions();
     const isDesktop = width >= 1024;
+    const appSafeAreaEdges = isDesktop ? (['top', 'left', 'right'] as const) : (['left', 'right'] as const);
     const { refreshState, cancelRefresh } = useFeedStore();
     const { showPlayer } = useAudioStore();
     const { settings } = useSettingsStore();
@@ -99,7 +100,7 @@ export default function AppLayout() {
 
     return (
         <ErrorBoundary>
-            <SafeAreaView edges={['top', 'left', 'right']} style={s.container}>
+            <SafeAreaView edges={appSafeAreaEdges} style={s.container}>
                 {isDesktop && <Sidebar />}
                 {isDesktop && isReaderRoute && !isDigest && !isBookmarks && (
                     <View style={s.timelinePane}>
