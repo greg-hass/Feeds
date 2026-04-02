@@ -49,6 +49,12 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
     const fetchPendingDigest = useDigestStore((state) => state.fetchPendingDigest);
 
     useEffect(() => {
+        // Always reset pagination cursor on mount to avoid dead-end cursors
+        // from prior sessions causing infinite scroll to stall.
+        fetchArticles(true, false, true);
+    }, [fetchArticles]);
+
+    useEffect(() => {
         fetchPendingDigest();
     }, [fetchPendingDigest]);
 
