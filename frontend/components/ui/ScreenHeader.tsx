@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ViewStyle, Platform } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, X, Menu } from 'lucide-react-native';
 import { useColors, spacing, borderRadius } from '@/theme';
@@ -54,8 +53,7 @@ export const ScreenHeader = ({
 }: ScreenHeaderProps) => {
     const router = useRouter();
     const colors = useColors();
-    const insets = useSafeAreaInsets();
-    const s = styles(colors, insets.top);
+    const s = styles(colors);
 
     const formatLastRefreshed = (date: Date | null | undefined): string => {
         if (!date) return '';
@@ -166,15 +164,15 @@ export const ScreenHeader = ({
     );
 };
 
-const styles = (colors: any, topInset: number) => StyleSheet.create({
+const styles = (colors: any) => StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: spacing.lg,
-        paddingTop: Platform.OS === 'web'
-            ? ('calc(env(safe-area-inset-top) + 12px)' as any)
-            : topInset,
+        // SafeAreaView in _layout.tsx now handles top safe area
+        // Only add padding for web PWA
+        paddingTop: Platform.OS === 'web' ? ('calc(env(safe-area-inset-top) + 12px)' as any) : spacing.md,
         paddingBottom: spacing.sm,
         borderBottomWidth: 1,
         borderBottomColor: colors.border.DEFAULT,

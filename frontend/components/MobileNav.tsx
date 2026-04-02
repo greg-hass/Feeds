@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet, Platform } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, usePathname } from 'expo-router';
 import { Home, Bookmark, Rss, Settings } from 'lucide-react-native';
 import { useColors, borderRadius } from '@/theme';
@@ -22,8 +21,7 @@ export default function MobileNav() {
     const router = useRouter();
     const pathname = usePathname();
     const colors = useColors();
-    const insets = useSafeAreaInsets();
-    const s = styles(colors, insets.bottom);
+    const s = styles(colors);
 
     const isActive = (path: string) => {
         // Normalize the path by removing the (app) group prefix
@@ -72,16 +70,16 @@ export default function MobileNav() {
     );
 }
 
-const styles = (colors: any, bottomInset: number) => {
+const styles = (colors: any) => {
     return StyleSheet.create({
     container: {
         flexDirection: 'row',
         backgroundColor: colors.background.primary,
         borderTopWidth: 1,
         borderTopColor: colors.border.DEFAULT,
-        paddingBottom: Platform.OS === 'web'
-            ? ('env(safe-area-inset-bottom)' as any)
-            : bottomInset,
+        // SafeAreaView in _layout.tsx now handles bottom safe area
+        // Only add padding for web PWA
+        paddingBottom: Platform.OS === 'web' ? ('env(safe-area-inset-bottom)' as any) : 0,
         paddingTop: 8,
         position: 'relative',
         ...Platform.select({

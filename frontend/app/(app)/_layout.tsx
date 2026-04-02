@@ -39,7 +39,7 @@ export default function AppLayout() {
     }, []);
     const { width } = useWindowDimensions();
     const isDesktop = width >= 1024;
-    const appSafeAreaEdges = isDesktop ? (['top', 'left', 'right'] as const) : (['left', 'right'] as const);
+    const appSafeAreaEdges = isDesktop ? (['top', 'left', 'right'] as const) : (['top', 'left', 'right', 'bottom'] as const);
     const { refreshState, cancelRefresh } = useFeedStore();
     const { showPlayer } = useAudioStore();
     const { settings } = useSettingsStore();
