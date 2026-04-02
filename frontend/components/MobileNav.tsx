@@ -73,16 +73,10 @@ export default function MobileNav() {
 }
 
 const styles = (colors: any, bottomInset: number) => {
-    // Detect if running as PWA (standalone mode) - only in browser
-    const isStandalone = Platform.OS === 'web' && typeof window !== 'undefined' && 
-        (window.matchMedia?.('(display-mode: standalone)').matches || 
-         (window.navigator as any).standalone === true);
-    
-    // In Safari browser (not PWA), add extra padding to clear Safari's toolbar
-    const bottomPadding = Platform.OS === 'web' 
-        ? Math.max(bottomInset, 0) + (isStandalone ? 0 : 60)
+    const bottomPadding = Platform.OS === 'web'
+        ? Math.max(bottomInset, 12)
         : 20;
-    
+
     return StyleSheet.create({
     container: {
         flexDirection: 'row',
@@ -90,7 +84,7 @@ const styles = (colors: any, bottomInset: number) => {
         borderTopWidth: 1,
         borderTopColor: colors.border.DEFAULT,
         paddingBottom: bottomPadding,
-        paddingTop: 6,
+        paddingTop: 8,
         position: 'relative',
         ...Platform.select({
             web: {
