@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, usePathname } from 'expo-router';
 import { Home, Bookmark, Rss, Settings } from 'lucide-react-native';
 import { useColors, borderRadius } from '@/theme';
@@ -21,7 +22,8 @@ export default function MobileNav() {
     const router = useRouter();
     const pathname = usePathname();
     const colors = useColors();
-    const s = styles(colors);
+    const insets = useSafeAreaInsets();
+    const s = styles(colors, insets.bottom);
 
     const isActive = (path: string) => {
         // Normalize the path by removing the (app) group prefix
@@ -70,7 +72,7 @@ export default function MobileNav() {
     );
 }
 
-const styles = (colors: any) => {
+const styles = (colors: any, bottomInset: number) => {
     return StyleSheet.create({
     container: {
         flexDirection: 'row',
@@ -79,7 +81,7 @@ const styles = (colors: any) => {
         borderTopColor: colors.border.DEFAULT,
         paddingBottom: Platform.OS === 'web'
             ? ('env(safe-area-inset-bottom)' as any)
-            : 20,
+            : bottomInset,
         paddingTop: 8,
         position: 'relative',
         ...Platform.select({

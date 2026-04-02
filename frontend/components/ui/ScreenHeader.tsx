@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ViewStyle, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, X, Menu } from 'lucide-react-native';
 import { useColors, spacing, borderRadius } from '@/theme';
@@ -53,7 +54,8 @@ export const ScreenHeader = ({
 }: ScreenHeaderProps) => {
     const router = useRouter();
     const colors = useColors();
-    const s = styles(colors);
+    const insets = useSafeAreaInsets();
+    const s = styles(colors, insets.top);
 
     const formatLastRefreshed = (date: Date | null | undefined): string => {
         if (!date) return '';
@@ -164,7 +166,7 @@ export const ScreenHeader = ({
     );
 };
 
-const styles = (colors: any) => StyleSheet.create({
+const styles = (colors: any, topInset: number) => StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -172,7 +174,7 @@ const styles = (colors: any) => StyleSheet.create({
         paddingHorizontal: spacing.lg,
         paddingTop: Platform.OS === 'web'
             ? ('calc(env(safe-area-inset-top) + 12px)' as any)
-            : spacing.md,
+            : topInset,
         paddingBottom: spacing.sm,
         borderBottomWidth: 1,
         borderBottomColor: colors.border.DEFAULT,
