@@ -1,7 +1,9 @@
 import { readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { execSync } from 'node:child_process';
 
 const DIST_DIR = path.resolve(process.cwd(), 'dist');
+const DIST_SW_PATH = path.join(DIST_DIR, 'sw.js');
 
 async function getHtmlFiles(dir) {
     const entries = await readdir(dir, { withFileTypes: true });
@@ -29,9 +31,27 @@ function patchHtml(html) {
     );
 }
 
+function resolveBuildSha() {
+    const fromEnv = process.env.EXPO_PUBLIC_BUILD_SHA?.trim() || process.env.BUILD_SHA?.trim();
+    if (fromEnv) {
+        return fromEnv;
+    }
+
+    try {
+        return execSync('git rev-parse --short HEAD', {
+            cwd: process.cwd(),
+            stdio: ['ignore', 'pipe', 'ignore'],
+            encoding: 'utf8',
+        }).trim();
+    } catch {
+        return `local-${Date.now().toString(36)}`;
+    }
+}
+
 async function main() {
     const htmlFiles = await getHtmlFiles(DIST_DIR);
     let patchedCount = 0;
+    const buildSha = resolveBuildSha();
 
     for (const filePath of htmlFiles) {
         const original = await readFile(filePath, 'utf8');
@@ -43,7 +63,18 @@ async function main() {
         }
     }
 
+    try {
+        const swOriginal = await readFile(DIST_SW_PATH, 'utf8');
+        const swPatched = swOriginal.replace(/__FEEDS_BUILD_SHA__/g, buildSha);
+        if (swPatched !== swOriginal) {
+            await writeFile(DIST_SW_PATH, swPatched, 'utf8');
+        }
+    } catch (error) {
+        console.warn(`Skipped service worker build id patch (${error instanceof Error ? error.message : String(error)})`);
+    }
+
     console.log(`Patched ${patchedCount} HTML file(s) to use module scripts.`);
+    console.log(`Using service worker build id: ${buildSha}`);
 }
 
 main().catch((error) => {
