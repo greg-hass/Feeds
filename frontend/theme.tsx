@@ -1,7 +1,7 @@
 import { createContext, useContext, ReactNode, useState, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColorScheme } from 'react-native';
 import { useSettingsStore } from './stores/settingsStore';
+import { safeAsyncStorage } from './lib/safeStorage';
 
 export const darkColors = {
     background: {
@@ -260,7 +260,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     // Load persisted theme on mount
     useEffect(() => {
         if (cachedTheme === null) {
-            AsyncStorage.getItem('feeds-settings').then((persisted) => {
+            safeAsyncStorage.getItem('feeds-settings').then((persisted) => {
                 if (persisted) {
                     try {
                         const parsed = JSON.parse(persisted);

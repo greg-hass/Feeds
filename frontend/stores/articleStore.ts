@@ -1,11 +1,11 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api, Article, ArticleDetail } from "@/services/api";
 import { applySyncChanges, SyncChanges } from "@/lib/sync";
 import { handleError } from "@/services/errorHandler";
 import { sortArticlesByDateAndId } from "@/utils/sorting";
 import { ArticleState } from "./types";
+import { safeAsyncStorage } from "@/lib/safeStorage";
 
 function areArticlesEqual(left: Article, right: Article): boolean {
   const leftKeys = Object.keys(left) as (keyof Article)[];
@@ -508,7 +508,7 @@ export const useArticleStore = create<ArticleState>()(
     }),
     {
       name: "articles-cache",
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: createJSONStorage(() => safeAsyncStorage),
       partialize: (state: ArticleState) => ({
         articles: state.articles.slice(0, 100), // Only cache the first 100 articles
         cursor: state.cursor,

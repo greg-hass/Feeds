@@ -1,9 +1,9 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '@/services/api';
 import { handleError } from '@/services/errorHandler';
 import { useToastStore } from './toastStore';
+import { safeAsyncStorage } from '@/lib/safeStorage';
 
 interface DigestStore {
     latestDigest: any | null;
@@ -97,7 +97,7 @@ export const useDigestStore = create<DigestStore>()(
         }),
         {
             name: 'feeds-digest',
-            storage: createJSONStorage(() => AsyncStorage),
+            storage: createJSONStorage(() => safeAsyncStorage),
         }
     )
 );

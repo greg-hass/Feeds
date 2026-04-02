@@ -1,6 +1,6 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api, ApiError } from '@/services/api';
 import { SYNC } from '@/config/constants';
+import { safeAsyncStorage } from '@/lib/safeStorage';
 
 export interface SyncChanges {
     feeds?: {
@@ -40,7 +40,7 @@ interface SyncResult {
  */
 async function getSyncCursor(): Promise<string | null> {
     try {
-        return await AsyncStorage.getItem(SYNC.CURSOR_KEY);
+        return await safeAsyncStorage.getItem(SYNC.CURSOR_KEY);
     } catch {
         return null;
     }
@@ -51,7 +51,7 @@ async function getSyncCursor(): Promise<string | null> {
  */
 async function saveSyncCursor(cursor: string): Promise<void> {
     try {
-        await AsyncStorage.setItem(SYNC.CURSOR_KEY, cursor);
+        await safeAsyncStorage.setItem(SYNC.CURSOR_KEY, cursor);
     } catch {
         // Ignore storage errors
     }

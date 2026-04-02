@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api, Settings } from '@/services/api';
 import { handleError } from '@/services/errorHandler';
+import { safeAsyncStorage } from '@/lib/safeStorage';
 
 interface SettingsState {
     settings: Settings | null;
@@ -71,7 +71,7 @@ export const useSettingsStore = create<SettingsState>()(
         }),
         {
             name: 'feeds-settings',
-            storage: createJSONStorage(() => AsyncStorage),
+            storage: createJSONStorage(() => safeAsyncStorage),
             partialize: (state: SettingsState) => ({
                 settings: state.settings,
                 globalLastRefreshAt: state.globalLastRefreshAt,

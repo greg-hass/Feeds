@@ -1,6 +1,6 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import { safeAsyncStorage } from '@/lib/safeStorage';
 
 const AUTH_TOKEN_KEY = '@feeds_auth_token';
 
@@ -93,7 +93,7 @@ export class ApiClientCore {
         }
 
         try {
-            this.authToken = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+            this.authToken = await safeAsyncStorage.getItem(AUTH_TOKEN_KEY);
         } catch (e) {
             console.error('Failed to load auth token:', e);
             this.authToken = null;
@@ -108,7 +108,7 @@ export class ApiClientCore {
             return;
         }
 
-        await AsyncStorage.setItem(AUTH_TOKEN_KEY, token);
+        await safeAsyncStorage.setItem(AUTH_TOKEN_KEY, token);
     }
 
     async clearAuthToken(): Promise<void> {
@@ -119,7 +119,7 @@ export class ApiClientCore {
             return;
         }
 
-        await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
+        await safeAsyncStorage.removeItem(AUTH_TOKEN_KEY);
     }
 
     hasAuthToken(): boolean {

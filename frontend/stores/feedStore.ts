@@ -1,12 +1,12 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api, Feed, Folder } from '@/services/api';
 import { applySyncChanges, SyncChanges, fetchChanges } from '@/lib/sync';
 import { createRefreshEventController } from '@/lib/refreshEvents';
 import { handleError } from '@/services/errorHandler';
 import { useArticleStore } from './articleStore';
 import { FeedState } from './types';
+import { safeAsyncStorage } from '@/lib/safeStorage';
 
 let refreshAbortController: AbortController | null = null;
 
@@ -493,7 +493,7 @@ export const useFeedStore = create<FeedState>()(
         {
             name: 'feeds-list',
             version: 2,
-            storage: createJSONStorage(() => AsyncStorage),
+            storage: createJSONStorage(() => safeAsyncStorage),
             migrate: (persistedState: any) => {
                 if (!persistedState) {
                     return persistedState;
