@@ -21,6 +21,7 @@ import ArticleContent from '@/components/ArticleContent';
 import { ReaderControls } from '@/components/ReaderControls';
 import { VideoModal } from '@/components/VideoModal';
 import { ErrorView } from '@/components/ErrorView';
+import { UI } from '@/config/constants';
 import { useShallow } from 'zustand/react/shallow';
 
 const iconButtonHitSlop = { top: 10, bottom: 10, left: 10, right: 10 } as const;
@@ -531,14 +532,13 @@ const styles = (colors: any, isMobile: boolean, readerTheme?: string, readerWidt
             flexDirection: 'row',
             justifyContent: 'space-between',
             alignItems: 'center',
-            paddingHorizontal: spacing.md,
-            paddingTop: Platform.OS === 'web'
-                ? ('calc(env(safe-area-inset-top) + 8px)' as any)
-                : spacing.sm,
+            paddingHorizontal: spacing.lg,
+            paddingTop: spacing.sm,
             paddingBottom: spacing.sm,
             borderBottomWidth: 1,
             borderBottomColor: colors.border.DEFAULT,
             backgroundColor: colors.background.primary,
+            minHeight: UI.HEADER_HEIGHT,
             zIndex: 10,
             position: 'absolute',
             top: 0,
@@ -620,9 +620,7 @@ const styles = (colors: any, isMobile: boolean, readerTheme?: string, readerWidt
         },
         scrollContent: {
             alignItems: 'center',
-            paddingTop: Platform.OS === 'web'
-                ? ('calc(env(safe-area-inset-top) + 92px)' as any)
-                : 92,
+            paddingTop: UI.HEADER_HEIGHT + spacing.xxl,
             paddingBottom: Platform.OS === 'web'
                 ? ('calc(env(safe-area-inset-bottom) + 96px)' as any)
                 : 128,

@@ -279,6 +279,45 @@ describe('Article Store', () => {
 
             expect(useArticleStore.getState().articles[0]).toBe(existingArticle);
         });
+
+        it('should append the next page using the saved cursor and stop when exhausted', async () => {
+            const { useArticleStore } = await import('@/stores/articleStore');
+
+            (api.getArticles as any)
+                .mockResolvedValueOnce({
+                    articles: [
+                        buildArticle({ id: 10, title: 'Newest', published_at: '2026-01-03T00:00:00.000Z' }),
+                        buildArticle({ id: 9, title: 'Older', published_at: '2026-01-02T00:00:00.000Z' }),
+                    ],
+                    next_cursor: 'cursor-page-2',
+                })
+                .mockResolvedValueOnce({
+                    articles: [
+                        buildArticle({ id: 8, title: 'Oldest', published_at: '2026-01-01T00:00:00.000Z' }),
+                    ],
+                    next_cursor: null,
+                });
+
+            await act(async () => {
+                await useArticleStore.getState().fetchArticles(true);
+            });
+
+            await act(async () => {
+                await useArticleStore.getState().fetchArticles();
+            });
+
+            expect(api.getArticles).toHaveBeenNthCalledWith(1, expect.objectContaining({
+                cursor: undefined,
+                limit: 50,
+            }));
+            expect(api.getArticles).toHaveBeenNthCalledWith(2, expect.objectContaining({
+                cursor: 'cursor-page-2',
+                limit: 50,
+            }));
+            expect(useArticleStore.getState().articles.map((article: any) => article.id)).toEqual([10, 9, 8]);
+            expect(useArticleStore.getState().hasMore).toBe(false);
+            expect(useArticleStore.getState().cursor).toBeNull();
+        });
     });
 
     describe('fetchBookmarks', () => {

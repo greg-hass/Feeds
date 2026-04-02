@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, ViewStyle, Platform } from 'r
 import { useRouter } from 'expo-router';
 import { ArrowLeft, X, Menu } from 'lucide-react-native';
 import { useColors, spacing, borderRadius } from '@/theme';
+import { UI } from '@/config/constants';
 
 const iconButtonHitSlop = { top: 10, bottom: 10, left: 10, right: 10 } as const;
 
@@ -176,7 +177,7 @@ const styles = (colors: any) => StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: colors.border.DEFAULT,
         backgroundColor: colors.background.primary,
-        minHeight: 56,
+        minHeight: UI.HEADER_HEIGHT,
     },
     noBorder: {
         borderBottomWidth: 0,

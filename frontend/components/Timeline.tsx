@@ -123,6 +123,11 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
 
     const prevArticleCount = useRef(articles.length);
     const lastLoadMoreAtRef = useRef(0);
+    const scrollMetricsRef = useRef({
+        offsetY: 0,
+        layoutHeight: 0,
+        contentHeight: 0,
+    });
 
     useEffect(() => {
         if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -226,6 +231,18 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
         void fetchArticles(false);
     }, [fetchArticles, hasMore, isLoading]);
 
+    const checkShouldLoadMore = useCallback(() => {
+        const { offsetY, layoutHeight, contentHeight } = scrollMetricsRef.current;
+        if (layoutHeight <= 0 || contentHeight <= 0) {
+            return;
+        }
+
+        const distanceFromBottom = contentHeight - (offsetY + layoutHeight);
+        if (distanceFromBottom < 320) {
+            maybeLoadMore();
+        }
+    }, [maybeLoadMore]);
+
     const handleEndReached = useCallback(() => {
         maybeLoadMore();
     }, [maybeLoadMore]);
@@ -234,12 +251,13 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
         handleScroll(event);
 
         const { contentOffset, layoutMeasurement, contentSize } = event.nativeEvent;
-        const distanceFromBottom = contentSize.height - (contentOffset.y + layoutMeasurement.height);
-
-        if (distanceFromBottom < 320) {
-            maybeLoadMore();
-        }
-    }, [handleScroll, maybeLoadMore]);
+        scrollMetricsRef.current = {
+            offsetY: contentOffset.y,
+            layoutHeight: layoutMeasurement.height,
+            contentHeight: contentSize.height,
+        };
+        checkShouldLoadMore();
+    }, [checkShouldLoadMore, handleScroll]);
 
     const maintainVisibleContentPosition = useMemo(
         () =>
@@ -360,6 +378,14 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                         viewabilityConfig={viewabilityConfig}
                         scrollEventThrottle={16}
                         onScroll={handleListScroll}
+                        onLayout={(event) => {
+                            scrollMetricsRef.current.layoutHeight = event.nativeEvent.layout.height;
+                            checkShouldLoadMore();
+                        }}
+                        onContentSizeChange={(_, height) => {
+                            scrollMetricsRef.current.contentHeight = height;
+                            checkShouldLoadMore();
+                        }}
                         onScrollEndDrag={handleScrollEnd}
                         onMomentumScrollEnd={handleScrollEnd}
                         // Performance props

@@ -77,9 +77,10 @@ const styles = (colors: any) => {
         backgroundColor: colors.background.primary,
         borderTopWidth: 1,
         borderTopColor: colors.border.DEFAULT,
-        // Keep nav flush to bottom edge on mobile web.
-        paddingBottom: 0,
         paddingTop: 8,
+        paddingBottom: Platform.OS === 'web'
+            ? ('env(safe-area-inset-bottom)' as any)
+            : 0,
         position: 'relative',
         ...Platform.select({
             web: {
