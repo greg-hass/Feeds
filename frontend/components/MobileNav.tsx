@@ -77,8 +77,8 @@ const styles = (colors: any) => {
         backgroundColor: colors.background.primary,
         borderTopWidth: 1,
         borderTopColor: colors.border.DEFAULT,
-        // Absorb iOS bottom inset into the nav itself to avoid a separate strip below it.
-        paddingBottom: Platform.OS === 'web' ? ('env(safe-area-inset-bottom)' as any) : 0,
+        // Keep nav flush to bottom edge on mobile web.
+        paddingBottom: 0,
         paddingTop: 8,
         position: 'relative',
         ...Platform.select({

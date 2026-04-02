@@ -60,6 +60,7 @@ import Sidebar from "@/components/Sidebar";
 import { QuickAddGrid } from "@/components/QuickAddGrid";
 import { EqualWidthPills } from "@/components/ui/EqualWidthPills";
 import { PlatformModal } from "@/components/ui/PlatformModal";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useDebouncedDiscovery } from "@/hooks/useDebouncedDiscovery";
 import { isDuplicateFeed, suggestFolderName } from "@/utils/feedUtils";
 import { openExternalLink } from "@/utils/externalLink";
@@ -890,6 +891,16 @@ export default function ManageScreen() {
         rightActions={headerRightActions}
       />
 
+      <ErrorBoundary
+        fallback={
+          <View style={s.section}>
+            <Text style={s.emptyTitle}>Feeds screen recovered from an error.</Text>
+            <Text style={s.emptySubtitle}>
+              Pull to refresh or reopen the app.
+            </Text>
+          </View>
+        }
+      >
       <ScrollView style={s.scrollView} contentContainerStyle={s.content}>
         {/* Add Feed */}
         <View style={s.section}>
@@ -1660,6 +1671,7 @@ export default function ManageScreen() {
           />
         </View>
       </ScrollView>
+      </ErrorBoundary>
 
       {/* Bulk Toolbar */}
       {isBulkMode && (
