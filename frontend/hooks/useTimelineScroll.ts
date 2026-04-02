@@ -172,6 +172,13 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: TimelineF
 
         if (snapshot.absoluteOffset <= 0) {
             currentScrollOffset.current = 0;
+            pendingRestoreArticleId.current = null;
+            pendingRestoreFallbackArticleId.current = null;
+            setSnapshot(scrollKey, {
+                ...snapshot,
+                restoreArticleId: null,
+                restoreFallbackArticleId: null,
+            });
             setIsRestoringPosition(false);
             markRestoreComplete();
             return true;
@@ -182,6 +189,14 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: TimelineF
             animated: false,
         });
         currentScrollOffset.current = snapshot.absoluteOffset;
+        pendingRestoreArticleId.current = null;
+        pendingRestoreFallbackArticleId.current = null;
+        setSnapshot(scrollKey, {
+            ...snapshot,
+            restoreArticleId: null,
+            restoreFallbackArticleId: null,
+        });
+        setIsRestoringPosition(false);
         markRestoreComplete();
         return true;
     }, [markRestoreComplete, scrollKey]);
@@ -208,6 +223,22 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: TimelineF
             markRestoreComplete();
         }
     }, [articles.length, isFlatListReady, restoreAttempt, restoreFromSnapshot, scrollKey, markRestoreComplete]);
+
+    useEffect(() => {
+        if (articles.length > 0 && isRestoringPosition) {
+            const timeout = setTimeout(() => {
+                if (isRestoringPosition) {
+                    pendingRestoreArticleId.current = null;
+                    pendingRestoreFallbackArticleId.current = null;
+                    setIsRestoringPosition(false);
+                    hasRestoredScroll.current = true;
+                    isRestoring.current = false;
+                }
+            }, 1200);
+
+            return () => clearTimeout(timeout);
+        }
+    }, [articles.length, isRestoringPosition]);
 
     const saveScrollPosition = useCallback((
         restoreArticleId?: number | null,

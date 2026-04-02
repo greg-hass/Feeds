@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, StyleSheet, ViewStyle } from 'react-native';
+import { Text, StyleSheet, View, ViewStyle } from 'react-native';
 import { useColors, spacing } from '@/theme';
 
 interface SectionHeaderProps {
@@ -13,21 +13,30 @@ export const SectionHeader = ({ title, icon, style }: SectionHeaderProps) => {
     const s = styles(colors);
 
     return (
-        <Text style={[s.text, style]}>
-            {icon ? <>{icon} </> : null}
-            {title}
-        </Text>
+        <View style={[s.container, style]}>
+            {icon ? <View style={s.icon}>{icon}</View> : null}
+            <Text style={s.text}>{title}</Text>
+        </View>
     );
 };
 
 const styles = (colors: any) => StyleSheet.create({
+    container: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: spacing.sm,
+        paddingHorizontal: spacing.xs,
+        gap: spacing.xs,
+    },
+    icon: {
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     text: {
         fontSize: 12,
         fontWeight: '700',
         color: colors.text.tertiary,
-        marginBottom: spacing.sm,
         textTransform: 'uppercase',
         letterSpacing: 1,
-        paddingHorizontal: spacing.xs,
     },
 });

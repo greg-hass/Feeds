@@ -77,8 +77,8 @@ const styles = (colors: any) => {
         backgroundColor: colors.background.primary,
         borderTopWidth: 1,
         borderTopColor: colors.border.DEFAULT,
-        // Bottom safe-area is handled at layout level. Keep nav compact and consistent.
-        paddingBottom: 0,
+        // Absorb iOS bottom inset into the nav itself to avoid a separate strip below it.
+        paddingBottom: Platform.OS === 'web' ? ('env(safe-area-inset-bottom)' as any) : 0,
         paddingTop: 8,
         position: 'relative',
         ...Platform.select({
