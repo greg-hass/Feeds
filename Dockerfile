@@ -36,7 +36,7 @@ RUN sed -i 's/"expo-web-browser"//g' app.json && \
     sed -i 's/, \]/]/g' app.json && \
     sed -i "s/__FEEDS_BUILD_SHA__/${EXPO_PUBLIC_BUILD_SHA}/g" public/sw.js
 
-RUN npx expo export --platform web
+RUN npm run build:web
 
 # Stage 3: Production image
 FROM node:20-alpine AS production
