@@ -3,7 +3,6 @@ import { View, TouchableOpacity, Text, StyleSheet, Platform } from 'react-native
 import { useRouter, usePathname } from 'expo-router';
 import { Home, Bookmark, Rss, Settings } from 'lucide-react-native';
 import { useColors, borderRadius } from '@/theme';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface NavItem {
     icon: typeof Home;
@@ -22,8 +21,7 @@ export default function MobileNav() {
     const router = useRouter();
     const pathname = usePathname();
     const colors = useColors();
-    const insets = useSafeAreaInsets();
-    const s = styles(colors, insets.bottom);
+    const s = styles(colors);
 
     const isActive = (path: string) => {
         // Normalize the path by removing the (app) group prefix
@@ -72,18 +70,16 @@ export default function MobileNav() {
     );
 }
 
-const styles = (colors: any, bottomInset: number) => {
-    const bottomPadding = Platform.OS === 'web'
-        ? Math.max(bottomInset, 12)
-        : 20;
-
+const styles = (colors: any) => {
     return StyleSheet.create({
     container: {
         flexDirection: 'row',
         backgroundColor: colors.background.primary,
         borderTopWidth: 1,
         borderTopColor: colors.border.DEFAULT,
-        paddingBottom: bottomPadding,
+        paddingBottom: Platform.OS === 'web'
+            ? ('calc(env(safe-area-inset-bottom) + 8px)' as any)
+            : 20,
         paddingTop: 8,
         position: 'relative',
         ...Platform.select({

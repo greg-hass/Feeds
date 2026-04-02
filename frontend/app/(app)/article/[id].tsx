@@ -532,7 +532,9 @@ const styles = (colors: any, isMobile: boolean, readerTheme?: string, readerWidt
             justifyContent: 'space-between',
             alignItems: 'center',
             paddingHorizontal: spacing.md,
-            paddingTop: spacing.sm,
+            paddingTop: Platform.OS === 'web'
+                ? ('calc(env(safe-area-inset-top) + 8px)' as any)
+                : spacing.sm,
             paddingBottom: spacing.sm,
             borderBottomWidth: 1,
             borderBottomColor: colors.border.DEFAULT,
@@ -618,8 +620,12 @@ const styles = (colors: any, isMobile: boolean, readerTheme?: string, readerWidt
         },
         scrollContent: {
             alignItems: 'center',
-            paddingTop: 92, // Header spacing
-            paddingBottom: 128, // Controls spacing
+            paddingTop: Platform.OS === 'web'
+                ? ('calc(env(safe-area-inset-top) + 92px)' as any)
+                : 92,
+            paddingBottom: Platform.OS === 'web'
+                ? ('calc(env(safe-area-inset-bottom) + 96px)' as any)
+                : 128,
         },
         contentContainer: {
             width: '100%',

@@ -3,7 +3,6 @@ import { View, Text, TouchableOpacity, StyleSheet, ViewStyle, Platform } from 'r
 import { useRouter } from 'expo-router';
 import { ArrowLeft, X, Menu } from 'lucide-react-native';
 import { useColors, spacing, borderRadius } from '@/theme';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const iconButtonHitSlop = { top: 10, bottom: 10, left: 10, right: 10 } as const;
 
@@ -54,9 +53,7 @@ export const ScreenHeader = ({
 }: ScreenHeaderProps) => {
     const router = useRouter();
     const colors = useColors();
-    const insets = useSafeAreaInsets();
-    const topInset = Platform.OS === 'web' ? insets.top : 0;
-    const s = styles(colors, topInset);
+    const s = styles(colors);
 
     const formatLastRefreshed = (date: Date | null | undefined): string => {
         if (!date) return '';
@@ -167,13 +164,15 @@ export const ScreenHeader = ({
     );
 };
 
-const styles = (colors: any, topInset: number) => StyleSheet.create({
+const styles = (colors: any) => StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: spacing.lg,
-        paddingTop: spacing.md + topInset,
+        paddingTop: Platform.OS === 'web'
+            ? ('calc(env(safe-area-inset-top) + 12px)' as any)
+            : spacing.md,
         paddingBottom: spacing.sm,
         borderBottomWidth: 1,
         borderBottomColor: colors.border.DEFAULT,
