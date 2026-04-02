@@ -3,6 +3,7 @@ import { View, TouchableOpacity, Text, StyleSheet, Platform } from 'react-native
 import { useRouter, usePathname } from 'expo-router';
 import { Home, Bookmark, Rss, Settings } from 'lucide-react-native';
 import { useColors, borderRadius } from '@/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface NavItem {
     icon: typeof Home;
@@ -21,8 +22,8 @@ export default function MobileNav() {
     const router = useRouter();
     const pathname = usePathname();
     const colors = useColors();
-
-    const s = styles(colors);
+    const insets = useSafeAreaInsets();
+    const s = styles(colors, insets.bottom);
 
     const isActive = (path: string) => {
         // Normalize the path by removing the (app) group prefix
@@ -71,7 +72,7 @@ export default function MobileNav() {
     );
 }
 
-const styles = (colors: any) => {
+const styles = (colors: any, bottomInset: number) => {
     // Detect if running as PWA (standalone mode) - only in browser
     const isStandalone = Platform.OS === 'web' && typeof window !== 'undefined' && 
         (window.matchMedia?.('(display-mode: standalone)').matches || 
@@ -79,9 +80,7 @@ const styles = (colors: any) => {
     
     // In Safari browser (not PWA), add extra padding to clear Safari's toolbar
     const bottomPadding = Platform.OS === 'web' 
-        ? (isStandalone 
-            ? 'env(safe-area-inset-bottom)' 
-            : 'calc(env(safe-area-inset-bottom) + 60px)') as any
+        ? Math.max(bottomInset, 0) + (isStandalone ? 0 : 60)
         : 20;
     
     return StyleSheet.create({
