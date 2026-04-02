@@ -191,7 +191,7 @@ export const FeedInfoSheet = ({ feedId, visible, onClose, onEdit, onDelete }: Fe
     if (!visible) return null;
 
     const feed = feedInfo?.feed;
-    const TypeIcon = feed ? FEED_TYPE_ICONS[feed.type] : Rss;
+    const TypeIcon = feed ? (FEED_TYPE_ICONS[feed.type] ?? Rss) : Rss;
 
     const getStatusColor = () => {
         switch (feedInfo?.status) {

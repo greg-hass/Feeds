@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import {
     CheckCircle, Bookmark, ExternalLink, Share2,
@@ -14,6 +14,7 @@ import { shareContent } from '@/utils/share';
 import { useColors, spacing, borderRadius } from '@/theme';
 import { openExternalLink } from '@/utils/externalLink';
 import { extractVideoId } from '@/utils/youtube';
+import { PlatformModal } from '@/components/ui/PlatformModal';
 
 interface ArticleContextMenuProps {
     visible: boolean;
@@ -197,7 +198,7 @@ export const ArticleContextMenu: React.FC<ArticleContextMenuProps> = ({
     ];
 
     return (
-        <Modal
+        <PlatformModal
             visible={visible}
             transparent
             animationType="fade"
@@ -254,7 +255,7 @@ export const ArticleContextMenu: React.FC<ArticleContextMenuProps> = ({
                     </TouchableOpacity>
                 </View>
             </TouchableOpacity>
-        </Modal>
+        </PlatformModal>
     );
 };
 

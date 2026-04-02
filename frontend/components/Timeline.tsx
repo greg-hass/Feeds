@@ -122,6 +122,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     }, [scrollToTop]);
 
     const prevArticleCount = useRef(articles.length);
+    const lastLoadMoreAtRef = useRef(0);
 
     useEffect(() => {
         if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -216,11 +217,29 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
         []
     );
 
-    const handleEndReached = useCallback(() => {
-        if (hasMore) {
-            fetchArticles(false);
+    const maybeLoadMore = useCallback(() => {
+        const now = Date.now();
+        if (!hasMore || isLoading || now - lastLoadMoreAtRef.current < 600) {
+            return;
         }
-    }, [fetchArticles, hasMore]);
+        lastLoadMoreAtRef.current = now;
+        void fetchArticles(false);
+    }, [fetchArticles, hasMore, isLoading]);
+
+    const handleEndReached = useCallback(() => {
+        maybeLoadMore();
+    }, [maybeLoadMore]);
+
+    const handleListScroll = useCallback((event: any) => {
+        handleScroll(event);
+
+        const { contentOffset, layoutMeasurement, contentSize } = event.nativeEvent;
+        const distanceFromBottom = contentSize.height - (contentOffset.y + layoutMeasurement.height);
+
+        if (distanceFromBottom < 320) {
+            maybeLoadMore();
+        }
+    }, [handleScroll, maybeLoadMore]);
 
     const maintainVisibleContentPosition = useMemo(
         () =>
@@ -340,7 +359,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                         onScrollToIndexFailed={handleScrollToIndexFailed}
                         viewabilityConfig={viewabilityConfig}
                         scrollEventThrottle={16}
-                        onScroll={handleScroll}
+                        onScroll={handleListScroll}
                         onScrollEndDrag={handleScrollEnd}
                         onMomentumScrollEnd={handleScrollEnd}
                         // Performance props

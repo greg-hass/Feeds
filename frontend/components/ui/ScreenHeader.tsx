@@ -170,9 +170,8 @@ const styles = (colors: any) => StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: spacing.lg,
-        // Apply a bounded top inset on web PWA so the header clears status bar
-        // without drifting too far down on iOS.
-        paddingTop: Platform.OS === 'web' ? ('clamp(8px, env(safe-area-inset-top), 20px)' as any) : spacing.md,
+        // Top safe-area is handled by app layout. Keep header padding fixed.
+        paddingTop: spacing.sm,
         paddingBottom: spacing.sm,
         borderBottomWidth: 1,
         borderBottomColor: colors.border.DEFAULT,

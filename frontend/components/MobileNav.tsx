@@ -77,8 +77,8 @@ const styles = (colors: any) => {
         backgroundColor: colors.background.primary,
         borderTopWidth: 1,
         borderTopColor: colors.border.DEFAULT,
-        // Bound web safe-area inset so iOS PWA has clearance without oversized dead space.
-        paddingBottom: Platform.OS === 'web' ? ('clamp(8px, env(safe-area-inset-bottom), 20px)' as any) : 0,
+        // Bottom safe-area is handled at layout level. Keep nav compact and consistent.
+        paddingBottom: 0,
         paddingTop: 8,
         position: 'relative',
         ...Platform.select({
