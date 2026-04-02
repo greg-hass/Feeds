@@ -77,9 +77,8 @@ const styles = (colors: any) => {
         backgroundColor: colors.background.primary,
         borderTopWidth: 1,
         borderTopColor: colors.border.DEFAULT,
-        // SafeAreaView in _layout.tsx now handles bottom safe area
-        // Only add padding for web PWA
-        paddingBottom: Platform.OS === 'web' ? ('env(safe-area-inset-bottom)' as any) : 0,
+        // Bound web safe-area inset so iOS PWA has clearance without oversized dead space.
+        paddingBottom: Platform.OS === 'web' ? ('clamp(8px, env(safe-area-inset-bottom), 20px)' as any) : 0,
         paddingTop: 8,
         position: 'relative',
         ...Platform.select({

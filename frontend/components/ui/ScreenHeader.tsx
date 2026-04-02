@@ -170,9 +170,9 @@ const styles = (colors: any) => StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: spacing.lg,
-        // SafeAreaView in _layout.tsx now handles top safe area
-        // Only add padding for web PWA
-        paddingTop: Platform.OS === 'web' ? ('calc(env(safe-area-inset-top) + 12px)' as any) : spacing.md,
+        // Apply a bounded top inset on web PWA so the header clears status bar
+        // without drifting too far down on iOS.
+        paddingTop: Platform.OS === 'web' ? ('clamp(8px, env(safe-area-inset-top), 20px)' as any) : spacing.md,
         paddingBottom: spacing.sm,
         borderBottomWidth: 1,
         borderBottomColor: colors.border.DEFAULT,
