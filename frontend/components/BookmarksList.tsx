@@ -10,7 +10,6 @@ import {
   Platform,
   TextInput,
   ScrollView,
-  Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { formatDistanceToNow } from 'date-fns';
@@ -37,6 +36,7 @@ import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { LoadingState } from '@/components/ui/LoadingState';
 import Sidebar from '@/components/Sidebar';
 import { EqualWidthPills, type EqualWidthPillItem } from '@/components/ui/EqualWidthPills';
+import { PlatformModal } from '@/components/ui/PlatformModal';
 
 interface BookmarksListProps {
   onArticlePress?: (article: Article) => void;
@@ -563,7 +563,7 @@ export default function BookmarksList({
         </View>
       ) : content}
 
-      <Modal
+      <PlatformModal
         visible={!!menuArticle}
         transparent
         animationType="fade"
@@ -590,9 +590,9 @@ export default function BookmarksList({
             </TouchableOpacity>
           </View>
         </View>
-      </Modal>
+      </PlatformModal>
 
-      <Modal
+      <PlatformModal
         visible={isFolderPickerOpen}
         transparent
         animationType="fade"
@@ -622,9 +622,9 @@ export default function BookmarksList({
             </TouchableOpacity>
           </View>
         </View>
-      </Modal>
+      </PlatformModal>
 
-      <Modal
+      <PlatformModal
         visible={isFolderModalOpen}
         transparent
         animationType="fade"
@@ -656,7 +656,7 @@ export default function BookmarksList({
             </View>
           </View>
         </View>
-      </Modal>
+      </PlatformModal>
 
       {isMobile ? (
         <>

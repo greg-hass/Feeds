@@ -5,11 +5,11 @@ import {
     StyleSheet,
     ScrollView,
     TouchableOpacity,
-    Modal,
     useWindowDimensions,
 } from 'react-native';
 import { X, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react-native';
 import { useColors, borderRadius, spacing } from '@/theme';
+import { PlatformModal } from '@/components/ui/PlatformModal';
 import { ProgressBar } from './ProgressBar';
 import { ProgressItem, ProgressItemData } from './ProgressItem';
 
@@ -97,7 +97,7 @@ export function ProgressDialog({ state, onClose, onRetryFailed }: ProgressDialog
     if (!state.isActive) return null;
 
     return (
-        <Modal visible={state.isActive} transparent animationType="fade">
+        <PlatformModal visible={state.isActive} transparent animationType="fade">
             <View style={styles.overlay}>
                 <View
                     style={[
@@ -206,7 +206,7 @@ export function ProgressDialog({ state, onClose, onRetryFailed }: ProgressDialog
                     )}
                 </View>
             </View>
-        </Modal>
+        </PlatformModal>
     );
 }
 

@@ -7,7 +7,6 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
-  Modal,
   Image,
   Platform,
   useWindowDimensions,
@@ -60,6 +59,7 @@ import { DiscoveryCard } from "@/components/DiscoveryCard";
 import Sidebar from "@/components/Sidebar";
 import { QuickAddGrid } from "@/components/QuickAddGrid";
 import { EqualWidthPills } from "@/components/ui/EqualWidthPills";
+import { PlatformModal } from "@/components/ui/PlatformModal";
 import { useDebouncedDiscovery } from "@/hooks/useDebouncedDiscovery";
 import { isDuplicateFeed, suggestFolderName } from "@/utils/feedUtils";
 import { openExternalLink } from "@/utils/externalLink";
@@ -1770,7 +1770,7 @@ export default function ManageScreen() {
       )}
 
       {/* Edit Feed / Rename Folder Modal */}
-      <Modal
+      <PlatformModal
         visible={modalType === "edit_feed" || modalType === "rename_folder"}
         transparent
         animationType="fade"
@@ -1802,10 +1802,10 @@ export default function ManageScreen() {
             </View>
           </View>
         </View>
-      </Modal>
+      </PlatformModal>
 
       {/* Move Feed Modal */}
-      <Modal
+      <PlatformModal
         visible={modalType === "move_feed"}
         transparent
         animationType="slide"
@@ -1934,10 +1934,10 @@ export default function ManageScreen() {
             </View>
           </View>
         </View>
-      </Modal>
+      </PlatformModal>
 
       {/* View Folder Modal */}
-      <Modal
+      <PlatformModal
         visible={modalType === "view_folder"}
         transparent
         animationType="fade"
@@ -2025,7 +2025,7 @@ export default function ManageScreen() {
             )}
           </View>
         </View>
-      </Modal>
+      </PlatformModal>
 
       {/* Progress Dialog */}
       <ProgressDialog
@@ -2051,7 +2051,7 @@ export default function ManageScreen() {
       />
 
       {/* Preview Modal */}
-      <Modal
+      <PlatformModal
         visible={!!previewFeed}
         transparent
         animationType="fade"
@@ -2183,7 +2183,7 @@ export default function ManageScreen() {
             )}
           </View>
         </View>
-      </Modal>
+      </PlatformModal>
       {/* Mobile Sidebar */}
       {!isDesktop && (
         <>

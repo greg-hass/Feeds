@@ -4,7 +4,6 @@ import {
     Text,
     StyleSheet,
     TouchableOpacity,
-    Modal,
     ScrollView,
     ActivityIndicator,
     Alert,
@@ -27,6 +26,7 @@ import {
 } from 'lucide-react-native';
 import { useColors, spacing, borderRadius, shadows } from '@/theme';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { PlatformModal } from '@/components/ui/PlatformModal';
 import { api, Feed, FeedInfo } from '@/services/api';
 import { useFeedStore } from '@/stores/feedStore';
 
@@ -220,7 +220,7 @@ export const FeedInfoSheet = ({ feedId, visible, onClose, onEdit, onDelete }: Fe
     };
 
     return (
-        <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+        <PlatformModal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
             <View style={s.overlay}>
                 <View style={s.sheet}>
                     <ScreenHeader
@@ -415,7 +415,7 @@ export const FeedInfoSheet = ({ feedId, visible, onClose, onEdit, onDelete }: Fe
                     )}
                 </View>
             </View>
-        </Modal>
+        </PlatformModal>
     );
 };
 
