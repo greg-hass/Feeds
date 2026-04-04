@@ -40,6 +40,7 @@ import { PlatformModal } from '@/components/ui/PlatformModal';
 import TimelineArticle from './TimelineArticle';
 import { useAudioStore } from '@/stores/audioStore';
 import { useVideoStore } from '@/stores/videoStore';
+import { useShallow } from 'zustand/react/shallow';
 
 interface BookmarksListProps {
   onArticlePress?: (article: Article) => void;
@@ -65,10 +66,10 @@ export default function BookmarksList({
   } = useArticleStore();
 
   const [playingArticleId, isPlaying, play, pause, resume] = useAudioStore(
-      (state) => [state.currentArticleId, state.isPlaying, state.play, state.pause, state.resume]
+      useShallow((state) => [state.currentArticleId, state.isPlaying, state.play, state.pause, state.resume])
   );
   const [activeVideoId, playVideo] = useVideoStore(
-      (state) => [state.activeVideoId, state.playVideo]
+      useShallow((state) => [state.activeVideoId, state.playVideo])
   );
 
   const [isRefreshing, setIsRefreshing] = useState(false);
