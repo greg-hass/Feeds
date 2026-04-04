@@ -210,13 +210,10 @@ const styles = (
     isMobile: boolean
 ) => ({
     articleCard: {
-        backgroundColor: colors.background.primary,
         paddingHorizontal: densitySpacing.md,
         paddingVertical: densitySpacing.md,
-        marginBottom: densitySpacing.sm,
-        position: 'relative' as const,
-        overflow: 'hidden' as const,
-        borderRadius: borderRadius.lg,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border.light ?? colors.border.DEFAULT,
         ...Platform.select({
             web: {
                 cursor: 'pointer' as const,

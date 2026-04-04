@@ -71,9 +71,8 @@ export const timelineStyles = (colors: any, isMobile: boolean) => StyleSheet.cre
         padding: spacing.sm,
     },
     list: {
-        paddingHorizontal: spacing.md,
-        paddingTop: spacing.sm,
-        paddingBottom: spacing.lg,
+        padding: spacing.lg,
+        paddingBottom: spacing.xl,
     },
     loader: {
         marginVertical: spacing.xl,
