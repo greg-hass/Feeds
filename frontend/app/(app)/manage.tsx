@@ -33,11 +33,8 @@ import {
   AlertTriangle,
   RefreshCw,
   RefreshCcw,
-  Info,
   Pause,
   Play,
-  Clock,
-  Skull,
   X,
   Globe,
   AlertCircle,
@@ -48,7 +45,6 @@ import { FeedInfoSheet } from "@/components/FeedInfoSheet";
 import { useColors, borderRadius, spacing } from "@/theme";
 import { ProgressDialog, ProgressState } from "@/components/ProgressDialog";
 import { useProgressHandler } from "@/hooks/useProgressHandler";
-import { getFeedHealth, getFeedHealthInfo } from "@/utils/feedHealth";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import type { ProgressEvent as FeedImportProgressEvent } from "@/services/api";
 import { SectionHeader } from "@/components/ui/SectionHeader";
@@ -57,7 +53,6 @@ import { LoadingState } from "@/components/ui/LoadingState";
 import { Input } from "@/components/ui/Input";
 import { DiscoveryCard } from "@/components/DiscoveryCard";
 import Sidebar from "@/components/Sidebar";
-import { QuickAddGrid } from "@/components/QuickAddGrid";
 import { EqualWidthPills } from "@/components/ui/EqualWidthPills";
 import { PlatformModal } from "@/components/ui/PlatformModal";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -332,16 +327,6 @@ export default function ManageScreen() {
       setDiscoveries,
       show,
     ],
-  );
-
-  // Handle quick add from popular feeds
-  const handleQuickAdd = useCallback(
-    (url: string, type: string) => {
-      // Pass true as second arg to skip the debounce effect
-      setUrlInput(url, true);
-      triggerDiscovery(url, type);
-    },
-    [setUrlInput, triggerDiscovery],
   );
 
   // Handle preview
@@ -1171,13 +1156,6 @@ export default function ManageScreen() {
             </View>
           )}
 
-          {/* Empty State with Quick Add */}
-          {!isDiscovering && !hasAttempted && !urlInput && (
-            <ErrorBoundary fallback={null}>
-              <QuickAddGrid onSelect={handleQuickAdd} />
-            </ErrorBoundary>
-          )}
-
           {/* No Results State */}
           {!isDiscovering &&
             hasAttempted &&
@@ -1414,7 +1392,7 @@ export default function ManageScreen() {
         >
         <View style={s.section}>
           <SectionHeader
-            title={`Feeds (${feedSearch.trim() ? `${filteredFeeds.length} / ${feeds.length}` : feeds.length})`}
+            title={`Feeds (${feedSearch.trim() ? `${visibleFeedCount} / ${feeds.length}` : visibleFeedCount})`}
           />
           <View style={s.searchRow}>
             <Input
@@ -1430,20 +1408,13 @@ export default function ManageScreen() {
             <Text style={s.emptyText}>No feeds match your search.</Text>
           ) : (
             filteredFeeds.map((feed: Feed) => {
-              const healthStatus = getFeedHealth(feed);
-              const healthInfo = getFeedHealthInfo(feed);
-              const isStale = healthStatus === "stale";
-              const isDead = healthStatus === "dead";
-
               return (
                 <View
                   key={feed.id}
                   style={[
-                    s.feedItem,
+                      s.feedItem,
                     feed.error_count > 0 && s.feedItemError,
                     feed.paused_at && s.feedItemPaused,
-                    isStale && s.feedItemStale,
-                    isDead && s.feedItemDead,
                     isBulkMode &&
                       selectedFeedIds.has(feed.id) && {
                         backgroundColor:
@@ -1511,91 +1482,65 @@ export default function ManageScreen() {
                       </View>
                     )}
 
-                    <View style={s.feedInfo}>
-                      <View style={s.feedTitleRow}>
+                      <View style={s.feedInfo}>
+                        <View style={s.feedTitleRow}>
+                          <Text
+                            style={[
+                              s.feedTitle,
+                              feed.paused_at && s.feedTitlePaused,
+                            ]}
+                            numberOfLines={1}
+                          >
+                            {feed.title}
+                          </Text>
+                          {isBulkMode && selectedFeedIds.has(feed.id) && (
+                            <View style={s.bulkSelectedBadge}>
+                              <Check size={10} color={colors.text.inverse} />
+                            </View>
+                          )}
+                          {feed.paused_at && (
+                            <Pause
+                              size={14}
+                              color={colors.warning}
+                              style={s.statusIcon}
+                            />
+                          )}
+                          {feed.error_count > 0 && !feed.paused_at && (
+                            <AlertTriangle
+                              size={14}
+                              color={colors.error}
+                              style={s.statusIcon}
+                            />
+                          )}
+                        </View>
                         <Text
                           style={[
-                            s.feedTitle,
-                            feed.paused_at && s.feedTitlePaused,
+                            s.feedUrl,
+                            feed.folder_id ? s.folderTextHighlight : null,
                           ]}
                           numberOfLines={1}
                         >
-                          {feed.title}
+                          {feed.folder_id
+                            ? folderNameById.get(feed.folder_id) || "No folder"
+                            : "No folder"}
                         </Text>
-                        {isBulkMode && selectedFeedIds.has(feed.id) && (
-                          <View style={s.bulkSelectedBadge}>
-                            <Check size={10} color={colors.text.inverse} />
+                        {feed.paused_at && (
+                          <View style={s.pausedBadge}>
+                            <Pause size={10} color={colors.warning} />
+                            <Text style={s.pausedBadgeText}>Paused</Text>
                           </View>
                         )}
-                        <View style={s.feedTypeBadge}>
-                          {getTypeIcon(feed.type)}
-                        </View>
-                        {feed.paused_at && (
-                          <Pause
-                            size={14}
-                            color={colors.warning}
-                            style={s.statusIcon}
-                          />
-                        )}
                         {feed.error_count > 0 && !feed.paused_at && (
-                          <AlertTriangle
-                            size={14}
-                            color={colors.error}
-                            style={s.statusIcon}
-                          />
+                          <View style={s.errorBadge}>
+                            <AlertTriangle size={10} color={colors.error} />
+                            <Text style={s.errorBadgeText}>Connection Issue</Text>
+                          </View>
                         )}
                       </View>
-                      <Text
-                        style={[
-                          s.feedUrl,
-                          feed.folder_id ? s.folderTextHighlight : null,
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {feed.folder_id
-                          ? folderNameById.get(feed.folder_id) || "No folder"
-                          : "No folder"}
-                      </Text>
-                      {feed.paused_at && (
-                        <View style={s.pausedBadge}>
-                          <Pause size={10} color={colors.warning} />
-                          <Text style={s.pausedBadgeText}>Paused</Text>
-                        </View>
-                      )}
-                      {feed.error_count > 0 && !feed.paused_at && (
-                        <View style={s.errorBadge}>
-                          <AlertTriangle size={10} color={colors.error} />
-                          <Text style={s.errorBadgeText}>Connection Issue</Text>
-                        </View>
-                      )}
-                      {isStale && !feed.paused_at && feed.error_count === 0 && (
-                        <View style={s.staleBadge}>
-                          <Clock size={10} color={colors.warning} />
-                          <Text style={s.staleBadgeText}>Stale</Text>
-                        </View>
-                      )}
-                      {isDead && !feed.paused_at && (
-                        <View style={s.deadBadge}>
-                          <Skull size={10} color="#6b7280" />
-                          <Text style={s.deadBadgeText}>Dead</Text>
-                        </View>
-                      )}
-                      <Text style={s.healthTime}>{healthInfo.lastFetched}</Text>
-                    </View>
                   </TouchableOpacity>
 
                   {!isBulkMode && (
                     <View style={s.feedActions}>
-                      <TouchableOpacity
-                        onPress={() => {
-                          setFeedInfoId(feed.id);
-                          setFeedInfoVisible(true);
-                        }}
-                        style={s.actionButton}
-                        accessibilityLabel={`View details for ${feed.title}`}
-                      >
-                        <Info size={16} color={colors.text.tertiary} />
-                      </TouchableOpacity>
                       {feed.error_count > 0 ? (
                         <TouchableOpacity
                           onPress={() => handleRetryFeed(feed.id, feed.title)}
@@ -2307,10 +2252,11 @@ const styles = (colors: any) =>
     },
     inputRow: {
       flexDirection: "row",
-      flexWrap: "wrap",
+      flexWrap: "nowrap",
       gap: spacing.sm,
       alignItems: "center",
       marginTop: spacing.xs,
+      width: "100%",
     },
     discoveries: {
       marginTop: spacing.lg,
@@ -2416,6 +2362,7 @@ const styles = (colors: any) =>
     searchRow: {
       marginTop: spacing.sm,
       marginBottom: spacing.sm,
+      width: "100%",
     },
     emptyText: {
       color: colors.text.tertiary,
