@@ -490,7 +490,7 @@ export default function ManageScreen() {
       fetchFeeds();
       setModalType(null);
       show("Feeds moved", "success");
-    } catch {
+    } catch (err) {
       const errorMsg =
         err instanceof Error ? err.message : "Failed to move feeds";
       show(errorMsg, "error");
@@ -1175,7 +1175,9 @@ export default function ManageScreen() {
 
           {/* Empty State with Quick Add */}
           {!isDiscovering && !hasAttempted && !urlInput && (
-            <QuickAddGrid onSelect={handleQuickAdd} />
+            <ErrorBoundary fallback={null}>
+              <QuickAddGrid onSelect={handleQuickAdd} />
+            </ErrorBoundary>
           )}
 
           {/* No Results State */}

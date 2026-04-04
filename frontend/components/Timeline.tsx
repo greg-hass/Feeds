@@ -270,6 +270,18 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
         [shouldMaintainVisibleContentPosition]
     );
 
+    useEffect(() => {
+        if (filter.type === 'podcast') {
+            return;
+        }
+
+        const timeoutId = setTimeout(() => {
+            checkShouldLoadMore();
+        }, 0);
+
+        return () => clearTimeout(timeoutId);
+    }, [articles.length, checkShouldLoadMore, filter.type, hasMore, isLoading]);
+
     return (
         <View testID="timeline-screen" style={styles.container}>
             <ScreenHeader

@@ -43,7 +43,9 @@ export default function AppLayout() {
         ? (isDesktop
             ? (['top', 'left', 'right'] as const)
             : (['left', 'right'] as const))
-        : (['top', 'left', 'right', 'bottom'] as const);
+        : (isDesktop
+            ? (['top', 'left', 'right', 'bottom'] as const)
+            : (['top', 'left', 'right'] as const));
     const { refreshState, cancelRefresh } = useFeedStore();
     const { showPlayer } = useAudioStore();
     const { settings } = useSettingsStore();

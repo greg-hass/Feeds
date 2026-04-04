@@ -419,8 +419,9 @@ export default function ArticleScreen() {
                                     {isMobile ? (
                                         <View style={s.mobileVideoWrapper}>
                                             <iframe
-                                                src={getEmbedUrl(videoId, false, true)}
+                                                src={getEmbedUrl(videoId, true, true)}
                                                 style={{ width: '100%', height: '100%', border: 'none', borderRadius: borderRadius.lg }}
+                                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                                                 allowFullScreen
                                                 title="Inline YouTube preview"
                                                 loading="lazy"
@@ -432,7 +433,7 @@ export default function ArticleScreen() {
                                     ) : (
                                         <TouchableOpacity style={s.videoPlaceholder} onPress={handlePlayVideo} activeOpacity={0.9}>
                                             <Image source={{ uri: currentArticle.thumbnail_url || `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` }} style={s.heroImageFull} resizeMode="cover" />
-                                            <View style={s.playOverlay}><View style={s.playButton}><Play size={32} color="#fff" fill="#fff" style={{ marginLeft: 4 }} /></View></View>
+                                            <View style={s.playOverlay}><View style={s.playButton}><Play size={34} color="#111111" fill="#111111" style={{ marginLeft: 4 }} /></View></View>
                                         </TouchableOpacity>
                                     )}
                                 </View>
@@ -692,20 +693,22 @@ const styles = (
             bottom: 0,
             justifyContent: 'center',
             alignItems: 'center',
-            backgroundColor: 'rgba(0,0,0,0.1)',
+            backgroundColor: 'rgba(0,0,0,0.18)',
         },
         playButton: {
             width: 72,
             height: 72,
             borderRadius: 36,
-            backgroundColor: colors.primary.DEFAULT,
+            backgroundColor: 'rgba(255,255,255,0.96)',
             justifyContent: 'center',
             alignItems: 'center',
+            borderWidth: 2,
+            borderColor: 'rgba(0,0,0,0.12)',
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.2,
-            shadowRadius: 8,
-            elevation: 5,
+            shadowOpacity: 0.24,
+            shadowRadius: 12,
+            elevation: 8,
         },
         listenButton: {
             flexDirection: 'row',

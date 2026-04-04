@@ -45,11 +45,11 @@ const FilterPills = React.memo<FilterPillsProps>(({ unreadOnly, activeType, onFi
                 textStyle={s.filterText}
                 activeTextStyle={s.filterTextActive}
                 inactiveBackgroundColor="transparent"
-                activeBackgroundColor={colors.primary.soft}
+                activeBackgroundColor={colors.primary.DEFAULT}
                 inactiveBorderColor="transparent"
                 activeBorderColor="transparent"
                 inactiveTextColor={colors.text.secondary}
-                activeTextColor={colors.primary.DEFAULT}
+                activeTextColor={colors.text.inverse}
             />
         </View>
     );
@@ -79,7 +79,7 @@ const styles = (colors: any) => StyleSheet.create({
         paddingVertical: 6,
     },
     filterPillActive: {
-        backgroundColor: colors.primary?.soft ?? `${colors.primary?.DEFAULT ?? colors.primary}22`,
+        backgroundColor: colors.primary?.DEFAULT ?? colors.primary,
     },
     filterText: {
         fontSize: 10,
