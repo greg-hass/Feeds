@@ -7,6 +7,10 @@ import { sortArticlesByDateAndId } from "@/utils/sorting";
 import { ArticleState } from "./types";
 import { safeAsyncStorage } from "@/lib/safeStorage";
 
+function logPagination(stage: string, payload: Record<string, unknown>) {
+  console.log(`[ArticlePagination] ${stage}`, payload);
+}
+
 function areArticlesEqual(left: Article, right: Article): boolean {
   const leftKeys = Object.keys(left) as (keyof Article)[];
   const rightKeys = Object.keys(right) as (keyof Article)[];
@@ -156,6 +160,18 @@ export const useArticleStore = create<ArticleState>()(
         skipLoadingSet = false,
       ) => {
         const state = get();
+        const requestCursor = reset ? undefined : state.cursor || undefined;
+        logPagination("fetch:start", {
+          reset,
+          isLiveUpdate,
+          skipLoadingSet,
+          isLoading: state.isLoading,
+          hasMore: state.hasMore,
+          articleCount: state.articles.length,
+          cursor: state.cursor,
+          requestCursor,
+          filter: state.filter,
+        });
         if (state.isLoading && !isLiveUpdate && !reset) return;
         if (!reset && !state.hasMore && !isLiveUpdate) return;
 
@@ -165,8 +181,15 @@ export const useArticleStore = create<ArticleState>()(
         try {
           const { articles, next_cursor } = await api.getArticles({
             ...state.filter,
-            cursor: reset ? undefined : state.cursor || undefined,
+            cursor: requestCursor,
             limit: 50,
+          });
+          logPagination("fetch:response", {
+            reset,
+            isLiveUpdate,
+            receivedCount: articles.length,
+            nextCursor: next_cursor,
+            previousCount: state.articles.length,
           });
 
           // Optimized: Incremental merge instead of full sort on every fetch
@@ -193,10 +216,22 @@ export const useArticleStore = create<ArticleState>()(
             isLoading: false,
             error: null,
           });
+          logPagination("fetch:commit", {
+            reset,
+            isLiveUpdate,
+            finalCount: finalArticles.length,
+            cursor: next_cursor,
+            hasMore: next_cursor !== null,
+          });
         } catch (error) {
           const parsedError = handleError(error, {
             context: "fetchArticles",
             fallbackMessage: "Failed to fetch articles",
+          });
+          logPagination("fetch:error", {
+            reset,
+            isLiveUpdate,
+            message: parsedError.message,
           });
           set({
             isLoading: false,

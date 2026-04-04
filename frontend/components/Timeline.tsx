@@ -36,6 +36,9 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
     const isDesktop = useIsDesktop();
     const isMobile = !isDesktop;
     const styles = timelineStyles(colors, isMobile);
+    const RefreshIcon = RefreshCw as any;
+    const MarkReadIcon = CircleCheck as any;
+    const CloseIcon = X as any;
     const [showMenu, setShowMenu] = useState(false);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- useState initializer pattern for Animated.Value
     const [sidebarAnim] = useState(new Animated.Value(-300));
@@ -224,12 +227,24 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
 
     const maybeLoadMore = useCallback(() => {
         const now = Date.now();
-        if (!hasMore || isLoading || now - lastLoadMoreAtRef.current < 600) {
+        const throttleBlocked = now - lastLoadMoreAtRef.current < 600;
+        if (!hasMore || isLoading || throttleBlocked) {
+            console.log('[TimelinePagination] loadMore:blocked', {
+                hasMore,
+                isLoading,
+                throttleBlocked,
+                articleCount: articles.length,
+                metrics: scrollMetricsRef.current,
+            });
             return;
         }
         lastLoadMoreAtRef.current = now;
+        console.log('[TimelinePagination] loadMore:request', {
+            articleCount: articles.length,
+            metrics: scrollMetricsRef.current,
+        });
         void fetchArticles(false);
-    }, [fetchArticles, hasMore, isLoading]);
+    }, [articles.length, fetchArticles, hasMore, isLoading]);
 
     const checkShouldLoadMore = useCallback(() => {
         const { offsetY, layoutHeight, contentHeight } = scrollMetricsRef.current;
@@ -238,10 +253,19 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
         }
 
         const distanceFromBottom = contentHeight - (offsetY + layoutHeight);
+        console.log('[TimelinePagination] scrollCheck', {
+            articleCount: articles.length,
+            offsetY,
+            layoutHeight,
+            contentHeight,
+            distanceFromBottom,
+            hasMore,
+            isLoading,
+        });
         if (distanceFromBottom < 320) {
             maybeLoadMore();
         }
-    }, [maybeLoadMore]);
+    }, [articles.length, hasMore, isLoading, maybeLoadMore]);
 
     const handleEndReached = useCallback(() => {
         maybeLoadMore();
@@ -296,7 +320,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                     {
                         icon: (
                             <Animated.View style={{ transform: [{ rotate: refreshRotation }] }}>
-                                <RefreshCw
+                                <RefreshIcon
                                     size={20}
                                     color={isRefreshing ? colors.primary.DEFAULT : colors.text.secondary}
                                 />
@@ -306,7 +330,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                         accessibilityLabel: 'Refresh feeds',
                     },
                     {
-                        icon: <CircleCheck size={20} color={colors.text.secondary} />,
+                        icon: <MarkReadIcon size={20} color={colors.text.secondary} />,
                         onPress: handleMarkAllRead,
                         accessibilityLabel: 'Mark all as read',
                     },
@@ -448,7 +472,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
                     >
                         <View style={{ alignItems: 'flex-end', padding: spacing.md }}>
                             <TouchableOpacity onPress={toggleMenu} style={{ padding: spacing.sm }} accessibilityLabel="Close menu">
-                                <X size={24} color={colors.text.primary} />
+                                <CloseIcon size={24} color={colors.text.primary} />
                             </TouchableOpacity>
                         </View>
                         <Sidebar onNavigate={toggleMenu} />
