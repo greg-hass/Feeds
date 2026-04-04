@@ -6,13 +6,25 @@ import { type PropsWithChildren } from "react";
  * Adds viewport-fit=cover to enable full-screen PWA display on iOS Safari.
  */
 const OVERSCROLL_RESET = `
+html,
 :root,
 body {
     overscroll-behavior: none;
+    width: 100%;
+    min-height: 100%;
+    margin: 0;
+    padding: 0;
+    background: #0d0d0d;
 }
 
 body {
     min-height: 100vh;
+    min-height: 100svh;
+}
+
+body > div:first-child {
+    min-height: 100vh;
+    min-height: 100svh;
 }
 
 *:focus-visible {
@@ -28,7 +40,7 @@ export default function Root({ children }: PropsWithChildren) {
       <meta charSet="utf-8" />
       <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
       <meta name="color-scheme" content="light dark" />
-      <meta name="theme-color" content="#ffffff" />
+      <meta name="theme-color" content="#0d0d0d" />
       {/* Critical: viewport-fit=cover enables edge-to-edge display on iOS Safari PWA */}
       <meta
         name="viewport"
