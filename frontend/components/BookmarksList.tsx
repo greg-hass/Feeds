@@ -820,22 +820,18 @@ const styles = (colors: any, isMobile: boolean = false) =>
       paddingTop: spacing.sm,
     },
     articleCard: {
-      backgroundColor: colors.background.secondary,
-      borderRadius: borderRadius.lg,
-      padding: spacing.md,
+      paddingVertical: spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border.light ?? colors.border.DEFAULT,
     },
     articleRead: {
       opacity: 0.6,
     },
     articleArchived: {
-      borderWidth: 1,
-      borderColor: colors.border.DEFAULT,
-      backgroundColor: colors.background.elevated,
+      opacity: 0.8,
     },
     articleActive: {
       backgroundColor: colors.primary.soft || `${colors.primary.DEFAULT}15`,
-      borderWidth: 1,
-      borderColor: colors.primary.DEFAULT,
     },
     articleRowLayout: {
       flexDirection: 'row',

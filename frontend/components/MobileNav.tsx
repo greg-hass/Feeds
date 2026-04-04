@@ -80,7 +80,7 @@ const styles = (colors: any, bottomInset: number) => {
         borderTopWidth: 1,
         borderTopColor: colors.border.DEFAULT,
         paddingTop: 6,
-        paddingBottom: Math.max(bottomInset - 10, 6),
+        paddingBottom: Math.max(bottomInset, 0),
         position: 'relative',
         ...Platform.select({
             web: {

@@ -874,10 +874,8 @@ const styles = (colors: any) => StyleSheet.create({
     },
     card: {
         backgroundColor: colors.background.primary,
-        borderRadius: borderRadius.xl,
-        padding: spacing.lg,
-        borderWidth: 1,
-        borderColor: colors.border.DEFAULT,
+        borderRadius: borderRadius.lg,
+        padding: spacing.md,
         gap: spacing.sm,
     },
     cardIntro: {
