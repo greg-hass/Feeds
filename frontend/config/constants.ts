@@ -24,7 +24,7 @@ export const UI = {
     SIDEBAR_WIDTH: 280,
 
     /** Header height in pixels */
-    HEADER_HEIGHT: 60,
+    HEADER_HEIGHT: 52,
 } as const;
 
 // ============================================================================

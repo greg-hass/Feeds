@@ -23,7 +23,8 @@ export default function MobileNav() {
     const pathname = usePathname();
     const insets = useSafeAreaInsets();
     const colors = useColors();
-    const s = styles(colors, insets.bottom);
+    const bottomInset = Platform.OS === 'web' ? 0 : insets.bottom;
+    const s = styles(colors, bottomInset);
 
     const isActive = (path: string) => {
         // Normalize the path by removing the (app) group prefix
@@ -79,13 +80,13 @@ const styles = (colors: any, bottomInset: number) => {
         backgroundColor: colors.background.elevated,
         borderTopWidth: 1,
         borderTopColor: colors.border.light ?? colors.border.DEFAULT,
-        paddingTop: 10,
-        paddingBottom: Math.max(bottomInset, 10),
-        paddingHorizontal: spacing.sm,
+        paddingTop: 4,
+        paddingBottom: Math.max(bottomInset, 4),
+        paddingHorizontal: spacing.xs,
         position: 'relative',
         ...Platform.select({
             web: {
-                boxShadow: '0 -10px 24px rgba(0,0,0,0.22)',
+                boxShadow: '0 -4px 16px rgba(0,0,0,0.18)',
             },
         }),
     },
@@ -93,20 +94,20 @@ const styles = (colors: any, bottomInset: number) => {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 6,
-        gap: 4,
-        minHeight: 50,
-        marginHorizontal: 2,
+        paddingVertical: 4,
+        gap: 2,
+        minHeight: 40,
+        marginHorizontal: 1,
         borderRadius: borderRadius.full,
     },
     navItemActive: {
         backgroundColor: colors.background.tertiary,
     },
     label: {
-        fontSize: 10,
+        fontSize: 9,
         color: colors.text.tertiary,
         fontWeight: '600',
-        letterSpacing: 0.2,
+        letterSpacing: 0.1,
     },
     labelActive: {
         color: colors.text.primary,

@@ -68,15 +68,15 @@ export default FilterPills;
 const styles = (colors: any) => StyleSheet.create({
     filterWrapper: {
         backgroundColor: colors.background.primary,
-        paddingTop: spacing.xs,
-        paddingBottom: spacing.sm,
+        paddingTop: 0,
+        paddingBottom: spacing.xs,
         width: '100%',
     },
     filterRow: {
-        paddingHorizontal: spacing.lg,
+        paddingHorizontal: spacing.md,
     },
     filterPill: {
-        paddingVertical: 7,
+        paddingVertical: 5,
         backgroundColor: colors.background.secondary,
         borderColor: colors.border.DEFAULT,
     },
@@ -85,7 +85,7 @@ const styles = (colors: any) => StyleSheet.create({
         borderColor: colors.primary?.DEFAULT ?? colors.primary,
     },
     filterText: {
-        fontSize: 10,
+        fontSize: 9,
         fontWeight: '700' as const,
         color: colors.text.secondary,
         textAlign: 'center' as const,

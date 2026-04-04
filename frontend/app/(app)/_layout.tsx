@@ -155,7 +155,7 @@ const styles = (isDesktop: boolean, isReaderRoute: boolean, colors: any) => Styl
     container: {
         flex: 1,
         flexDirection: isDesktop ? 'row' : 'column',
-        backgroundColor: colors.background.elevated,
+        backgroundColor: colors.background.primary,
         ...(Platform.OS === 'web' && {
             height: '100svh' as any,
             minHeight: '100svh' as any,
@@ -176,7 +176,7 @@ const styles = (isDesktop: boolean, isReaderRoute: boolean, colors: any) => Styl
     },
     content: {
         flex: 1,
-        backgroundColor: colors.background.secondary,
+        backgroundColor: colors.background.primary,
         // The reader portion
         ...(Platform.OS === 'web' && isDesktop && isReaderRoute && {
             minWidth: 400,
