@@ -11,6 +11,15 @@ function logPagination(stage: string, payload: Record<string, unknown>) {
   console.log(`[ArticlePagination] ${stage}`, payload);
 }
 
+function serializeFilter(filter: ArticleState["filter"]): string {
+  return JSON.stringify({
+    feed_id: filter.feed_id ?? null,
+    folder_id: filter.folder_id ?? null,
+    type: filter.type ?? null,
+    unread_only: filter.unread_only,
+  });
+}
+
 function areArticlesEqual(left: Article, right: Article): boolean {
   const leftKeys = Object.keys(left) as (keyof Article)[];
   const rightKeys = Object.keys(right) as (keyof Article)[];
@@ -160,6 +169,8 @@ export const useArticleStore = create<ArticleState>()(
         skipLoadingSet = false,
       ) => {
         const state = get();
+        const requestFilter = state.filter;
+        const requestFilterKey = serializeFilter(requestFilter);
         const requestCursor = reset ? undefined : state.cursor || undefined;
         logPagination("fetch:start", {
           reset,
@@ -170,7 +181,7 @@ export const useArticleStore = create<ArticleState>()(
           articleCount: state.articles.length,
           cursor: state.cursor,
           requestCursor,
-          filter: state.filter,
+          filter: requestFilter,
         });
         if (state.isLoading && !isLiveUpdate && !reset) return;
         if (!reset && !state.hasMore && !isLiveUpdate) return;
@@ -180,7 +191,7 @@ export const useArticleStore = create<ArticleState>()(
         }
         try {
           const { articles, next_cursor } = await api.getArticles({
-            ...state.filter,
+            ...requestFilter,
             cursor: requestCursor,
             limit: 50,
           });
@@ -207,6 +218,16 @@ export const useArticleStore = create<ArticleState>()(
             }
           } else {
             finalArticles = mergeSortedArticles(state.articles, articles);
+          }
+
+          if (!isLiveUpdate && serializeFilter(get().filter) !== requestFilterKey) {
+            logPagination("fetch:stale-response", {
+              reset,
+              isLiveUpdate,
+              requestFilter,
+              currentFilter: get().filter,
+            });
+            return;
           }
 
           set({

@@ -90,6 +90,9 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: TimelineF
         }
 
         const snapshot = getSnapshot(scrollKey);
+        const hasPendingRestoreTarget =
+            snapshot.restoreArticleId != null ||
+            snapshot.restoreFallbackArticleId != null;
         currentScrollKey.current = scrollKey;
         currentScrollOffset.current = snapshot.absoluteOffset;
         currentAnchorId.current = snapshot.anchorArticleId;
@@ -97,11 +100,7 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: TimelineF
         pendingRestoreFallbackArticleId.current = snapshot.restoreFallbackArticleId;
         hasRestoredScroll.current = false;
         isRestoring.current = false;
-        setIsRestoringPosition(
-            snapshot.absoluteOffset > 0 ||
-            snapshot.restoreArticleId != null ||
-            snapshot.restoreFallbackArticleId != null
-        );
+        setIsRestoringPosition(hasPendingRestoreTarget);
         isPrependCompensating.current = false;
         prependCompensationSnapshot.current = null;
     }, [scrollKey]);
@@ -197,13 +196,15 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: TimelineF
     useFocusEffect(
         useCallback(() => {
             const snapshot = getSnapshot(scrollKey);
+            const hasPendingRestoreTarget =
+                snapshot.restoreArticleId != null ||
+                snapshot.restoreFallbackArticleId != null;
             if (
                 snapshot.absoluteOffset > 0 ||
-                snapshot.restoreArticleId != null ||
-                snapshot.restoreFallbackArticleId != null
+                hasPendingRestoreTarget
             ) {
                 hasRestoredScroll.current = false;
-                setIsRestoringPosition(true);
+                setIsRestoringPosition(hasPendingRestoreTarget);
                 setRestoreAttempt((attempt) => attempt + 1);
             }
         }, [scrollKey])
