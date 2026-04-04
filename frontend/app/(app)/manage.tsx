@@ -891,18 +891,16 @@ export default function ManageScreen() {
         rightActions={headerRightActions}
       />
 
-      <ErrorBoundary
-        fallback={
-          <View style={s.section}>
-            <Text style={s.emptyTitle}>Feeds screen recovered from an error.</Text>
-            <Text style={s.emptySubtitle}>
-              Pull to refresh or reopen the app.
-            </Text>
-          </View>
-        }
-      >
       <ScrollView style={s.scrollView} contentContainerStyle={s.content}>
         {/* Add Feed */}
+        <ErrorBoundary
+          fallback={
+            <View style={s.section}>
+              <Text style={s.emptyTitle}>Add Feed unavailable</Text>
+              <Text style={s.emptySubtitle}>This section hit an error.</Text>
+            </View>
+          }
+        >
         <View style={s.section}>
           <SectionHeader title="Add Feed" />
           <View style={s.addFeedHeader}>
@@ -1194,7 +1192,16 @@ export default function ManageScreen() {
               </View>
             )}
         </View>
+        </ErrorBoundary>
         {/* Create Folder */}
+        <ErrorBoundary
+          fallback={
+            <View style={s.section}>
+              <Text style={s.emptyTitle}>Create Folder unavailable</Text>
+              <Text style={s.emptySubtitle}>This section hit an error.</Text>
+            </View>
+          }
+        >
         <View style={s.section}>
           <SectionHeader title="Create Folder" />
           <View style={s.inputRow}>
@@ -1213,8 +1220,10 @@ export default function ManageScreen() {
             />
           </View>
         </View>
+        </ErrorBoundary>
 
         {/* Folders */}
+        <ErrorBoundary fallback={null}>
         {folders.length > 0 && (
           <View style={s.section}>
             <SectionHeader title={`Folders (${folders.length})`} />
@@ -1392,8 +1401,17 @@ export default function ManageScreen() {
             })}
           </View>
         )}
+        </ErrorBoundary>
 
         {/* Feeds */}
+        <ErrorBoundary
+          fallback={
+            <View style={s.section}>
+              <Text style={s.emptyTitle}>Feeds list unavailable</Text>
+              <Text style={s.emptySubtitle}>This section hit an error.</Text>
+            </View>
+          }
+        >
         <View style={s.section}>
           <SectionHeader
             title={`Feeds (${feedSearch.trim() ? `${filteredFeeds.length} / ${feeds.length}` : feeds.length})`}
@@ -1616,8 +1634,10 @@ export default function ManageScreen() {
             })
           )}
         </View>
+        </ErrorBoundary>
 
         {/* Data Management */}
+        <ErrorBoundary fallback={null}>
         <View style={s.section}>
           <SectionHeader title="Data Management" />
           <View style={s.dataActions}>
@@ -1672,8 +1692,8 @@ export default function ManageScreen() {
             }}
           />
         </View>
+        </ErrorBoundary>
       </ScrollView>
-      </ErrorBoundary>
 
       {/* Bulk Toolbar */}
       {isBulkMode && (
