@@ -83,7 +83,11 @@ const styles = (colors: any, bottomInset: number) => {
         paddingTop: 4,
         paddingBottom: Math.max(bottomInset, 4),
         paddingHorizontal: spacing.xs,
-        position: 'relative',
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 1000,
         ...Platform.select({
             web: {
                 paddingBottom: 'calc(env(safe-area-inset-bottom) + 4px)' as any,
