@@ -42,7 +42,7 @@ export default function AppLayout() {
     const appSafeAreaEdges = Platform.OS === 'web'
         ? (isDesktop
             ? (['top', 'left', 'right'] as const)
-            : (['left', 'right'] as const))
+            : (['top', 'left', 'right'] as const))
         : (isDesktop
             ? (['top', 'left', 'right', 'bottom'] as const)
             : (['top', 'left', 'right'] as const));
@@ -138,7 +138,7 @@ export default function AppLayout() {
                     total={refreshState.progress?.total || 0}
                     completed={refreshState.progress?.completed || 0}
                     currentTitle={refreshState.progress?.currentTitle || ''}
-                    statusMessage={refreshState.message}
+                    statusMessage={refreshState.message || undefined}
                     onCancel={cancelRefresh}
                 />
                 <PwaUpdateBanner
@@ -159,8 +159,7 @@ const styles = (isDesktop: boolean, isReaderRoute: boolean, colors: any) => Styl
         ...(Platform.OS === 'web' && {
             height: '100svh' as any,
             minHeight: '100svh' as any,
-            // Only add bottom padding on desktop (no mobile nav)
-            // Mobile nav handles its own safe area padding
+            // Desktop has no mobile nav, so the shell owns the bottom inset there.
             ...(isDesktop && { paddingBottom: 'env(safe-area-inset-bottom)' as any }),
         }),
     },

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet, Platform } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { Home, Bookmark, Rss, Settings } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors, borderRadius } from '@/theme';
 
 interface NavItem {
@@ -20,8 +21,9 @@ const navItems: NavItem[] = [
 export default function MobileNav() {
     const router = useRouter();
     const pathname = usePathname();
+    const insets = useSafeAreaInsets();
     const colors = useColors();
-    const s = styles(colors);
+    const s = styles(colors, insets.bottom);
 
     const isActive = (path: string) => {
         // Normalize the path by removing the (app) group prefix
@@ -43,7 +45,7 @@ export default function MobileNav() {
         <View style={s.container}>
             {navItems.map((item) => {
                 const active = isActive(item.path);
-                const IconComponent = item.icon;
+                const IconComponent = item.icon as any;
 
                 return (
                     <TouchableOpacity
@@ -70,15 +72,15 @@ export default function MobileNav() {
     );
 }
 
-const styles = (colors: any) => {
+const styles = (colors: any, bottomInset: number) => {
     return StyleSheet.create({
     container: {
         flexDirection: 'row',
         backgroundColor: colors.background.primary,
         borderTopWidth: 1,
         borderTopColor: colors.border.DEFAULT,
-        paddingTop: 6,
-        paddingBottom: 2,
+        paddingTop: 8,
+        paddingBottom: Math.max(bottomInset, 8),
         position: 'relative',
         ...Platform.select({
             web: {
@@ -90,9 +92,9 @@ const styles = (colors: any) => {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 8,
+        paddingVertical: 6,
         gap: 3,
-        minHeight: 44,
+        minHeight: 48,
         marginHorizontal: 4,
         borderRadius: borderRadius.xl,
     },

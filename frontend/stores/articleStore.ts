@@ -510,7 +510,6 @@ export const useArticleStore = create<ArticleState>()(
       name: "articles-cache",
       storage: createJSONStorage(() => safeAsyncStorage),
       partialize: (state: ArticleState) => ({
-        articles: state.articles.slice(0, 100), // Only cache the first 100 articles
         filter: state.filter,
         bookmarkedArticles: state.bookmarkedArticles, // Cache bookmarks too
         articleScrollPositions: state.articleScrollPositions, // Persist scroll positions
