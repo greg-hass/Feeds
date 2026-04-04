@@ -4,6 +4,7 @@ import { useRouter, usePathname } from 'expo-router';
 import { Home, Bookmark, Rss, Settings } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors, borderRadius, spacing } from '@/theme';
+import { UI } from '@/config/constants';
 
 interface NavItem {
     icon: typeof Home;
@@ -90,6 +91,7 @@ const styles = (colors: any, bottomInset: number) => {
         zIndex: 1000,
         ...Platform.select({
             web: {
+                position: 'fixed' as any,
                 paddingBottom: 'calc(env(safe-area-inset-bottom) + 4px)' as any,
                 boxShadow: '0 -4px 16px rgba(0,0,0,0.18)',
             },
@@ -101,7 +103,7 @@ const styles = (colors: any, bottomInset: number) => {
         justifyContent: 'center',
         paddingVertical: 4,
         gap: 2,
-        minHeight: 40,
+        minHeight: UI.MOBILE_NAV_HEIGHT - 12,
         marginHorizontal: 1,
         borderRadius: borderRadius.full,
     },

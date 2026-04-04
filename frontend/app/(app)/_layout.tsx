@@ -24,6 +24,7 @@ import { useRefreshLifecycle } from '@/hooks/useRefreshLifecycle';
 import { useWakeLock } from '@/hooks/useWakeLock';
 import { usePwaUpdate } from '@/hooks/usePwaUpdate';
 import { PwaUpdateBanner } from '@/components/PwaUpdateBanner';
+import { UI } from '@/config/constants';
 
 export default function AppLayout() {
     const [mounted, setMounted] = useState(false);
@@ -177,9 +178,15 @@ const styles = (isDesktop: boolean, isReaderRoute: boolean, colors: any) => Styl
     content: {
         flex: 1,
         backgroundColor: colors.background.primary,
+        ...(!isDesktop && {
+            paddingBottom: UI.MOBILE_NAV_HEIGHT,
+        }),
         // The reader portion
         ...(Platform.OS === 'web' && isDesktop && isReaderRoute && {
             minWidth: 400,
+        }),
+        ...(Platform.OS === 'web' && !isDesktop && {
+            paddingBottom: `calc(${UI.MOBILE_NAV_HEIGHT}px + env(safe-area-inset-bottom))` as any,
         }),
     },
 });

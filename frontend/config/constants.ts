@@ -25,6 +25,9 @@ export const UI = {
 
     /** Header height in pixels */
     HEADER_HEIGHT: 52,
+
+    /** Mobile bottom nav height excluding device safe area */
+    MOBILE_NAV_HEIGHT: 52,
 } as const;
 
 // ============================================================================
