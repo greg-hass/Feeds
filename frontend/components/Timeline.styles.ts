@@ -1,5 +1,6 @@
 import { StyleSheet, Platform } from 'react-native';
 import { borderRadius, spacing } from '@/theme';
+import { UI } from '@/config/constants';
 
 export const timelineStyles = (colors: any, isMobile: boolean) => StyleSheet.create({
     container: {
@@ -72,7 +73,7 @@ export const timelineStyles = (colors: any, isMobile: boolean) => StyleSheet.cre
     },
     list: {
         padding: spacing.lg,
-        paddingBottom: spacing.xl,
+        paddingBottom: isMobile ? (UI.MOBILE_NAV_HEIGHT + spacing.xl) : spacing.xl,
     },
     loader: {
         marginVertical: spacing.xl,

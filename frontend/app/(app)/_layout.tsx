@@ -178,15 +178,9 @@ const styles = (isDesktop: boolean, isReaderRoute: boolean, colors: any) => Styl
     content: {
         flex: 1,
         backgroundColor: colors.background.primary,
-        ...(!isDesktop && {
-            paddingBottom: UI.MOBILE_NAV_HEIGHT,
-        }),
         // The reader portion
         ...(Platform.OS === 'web' && isDesktop && isReaderRoute && {
             minWidth: 400,
-        }),
-        ...(Platform.OS === 'web' && !isDesktop && {
-            paddingBottom: `calc(${UI.MOBILE_NAV_HEIGHT}px + env(safe-area-inset-bottom))` as any,
         }),
     },
 });

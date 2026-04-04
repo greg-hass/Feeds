@@ -79,8 +79,10 @@ const styles = (colors: any, bottomInset: number) => {
     container: {
         flexDirection: 'row',
         backgroundColor: colors.background.elevated,    
-        paddingTop: 12,
-        paddingBottom: 12,
+        borderTopWidth: 1,
+        borderTopColor: colors.border.light ?? colors.border.DEFAULT,
+        paddingTop: 2,
+        paddingBottom: Math.max(bottomInset, 2),
         paddingHorizontal: spacing.xs,
         position: 'absolute',
         left: 0,
@@ -90,6 +92,7 @@ const styles = (colors: any, bottomInset: number) => {
         ...Platform.select({
             web: {
                 position: 'fixed' as any,
+                paddingBottom: 'calc(env(safe-area-inset-bottom) + 2px)' as any,
             },
         }),
     },
