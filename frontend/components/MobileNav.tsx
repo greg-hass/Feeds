@@ -78,11 +78,9 @@ const styles = (colors: any, bottomInset: number) => {
     return StyleSheet.create({
     container: {
         flexDirection: 'row',
-        backgroundColor: colors.background.elevated,
-        borderTopWidth: 1,
-        borderTopColor: colors.border.light ?? colors.border.DEFAULT,
-        paddingTop: 4,
-        paddingBottom: Math.max(bottomInset, 4),
+        backgroundColor: colors.background.elevated,    
+        paddingTop: 8,
+        paddingBottom: Math.max(bottomInset, 8),
         paddingHorizontal: spacing.xs,
         position: 'absolute',
         left: 0,
@@ -92,8 +90,7 @@ const styles = (colors: any, bottomInset: number) => {
         ...Platform.select({
             web: {
                 position: 'fixed' as any,
-                paddingBottom: 'calc(env(safe-area-inset-bottom) + 4px)' as any,
-                boxShadow: '0 -4px 16px rgba(0,0,0,0.18)',
+                paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' as any,
             },
         }),
     },

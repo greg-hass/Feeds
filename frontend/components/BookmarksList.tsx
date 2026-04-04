@@ -37,6 +37,9 @@ import { LoadingState } from '@/components/ui/LoadingState';
 import Sidebar from '@/components/Sidebar';
 import { EqualWidthPills, type EqualWidthPillItem } from '@/components/ui/EqualWidthPills';
 import { PlatformModal } from '@/components/ui/PlatformModal';
+import TimelineArticle from './TimelineArticle';
+import { useAudioStore } from '@/stores/audioStore';
+import { useVideoStore } from '@/stores/videoStore';
 
 interface BookmarksListProps {
   onArticlePress?: (article: Article) => void;
@@ -60,6 +63,13 @@ export default function BookmarksList({
     error,
     markRead,
   } = useArticleStore();
+
+  const [playingArticleId, isPlaying, play, pause, resume] = useAudioStore(
+      (state) => [state.currentArticleId, state.isPlaying, state.play, state.pause, state.resume]
+  );
+  const [activeVideoId, playVideo] = useVideoStore(
+      (state) => [state.activeVideoId, state.playVideo]
+  );
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -127,6 +137,40 @@ export default function BookmarksList({
     }
     router.push(`/(app)/article/${article.id}`);
   }, [markRead, onArticlePress, router]);
+
+  const handlePlayPress = useCallback((item: Article) => {
+      if (playingArticleId === item.id) {
+          if (isPlaying) pause();
+          else resume();
+      } else {
+          play({
+              id: item.id,
+              url: item.enclosure_url || item.url || '',
+              title: item.title,
+              author: item.feed_title || 'Unknown Source',
+              coverArt: item.thumbnail_url || item.feed_icon_url || ''
+          });
+      }
+  }, [playingArticleId, isPlaying, play, pause, resume]);
+
+  const handleVideoPress = useCallback((item: Article) => {
+      const videoId = extractVideoId(item.url || '');
+      if (videoId) playVideo(videoId, item.title);
+      else handleArticlePress(item);
+  }, [playVideo, handleArticlePress]);
+
+  const bookmarkScales = useRef(new Map<number, Animated.Value>());
+  const bookmarkRotations = useRef(new Map<number, Animated.Value>());
+
+  const getBookmarkScale = useCallback((id: number) => {
+    if (!bookmarkScales.current.has(id)) bookmarkScales.current.set(id, new Animated.Value(1));
+    return bookmarkScales.current.get(id)!;
+  }, []);
+
+  const getBookmarkRotation = useCallback((id: number) => {
+    if (!bookmarkRotations.current.has(id)) bookmarkRotations.current.set(id, new Animated.Value(0));
+    return bookmarkRotations.current.get(id)!;
+  }, []);
 
   const headerActions = useMemo(() => [
     {
@@ -248,131 +292,23 @@ export default function BookmarksList({
     setIsFolderModalOpen(true);
   }, []);
 
-  const getArticleThumbnail = (item: Article): string | null => {
-    if (item.feed_type === 'youtube') {
-      const videoId = extractVideoId(item.url || item.thumbnail_url || '');
-      if (videoId) return getThumbnailUrl(videoId, isMobile ? 'hq' : 'maxres');
-    }
-    return item.thumbnail_url || null;
-  };
-
   const renderArticle = ({ item }: { item: Article }) => {
-    const thumbnail = getArticleThumbnail(item);
-    const isYouTube = item.feed_type === 'youtube';
     const isActive = activeArticleId === item.id;
-    const isArchived = !!item.bookmark_archived_at;
-
     return (
-      <TouchableOpacity
-        style={[
-          s.articleCard,
-          item.is_read && s.articleRead,
-          isActive && s.articleActive,
-          isArchived && s.articleArchived,
-        ]}
-        onPress={() => handleArticlePress(item)}
-        activeOpacity={0.85}
-      >
-        <View style={isMobile ? s.articleColumnLayout : s.articleRowLayout}>
-          <View style={s.articleContent}>
-            <View style={s.articleHeader}>
-              <View style={s.articleHeaderLeft}>
-                <Text style={s.feedName} numberOfLines={1}>
-                  {item.feed_title}
-                </Text>
-                {item.bookmark_folder_name ? (
-                  <View style={s.folderBadge}>
-                    <FolderOpen size={12} color={colors.primary.DEFAULT} />
-                    <Text style={s.folderBadgeText} numberOfLines={1}>
-                      {item.bookmark_folder_name}
-                    </Text>
-                  </View>
-                ) : null}
-              </View>
-              <View style={s.articleHeaderActions}>
-                {item.has_audio ? <Headphones size={14} color={colors.secondary.DEFAULT} /> : null}
-                {isArchived ? (
-                  <View style={s.archivedBadge}>
-                    <Archive size={10} color={colors.text.secondary} />
-                    <Text style={s.archivedBadgeText}>Archived</Text>
-                  </View>
-                ) : null}
-                <TouchableOpacity
-                  onPress={() => handleOpenMenu(item)}
-                  accessibilityLabel={`Bookmark actions for ${item.title}`}
-                  style={s.moreButton}
-                >
-                  <MoreVertical size={16} color={colors.text.tertiary} />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <Text
-              style={[s.articleTitle, item.is_read && s.articleTitleRead]}
-              numberOfLines={2}
-            >
-              {!item.is_read && (
-                <Circle
-                  size={8}
-                  color={colors.primary.DEFAULT}
-                  fill={colors.primary.DEFAULT}
-                  style={{ marginRight: 6 }}
-                />
-              )}
-              {item.title}
-            </Text>
-
-            {isMobile && thumbnail ? (
-              <View style={s.thumbnailContainerMobile}>
-                <Image
-                  source={{ uri: thumbnail }}
-                  style={s.thumbnailMobile}
-                  resizeMode="cover"
-                />
-                {isYouTube ? (
-                  <View style={s.playOverlay}>
-                    <Play size={32} color={colors.text.inverse} fill="#fff" />
-                  </View>
-                ) : null}
-              </View>
-            ) : null}
-
-            {item.summary ? (
-              <Text style={s.articleSummary} numberOfLines={2}>
-                {item.summary}
-              </Text>
-            ) : null}
-
-            {item.bookmark_note ? (
-              <Text style={s.articleNote} numberOfLines={1}>
-                {item.bookmark_note}
-              </Text>
-            ) : null}
-
-            <Text style={s.articleMeta}>
-              {item.author ? `${item.author} • ` : ''}
-              {item.published_at
-                ? formatDistanceToNow(new Date(item.published_at), { addSuffix: true })
-                : ''}
-            </Text>
-          </View>
-
-          {!isMobile && thumbnail ? (
-            <View style={s.thumbnailContainerDesktop}>
-              <Image
-                source={{ uri: thumbnail }}
-                style={s.thumbnailDesktop}
-                resizeMode="cover"
-              />
-              {isYouTube ? (
-                <View style={s.playOverlaySmall}>
-                  <Play size={20} color={colors.text.inverse} fill="#fff" />
-                </View>
-              ) : null}
-            </View>
-          ) : null}
-        </View>
-      </TouchableOpacity>
+        <TimelineArticle
+            item={item}
+            isActive={isActive}
+            isMobile={isMobile}
+            activeVideoId={activeVideoId}
+            playingArticleId={playingArticleId}
+            isPlaying={isPlaying}
+            colors={colors}
+            onArticlePress={handleArticlePress}
+            onVideoPress={handleVideoPress}
+            onPlayPress={handlePlayPress}
+            getBookmarkScale={getBookmarkScale}
+            getBookmarkRotation={getBookmarkRotation}
+        />
     );
   };
 

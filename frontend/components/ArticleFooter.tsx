@@ -59,8 +59,8 @@ const ArticleFooter = React.memo<ArticleFooterProps>(({
     return (
         <View style={styles.articleFooter}>
             <View style={styles.metaRow}>
-                <ClockIcon size={11} color={colors.text.tertiary} />
-                <Text style={[styles.articleMeta, { color: colors.text.tertiary }]}>
+                <ClockIcon size={11} color={colors.primary.DEFAULT} />
+                <Text style={[styles.articleMeta, { color: colors.primary.DEFAULT }]}>
                     {item.published_at ? formatDistanceToNow(new Date(item.published_at), { addSuffix: true }) : ''}
                 </Text>
             </View>
