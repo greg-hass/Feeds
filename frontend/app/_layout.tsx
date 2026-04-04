@@ -48,11 +48,11 @@ function RootShell() {
     }
 
     return (
-        <>
+        <View style={{ flex: 1, backgroundColor: colors.background.primary }}>
             <StatusBar style="auto" />
             <AppInitializer />
             <ToastContainer />
-        </>
+        </View>
     );
 }
 

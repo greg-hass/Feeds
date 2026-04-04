@@ -86,6 +86,7 @@ const styles = (colors: any, bottomInset: number) => {
         position: 'relative',
         ...Platform.select({
             web: {
+                paddingBottom: 'calc(env(safe-area-inset-bottom) + 4px)' as any,
                 boxShadow: '0 -4px 16px rgba(0,0,0,0.18)',
             },
         }),

@@ -11,6 +11,7 @@ html,
 body {
     overscroll-behavior: none;
     width: 100%;
+    height: 100%;
     min-height: 100%;
     margin: 0;
     padding: 0;
@@ -18,13 +19,20 @@ body {
 }
 
 body {
+    display: flex;
     min-height: 100vh;
     min-height: 100svh;
 }
 
-body > div:first-child {
+body > div:first-child,
+body > div:first-child > div,
+body > div:first-child > div > div {
+    flex: 1 1 auto;
+    width: 100%;
+    height: 100%;
     min-height: 100vh;
     min-height: 100svh;
+    background: #081014;
 }
 
 *:focus-visible {
