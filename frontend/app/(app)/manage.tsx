@@ -2007,180 +2007,174 @@ export default function ManageScreen() {
       </PlatformModal>
 
       {/* Progress Dialog */}
-      <ProgressDialog
-        state={progressState}
-        onClose={closeProgressDialog}
-        onRetryFailed={handleRetryFailed}
-      />
+      {progressState.isActive ? (
+        <ProgressDialog
+          state={progressState}
+          onClose={closeProgressDialog}
+          onRetryFailed={handleRetryFailed}
+        />
+      ) : null}
 
       {/* Feed Info Sheet */}
-      <FeedInfoSheet
-        feedId={feedInfoId}
-        visible={feedInfoVisible}
-        onClose={() => {
-          setFeedInfoVisible(false);
-          setFeedInfoId(null);
-        }}
-        onEdit={(feed) => {
-          handleEditFeed(feed);
-        }}
-        onDelete={(feed) => {
-          handleDeleteFeed(feed.id, feed.title);
-        }}
-      />
+      {feedInfoVisible && feedInfoId !== null ? (
+        <FeedInfoSheet
+          feedId={feedInfoId}
+          visible={feedInfoVisible}
+          onClose={() => {
+            setFeedInfoVisible(false);
+            setFeedInfoId(null);
+          }}
+          onEdit={(feed) => {
+            handleEditFeed(feed);
+          }}
+          onDelete={(feed) => {
+            handleDeleteFeed(feed.id, feed.title);
+          }}
+        />
+      ) : null}
 
       {/* Preview Modal */}
-      <PlatformModal
-        visible={!!previewFeed}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setPreviewFeed(null)}
-      >
-        <View style={s.modalOverlay}>
-          <View style={s.previewModal}>
-            {previewFeed && (
-              <>
-                <View style={s.previewHeader}>
-                  {previewFeed.icon_url ? (
-                    <Image
-                      source={{ uri: previewFeed.icon_url }}
-                      style={s.previewIcon}
-                    />
-                  ) : (
-                    <View
-                      style={[
-                        s.previewIconPlaceholder,
-                        { backgroundColor: colors.background.tertiary },
-                      ]}
+      {previewFeed ? (
+        <PlatformModal
+          visible
+          transparent
+          animationType="fade"
+          onRequestClose={() => setPreviewFeed(null)}
+        >
+          <View style={s.modalOverlay}>
+            <View style={s.previewModal}>
+              <View style={s.previewHeader}>
+                {previewFeed.icon_url ? (
+                  <Image
+                    source={{ uri: previewFeed.icon_url }}
+                    style={s.previewIcon}
+                  />
+                ) : (
+                  <View
+                    style={[
+                      s.previewIconPlaceholder,
+                      { backgroundColor: colors.background.tertiary },
+                    ]}
+                  >
+                    <Globe size={24} color={colors.text.tertiary} />
+                  </View>
+                )}
+                <View style={s.previewTitleContainer}>
+                  <Text style={s.previewTitle} numberOfLines={2}>
+                    {previewFeed.title}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() =>
+                      openExternalLink(
+                        previewFeed.site_url || previewFeed.feed_url,
+                      )
+                    }
+                  >
+                    <Text
+                      style={[s.previewUrl, s.previewLinkText]}
+                      numberOfLines={1}
                     >
-                      <Globe size={24} color={colors.text.tertiary} />
-                    </View>
-                  )}
-                  <View style={s.previewTitleContainer}>
-                    <Text style={s.previewTitle} numberOfLines={2}>
-                      {previewFeed.title}
+                      {new URL(previewFeed.site_url || previewFeed.feed_url).hostname}
                     </Text>
+                  </TouchableOpacity>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setPreviewFeed(null)}
+                  style={s.previewClose}
+                >
+                  <X size={20} color={colors.text.secondary} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Feed Metadata */}
+              <View style={s.previewMeta}>
+                <View style={s.previewMetaRow}>
+                  <Text style={s.previewMetaLabel}>Feed Type</Text>
+                  <Text
+                    style={[s.previewMetaValue, { textTransform: "capitalize" }]}
+                  >
+                    {previewFeed.type}
+                  </Text>
+                </View>
+                <View style={s.previewMetaRow}>
+                  <Text style={s.previewMetaLabel}>Confidence</Text>
+                  <Text style={s.previewMetaValue}>
+                    {Math.round(previewFeed.confidence * 100)}%
+                  </Text>
+                </View>
+                <View style={s.previewMetaRow}>
+                  <Text style={s.previewMetaLabel}>Feed URL</Text>
+                  <Text
+                    style={[s.previewMetaValue, { fontSize: 11 }]}
+                    numberOfLines={2}
+                  >
+                    {previewFeed.feed_url}
+                  </Text>
+                </View>
+                {previewFeed.site_url ? (
+                  <View style={s.previewMetaRow}>
+                    <Text style={s.previewMetaLabel}>Website</Text>
                     <TouchableOpacity
-                      onPress={() =>
-                        openExternalLink(
-                          previewFeed.site_url || previewFeed.feed_url,
-                        )
-                      }
+                      onPress={() => openExternalLink(previewFeed.site_url!)}
+                      style={s.previewLink}
                     >
                       <Text
-                        style={[s.previewUrl, s.previewLinkText]}
+                        style={[s.previewMetaValue, s.previewLinkText]}
                         numberOfLines={1}
                       >
-                        {
-                          new URL(previewFeed.site_url || previewFeed.feed_url)
-                            .hostname
-                        }
+                        {previewFeed.site_url}
                       </Text>
                     </TouchableOpacity>
                   </View>
-                  <TouchableOpacity
-                    onPress={() => setPreviewFeed(null)}
-                    style={s.previewClose}
-                  >
-                    <X size={20} color={colors.text.secondary} />
-                  </TouchableOpacity>
-                </View>
+                ) : null}
+              </View>
 
-                {/* Feed Metadata */}
-                <View style={s.previewMeta}>
-                  <View style={s.previewMetaRow}>
-                    <Text style={s.previewMetaLabel}>Feed Type</Text>
-                    <Text
-                      style={[
-                        s.previewMetaValue,
-                        { textTransform: "capitalize" },
-                      ]}
-                    >
-                      {previewFeed.type}
-                    </Text>
-                  </View>
-                  <View style={s.previewMetaRow}>
-                    <Text style={s.previewMetaLabel}>Confidence</Text>
-                    <Text style={s.previewMetaValue}>
-                      {Math.round(previewFeed.confidence * 100)}%
-                    </Text>
-                  </View>
-                  <View style={s.previewMetaRow}>
-                    <Text style={s.previewMetaLabel}>Feed URL</Text>
-                    <Text
-                      style={[s.previewMetaValue, { fontSize: 11 }]}
-                      numberOfLines={2}
-                    >
-                      {previewFeed.feed_url}
-                    </Text>
-                  </View>
-                  {previewFeed.site_url && (
-                    <View style={s.previewMetaRow}>
-                      <Text style={s.previewMetaLabel}>Website</Text>
-                      <TouchableOpacity
-                        onPress={() => openExternalLink(previewFeed.site_url!)}
-                        style={s.previewLink}
-                      >
-                        <Text
-                          style={[s.previewMetaValue, s.previewLinkText]}
-                          numberOfLines={1}
-                        >
-                          {previewFeed.site_url}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
+              {isDuplicateFeed(previewFeed, feeds) ? (
+                <View style={s.previewDuplicateBanner}>
+                  <AlertCircle size={16} color={colors.status.warning} />
+                  <Text style={s.previewDuplicateText}>
+                    You&apos;re already subscribed to this feed
+                  </Text>
                 </View>
+              ) : null}
 
-                {isDuplicateFeed(previewFeed, feeds) && (
-                  <View style={s.previewDuplicateBanner}>
-                    <AlertCircle size={16} color={colors.status.warning} />
-                    <Text style={s.previewDuplicateText}>
-                      You&apos;re already subscribed to this feed
-                    </Text>
-                  </View>
-                )}
-
-                <View style={s.previewActions}>
-                  <Button
-                    title="Close"
-                    variant="secondary"
-                    onPress={() => setPreviewFeed(null)}
-                    style={{ flex: 1 }}
-                  />
-                  <Button
-                    title="Add Feed"
-                    onPress={() => {
-                      handleAddFeed(previewFeed);
-                      setPreviewFeed(null);
-                    }}
-                    disabled={isDuplicateFeed(previewFeed, feeds)}
-                    style={{ flex: 1 }}
-                  />
-                </View>
-              </>
-            )}
+              <View style={s.previewActions}>
+                <Button
+                  title="Close"
+                  variant="secondary"
+                  onPress={() => setPreviewFeed(null)}
+                  style={{ flex: 1 }}
+                />
+                <Button
+                  title="Add Feed"
+                  onPress={() => {
+                    handleAddFeed(previewFeed);
+                    setPreviewFeed(null);
+                  }}
+                  disabled={isDuplicateFeed(previewFeed, feeds)}
+                  style={{ flex: 1 }}
+                />
+              </View>
+            </View>
           </View>
-        </View>
-      </PlatformModal>
+        </PlatformModal>
+      ) : null}
       {/* Mobile Sidebar */}
-      {!isDesktop && (
+      {!isDesktop && showMenu ? (
         <>
           {/* Backdrop */}
-          {showMenu && (
-            <TouchableOpacity
-              style={s.sidebarBackdrop}
-              activeOpacity={1}
-              onPress={() => {
-                setShowMenu(false);
-                Animated.timing(sidebarAnim, {
-                  toValue: -300,
-                  duration: 250,
-                  useNativeDriver: Platform.OS !== "web",
-                }).start();
-              }}
-            />
-          )}
+          <TouchableOpacity
+            style={s.sidebarBackdrop}
+            activeOpacity={1}
+            onPress={() => {
+              setShowMenu(false);
+              Animated.timing(sidebarAnim, {
+                toValue: -300,
+                duration: 250,
+                useNativeDriver: Platform.OS !== "web",
+              }).start();
+            }}
+          />
           {/* Sidebar */}
           <Animated.View
             style={[
@@ -2219,7 +2213,7 @@ export default function ManageScreen() {
             />
           </Animated.View>
         </>
-      )}
+      ) : null}
     </View>
   );
 }
