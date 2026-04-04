@@ -887,7 +887,7 @@ export default function ManageScreen() {
           }
         >
         <View style={s.section}>
-          <SectionHeader title="Add Feed" />
+          <SectionHeader title="Add Feed" style={s.sectionHeader} />
           <View style={s.addFeedHeader}>
             <Text style={s.addFeedHint}>
               Search by URL, keyword, or source type. The discovery chips below
@@ -920,7 +920,7 @@ export default function ManageScreen() {
 
             {/* Search Input with Clear Button */}
             <View style={s.inputRow}>
-              <View style={inputWrapperStyle}>
+              <View style={[inputWrapperStyle, s.growInputWrapper]}>
                 <Input
                   style={inputStyle}
                   placeholder={`Paste URL or search ${discoveryPlaceholder}…`}
@@ -951,7 +951,7 @@ export default function ManageScreen() {
                 disabled={isDiscovering || !urlInput.trim()}
                 loading={isDiscovering}
                 icon={!isDiscovering ? searchIcon : undefined}
-                style={searchButtonStyle}
+                style={[searchButtonStyle, s.iconActionButton]}
               />
             </View>
           </View>
@@ -1181,20 +1181,22 @@ export default function ManageScreen() {
           }
         >
         <View style={s.section}>
-          <SectionHeader title="Create Folder" />
+          <SectionHeader title="Create Folder" style={s.sectionHeader} />
           <View style={s.inputRow}>
-            <Input
-              style={{ flex: 1, minWidth: 0 }}
-              placeholder="Folder name…"
-              value={newFolderName}
-              onChangeText={setNewFolderName}
-              accessibilityLabel="Folder name"
-            />
+            <View style={s.growInputWrapper}>
+              <Input
+                style={s.fullWidthInput}
+                placeholder="Folder name…"
+                value={newFolderName}
+                onChangeText={setNewFolderName}
+                accessibilityLabel="Folder name"
+              />
+            </View>
             <Button
               variant="secondary"
               onPress={handleCreateFolder}
               icon={<FolderIcon size={20} color={colors.text.primary} />}
-              style={{ width: 44, height: 44, paddingHorizontal: 0 }}
+              style={s.iconActionButton}
             />
           </View>
         </View>
@@ -1204,7 +1206,7 @@ export default function ManageScreen() {
         <ErrorBoundary fallback={null}>
         {folders.length > 0 && (
           <View style={s.section}>
-            <SectionHeader title={`Folders (${folders.length})`} />
+            <SectionHeader title={`Folders (${folders.length})`} style={s.sectionHeader} />
             {folders.map((folder: Folder) => {
               const isExpanded = expandedFolderIds.has(folder.id);
               const folderFeeds = feeds.filter(
@@ -2238,6 +2240,9 @@ const styles = (colors: any) =>
     section: {
       marginBottom: spacing.xl,
     },
+    sectionHeader: {
+      marginBottom: spacing.md,
+    },
     sectionCard: {
       backgroundColor: colors.background.primary,
       borderRadius: borderRadius.lg,
@@ -2248,9 +2253,24 @@ const styles = (colors: any) =>
       flexDirection: "row",
       flexWrap: "nowrap",
       gap: spacing.sm,
-      alignItems: "center",
+      alignItems: "stretch",
       marginTop: spacing.xs,
       width: "100%",
+    },
+    growInputWrapper: {
+      flex: 1,
+      minWidth: 0,
+    },
+    fullWidthInput: {
+      width: "100%",
+      minWidth: 0,
+    },
+    iconActionButton: {
+      width: 44,
+      height: 44,
+      paddingHorizontal: 0,
+      flexShrink: 0,
+      alignSelf: "stretch",
     },
     discoveries: {
       marginTop: spacing.lg,
@@ -2997,7 +3017,6 @@ const styles = (colors: any) =>
       gap: 4,
       marginTop: spacing.sm,
       marginBottom: spacing.sm,
-      paddingHorizontal: spacing.lg,
       width: '100%',
     },
     filterPill: {
