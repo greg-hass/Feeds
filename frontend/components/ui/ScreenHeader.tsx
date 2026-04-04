@@ -251,17 +251,13 @@ const styles = (colors: any) => StyleSheet.create({
         minHeight: 44,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: colors.background.secondary,
-        borderWidth: 1,
-        borderColor: colors.border.DEFAULT,
+        backgroundColor: 'transparent',
     },
     actionButtonPrimary: {
         backgroundColor: colors.primary?.soft ?? `${colors.primary?.DEFAULT ?? colors.primary}22`,
-        borderColor: colors.primary?.DEFAULT ?? colors.primary,
     },
     actionButtonDanger: {
         backgroundColor: colors.status.error + '22',
-        borderColor: colors.status.error + '55',
     },
     timerText: {
         fontSize: 10,

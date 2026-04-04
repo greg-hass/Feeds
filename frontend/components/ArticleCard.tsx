@@ -216,14 +216,7 @@ const styles = (
         marginBottom: densitySpacing.sm,
         position: 'relative' as const,
         overflow: 'hidden' as const,
-        borderWidth: 1,
-        borderColor: colors.border.DEFAULT,
-        borderRadius: borderRadius.xl,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.04,
-        shadowRadius: 10,
-        elevation: 1,
+        borderRadius: borderRadius.lg,
         ...Platform.select({
             web: {
                 cursor: 'pointer' as const,
@@ -233,7 +226,6 @@ const styles = (
     },
     articleActive: {
         backgroundColor: colors.primary.soft,
-        borderColor: colors.primary.DEFAULT,
     },
     articleFeatured: {
         paddingHorizontal: densitySpacing.md,
@@ -253,15 +245,11 @@ const styles = (
     feedPill: {
         flexDirection: 'row' as const,
         alignItems: 'center' as const,
-        paddingVertical: 3,
-        paddingHorizontal: 6,
+        paddingVertical: 2,
+        paddingHorizontal: 0,
         alignSelf: 'flex-start' as const,
         marginBottom: 6,
         gap: 5,
-        backgroundColor: colors.background.secondary,
-        borderRadius: borderRadius.full,
-        borderWidth: 1,
-        borderColor: colors.border.DEFAULT,
     },
     feedIcon: {
         width: 16,

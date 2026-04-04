@@ -13,6 +13,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 export const useTimeline = (onArticlePress?: (article: Article) => void) => {
     const router = useRouter();
+    const didHydrateInitialTimeline = useRef(false);
     const [articles, isLoading, hasMore, filter, fetchArticles, setFilter, markAllRead, prefetchArticle] = useArticleStore(
         useShallow((state) => [
             state.articles,
@@ -49,10 +50,16 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
     const fetchPendingDigest = useDigestStore((state) => state.fetchPendingDigest);
 
     useEffect(() => {
-        // Always reset pagination cursor on mount to avoid dead-end cursors
-        // from prior sessions causing infinite scroll to stall.
-        fetchArticles(true, false, true);
-    }, [fetchArticles]);
+        if (didHydrateInitialTimeline.current) {
+            return;
+        }
+
+        didHydrateInitialTimeline.current = true;
+
+        if (articles.length === 0 && !isLoading) {
+            void fetchArticles(true, false, true);
+        }
+    }, [articles.length, fetchArticles, isLoading]);
 
     useEffect(() => {
         fetchPendingDigest();

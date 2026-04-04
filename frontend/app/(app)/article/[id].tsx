@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image, useWindowDimensions, Platform, Animated, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { formatDistanceToNow } from 'date-fns';
 import { useArticleStore } from '@/stores/articleStore';
 import { useSettingsStore } from '@/stores/settingsStore';
@@ -31,6 +32,7 @@ export default function ArticleScreen() {
     const articleId = Number(id);
     const router = useRouter();
     const colors = useColors();
+    const insets = useSafeAreaInsets();
     const { width } = useWindowDimensions();
     const isMobile = width < 1024;
     const [
@@ -64,10 +66,6 @@ export default function ArticleScreen() {
     const scrollViewRef = useRef<ScrollView>(null);
     const currentArticleIdRef = useRef<number | null>(null);
 
-    // Zen Mode & Progress
-    const [scrollOffset, setScrollOffset] = useState(0);
-    const [headerOpacity] = useState(() => new Animated.Value(1));
-
     const [activeVideoId, playVideo, minimize, closeVideo, isMinimized] = useVideoStore(
         useShallow((state) => [state.activeVideoId, state.playVideo, state.minimize, state.close, state.isMinimized])
     );
@@ -90,7 +88,7 @@ export default function ArticleScreen() {
         ? `https://www.youtube.com/watch?v=${videoId}`
         : (currentArticle?.url || null);
 
-    const s = styles(colors, isMobile, settings?.reader_theme, settings?.reader_width || 'comfortable');
+    const s = styles(colors, isMobile, insets.bottom, settings?.reader_theme, settings?.reader_width || 'comfortable');
 
     const [fadeAnim] = useState(() => new Animated.Value(0));
     const isArticleLoaded = currentArticle?.id === articleId;
@@ -203,22 +201,6 @@ export default function ArticleScreen() {
             updateScrollDepth(scrollDepth);
         }
 
-        // Zen Mode: Hide header on scroll down
-        if (offset > 100 && offset > scrollOffset) {
-            Animated.timing(headerOpacity, {
-                toValue: 0,
-                duration: 250,
-                useNativeDriver: Platform.OS !== 'web',
-            }).start();
-        } else if (offset < scrollOffset || offset < 50) {
-            Animated.timing(headerOpacity, {
-                toValue: 1,
-                duration: 200,
-                useNativeDriver: Platform.OS !== 'web',
-            }).start();
-        }
-        setScrollOffset(offset);
-
         // Save scroll position for current article
         if (id && offset > 0) {
             setArticleScrollPosition(articleId, offset);
@@ -328,16 +310,7 @@ export default function ArticleScreen() {
                     <View style={[s.progressBar, { width: `${readingProgress * 100}%` }]} />
                 </View>
 
-                {/* Animated Header */}
-                <Animated.View style={[s.readerHeader, {
-                    opacity: headerOpacity,
-                    transform: [{
-                        translateY: headerOpacity.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [-10, 0]
-                        })
-                    }]
-                }]}>
+                <View style={s.readerHeader}>
                     <View style={s.headerLeft}>
                         {isMobile && (
                             <TouchableOpacity onPress={() => router.back()} style={s.backButton} hitSlop={iconButtonHitSlop} accessibilityLabel="Go back">
@@ -392,7 +365,7 @@ export default function ArticleScreen() {
                             <ExternalLink size={20} color={colors.text.secondary} />
                         </TouchableOpacity>
                     </View>
-                </Animated.View>
+                </View>
 
                 <ScrollView
                     ref={scrollViewRef}
@@ -493,7 +466,13 @@ export default function ArticleScreen() {
     );
 }
 
-const styles = (colors: any, isMobile: boolean, readerTheme?: string, readerWidth: 'narrow' | 'comfortable' | 'wide' = 'comfortable') => {
+const styles = (
+    colors: any,
+    isMobile: boolean,
+    bottomInset: number,
+    readerTheme?: string,
+    readerWidth: 'narrow' | 'comfortable' | 'wide' = 'comfortable'
+) => {
     let bgColor = colors.background.primary;
     if (readerTheme === 'sepia') bgColor = colors.reader.sepia.background;
     if (readerTheme === 'paper') bgColor = colors.reader.paper.background;
@@ -535,33 +514,21 @@ const styles = (colors: any, isMobile: boolean, readerTheme?: string, readerWidt
             paddingHorizontal: spacing.lg,
             paddingTop: spacing.sm,
             paddingBottom: spacing.sm,
-            borderBottomWidth: 1,
-            borderBottomColor: colors.border.DEFAULT,
             backgroundColor: colors.background.primary,
             minHeight: UI.HEADER_HEIGHT,
-            zIndex: 10,
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.03,
-            shadowRadius: 2,
-            elevation: 2,
+            gap: spacing.md,
         },
         headerLeft: {
             flexDirection: 'row',
             alignItems: 'center',
             gap: spacing.xs,
+            flexShrink: 1,
         },
         backButton: {
             padding: spacing.xs,
             marginLeft: -spacing.xs,
             borderRadius: borderRadius.md,
-            backgroundColor: colors.background.secondary,
-            borderWidth: 1,
-            borderColor: colors.border.DEFAULT,
+            backgroundColor: 'transparent',
             minWidth: 44,
             minHeight: 44,
             alignItems: 'center',
@@ -574,9 +541,7 @@ const styles = (colors: any, isMobile: boolean, readerTheme?: string, readerWidt
         navButton: {
             padding: 6,
             borderRadius: borderRadius.md,
-            backgroundColor: colors.background.secondary,
-            borderWidth: 1,
-            borderColor: colors.border.DEFAULT,
+            backgroundColor: 'transparent',
             minWidth: 44,
             minHeight: 44,
             alignItems: 'center',
@@ -588,6 +553,7 @@ const styles = (colors: any, isMobile: boolean, readerTheme?: string, readerWidt
         headerActions: {
             flexDirection: 'row',
             gap: spacing.xs,
+            flexShrink: 0,
         },
         actionButton: {
             width: 44,
@@ -595,9 +561,7 @@ const styles = (colors: any, isMobile: boolean, readerTheme?: string, readerWidt
             borderRadius: borderRadius.md,
             justifyContent: 'center',
             alignItems: 'center',
-            backgroundColor: colors.background.secondary,
-            borderWidth: 1,
-            borderColor: colors.border.DEFAULT,
+            backgroundColor: 'transparent',
         },
         loadingContainer: {
             flex: 1,
@@ -620,30 +584,20 @@ const styles = (colors: any, isMobile: boolean, readerTheme?: string, readerWidt
         },
         scrollContent: {
             alignItems: 'center',
-            paddingTop: UI.HEADER_HEIGHT + spacing.xxl,
-            paddingBottom: Platform.OS === 'web'
-                ? ('calc(env(safe-area-inset-bottom) + 96px)' as any)
-                : 128,
+            paddingTop: spacing.xl,
+            paddingBottom: Math.max(bottomInset + 72, 96),
         },
         contentContainer: {
             width: '100%',
             maxWidth: maxContentWidth,
             paddingHorizontal: spacing.lg,
-            borderRadius: isMobile ? 0 : borderRadius.lg,
         },
         articleIntro: {
             width: '100%',
-            padding: spacing.lg,
+            paddingBottom: spacing.lg,
             marginBottom: spacing.lg,
-            borderRadius: borderRadius.xl,
-            backgroundColor: colors.background.primary,
-            borderWidth: 1,
-            borderColor: colors.border.DEFAULT,
-            ...Platform.select({
-                web: {
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.04)',
-                },
-            }),
+            borderBottomWidth: 1,
+            borderBottomColor: colors.border.DEFAULT,
         },
         feedHeader: {
             flexDirection: 'row',

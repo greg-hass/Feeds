@@ -149,9 +149,9 @@ const styles = (colors: any, insets: any, isDesktop?: boolean) => StyleSheet.cre
         gap: spacing.sm,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 5,
+        shadowOpacity: 0.14,
+        shadowRadius: 12,
+        elevation: 3,
     },
     text: {
         color: colors.text.inverse,

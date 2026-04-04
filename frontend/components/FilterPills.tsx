@@ -44,12 +44,12 @@ const FilterPills = React.memo<FilterPillsProps>(({ unreadOnly, activeType, onFi
                 activePillStyle={s.filterPillActive}
                 textStyle={s.filterText}
                 activeTextStyle={s.filterTextActive}
-                inactiveBackgroundColor={colors.background.secondary}
-                activeBackgroundColor={colors.primary.DEFAULT}
-                inactiveBorderColor={colors.border.DEFAULT}
-                activeBorderColor={colors.primary.DEFAULT}
+                inactiveBackgroundColor="transparent"
+                activeBackgroundColor={colors.primary.soft}
+                inactiveBorderColor="transparent"
+                activeBorderColor="transparent"
                 inactiveTextColor={colors.text.secondary}
-                activeTextColor={colors.text.inverse}
+                activeTextColor={colors.primary.DEFAULT}
             />
         </View>
     );
@@ -68,11 +68,8 @@ export default FilterPills;
 const styles = (colors: any) => StyleSheet.create({
     filterWrapper: {
         backgroundColor: colors.background.primary,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border.DEFAULT,
-        borderTopWidth: 1,
-        borderTopColor: colors.border.DEFAULT,
-        paddingVertical: spacing.xs,
+        paddingTop: spacing.xs,
+        paddingBottom: spacing.sm,
         width: '100%',
     },
     filterRow: {
@@ -82,8 +79,7 @@ const styles = (colors: any) => StyleSheet.create({
         paddingVertical: 6,
     },
     filterPillActive: {
-        backgroundColor: colors.primary?.DEFAULT ?? colors.primary,
-        borderColor: colors.primary?.DEFAULT ?? colors.primary,
+        backgroundColor: colors.primary?.soft ?? `${colors.primary?.DEFAULT ?? colors.primary}22`,
     },
     filterText: {
         fontSize: 10,
@@ -103,6 +99,6 @@ const styles = (colors: any) => StyleSheet.create({
         backgroundColor: colors.text.tertiary,
     },
     unreadDotActive: {
-        backgroundColor: colors.background.primary,
+        backgroundColor: colors.primary.DEFAULT,
     },
 });

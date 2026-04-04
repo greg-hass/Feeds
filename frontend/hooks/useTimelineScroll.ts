@@ -19,13 +19,6 @@ type ScrollSnapshot = {
     restoreFallbackArticleId: number | null;
 };
 
-const EMPTY_SNAPSHOT: ScrollSnapshot = {
-    absoluteOffset: 0,
-    anchorArticleId: null,
-    restoreArticleId: null,
-    restoreFallbackArticleId: null,
-};
-
 function getScrollKey(filter: TimelineFilter): string {
     const parts: string[] = ['timeline'];
 
@@ -204,7 +197,11 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: TimelineF
     useFocusEffect(
         useCallback(() => {
             const snapshot = getSnapshot(scrollKey);
-            if (snapshot.absoluteOffset > 0) {
+            if (
+                snapshot.absoluteOffset > 0 ||
+                snapshot.restoreArticleId != null ||
+                snapshot.restoreFallbackArticleId != null
+            ) {
                 hasRestoredScroll.current = false;
                 setIsRestoringPosition(true);
                 setRestoreAttempt((attempt) => attempt + 1);
@@ -295,7 +292,7 @@ export const useTimelineScroll = (articles: TimelineArticle[], filter: TimelineF
             const nextArticles = currentArticles.slice(lastIndex + 1, lastIndex + 4);
             nextArticles.forEach((article) => prefetchArticleRef.current(article.id));
         }
-    }, []);
+    }, [scrollKey]);
 
     const prepareForNewArticles = useCallback((newArticlesCount: number) => {
         if (newArticlesCount <= 0 || isRestoring.current) {

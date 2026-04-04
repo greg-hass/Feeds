@@ -48,9 +48,9 @@ export const EqualWidthPills = React.memo(({
     const colors = useColors();
     const s = styles(colors);
 
-    const pillInactiveBg = inactiveBackgroundColor ?? colors.background.secondary;
+    const pillInactiveBg = inactiveBackgroundColor ?? 'transparent';
     const pillActiveBg = activeBackgroundColor ?? colors.primary.DEFAULT;
-    const pillInactiveBorder = inactiveBorderColor ?? colors.border.DEFAULT;
+    const pillInactiveBorder = inactiveBorderColor ?? 'transparent';
     const pillActiveBorder = activeBorderColor ?? pillActiveBg;
     const pillInactiveText = inactiveTextColor ?? colors.text.secondary;
     const pillActiveText = activeTextColor ?? colors.text.inverse;

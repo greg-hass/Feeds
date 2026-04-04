@@ -275,6 +275,7 @@ export default function Timeline({ onArticlePress, activeArticleId }: TimelinePr
             <ScreenHeader
                 title={headerTitle}
                 showBackButton={false}
+                showBorder={false}
                 showMenuButton={isMobile}
                 onMenuPress={toggleMenu}
                 lastRefreshed={lastRefreshed}
