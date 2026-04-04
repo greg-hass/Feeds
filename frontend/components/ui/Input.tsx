@@ -119,8 +119,8 @@ const styles = (colors: any, size: InputSize, multiline?: boolean) => {
             marginBottom: spacing.xs,
         },
         input: {
-            backgroundColor: colors.background.elevated,
-            borderRadius: borderRadius.md,
+            backgroundColor: colors.background.secondary,
+            borderRadius: borderRadius.lg,
             padding: sizeStyles.padding,
             fontSize: sizeStyles.fontSize,
             color: colors.text.primary,
@@ -130,7 +130,7 @@ const styles = (colors: any, size: InputSize, multiline?: boolean) => {
         },
         inputFocused: {
             borderColor: colors.primary?.DEFAULT ?? colors.primary,
-            borderWidth: 1.5,
+            backgroundColor: colors.background.tertiary,
         },
         inputError: {
             borderColor: colors.status.error,

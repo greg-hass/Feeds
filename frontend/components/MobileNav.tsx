@@ -3,7 +3,7 @@ import { View, TouchableOpacity, Text, StyleSheet, Platform } from 'react-native
 import { useRouter, usePathname } from 'expo-router';
 import { Home, Bookmark, Rss, Settings } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useColors, borderRadius } from '@/theme';
+import { useColors, borderRadius, spacing } from '@/theme';
 
 interface NavItem {
     icon: typeof Home;
@@ -76,15 +76,16 @@ const styles = (colors: any, bottomInset: number) => {
     return StyleSheet.create({
     container: {
         flexDirection: 'row',
-        backgroundColor: colors.background.primary,
+        backgroundColor: colors.background.elevated,
         borderTopWidth: 1,
-        borderTopColor: colors.border.DEFAULT,
-        paddingTop: 8,
-        paddingBottom: Math.max(bottomInset, 8),
+        borderTopColor: colors.border.light ?? colors.border.DEFAULT,
+        paddingTop: 10,
+        paddingBottom: Math.max(bottomInset, 10),
+        paddingHorizontal: spacing.sm,
         position: 'relative',
         ...Platform.select({
             web: {
-                boxShadow: '0 -2px 10px rgba(0,0,0,0.04)',
+                boxShadow: '0 -10px 24px rgba(0,0,0,0.22)',
             },
         }),
     },
@@ -93,22 +94,23 @@ const styles = (colors: any, bottomInset: number) => {
         alignItems: 'center',
         justifyContent: 'center',
         paddingVertical: 6,
-        gap: 3,
-        minHeight: 48,
-        marginHorizontal: 4,
-        borderRadius: borderRadius.xl,
+        gap: 4,
+        minHeight: 50,
+        marginHorizontal: 2,
+        borderRadius: borderRadius.full,
     },
     navItemActive: {
-        backgroundColor: colors.background.secondary,
+        backgroundColor: colors.background.tertiary,
     },
     label: {
         fontSize: 10,
         color: colors.text.tertiary,
-        fontWeight: '500',
+        fontWeight: '600',
+        letterSpacing: 0.2,
     },
     labelActive: {
         color: colors.text.primary,
-        fontWeight: '600',
+        fontWeight: '700',
     },
 });
 };

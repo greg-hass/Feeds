@@ -78,7 +78,8 @@ export const ScreenHeader = ({
         }
     };
 
-    const BackIcon = backButtonVariant === 'close' ? X : ArrowLeft;
+    const BackIcon = (backButtonVariant === 'close' ? X : ArrowLeft) as any;
+    const MenuIcon = Menu as any;
 
     // Normalize legacy rightAction to rightActions array
     const actions: HeaderAction[] = rightActions || (rightAction ? [{
@@ -104,7 +105,7 @@ export const ScreenHeader = ({
                         accessibilityLabel="Open menu"
                         accessibilityRole="button"
                     >
-                        <Menu size={22} color={colors.text.primary} />
+                        <MenuIcon size={22} color={colors.text.primary} />
                     </TouchableOpacity>
                 )}
                 {showBackButton && (
@@ -171,11 +172,10 @@ const styles = (colors: any) => StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: spacing.lg,
-        // Top safe-area is handled by app layout. Keep header padding fixed.
-        paddingTop: spacing.sm,
+        paddingTop: spacing.md,
         paddingBottom: spacing.sm,
         borderBottomWidth: 1,
-        borderBottomColor: colors.border.DEFAULT,
+        borderBottomColor: colors.border.light ?? colors.border.DEFAULT,
         backgroundColor: colors.background.primary,
         minHeight: UI.HEADER_HEIGHT,
     },
@@ -203,12 +203,15 @@ const styles = (colors: any) => StyleSheet.create({
     },
     menuButton: {
         padding: spacing.sm,
-        marginLeft: -spacing.sm,
+        marginLeft: -spacing.xs,
         borderRadius: borderRadius.full,
         minWidth: 44,
         minHeight: 44,
         alignItems: 'center',
         justifyContent: 'center',
+        backgroundColor: colors.background.secondary,
+        borderWidth: 1,
+        borderColor: colors.border.DEFAULT,
     },
     titleContainerWithMenu: {
         marginLeft: spacing.sm,
@@ -221,16 +224,20 @@ const styles = (colors: any) => StyleSheet.create({
     },
     backButton: {
         padding: spacing.sm,
-        marginLeft: -spacing.sm,
+        marginLeft: -spacing.xs,
         borderRadius: borderRadius.full,
         minWidth: 44,
         minHeight: 44,
         alignItems: 'center',
         justifyContent: 'center',
+        backgroundColor: colors.background.secondary,
+        borderWidth: 1,
+        borderColor: colors.border.DEFAULT,
     },
     headerTitle: {
-        fontSize: 18,
-        fontWeight: '700',
+        fontSize: 22,
+        fontWeight: '800',
+        letterSpacing: -0.4,
         color: colors.text.primary,
         flex: 1,
     },
@@ -246,32 +253,38 @@ const styles = (colors: any) => StyleSheet.create({
     },
     actionButton: {
         padding: 4,
-        borderRadius: borderRadius.md,
+        borderRadius: borderRadius.full,
         minWidth: 44,
         minHeight: 44,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: 'transparent',
+        backgroundColor: colors.background.secondary,
+        borderWidth: 1,
+        borderColor: colors.border.DEFAULT,
     },
     actionButtonPrimary: {
         backgroundColor: colors.primary?.soft ?? `${colors.primary?.DEFAULT ?? colors.primary}22`,
+        borderColor: colors.primary?.DEFAULT ?? colors.primary,
     },
     actionButtonDanger: {
-        backgroundColor: colors.status.error + '22',
+        backgroundColor: colors.status.error + '14',
+        borderColor: colors.status.error + '30',
     },
     timerText: {
         fontSize: 10,
-        fontWeight: '700',
-        color: colors.primary?.DEFAULT ?? colors.primary,
+        fontWeight: '800',
+        color: colors.text.tertiary,
         fontFamily: Platform.OS === 'web' ? 'monospace' : undefined,
         marginRight: spacing.xs,
         flexShrink: 1,
         maxWidth: Platform.OS === 'web' ? 200 : 100,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
     statusDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
+        width: 7,
+        height: 7,
+        borderRadius: 999,
         marginRight: spacing.xs,
         flexShrink: 0,
     },

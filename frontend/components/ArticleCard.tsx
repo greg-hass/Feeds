@@ -49,6 +49,7 @@ const ArticleCard = React.memo<ArticleCardProps>(({
 }) => {
     const colors = useColors();
     const [iconFailed, setIconFailed] = useState(false);
+    const HeadphonesIcon = Headphones as any;
 
     const s = styles(colors, isMobile);
 
@@ -103,7 +104,7 @@ const ArticleCard = React.memo<ArticleCardProps>(({
                     <Image source={{ uri: thumbnail }} style={s.thumbnail} resizeMode="cover" />
                     {item.has_audio && (
                         <View style={s.podcastIndicator}>
-                            <Headphones size={12} color={colors.text.inverse} />
+                            <HeadphonesIcon size={12} color={colors.text.primary} />
                         </View>
                     )}
                 </TouchableOpacity>
@@ -211,29 +212,30 @@ const styles = (
 ) => ({
     articleCard: {
         paddingHorizontal: densitySpacing.md,
-        paddingVertical: densitySpacing.md,
+        paddingTop: densitySpacing.md + 2,
+        paddingBottom: densitySpacing.md,
         borderBottomWidth: 1,
         borderBottomColor: colors.border.light ?? colors.border.DEFAULT,
         ...Platform.select({
             web: {
                 cursor: 'pointer' as const,
-                transition: 'background-color 0.2s ease',
+                transition: 'background-color 0.2s ease, transform 0.2s ease',
             } as any,
         }),
     },
     articleActive: {
-        backgroundColor: colors.primary.soft,
+        backgroundColor: colors.background.secondary,
     },
     articleFeatured: {
         paddingHorizontal: densitySpacing.md,
         paddingVertical: densitySpacing.md,
     },
     articleRead: {
-        opacity: 0.78,
+        opacity: 0.82,
     },
     cardBody: {
         flexDirection: 'row' as const,
-        gap: densitySpacing.md,
+        gap: densitySpacing.md + 2,
         alignItems: 'flex-start' as const,
     },
     cardInfo: {
@@ -245,8 +247,8 @@ const styles = (
         paddingVertical: 2,
         paddingHorizontal: 0,
         alignSelf: 'flex-start' as const,
-        marginBottom: 6,
-        gap: 5,
+        marginBottom: 8,
+        gap: 6,
     },
     feedIcon: {
         width: 16,
@@ -257,27 +259,32 @@ const styles = (
         width: 16,
         height: 16,
         borderRadius: 4,
-        backgroundColor: colors.primary.DEFAULT,
+        backgroundColor: colors.background.tertiary,
+        borderWidth: 1,
+        borderColor: colors.border.DEFAULT,
         justifyContent: 'center' as const,
         alignItems: 'center' as const,
     },
     initialText: {
-        color: colors.text.inverse,
+        color: colors.text.primary,
         fontSize: 9,
         fontWeight: '900' as const,
     },
     feedName: {
-        fontSize: 12,
-        fontWeight: '600' as const,
+        fontSize: 11,
+        fontWeight: '700' as const,
         color: colors.text.tertiary,
+        textTransform: 'uppercase' as const,
+        letterSpacing: 0.4,
         maxWidth: 210,
     },
     articleTitle: {
-        fontSize: fontSizes.title - 1,
-        fontWeight: '700' as const,
+        fontSize: fontSizes.title,
+        fontWeight: '800' as const,
         color: colors.text.primary,
-        lineHeight: 21,
-        marginBottom: 6,
+        lineHeight: 22,
+        letterSpacing: -0.25,
+        marginBottom: 7,
     },
     articleTitleRead: {
         color: colors.text.secondary,
@@ -285,22 +292,22 @@ const styles = (
     featuredSummary: {
         fontSize: fontSizes.summary - 1,
         color: colors.text.secondary,
-        lineHeight: 18,
+        lineHeight: 19,
         marginBottom: 4,
     },
     thumbnailWrapper: {
-        width: isMobile ? 72 : 84,
-        height: isMobile ? 72 : 84,
-        borderRadius: borderRadius.md,
+        width: isMobile ? 82 : 96,
+        height: isMobile ? 82 : 96,
+        borderRadius: borderRadius.lg,
         overflow: 'hidden' as const,
         position: 'relative' as const,
         aspectRatio: 1,
     },
     featuredThumbnailWrapper: {
-        width: isMobile ? 72 : 84,
-        height: isMobile ? 72 : 84,
+        width: isMobile ? 82 : 96,
+        height: isMobile ? 82 : 96,
         aspectRatio: 1,
-        borderRadius: borderRadius.md,
+        borderRadius: borderRadius.lg,
     },
     thumbnail: {
         width: '100%' as const,
@@ -310,12 +317,14 @@ const styles = (
         position: 'absolute' as const,
         bottom: 6,
         right: 6,
-        backgroundColor: colors.primary.DEFAULT,
+        backgroundColor: colors.background.elevated,
         width: 22,
         height: 22,
         borderRadius: 11,
         justifyContent: 'center' as const,
         alignItems: 'center' as const,
+        borderWidth: 1,
+        borderColor: colors.border.DEFAULT,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.2,
@@ -325,17 +334,17 @@ const styles = (
     },
     unreadIndicator: {
         position: 'absolute' as const,
-        top: densitySpacing.md,
-        left: densitySpacing.md,
-        width: 3,
-        height: 18,
+        top: densitySpacing.md + 3,
+        left: 0,
+        width: 4,
+        height: 20,
         borderRadius: borderRadius.full,
         backgroundColor: colors.primary.DEFAULT,
     },
     separator: {
         position: 'absolute' as const,
-        left: densitySpacing.md,
-        right: densitySpacing.md,
+        left: 0,
+        right: 0,
         bottom: 0,
         height: 1,
         backgroundColor: colors.border.light ?? colors.border.DEFAULT,

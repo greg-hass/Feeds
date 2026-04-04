@@ -40,15 +40,23 @@ export const Button = ({
     const getVariantStyle = () => {
         switch (variant) {
             case 'primary':
-                return { backgroundColor: colors.primary?.DEFAULT ?? colors.primary, borderWidth: 0 };
+                return {
+                    backgroundColor: colors.primary?.DEFAULT ?? colors.primary,
+                    borderWidth: 1,
+                    borderColor: colors.primary?.light ?? colors.primary?.DEFAULT ?? colors.primary,
+                };
             case 'secondary':
-                return { backgroundColor: colors.background.secondary, borderWidth: 0 };
+                return {
+                    backgroundColor: colors.background.tertiary,
+                    borderWidth: 1,
+                    borderColor: colors.border.light ?? colors.border.DEFAULT,
+                };
             case 'outline':
-                return { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.border.DEFAULT };
+                return { backgroundColor: colors.background.elevated, borderWidth: 1, borderColor: colors.border.DEFAULT };
             case 'ghost':
                 return { backgroundColor: 'transparent', borderWidth: 0 };
             case 'danger':
-                return { backgroundColor: colors.status.error + '22', borderWidth: 0 };
+                return { backgroundColor: colors.status.error + '12', borderWidth: 1, borderColor: colors.status.error + '30' };
             default:
                 return {};
         }
@@ -138,6 +146,7 @@ const styles = (colors: any) => StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         borderRadius: borderRadius.md,
+        overflow: 'hidden',
     },
     iconButton: {
         borderRadius: borderRadius.full,
@@ -146,7 +155,8 @@ const styles = (colors: any) => StyleSheet.create({
         opacity: 0.5,
     },
     text: {
-        fontWeight: '600',
+        fontWeight: '700',
+        letterSpacing: 0.1,
         textAlign: 'center',
     },
 });

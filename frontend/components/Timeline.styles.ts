@@ -16,7 +16,7 @@ export const timelineStyles = (colors: any, isMobile: boolean) => StyleSheet.cre
     },
     filterWrapper: {
         borderBottomWidth: 1,
-        borderBottomColor: colors.border.DEFAULT,
+        borderBottomColor: colors.border.light ?? colors.border.DEFAULT,
         paddingVertical: spacing.xs,
     },
     filterScroll: {
@@ -78,7 +78,7 @@ export const timelineStyles = (colors: any, isMobile: boolean) => StyleSheet.cre
         marginVertical: spacing.xl,
     },
     swipeableContainer: {
-        marginBottom: 0,
+        marginBottom: spacing.xs,
         borderRadius: 0,
         overflow: 'hidden',
         backgroundColor: 'transparent',

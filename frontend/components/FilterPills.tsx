@@ -76,10 +76,13 @@ const styles = (colors: any) => StyleSheet.create({
         paddingHorizontal: spacing.lg,
     },
     filterPill: {
-        paddingVertical: 6,
+        paddingVertical: 7,
+        backgroundColor: colors.background.secondary,
+        borderColor: colors.border.DEFAULT,
     },
     filterPillActive: {
-        backgroundColor: colors.primary?.DEFAULT ?? colors.primary,
+        backgroundColor: colors.background.tertiary,
+        borderColor: colors.primary?.DEFAULT ?? colors.primary,
     },
     filterText: {
         fontSize: 10,
@@ -88,9 +91,10 @@ const styles = (colors: any) => StyleSheet.create({
         textAlign: 'center' as const,
         minWidth: 0,
         flexShrink: 1,
+        letterSpacing: 0.2,
     },
     filterTextActive: {
-        color: colors.text.inverse,
+        color: colors.text.primary,
     },
     unreadDot: {
         width: 6,

@@ -24,6 +24,8 @@ const ArticleFooter = React.memo<ArticleFooterProps>(({
 }) => {
     const colors = useColors();
     const useNativeDriver = Platform.OS !== 'web';
+    const ClockIcon = Clock as any;
+    const BookmarkIcon = Bookmark as any;
 
     const handleBookmarkPress = () => {
         const scale = getBookmarkScale(item.id);
@@ -57,9 +59,8 @@ const ArticleFooter = React.memo<ArticleFooterProps>(({
     return (
         <View style={styles.articleFooter}>
             <View style={styles.metaRow}>
-                {/* Time */}
-                <Clock size={11} color={colors.primary.DEFAULT} />
-                <Text style={[styles.articleMeta, { color: colors.primary.DEFAULT }]}>
+                <ClockIcon size={11} color={colors.text.tertiary} />
+                <Text style={[styles.articleMeta, { color: colors.text.tertiary }]}>
                     {item.published_at ? formatDistanceToNow(new Date(item.published_at), { addSuffix: true }) : ''}
                 </Text>
             </View>
@@ -83,7 +84,7 @@ const ArticleFooter = React.memo<ArticleFooterProps>(({
                             })}
                         ]
                     }}>
-                        <Bookmark
+                        <BookmarkIcon
                             size={18}
                             color={item.is_bookmarked ? colors.primary.DEFAULT : colors.text.tertiary}
                             fill={item.is_bookmarked ? colors.primary.DEFAULT : 'transparent'}
@@ -110,7 +111,7 @@ const styles = {
         flexDirection: 'row' as const,
         alignItems: 'center' as const,
         justifyContent: 'space-between' as const,
-        paddingTop: 5,
+        paddingTop: 8,
     },
     metaRow: {
         flexDirection: 'row' as const,
@@ -118,8 +119,8 @@ const styles = {
         gap: 5,
     },
     articleMeta: {
-        fontSize: 10,
-        color: '#6b7280',
+        fontSize: 11,
+        fontWeight: '600' as const,
     },
     actionsRow: {
         flexDirection: 'row' as const,
@@ -127,7 +128,7 @@ const styles = {
         gap: 0,
     },
     cardAction: {
-        paddingHorizontal: 5,
+        paddingHorizontal: 3,
         paddingVertical: 3,
     },
 };

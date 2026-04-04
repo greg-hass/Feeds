@@ -5,21 +5,21 @@ import { safeAsyncStorage } from './lib/safeStorage';
 
 export const darkColors = {
     background: {
-        DEFAULT: '#0d0d0d',
-        primary: '#0d0d0d',    // Darker main background
-        secondary: '#161616',   // Darker cards/surfaces
-        tertiary: '#1f1f1f',    // Darker tertiary
-        elevated: '#0a0a0a',    // Near-black for elevated containers
+        DEFAULT: '#081014',
+        primary: '#081014',
+        secondary: '#0d171c',
+        tertiary: '#132028',
+        elevated: '#050b0e',
     },
     text: {
-        primary: '#f5f5f5',
-        secondary: '#a3a3a3',
-        tertiary: '#737373',
-        inverse: '#0d0d0d',
+        primary: '#f3fbfa',
+        secondary: '#a2b4b8',
+        tertiary: '#6f848a',
+        inverse: '#06110d',
     },
     border: {
-        DEFAULT: '#2a2a2a',     // Subtler borders
-        light: '#3a3a3a',
+        DEFAULT: '#1d2b32',
+        light: '#243740',
     },
 };
 
@@ -45,10 +45,10 @@ const lightColors = {
 
 const sharedColors = {
     primary: {
-        DEFAULT: '#10b981',
-        light: '#34d399',
-        dark: '#059669',
-        soft: '#10b98125', // 15% opacity for backgrounds
+        DEFAULT: '#5bd6b0',
+        light: '#84e3c7',
+        dark: '#1b9f7d',
+        soft: '#5bd6b01c',
     },
     accent: {
         primary: '#10b981',

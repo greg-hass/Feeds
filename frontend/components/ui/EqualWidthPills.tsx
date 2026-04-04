@@ -110,7 +110,7 @@ const styles = (colors: any) => StyleSheet.create({
     row: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
+        gap: 6,
         width: '100%',
     },
     pill: {
@@ -119,16 +119,17 @@ const styles = (colors: any) => StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 4,
-        paddingHorizontal: 6,
-        paddingVertical: 5,
+        gap: 5,
+        paddingHorizontal: 8,
+        paddingVertical: 7,
         borderRadius: borderRadius.full,
         borderWidth: 1,
     },
     text: {
-        fontWeight: '600',
+        fontWeight: '700',
         textAlign: 'center',
         minWidth: 0,
         flexShrink: 1,
+        letterSpacing: 0.15,
     },
 });
