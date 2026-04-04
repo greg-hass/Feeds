@@ -15,24 +15,34 @@ body {
     min-height: 100%;
     margin: 0;
     padding: 0;
-    background: #0d0d0d;
+    background: #081014;
+}
+
+@media (prefers-color-scheme: light) {
+    html, :root, body {
+        background: #ffffff;
+    }
 }
 
 body {
     display: flex;
     min-height: 100vh;
-    min-height: 100svh;
+    min-height: 100dvh;
 }
 
-body > div:first-child,
-body > div:first-child > div,
-body > div:first-child > div > div {
-    flex: 1 1 auto;
-    width: 100%;
-    height: 100%;
-    min-height: 100vh;
-    min-height: 100dvh;
+body > div:first-child {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     background: #081014;
+}
+
+@media (prefers-color-scheme: light) {
+    body > div:first-child {
+        background: #ffffff;
+    }
 }
 
 *:focus-visible {
