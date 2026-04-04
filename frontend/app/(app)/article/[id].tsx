@@ -433,7 +433,7 @@ export default function ArticleScreen() {
                                     ) : (
                                         <TouchableOpacity style={s.videoPlaceholder} onPress={handlePlayVideo} activeOpacity={0.9}>
                                             <Image source={{ uri: currentArticle.thumbnail_url || `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` }} style={s.heroImageFull} resizeMode="cover" />
-                                            <View style={s.playOverlay}><View style={s.playButton}><Play size={34} color="#111111" fill="#111111" style={{ marginLeft: 4 }} /></View></View>
+                                            <View style={s.playOverlay}><View style={s.playButton}><Play size={34} color="#ffffff" fill="#ffffff" style={{ marginLeft: 4 }} /></View></View>
                                         </TouchableOpacity>
                                     )}
                                 </View>
@@ -699,11 +699,11 @@ const styles = (
             width: 72,
             height: 72,
             borderRadius: 36,
-            backgroundColor: 'rgba(255,255,255,0.96)',
+            backgroundColor: 'rgba(0,0,0,0.22)',
             justifyContent: 'center',
             alignItems: 'center',
             borderWidth: 2,
-            borderColor: 'rgba(0,0,0,0.12)',
+            borderColor: 'rgba(255,255,255,0.82)',
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.24,

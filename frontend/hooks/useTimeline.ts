@@ -54,12 +54,15 @@ export const useTimeline = (onArticlePress?: (article: Article) => void) => {
             return;
         }
 
-        didHydrateInitialTimeline.current = true;
-
-        if (articles.length === 0 && !isLoading) {
-            void fetchArticles(true, false, true);
+        if (isLoading) {
+            return;
         }
-    }, [articles.length, fetchArticles, isLoading]);
+
+        didHydrateInitialTimeline.current = true;
+        // Always refresh the first page on initial mount so persisted list/cursor
+        // state cannot strand the timeline on a partial page.
+        void fetchArticles(true, false, true);
+    }, [fetchArticles, isLoading]);
 
     useEffect(() => {
         fetchPendingDigest();

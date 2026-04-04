@@ -56,9 +56,10 @@ export function getEmbedUrl(
 
     if (autoplay) {
         params.autoplay = '1';
-        if (muted) {
-            params.mute = '1';
-        }
+        // Mobile/WebView autoplay is commonly blocked unless the video starts muted.
+        params.mute = '1';
+    } else if (muted) {
+        params.mute = '1';
     }
 
     // Crucial for fixing "Error 153" (Video player configuration error)

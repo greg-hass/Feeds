@@ -87,7 +87,7 @@ const YouTubePlayer = React.memo<YouTubePlayerProps>(({
                     <View style={styles.playButtonOverlay}>
                         <View style={styles.thumbnailScrim} />
                         <View style={styles.playButtonCircle}>
-                            <Play size={26} color="#111111" fill="#111111" style={{ marginLeft: 4 }} />
+                            <Play size={30} color="#ffffff" fill="#ffffff" style={{ marginLeft: 4 }} />
                         </View>
                     </View>
                 </TouchableOpacity>
@@ -138,11 +138,11 @@ const styles = StyleSheet.create({
         width: 72,
         height: 72,
         borderRadius: 36,
-        backgroundColor: 'rgba(255, 255, 255, 0.96)',
+        backgroundColor: 'rgba(0, 0, 0, 0.22)',
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 2,
-        borderColor: 'rgba(0, 0, 0, 0.12)',
+        borderColor: 'rgba(255, 255, 255, 0.82)',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.22,

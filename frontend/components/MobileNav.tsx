@@ -2,7 +2,6 @@ import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet, Platform } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { Home, Bookmark, Rss, Settings } from 'lucide-react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors, borderRadius } from '@/theme';
 
 interface NavItem {
@@ -22,8 +21,7 @@ export default function MobileNav() {
     const router = useRouter();
     const pathname = usePathname();
     const colors = useColors();
-    const insets = useSafeAreaInsets();
-    const s = styles(colors, insets.bottom);
+    const s = styles(colors);
 
     const isActive = (path: string) => {
         // Normalize the path by removing the (app) group prefix
@@ -72,15 +70,15 @@ export default function MobileNav() {
     );
 }
 
-const styles = (colors: any, bottomInset: number) => {
+const styles = (colors: any) => {
     return StyleSheet.create({
     container: {
         flexDirection: 'row',
         backgroundColor: colors.background.primary,
         borderTopWidth: 1,
         borderTopColor: colors.border.DEFAULT,
-        paddingTop: 8,
-        paddingBottom: Math.max(bottomInset, 8),
+        paddingTop: 6,
+        paddingBottom: 8,
         position: 'relative',
         ...Platform.select({
             web: {
@@ -92,9 +90,9 @@ const styles = (colors: any, bottomInset: number) => {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 9,
+        paddingVertical: 8,
         gap: 3,
-        minHeight: 50,
+        minHeight: 46,
         marginHorizontal: 4,
         borderRadius: borderRadius.xl,
     },
