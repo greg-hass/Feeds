@@ -158,8 +158,8 @@ const styles = (isDesktop: boolean, isReaderRoute: boolean, colors: any) => Styl
         flexDirection: isDesktop ? 'row' : 'column',
         backgroundColor: colors.background.primary,
         ...(Platform.OS === 'web' && {
-            height: '100svh' as any,
-            minHeight: '100svh' as any,
+            height: '100dvh' as any,
+            minHeight: '100dvh' as any,
             // Desktop has no mobile nav, so the shell owns the bottom inset there.
             ...(isDesktop && { paddingBottom: 'env(safe-area-inset-bottom)' as any }),
         }),
